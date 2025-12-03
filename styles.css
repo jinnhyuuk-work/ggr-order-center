@@ -140,9 +140,54 @@ input[type="number"] {
 }
 
 .form-row input[type="number"],
+.form-row input[type="text"],
+.form-row input[type="tel"],
+.form-row input[type="email"],
+.form-row textarea,
+.form-row select {
+  border: none;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  background: transparent;
+}
+
+.form-row input[type="number"]:focus,
+.form-row input[type="text"]:focus,
+.form-row input[type="tel"]:focus,
+.form-row input[type="email"]:focus,
+.form-row textarea:focus,
+.form-row select:focus {
+  outline: none;
+  border-bottom-color: #111;
+}
+
+.form-row input[type="number"],
 .form-row select {
   width: 100%;
   max-width: 240px;
+  box-sizing: border-box;
+  padding: 8px 6px 8px 4px;
+}
+
+#thicknessSelect {
+  max-width: 180px;
+}
+
+#thicknessSelect option {
+  padding-left: 0;
+  text-indent: 0;
+}
+
+#step5 input[type="text"],
+#step5 input[type="tel"],
+#step5 input[type="email"] {
+  height: 30px;
+  padding: 6px 6px;
+}
+
+#step5 textarea {
+  height: 60px;
+  padding: 8px 6px;
 }
 
 input[type="number"]::-webkit-inner-spin-button,

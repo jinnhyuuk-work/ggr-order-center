@@ -180,7 +180,7 @@ const state = {
   items: [], // {id, materialId, thickness, width, length, quantity, services, ...계산 결과}
   addons: [],
 };
-let stepsCollapsed = false;
+let currentPhase = 1; // 1: 목재/가공, 2: 부자재, 3: 고객 정보
 const categories = Array.from(
   new Set(Object.values(MATERIALS).map((m) => m.category || "기타"))
 );
@@ -519,14 +519,22 @@ function updateStepVisibility(scrollTarget) {
   const step3 = document.getElementById("step3");
   const actionCard = document.querySelector(".action-card");
   const step4 = document.getElementById("step4");
+  const step5 = document.getElementById("step5");
+
+  const showPhase1 = currentPhase === 1;
+  const showPhase2 = currentPhase === 2;
+  const showPhase3 = currentPhase === 3;
+
   [step1, step2, step3, actionCard].forEach((el) => {
-    if (el) el.classList.toggle("hidden-step", stepsCollapsed);
+    if (el) el.classList.toggle("hidden-step", !showPhase1);
   });
-  if (step4) step4.classList.toggle("hidden-step", !stepsCollapsed);
+  if (step4) step4.classList.toggle("hidden-step", !showPhase2);
+  if (step5) step5.classList.toggle("hidden-step", !showPhase3);
+
   const prevBtn = document.getElementById("prevStepsBtn");
   if (prevBtn) {
-    prevBtn.classList.toggle("hidden-step", !stepsCollapsed);
-    prevBtn.style.display = stepsCollapsed ? "" : "none";
+    prevBtn.classList.toggle("hidden-step", currentPhase === 1);
+    prevBtn.style.display = currentPhase === 1 ? "none" : "";
   }
 
   if (scrollTarget) {
@@ -535,13 +543,31 @@ function updateStepVisibility(scrollTarget) {
 }
 
 function goToNextStep() {
-  stepsCollapsed = true;
-  const target = document.getElementById("step4") || document.getElementById("step3");
-  updateStepVisibility(target);
+  if (currentPhase === 1) {
+    currentPhase = 2;
+    updateStepVisibility(document.getElementById("step4"));
+    return;
+  }
+  if (currentPhase === 2) {
+    const hasMaterial = state.items.some((it) => it.type !== "addon");
+    const hasAddon = state.items.some((it) => it.type === "addon");
+    if (!hasMaterial && !hasAddon) {
+      showInfoModal("목재나 부자재 중 하나 이상 담아주세요.");
+      return;
+    }
+    currentPhase = 3;
+    updateStepVisibility(document.getElementById("step5"));
+    return;
+  }
 }
 
 function goToPrevStep() {
-  stepsCollapsed = false;
+  if (currentPhase === 1) return;
+  currentPhase -= 1;
+  if (currentPhase === 2) {
+    updateStepVisibility(document.getElementById("step4"));
+    return;
+  }
   updateStepVisibility(document.getElementById("step1"));
 }
 
@@ -688,10 +714,7 @@ function updateThicknessOptions(materialId) {
     opt.textContent = `${t}T`;
     select.appendChild(opt);
   });
-  // 자동 선택
-  if (mat.availableThickness?.length) {
-    select.value = mat.availableThickness[0];
-  }
+  // 자동 선택 제거: 사용자가 직접 선택하도록 유지
   autoCalculatePrice();
 }
 
@@ -712,8 +735,8 @@ function validateSizeFields() {
   const widthHint = `폭: ${WIDTH_MIN}~${WIDTH_MAX}mm`;
   const lengthHint = `길이: ${LENGTH_MIN}~${LENGTH_MAX}mm`;
 
-  widthErrEl.textContent = widthHint;
-  lengthErrEl.textContent = lengthHint;
+  widthErrEl.textContent = "";
+  lengthErrEl.textContent = "";
   widthErrEl.classList.remove("error");
   lengthErrEl.classList.remove("error");
   widthEl.classList.remove("input-error");

@@ -44,7 +44,7 @@
           <div class="form-row">
             <label>폭 (mm)</label>
             <div class="field-col">
-              <input type="number" id="widthInput" />
+              <input type="number" id="widthInput" placeholder="폭 100~800mm" />
               <div class="error-msg" id="widthError"></div>
             </div>
           </div>
@@ -52,7 +52,7 @@
           <div class="form-row">
             <label>길이 (mm)</label>
             <div class="field-col">
-              <input type="number" id="lengthInput" />
+              <input type="number" id="lengthInput" placeholder="길이 200~2400mm" />
               <div class="error-msg" id="lengthError"></div>
             </div>
           </div>
@@ -89,6 +89,40 @@
           </div>
           <div class="addons-actions">
             <button type="button" class="secondary-btn" id="addAddonBtn">부자재 담기</button>
+          </div>
+        </section>
+
+        <section id="step5" class="step-card hidden-step">
+          <h2>05. 고객 정보를 입력해주세요.</h2>
+          <div class="form-row">
+            <label for="customerName">이름</label>
+            <div class="field-col">
+              <input type="text" id="customerName" placeholder="홍길동" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="customerPhone">연락처</label>
+            <div class="field-col">
+              <input type="tel" id="customerPhone" placeholder="010-1234-5678" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="customerEmail">이메일</label>
+            <div class="field-col">
+              <input type="email" id="customerEmail" placeholder="you@example.com" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="customerAddress">주소</label>
+            <div class="field-col">
+              <input type="text" id="customerAddress" placeholder="도로명 주소를 입력해주세요" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="customerMemo">요청사항</label>
+            <div class="field-col">
+              <textarea id="customerMemo" rows="3" placeholder="배송 시 요청사항 등을 입력해주세요."></textarea>
+            </div>
           </div>
         </section>
       </div>
