@@ -82,7 +82,9 @@
           <p class="addons-desc">
             목재 주문을 완료하셨다면 추가 부자재(피스, 경첩, 손잡이 등) 주문도 이어서 진행해보세요.
           </p>
-          <div id="addonCards" class="material-grid addon-grid"></div>
+          <div class="addon-picker">
+            <button type="button" id="openAddonModal">부자재 선택하기</button>
+          </div>
           <div class="addon-picker">
             <div id="selectedAddonCard" class="selected-material-card addon-card-display">
               <div class="placeholder">선택된 부자재 없음</div>
@@ -149,8 +151,8 @@
         <div class="summary">
           <p>예상무게: <span id="totalWeight">0</span> kg</p>
           <p>예상 포장비: <span id="packingCost">0</span> 원</p>
-          <p>목재견적금액: <span id="materialsTotal">0</span> 원</p>
-          <p>총결제금액: <span id="grandTotal">0</span> 원</p>
+          <p>총 견적금액: <span id="materialsTotal">0</span> 원</p>
+          <p>총 결제금액: <span id="grandTotal">0</span> 원</p>
           <p>네이버 결제 수량: <span id="naverUnits">0</span> 개</p>
         </div>
 
@@ -171,10 +173,29 @@
       </div>
       <div class="modal-body">
         <div id="materialTabs" class="material-tabs"></div>
+        <div class="material-category-header">
+          <div id="materialCategoryName" class="material-category-title"></div>
+          <p id="materialCategoryDesc" class="material-category-desc"></p>
+        </div>
         <div id="materialCards" class="material-grid"></div>
       </div>
       <div class="modal-footer">
         <button type="button" id="closeMaterialModal" class="modal-close">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addonModal" class="modal hidden">
+    <div class="modal-backdrop" id="addonModalBackdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>부자재 선택</h3>
+      </div>
+      <div class="modal-body">
+        <div id="addonCards" class="material-grid addon-grid"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="closeAddonModal" class="modal-close">닫기</button>
       </div>
     </div>
   </div>

@@ -96,8 +96,24 @@ section {
 .material-tabs {
   display: flex;
   gap: 8px;
-  margin: 10px 0 8px;
+  margin: 10px 0 12px;
   flex-wrap: wrap;
+}
+
+.material-category-desc {
+  margin: 0 0 8px;
+  color: #444;
+  font-size: 13px;
+}
+
+.material-category-header {
+  margin-bottom: 8px;
+}
+
+.material-category-title {
+  font-weight: 800;
+  color: #111;
+  margin-bottom: 4px;
 }
 
 .material-tab {
@@ -692,6 +708,7 @@ th, td {
   padding: 20px;
   box-shadow: 0 12px 30px rgba(0,0,0,0.2);
   max-height: 80vh;
+  min-height: 80vh;
   overflow: hidden;
 }
 

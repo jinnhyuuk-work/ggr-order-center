@@ -1,4 +1,130 @@
 export const MATERIALS = {
+  /* LX SMR PET */
+  ...(() => {
+    const items = {};
+    for (let i = 1; i <= 12; i++) {
+      const id = `lx_smr_pet_${String(i).padStart(2, "0")}`;
+      items[id] = {
+        id,
+        name: `LX SMR PET ${i}`,
+        category: "LX SMR PET",
+        availableThickness: [18],
+        pricePerM2: 52000,
+        density: 720,
+        minWidth: 50,
+        maxWidth: 1200,
+        minLength: 100,
+        maxLength: 2400,
+        swatch: "linear-gradient(135deg, #f9f9f9 0%, #dcdcdc 100%)",
+      };
+    }
+    return items;
+  })(),
+  /* LX Texture PET */
+  ...(() => {
+    const items = {};
+    for (let i = 1; i <= 2; i++) {
+      const id = `lx_texture_pet_${String(i).padStart(2, "0")}`;
+      items[id] = {
+        id,
+        name: `LX Texture PET ${i}`,
+        category: "LX Texture PET",
+        availableThickness: [18],
+        pricePerM2: 54000,
+        density: 720,
+        minWidth: 50,
+        maxWidth: 1200,
+        minLength: 100,
+        maxLength: 2400,
+        swatch: "linear-gradient(135deg, #f5f0e9 0%, #d3c4b5 100%)",
+      };
+    }
+    return items;
+  })(),
+  /* LX PET */
+  ...(() => {
+    const items = {};
+    for (let i = 1; i <= 16; i++) {
+      const id = `lx_pet_${String(i).padStart(2, "0")}`;
+      items[id] = {
+        id,
+        name: `LX PET ${i}`,
+        category: "LX PET",
+        availableThickness: [18],
+        pricePerM2: 50000,
+        density: 720,
+        minWidth: 50,
+        maxWidth: 1200,
+        minLength: 100,
+        maxLength: 2400,
+        swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+      };
+    }
+    return items;
+  })(),
+  /* Hansol PET */
+  ...(() => {
+    const items = {};
+    for (let i = 1; i <= 24; i++) {
+      const id = `hansol_pet_${String(i).padStart(2, "0")}`;
+      items[id] = {
+        id,
+        name: `Hansol PET ${i}`,
+        category: "Hansol PET",
+        availableThickness: [18],
+        pricePerM2: 51000,
+        density: 720,
+        minWidth: 50,
+        maxWidth: 1200,
+        minLength: 100,
+        maxLength: 2400,
+        swatch: "linear-gradient(135deg, #f0f6ff 0%, #d1e6ff 100%)",
+      };
+    }
+    return items;
+  })(),
+  /* Original PET */
+  ...(() => {
+    const items = {};
+    for (let i = 1; i <= 16; i++) {
+      const id = `original_pet_${String(i).padStart(2, "0")}`;
+      items[id] = {
+        id,
+        name: `Original PET ${i}`,
+        category: "Original PET",
+        availableThickness: [18],
+        pricePerM2: 49000,
+        density: 720,
+        minWidth: 50,
+        maxWidth: 1200,
+        minLength: 100,
+        maxLength: 2400,
+        swatch: "linear-gradient(135deg, #f7f7f7 0%, #dcdde0 100%)",
+      };
+    }
+    return items;
+  })(),
+  /* LPM */
+  ...(() => {
+    const items = {};
+    for (let i = 1; i <= 17; i++) {
+      const id = `lpm_${String(i).padStart(2, "0")}`;
+      items[id] = {
+        id,
+        name: `LPM ${i}`,
+        category: "LPM",
+        availableThickness: [18],
+        pricePerM2: 47000,
+        density: 720,
+        minWidth: 50,
+        maxWidth: 1200,
+        minLength: 100,
+        maxLength: 2400,
+        swatch: "linear-gradient(135deg, #f8f3ea 0%, #e3d4bc 100%)",
+      };
+    }
+    return items;
+  })(),
   misong: {
     id: "misong",
     name: "미송집성목",
@@ -252,6 +378,17 @@ export const MATERIALS = {
     maxLength: 2400,
     swatch: "linear-gradient(135deg, #c8d0de 0%, #30405a 100%)",
   },
+};
+
+export const MATERIAL_CATEGORIES_DESC = {
+  집성목: "집성목은 여러 목재를 접합하여 안정성과 강도를 높인 판재입니다.",
+  MDF: "MDF는 섬유를 압축해 만든 판재로 가공과 도장이 용이합니다.",
+  "LX SMR PET": "LX SMR PET 마감재 카테고리입니다.",
+  "LX Texture PET": "LX Texture PET 마감재 카테고리입니다.",
+  "LX PET": "LX PET 마감재 카테고리입니다.",
+  "Hansol PET": "한솔 PET 마감재 카테고리입니다.",
+  "Original PET": "오리지널 PET 마감재 카테고리입니다.",
+  LPM: "LPM 마감재 카테고리입니다.",
 };
 
 export const PROCESSING_SERVICES = {

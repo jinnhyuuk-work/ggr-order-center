@@ -1,4 +1,10 @@
-import { MATERIALS, PROCESSING_SERVICES, PACKING_SETTINGS, ADDON_ITEMS } from "./data.js";
+import {
+  MATERIALS,
+  PROCESSING_SERVICES,
+  PACKING_SETTINGS,
+  ADDON_ITEMS,
+  MATERIAL_CATEGORIES_DESC,
+} from "./data.js";
 
 const VAT_RATE = 0.1; // 10% 부가세 (원하는 비율로 수정 가능)
 const ORDER_EMAIL = "info@ggr.kr"; // 사내 주문 수신 메일 주소 (필요시 수정)
@@ -194,8 +200,9 @@ const state = {
 let currentPhase = 1; // 1: 목재/가공, 2: 부자재, 3: 고객 정보
 let sendingEmail = false;
 let orderCompleted = false;
+const EXTRA_CATEGORIES = ["LX SMR PET", "LX Texture PET", "LX PET", "Hansol PET", "Original PET", "LPM"];
 const categories = Array.from(
-  new Set(Object.values(MATERIALS).map((m) => m.category || "기타"))
+  new Set([...Object.values(MATERIALS).map((m) => m.category || "기타"), ...EXTRA_CATEGORIES])
 );
 let selectedCategory = categories[0];
 let selectedMaterialId = "";
@@ -252,9 +259,11 @@ function renderMaterialTabs() {
       renderMaterialTabs();
       renderMaterialCards();
       if (selectedMaterialId) updateThicknessOptions(selectedMaterialId);
+      renderCategoryDesc();
     });
     tabs.appendChild(btn);
   });
+  renderCategoryDesc();
 }
 
 function renderMaterialCards() {
@@ -298,6 +307,15 @@ function renderMaterialCards() {
   };
   if (selectedMaterialId) updateThicknessOptions(selectedMaterialId);
   updateSelectedMaterialLabel();
+}
+
+function renderCategoryDesc() {
+  const descEl = document.getElementById("materialCategoryDesc");
+  const titleEl = document.getElementById("materialCategoryName");
+  if (!descEl || !titleEl) return;
+  const desc = MATERIAL_CATEGORIES_DESC[selectedCategory] || "";
+  titleEl.textContent = selectedCategory || "";
+  descEl.textContent = desc;
 }
 
 function renderAddonCards() {
@@ -1102,6 +1120,14 @@ function closeMaterialModal() {
   $("#materialModal")?.classList.add("hidden");
 }
 
+function openAddonModal() {
+  $("#addonModal")?.classList.remove("hidden");
+}
+
+function closeAddonModal() {
+  $("#addonModal")?.classList.add("hidden");
+}
+
 function updateModalCardPreviews() {
   const selectedVisual = document.querySelector("#selectedMaterialCard .material-visual");
   if (selectedVisual) {
@@ -1182,6 +1208,9 @@ function init() {
   $("#openMaterialModal").addEventListener("click", openMaterialModal);
   $("#closeMaterialModal").addEventListener("click", closeMaterialModal);
   $("#materialModalBackdrop")?.addEventListener("click", closeMaterialModal);
+  $("#openAddonModal")?.addEventListener("click", openAddonModal);
+  $("#closeAddonModal")?.addEventListener("click", closeAddonModal);
+  $("#addonModalBackdrop")?.addEventListener("click", closeAddonModal);
   $("#sendQuoteBtn")?.addEventListener("click", sendQuote);
   ["#customerName", "#customerPhone", "#customerEmail"].forEach((sel) => {
     const el = document.querySelector(sel);
