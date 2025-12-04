@@ -154,7 +154,9 @@ function calcAddonDetail(price) {
 
 // 7) 주문 전체 합계 계산
 function calcOrderSummary(items) {
-  const materialsTotal = items.reduce((s, i) => s + i.materialCost, 0);
+  const materialsTotal = items
+    .filter((i) => i.type !== "addon")
+    .reduce((s, i) => s + i.materialCost, 0);
   const processingTotal = items.reduce((s, i) => s + i.processingCost, 0);
   const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
   const vat = items.reduce((s, i) => s + i.vat, 0);
@@ -869,6 +871,11 @@ function resetFlow() {
   orderCompleted = false;
   state.items = [];
   state.addons = [];
+  const customerFields = ["#customerName", "#customerPhone", "#customerEmail", "#customerMemo"];
+  customerFields.forEach((sel) => {
+    const el = document.querySelector(sel);
+    if (el) el.value = "";
+  });
   renderTable();
   renderSummary();
   selectedMaterialId = "";
@@ -972,10 +979,7 @@ async function sendQuote() {
     await emailjsInstance.send(
       EMAILJS_CONFIG.serviceId,
       EMAILJS_CONFIG.templateId,
-      templateParams,
-      {
-        publicKey: EMAILJS_CONFIG.publicKey,
-      }
+      templateParams
     );
     showOrderComplete();
   } catch (err) {
