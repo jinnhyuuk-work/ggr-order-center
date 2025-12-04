@@ -18,6 +18,21 @@
     <div class="main-grid">
       <div class="steps-main">
         <!-- STEP 01: 목재 선택 -->
+        <section id="step0" class="step-card">
+          <h2>진행하실 항목을 선택해주세요.</h2>
+          <div class="type-selector">
+            <button type="button" class="type-card" data-product-type="wood">
+              <div class="type-thumb"></div>
+              <div class="type-label">목재</div>
+            </button>
+            <button type="button" class="type-card" data-product-type="top">
+              <div class="type-thumb"></div>
+              <div class="type-label">상판</div>
+            </button>
+          </div>
+        </section>
+
+        <!-- STEP 01: 목재 선택 -->
         <section id="step1" class="step-card">
           <h2>구매하실 목재의 종류를 선택해주세요.</h2>
           <div class="material-picker">
@@ -156,6 +171,7 @@
         <div class="nav-actions">
           <button type="button" class="prev-page-btn hidden-step" id="prevStepsBtn">이전</button>
           <button type="button" class="next-page-btn" id="nextStepsBtn">다음</button>
+          <button type="button" class="send-btn hidden-step" id="sendQuoteBtn">주문 전송</button>
         </div>
       </aside>
     </div>
