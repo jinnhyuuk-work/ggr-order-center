@@ -31,35 +31,42 @@ function readTopInputs() {
   const shape = $("#kitchenShape")?.value || "";
   const width = Number($("#topWidth")?.value || 0);
   const length = Number($("#topLength")?.value || 0);
+  const length2 = Number($("#topLength2")?.value || 0);
   const thickness = Number($("#topThickness")?.value || 0);
   const options = Array.from(document.querySelectorAll("#topOptionCards input:checked")).map(
     (el) => el.value
   );
-  return { typeId, shape, width, length, thickness, options };
+  return { typeId, shape, width, length, length2, thickness, options };
 }
 
-function validateTopInputs({ typeId, shape, width, length, thickness }) {
+function validateTopInputs({ typeId, shape, width, length, length2, thickness }) {
   if (!typeId) return "상판 타입을 선택해주세요.";
   if (!shape) return "주방 형태를 선택해주세요.";
   if (!width) return "폭을 입력해주세요.";
   if (!length) return "길이를 입력해주세요.";
+  const needsSecond = shape === "l" || shape === "rl";
+  if (needsSecond && !length2) return "ㄱ자 형태일 때 길이2를 입력해주세요.";
   if (!thickness) return "두께를 입력해주세요.";
   return null;
 }
 
 function calcTopDetail(input) {
-  const { typeId, shape, width, length, thickness, options } = input;
+  const { typeId, shape, width, length, length2, thickness, options } = input;
   const type = TOP_TYPES.find((t) => t.id === typeId);
   const err = validateTopInputs(input);
   if (!type || err) return { error: err || "필수 정보를 입력해주세요." };
 
-  const areaM2 = (width / 1000) * (length / 1000);
+  const needsSecond = shape === "l" || shape === "rl";
+  const areaM2 =
+    needsSecond
+      ? (width / 1000) * (length / 1000) + (width / 1000) * (length2 / 1000)
+      : (width / 1000) * (length / 1000);
   const base = type.basePrice + areaM2 * 120000;
   const optionPrice = options.reduce((sum, id) => {
     const opt = TOP_OPTIONS.find((o) => o.id === id);
     return sum + (opt?.price || 0);
   }, 0);
-  const shapeFee = shape === "l" ? 30000 : 0;
+  const shapeFee = needsSecond ? 30000 : 0;
   const materialCost = base + optionPrice + shapeFee;
   const subtotal = materialCost;
   const vat = Math.round(subtotal * VAT_RATE);
@@ -71,7 +78,10 @@ function calcTopDetail(input) {
     subtotal,
     vat,
     total,
-    displaySize: `${width}×${length}×${thickness}mm`,
+    displaySize:
+      needsSecond
+        ? `${width}×${length} / ${width}×${length2}×${thickness}mm`
+        : `${width}×${length}×${thickness}mm`,
     optionsLabel:
       options.length === 0
         ? "-"
@@ -312,6 +322,7 @@ function addTopItem() {
     shape: input.shape,
     width: input.width,
     length: input.length,
+    length2: input.length2,
     thickness: input.thickness,
     options: input.options,
     quantity: 1,
@@ -333,6 +344,7 @@ function resetSelections() {
   $("#kitchenShape").value = "";
   $("#topWidth").value = "";
   $("#topLength").value = "";
+  $("#topLength2").value = "";
   $("#topThickness").value = "";
   document.querySelectorAll("#topOptionCards input[type='checkbox']").forEach((el) => {
     el.checked = false;
@@ -340,6 +352,14 @@ function resetSelections() {
   });
   updateSelectedTopTypeCard();
   refreshTopEstimate();
+}
+
+function updateLength2Visibility() {
+  const shape = $("#kitchenShape")?.value;
+  const row = $("#topLength2Row");
+  if (!row) return;
+  const needsSecond = shape === "l" || shape === "rl";
+  row.classList.toggle("hidden-step", !needsSecond);
 }
 
 function updateItemQuantity(id, quantity) {
@@ -351,6 +371,7 @@ function updateItemQuantity(id, quantity) {
     shape: item.shape,
     width: item.width,
     length: item.length,
+    length2: item.length2,
     thickness: item.thickness,
     options: item.options,
   });
@@ -607,11 +628,13 @@ function initTop() {
   $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
   $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
 
-  ["topWidth", "topLength", "topThickness", "kitchenShape"].forEach((id) => {
+  ["topWidth", "topLength", "topLength2", "topThickness", "kitchenShape"].forEach((id) => {
     const el = document.getElementById(id);
     el?.addEventListener("input", refreshTopEstimate);
     el?.addEventListener("change", refreshTopEstimate);
   });
+  $("#kitchenShape")?.addEventListener("change", updateLength2Visibility);
+  updateLength2Visibility();
   ["#customerName", "#customerPhone", "#customerEmail"].forEach((sel) => {
     const el = document.querySelector(sel);
     el?.addEventListener("input", updateSendButtonEnabled);
