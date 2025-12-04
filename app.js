@@ -300,6 +300,7 @@ function renderMaterialCards() {
     selectedMaterialId = input.value;
     updateThicknessOptions(selectedMaterialId);
     updateSelectedMaterialLabel();
+    updateSizePlaceholders(MATERIALS[selectedMaterialId]);
     updatePreview();
     $$(".material-card").forEach((card) => card.classList.remove("selected"));
     input.closest(".material-card")?.classList.add("selected");
@@ -399,26 +400,25 @@ function readCurrentInputs() {
 // 입력값 검증
 function validateInputs(input) {
   const { materialId, thickness, width, length, quantity } = input;
+  const mat = MATERIALS[materialId];
 
   if (!materialId) return "목재를 선택해주세요.";
   if (!thickness) return "두께를 선택해주세요.";
   if (!width) return "폭을 입력해주세요.";
-  if (width < WIDTH_MIN || width > WIDTH_MAX)
-    return `폭은 ${WIDTH_MIN} ~ ${WIDTH_MAX}mm 사이여야 합니다.`;
+  const widthMin = mat?.minWidth ?? WIDTH_MIN;
+  const widthMax = mat?.maxWidth ?? WIDTH_MAX;
+  if (width < widthMin || width > widthMax)
+    return `폭은 ${widthMin} ~ ${widthMax}mm 사이여야 합니다.`;
   if (!length) return "길이를 입력해주세요.";
-  if (length < LENGTH_MIN || length > LENGTH_MAX)
-    return `길이는 ${LENGTH_MIN} ~ ${LENGTH_MAX}mm 사이여야 합니다.`;
+  const lengthMin = mat?.minLength ?? LENGTH_MIN;
+  const lengthMax = mat?.maxLength ?? LENGTH_MAX;
+  if (length < lengthMin || length > lengthMax)
+    return `길이는 ${lengthMin} ~ ${lengthMax}mm 사이여야 합니다.`;
   if (!quantity || quantity <= 0) return "수량은 1개 이상이어야 합니다.";
 
-  const material = MATERIALS[materialId];
+  const material = mat;
   if (!material.availableThickness?.includes(thickness)) {
     return `선택한 목재는 ${material.availableThickness.join(", ")}T만 가능합니다.`;
-  }
-  if (width < material.minWidth || width > material.maxWidth) {
-    return `폭은 ${material.minWidth} ~ ${material.maxWidth}mm 사이여야 합니다.`;
-  }
-  if (length < material.minLength || length > material.maxLength) {
-    return `길이는 ${material.minLength} ~ ${material.maxLength}mm 사이여야 합니다.`;
   }
   return null;
 }
@@ -509,6 +509,7 @@ function resetStepsAfterAdd() {
     input.closest(".material-card")?.classList.remove("selected");
   });
   updateSelectedMaterialLabel();
+  updateSizePlaceholders(null);
 
   // 두께 선택 초기화
   const thicknessSelect = $("#thicknessSelect");
@@ -1012,12 +1013,18 @@ function validateSizeFields() {
 
   const widthVal = Number(widthEl.value);
   const lengthVal = Number(lengthEl.value);
+  const mat = MATERIALS[selectedMaterialId];
 
   let widthValid = true;
   let lengthValid = true;
 
-  const widthHint = `폭: ${WIDTH_MIN}~${WIDTH_MAX}mm`;
-  const lengthHint = `길이: ${LENGTH_MIN}~${LENGTH_MAX}mm`;
+  const widthMin = mat?.minWidth ?? WIDTH_MIN;
+  const widthMax = mat?.maxWidth ?? WIDTH_MAX;
+  const lengthMin = mat?.minLength ?? LENGTH_MIN;
+  const lengthMax = mat?.maxLength ?? LENGTH_MAX;
+
+  const widthHint = `폭: ${widthMin}~${widthMax}mm`;
+  const lengthHint = `길이: ${lengthMin}~${lengthMax}mm`;
 
   widthErrEl.textContent = "";
   lengthErrEl.textContent = "";
@@ -1026,14 +1033,14 @@ function validateSizeFields() {
   widthEl.classList.remove("input-error");
   lengthEl.classList.remove("input-error");
 
-  if (widthEl.value && (widthVal < WIDTH_MIN || widthVal > WIDTH_MAX)) {
+  if (widthEl.value && (widthVal < widthMin || widthVal > widthMax)) {
     widthValid = false;
     widthErrEl.textContent = `${widthHint} 범위로 입력해주세요.`;
     widthErrEl.classList.add("error");
     widthEl.classList.add("input-error");
   }
 
-  if (lengthEl.value && (lengthVal < LENGTH_MIN || lengthVal > LENGTH_MAX)) {
+  if (lengthEl.value && (lengthVal < lengthMin || lengthVal > lengthMax)) {
     lengthValid = false;
     lengthErrEl.textContent = `${lengthHint} 범위로 입력해주세요.`;
     lengthErrEl.classList.add("error");
@@ -1136,6 +1143,19 @@ function updateModalCardPreviews() {
   }
 }
 
+function updateSizePlaceholders(mat) {
+  const widthEl = $("#widthInput");
+  const lengthEl = $("#lengthInput");
+  if (!widthEl || !lengthEl) return;
+  if (!mat) {
+    widthEl.placeholder = "폭 100~800mm";
+    lengthEl.placeholder = "길이 200~2400mm";
+    return;
+  }
+  widthEl.placeholder = `폭 ${mat.minWidth}~${mat.maxWidth}mm`;
+  lengthEl.placeholder = `길이 ${mat.minLength}~${mat.maxLength}mm`;
+}
+
 let initialized = false;
 
 function init() {
@@ -1171,6 +1191,7 @@ function init() {
   updatePreview();
   updateModalCardPreviews();
   updateSelectedMaterialLabel();
+  updateSizePlaceholders(MATERIALS[selectedMaterialId]);
   updateSelectedAddonsDisplay();
   updateStepVisibility();
 
@@ -1204,6 +1225,8 @@ function init() {
     autoCalculatePrice();
     updatePreview();
     updateSelectedMaterialLabel();
+    const selected = MATERIALS[selectedMaterialId];
+    updateSizePlaceholders(selected);
   });
   $("#openMaterialModal").addEventListener("click", openMaterialModal);
   $("#closeMaterialModal").addEventListener("click", closeMaterialModal);
