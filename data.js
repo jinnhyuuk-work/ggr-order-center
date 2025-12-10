@@ -1437,10 +1437,10 @@ export const PROCESSING_SERVICES = {
   },
   handle_hole: {
     id: "handle_hole",
-    label: "손잡이 홀 가공",
+    label: "피스 홀 타공",
     pricePerHole: 1200,
     swatch: "linear-gradient(135deg, #fef4e6 0%, #ffd9a8 100%)",
-    description: "손잡이 홀 1개당",
+    description: "피스 홀 1개당",
   },
 };
 
