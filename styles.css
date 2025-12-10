@@ -949,16 +949,19 @@ th, td {
   justify-content: flex-end;
 }
 
-#serviceModal .modal-footer {
+#serviceModal .modal-footer,
+#topServiceModal .modal-footer {
   gap: 10px;
   align-items: center;
 }
 
-#serviceModal .modal-footer .secondary-btn {
+#serviceModal .modal-footer .secondary-btn,
+#topServiceModal .modal-footer .secondary-btn {
   margin-bottom: 0;
 }
 
-#saveServiceModal {
+#saveServiceModal,
+#saveTopServiceModal {
   padding: 12px 18px;
   border-radius: 10px;
   border: 1px solid #111;

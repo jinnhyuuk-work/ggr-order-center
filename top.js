@@ -1,4 +1,5 @@
 import { VAT_RATE, EMAILJS_CONFIG, initEmailJS } from "./shared.js";
+import { PROCESSING_SERVICES } from "./data.js";
 
 const TOP_TYPES = [
   { id: "solid", name: "솔리드 상판", basePrice: 200000 },
@@ -13,11 +14,118 @@ const TOP_OPTIONS = [
   { id: "edge_finish", name: "엣지 마감", price: 15000 },
 ];
 
+function cloneServiceDetails(details) {
+  return JSON.parse(JSON.stringify(details || {}));
+}
+
+function getDefaultServiceDetail(serviceId) {
+  if (serviceId === "hinge_hole" || serviceId === "handle_hole") {
+    return {
+      holes: [{ edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 }],
+      note: "",
+    };
+  }
+  return { note: "" };
+}
+
+function getHoleCountForService(serviceId, serviceDetails) {
+  const detail = serviceDetails?.[serviceId];
+  if (!detail) return 1;
+  if (serviceId === "hinge_hole") {
+    const holes = Array.isArray(detail.holes) ? detail.holes.length : 0;
+    const fallback = detail.count || 1;
+    return Math.max(1, holes || fallback || 1);
+  }
+  if (detail.count) return Math.max(1, detail.count);
+  return 1;
+}
+
+function calcServiceProcessingCost({ services = [], serviceDetails = {}, quantity = 1 }) {
+  let processingCost = 0;
+  services.forEach((id) => {
+    const srv = PROCESSING_SERVICES[id];
+    if (!srv) return;
+    const count = getHoleCountForService(id, serviceDetails);
+    if (srv.pricePerHole) {
+      processingCost += srv.pricePerHole * count * quantity;
+    }
+  });
+  return { processingCost };
+}
+
+function formatHingeDetail(detail, { short = false, includeNote = false } = {}) {
+  if (!detail) return short ? "세부 옵션을 설정해주세요." : "세부 옵션 미입력";
+  const holes = Array.isArray(detail.holes) ? detail.holes : [];
+  const count = holes.length || detail.count || 1;
+  const positions = holes
+    .filter((h) => h && (h.distance || h.verticalDistance))
+    .map((h) => {
+      const edgeLabel = h.edge === "right" ? "우" : "좌";
+      const verticalLabel = h.verticalRef === "bottom" ? "하" : "상";
+      const vert = h.verticalDistance ? `${verticalLabel} ${h.verticalDistance}mm` : "";
+      const horiz = h.distance ? `${edgeLabel} ${h.distance}mm` : "";
+      return [horiz, vert].filter(Boolean).join(" / ");
+    })
+    .join(", ");
+  const noteText = includeNote && detail.note ? ` · 메모: ${detail.note}` : "";
+  const suffix = positions ? ` · ${positions}` : "";
+  return `${count}개${suffix}${noteText}`;
+}
+
+function formatHandleDetail(detail, { includeNote = false } = {}) {
+  if (!detail) return "세부 옵션을 설정해주세요.";
+  const holes = Array.isArray(detail.holes) ? detail.holes : [];
+  const count = holes.length || detail.count || 1;
+  const positions = holes
+    .filter((h) => h && (h.distance || h.verticalDistance))
+    .map((h) => {
+      const edgeLabel = h.edge === "right" ? "우" : "좌";
+      const verticalLabel = h.verticalRef === "bottom" ? "하" : "상";
+      const vert = h.verticalDistance ? `${verticalLabel} ${h.verticalDistance}mm` : "";
+      const horiz = h.distance ? `${edgeLabel} ${h.distance}mm` : "";
+      return [horiz, vert].filter(Boolean).join(" / ");
+    })
+    .join(", ");
+  const noteText = includeNote && detail.note ? ` · 메모: ${detail.note}` : "";
+  const suffix = positions ? ` · ${positions}` : "";
+  return `${count}개${suffix}${noteText}`;
+}
+
+function formatServiceDetail(serviceId, detail, { includeNote = false } = {}) {
+  const srv = PROCESSING_SERVICES[serviceId];
+  const name = srv?.label || serviceId;
+  if (serviceId === "hinge_hole") {
+    return `${name} (${formatHingeDetail(detail, { includeNote })})`;
+  }
+  if (serviceId === "handle_hole") {
+    return `${name} (${formatHandleDetail(detail, { includeNote })})`;
+  }
+  if (!detail) return name;
+  const noteText = includeNote && detail.note ? ` (${detail.note})` : "";
+  return `${name}${noteText}`;
+}
+
+function formatServiceList(services, serviceDetails = {}, opts = {}) {
+  if (!services || services.length === 0) return "-";
+  return services
+    .map((id) => formatServiceDetail(id, serviceDetails[id], opts))
+    .filter(Boolean)
+    .join(", ");
+}
+
+function formatServiceSummaryText(serviceId, detail) {
+  if (serviceId === "hinge_hole") return formatHingeDetail(detail, { short: true });
+  if (serviceId === "handle_hole") return formatHandleDetail(detail);
+  return detail ? "세부 옵션 저장됨" : "세부 옵션을 설정해주세요.";
+}
+
 let selectedTopType = "";
 let currentPhase = 1; // 1: 상판 선택/입력, 2: 고객정보
-const state = { items: [] };
+const state = { items: [], serviceDetails: {} };
 let sendingEmail = false;
 let orderCompleted = false;
+let serviceModalDraft = null;
+let serviceModalContext = { serviceId: null, triggerCheckbox: null, mode: null };
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
   if (!width || !length) return { w: 120, h: 120 };
@@ -45,7 +153,11 @@ function readTopInputs() {
   const options = Array.from(document.querySelectorAll("#topOptionCards input:checked")).map(
     (el) => el.value
   );
-  return { typeId, shape, width, length, length2, thickness, options };
+  const services = Array.from(document.querySelectorAll("#topServiceCards input:checked")).map(
+    (el) => el.value
+  );
+  const serviceDetails = cloneServiceDetails(state.serviceDetails);
+  return { typeId, shape, width, length, length2, thickness, options, services, serviceDetails };
 }
 
 function validateTopInputs({ typeId, shape, width, length, length2, thickness }) {
@@ -60,7 +172,7 @@ function validateTopInputs({ typeId, shape, width, length, length2, thickness })
 }
 
 function calcTopDetail(input) {
-  const { typeId, shape, width, length, length2, thickness, options } = input;
+  const { typeId, shape, width, length, length2, thickness, options, services = [], serviceDetails = {} } = input;
   const type = TOP_TYPES.find((t) => t.id === typeId);
   const err = validateTopInputs(input);
   if (!type || err) return { error: err || "필수 정보를 입력해주세요." };
@@ -75,15 +187,21 @@ function calcTopDetail(input) {
     const opt = TOP_OPTIONS.find((o) => o.id === id);
     return sum + (opt?.price || 0);
   }, 0);
+  const { processingCost: serviceProcessingCost } = calcServiceProcessingCost({
+    services,
+    serviceDetails,
+    quantity: 1,
+  });
   const shapeFee = needsSecond ? 30000 : 0;
-  const materialCost = base + optionPrice + shapeFee;
+  const processingCost = optionPrice + shapeFee + serviceProcessingCost;
+  const materialCost = base + processingCost;
   const subtotal = materialCost;
   const vat = Math.round(subtotal * VAT_RATE);
   const total = Math.round(subtotal + vat);
 
   return {
     materialCost,
-    processingCost: optionPrice + shapeFee,
+    processingCost,
     subtotal,
     vat,
     total,
@@ -97,6 +215,9 @@ function calcTopDetail(input) {
         : options
             .map((id) => TOP_OPTIONS.find((o) => o.id === id)?.name || id)
             .join(", "),
+    servicesLabel: formatServiceList(services, serviceDetails),
+    serviceDetails,
+    services,
   };
 }
 
@@ -164,11 +285,82 @@ function renderOptions() {
     `;
     container.appendChild(label);
   });
+  // 초기 선택 상태 반영
+  container.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.closest(".material-card")?.classList.toggle("selected", input.checked);
+  });
   container.addEventListener("change", (e) => {
     const input = e.target.closest("input[type='checkbox']");
     if (!input) return;
     input.closest(".material-card")?.classList.toggle("selected", input.checked);
     refreshTopEstimate();
+  });
+}
+
+function updateServiceSummary(serviceId) {
+  const summaryEl = document.querySelector(`[data-service-summary="${serviceId}"]`);
+  if (!summaryEl) return;
+  const detail = state.serviceDetails[serviceId];
+  summaryEl.textContent = detail
+    ? formatServiceSummaryText(serviceId, detail)
+    : "세부 옵션을 설정해주세요.";
+}
+
+function renderServiceCards() {
+  const container = $("#topServiceCards");
+  if (!container) return;
+  container.innerHTML = "";
+
+  Object.values(PROCESSING_SERVICES).forEach((srv) => {
+    const label = document.createElement("label");
+    label.className = "material-card";
+    const priceText = srv.pricePerHole ? `개당 ${srv.pricePerHole.toLocaleString()}원` : "";
+    label.innerHTML = `
+      <input type="checkbox" name="service" value="${srv.id}" />
+      <div class="material-visual" style="background: ${srv.swatch || "#eee"}"></div>
+      <div class="name">${srv.label}</div>
+      <div class="price">${priceText}</div>
+      <div class="description">${srv.description || ""}</div>
+      <div class="service-actions">
+        <div class="service-detail-chip" data-service-summary="${srv.id}">세부 옵션을 설정해주세요.</div>
+        <button type="button" class="service-detail-btn" data-service="${srv.id}">세부 설정</button>
+      </div>
+    `;
+    container.appendChild(label);
+  });
+
+  Object.keys(PROCESSING_SERVICES).forEach((id) => updateServiceSummary(id));
+
+  container.addEventListener("change", (e) => {
+    if (e.target.name === "service") {
+      const serviceId = e.target.value;
+      const card = e.target.closest(".material-card");
+      if (e.target.checked) {
+        card?.classList.add("selected");
+        openServiceModal(serviceId, e.target, "change");
+      } else {
+        card?.classList.remove("selected");
+        delete state.serviceDetails[serviceId];
+        updateServiceSummary(serviceId);
+        refreshTopEstimate();
+      }
+    }
+  });
+
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest(".service-detail-btn");
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const serviceId = btn.dataset.service;
+      const checkbox = container.querySelector(`input[value="${serviceId}"]`);
+      const wasChecked = checkbox?.checked;
+      if (checkbox && !checkbox.checked) {
+        checkbox.checked = true;
+        checkbox.closest(".material-card")?.classList.add("selected");
+      }
+      openServiceModal(serviceId, checkbox, wasChecked ? "edit" : "change");
+    }
   });
 }
 
@@ -210,7 +402,7 @@ function renderTable() {
     detailRow.innerHTML = `
       <td colspan="4">
         <div class="sub-detail">
-          <div class="detail-line">사이즈 ${item.displaySize} · 옵션 ${item.optionsLabel}</div>
+          <div class="detail-line">사이즈 ${item.displaySize} · 옵션 ${item.optionsLabel} · 가공 ${item.servicesLabel || "-"}</div>
           <div class="detail-line">상판비 ${baseCost.toLocaleString()}원 · 가공비 ${item.processingCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
         </div>
       </td>
@@ -268,7 +460,7 @@ function renderOrderCompleteDetails() {
             (item, idx) =>
               `<p class="item-line">${idx + 1}. ${item.typeName} x${item.quantity} · 크기 ${
                 item.displaySize
-              } · 옵션 ${item.optionsLabel} · 금액 ${item.total.toLocaleString()}원</p>`
+              } · 옵션 ${item.optionsLabel} · 가공 ${item.servicesLabel || "-"} · 금액 ${item.total.toLocaleString()}원</p>`
           )
           .join("");
 
@@ -336,6 +528,8 @@ function addTopItem() {
     length2: input.length2,
     thickness: input.thickness,
     options: input.options,
+    services: input.services,
+    serviceDetails: cloneServiceDetails(input.serviceDetails),
     quantity: 1,
     ...detail,
   });
@@ -360,6 +554,14 @@ function resetSelections() {
   document.querySelectorAll("#topOptionCards input[type='checkbox']").forEach((el) => {
     el.checked = false;
     el.closest(".material-card")?.classList.remove("selected");
+  });
+  document.querySelectorAll("#topServiceCards input[type='checkbox']").forEach((el) => {
+    el.checked = false;
+    el.closest(".material-card")?.classList.remove("selected");
+  });
+  state.serviceDetails = {};
+  document.querySelectorAll("[data-service-summary]").forEach((el) => {
+    el.textContent = "세부 옵션을 설정해주세요.";
   });
   updateSelectedTopTypeCard();
   refreshTopEstimate();
@@ -451,7 +653,7 @@ function updateTopPreview(input, detail) {
     colorEl.style.boxShadow = "inset 0 0 0 1px rgba(0,0,0,0.04)";
     colorEl.style.clipPath = "none";
 
-    const { w, h } = getPreviewDimensions(input.width, input.length, 180, 40);
+    const { w, h } = getPreviewDimensions(input.length, input.width, 180, 40);
     colorEl.style.width = `${w}px`;
     colorEl.style.height = `${h}px`;
   }
@@ -459,6 +661,371 @@ function updateTopPreview(input, detail) {
   textEl.textContent = needsSecond
     ? `${type.name} / ${input.width}×${input.length} & ${input.width}×${input.length2}×${input.thickness}mm`
     : `${type.name} / ${input.width}×${input.length}×${input.thickness}mm`;
+}
+
+function setServiceModalError(message = "") {
+  const errEl = $("#topServiceModalError");
+  if (errEl) errEl.textContent = message;
+}
+
+function renderHingeHoleModal() {
+  const body = $("#topServiceModalBody");
+  if (!body) return;
+  const holes = Array.isArray(serviceModalDraft?.holes) && serviceModalDraft.holes.length > 0
+    ? serviceModalDraft.holes
+    : [{ edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 }];
+  serviceModalDraft.holes = holes;
+
+  const rowsHtml = holes
+    .map(
+      (hole, idx) => `
+        <div class="service-row">
+          <div class="service-row-header">
+            <span>경첩 홀 ${idx + 1}</span>
+            ${
+              holes.length > 1
+                ? `<button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>`
+                : ""
+            }
+          </div>
+          <div class="service-field-grid">
+            <div>
+              <label>측면</label>
+              <select class="service-input" data-field="edge" data-index="${idx}">
+                <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
+                <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
+              </select>
+            </div>
+            <div>
+              <label>가로(mm)</label>
+              <input
+                type="number"
+                class="service-input"
+                data-field="distance"
+                data-index="${idx}"
+                value="${hole.distance ?? ""}"
+                min="1"
+              />
+            </div>
+            <div>
+              <label>세로 기준</label>
+              <select class="service-input" data-field="verticalRef" data-index="${idx}">
+                <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
+                <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
+              </select>
+            </div>
+            <div>
+              <label>세로(mm)</label>
+              <input
+                type="number"
+                class="service-input"
+                data-field="verticalDistance"
+                data-index="${idx}"
+                value="${hole.verticalDistance ?? ""}"
+                min="1"
+              />
+            </div>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+
+  body.innerHTML = `
+    <p class="service-option-tip">각 경첩 홀 위치를 원의 중심을 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
+    ${rowsHtml}
+    <div class="service-actions">
+      <button type="button" class="secondary-btn" id="addHingeHoleRow">위치 추가</button>
+    </div>
+    <div>
+      <label>추가 메모 (선택)</label>
+      <textarea class="service-textarea" id="topServiceNote">${serviceModalDraft?.note || ""}</textarea>
+    </div>
+  `;
+
+  body.querySelectorAll("[data-field]").forEach((input) => {
+    input.addEventListener("input", (e) => {
+      const idx = Number(e.target.dataset.index);
+      const field = e.target.dataset.field;
+      if (Number.isNaN(idx) || !field) return;
+      if (!serviceModalDraft.holes[idx]) {
+        serviceModalDraft.holes[idx] = { edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 };
+      }
+      if (field === "edge") serviceModalDraft.holes[idx].edge = e.target.value === "right" ? "right" : "left";
+      if (field === "distance") serviceModalDraft.holes[idx].distance = Number(e.target.value);
+      if (field === "verticalRef")
+        serviceModalDraft.holes[idx].verticalRef = e.target.value === "bottom" ? "bottom" : "top";
+      if (field === "verticalDistance") serviceModalDraft.holes[idx].verticalDistance = Number(e.target.value);
+    });
+  });
+
+  const noteEl = body.querySelector("#topServiceNote");
+  if (noteEl) {
+    noteEl.addEventListener("input", (e) => {
+      serviceModalDraft.note = e.target.value;
+    });
+  }
+
+  const addBtn = body.querySelector("#addHingeHoleRow");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      serviceModalDraft.holes.push({
+        edge: "left",
+        distance: 100,
+        verticalRef: "top",
+        verticalDistance: 100,
+      });
+      renderHingeHoleModal();
+    });
+  }
+
+  body.querySelectorAll(".remove-hole").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const idx = Number(e.target.dataset.index);
+      if (Number.isNaN(idx)) return;
+      serviceModalDraft.holes.splice(idx, 1);
+      if (serviceModalDraft.holes.length === 0) {
+        serviceModalDraft.holes.push({
+          edge: "left",
+          distance: 100,
+          verticalRef: "top",
+          verticalDistance: 100,
+        });
+      }
+      renderHingeHoleModal();
+    });
+  });
+}
+
+function renderHandleHoleModal() {
+  const body = $("#topServiceModalBody");
+  if (!body) return;
+  const holes = Array.isArray(serviceModalDraft?.holes) && serviceModalDraft.holes.length > 0
+    ? serviceModalDraft.holes
+    : [{ edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 }];
+  serviceModalDraft.holes = holes;
+
+  const rowsHtml = holes
+    .map(
+      (hole, idx) => `
+        <div class="service-row">
+          <div class="service-row-header">
+            <span>피스 홀 ${idx + 1}</span>
+            ${
+              holes.length > 1
+                ? `<button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>`
+                : ""
+            }
+          </div>
+          <div class="service-field-grid">
+            <div>
+              <label>측면</label>
+              <select class="service-input" data-field="edge" data-index="${idx}">
+                <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
+                <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
+              </select>
+            </div>
+            <div>
+              <label>가로(mm)</label>
+              <input
+                type="number"
+                class="service-input"
+                data-field="distance"
+                data-index="${idx}"
+                value="${hole.distance ?? ""}"
+                min="1"
+              />
+            </div>
+            <div>
+              <label>세로 기준</label>
+              <select class="service-input" data-field="verticalRef" data-index="${idx}">
+                <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
+                <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
+              </select>
+            </div>
+            <div>
+              <label>세로(mm)</label>
+              <input
+                type="number"
+                class="service-input"
+                data-field="verticalDistance"
+                data-index="${idx}"
+                value="${hole.verticalDistance ?? ""}"
+                min="1"
+              />
+            </div>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+
+  body.innerHTML = `
+    <p class="service-option-tip">피스 홀 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
+    ${rowsHtml}
+    <div class="service-actions">
+      <button type="button" class="secondary-btn" id="addHandleHoleRow">위치 추가</button>
+    </div>
+    <div>
+      <label>추가 메모 (선택)</label>
+      <textarea class="service-textarea" id="topServiceNote">${serviceModalDraft?.note || ""}</textarea>
+    </div>
+  `;
+
+  body.querySelectorAll("[data-field]").forEach((input) => {
+    input.addEventListener("input", (e) => {
+      const idx = Number(e.target.dataset.index);
+      const field = e.target.dataset.field;
+      if (Number.isNaN(idx) || !field) return;
+      if (!serviceModalDraft.holes[idx]) {
+        serviceModalDraft.holes[idx] = { edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 };
+      }
+      if (field === "edge") serviceModalDraft.holes[idx].edge = e.target.value === "right" ? "right" : "left";
+      if (field === "distance") serviceModalDraft.holes[idx].distance = Number(e.target.value);
+      if (field === "verticalRef")
+        serviceModalDraft.holes[idx].verticalRef = e.target.value === "bottom" ? "bottom" : "top";
+      if (field === "verticalDistance") serviceModalDraft.holes[idx].verticalDistance = Number(e.target.value);
+    });
+  });
+
+  const noteEl = body.querySelector("#topServiceNote");
+  if (noteEl) {
+    noteEl.addEventListener("input", (e) => {
+      serviceModalDraft.note = e.target.value;
+    });
+  }
+
+  const addBtn = body.querySelector("#addHandleHoleRow");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      serviceModalDraft.holes.push({
+        edge: "left",
+        distance: 100,
+        verticalRef: "top",
+        verticalDistance: 100,
+      });
+      renderHandleHoleModal();
+    });
+  }
+
+  body.querySelectorAll(".remove-hole").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const idx = Number(e.target.dataset.index);
+      if (Number.isNaN(idx)) return;
+      serviceModalDraft.holes.splice(idx, 1);
+      if (serviceModalDraft.holes.length === 0) {
+        serviceModalDraft.holes.push({
+          edge: "left",
+          distance: 100,
+          verticalRef: "top",
+          verticalDistance: 100,
+        });
+      }
+      renderHandleHoleModal();
+    });
+  });
+}
+
+function renderServiceModalContent(serviceId) {
+  const titleEl = $("#topServiceModalTitle");
+  if (titleEl) titleEl.textContent = PROCESSING_SERVICES[serviceId]?.label || "가공 옵션 설정";
+  setServiceModalError("");
+  if (!serviceModalDraft) {
+    serviceModalDraft = getDefaultServiceDetail(serviceId);
+  }
+  if (serviceId === "hinge_hole") {
+    renderHingeHoleModal();
+    return;
+  }
+  if (serviceId === "handle_hole") {
+    renderHandleHoleModal();
+    return;
+  }
+  const body = $("#topServiceModalBody");
+  if (body) {
+    body.innerHTML = `<p class="service-option-tip">선택한 가공의 세부 설정을 입력해주세요.</p>`;
+  }
+}
+
+function openServiceModal(serviceId, triggerCheckbox, mode = "change") {
+  serviceModalContext = { serviceId, triggerCheckbox, mode };
+  serviceModalDraft = cloneServiceDetails(state.serviceDetails[serviceId]) || getDefaultServiceDetail(serviceId);
+  renderServiceModalContent(serviceId);
+  $("#topServiceModal")?.classList.remove("hidden");
+}
+
+function closeServiceModal(revertSelection = true) {
+  $("#topServiceModal")?.classList.add("hidden");
+  setServiceModalError("");
+  if (revertSelection && serviceModalContext.mode === "change" && serviceModalContext.triggerCheckbox) {
+    serviceModalContext.triggerCheckbox.checked = false;
+    serviceModalContext.triggerCheckbox.closest(".material-card")?.classList.remove("selected");
+    delete state.serviceDetails[serviceModalContext.serviceId];
+    updateServiceSummary(serviceModalContext.serviceId);
+    refreshTopEstimate();
+    updateAddButtonState();
+  }
+  serviceModalDraft = null;
+  serviceModalContext = { serviceId: null, triggerCheckbox: null, mode: null };
+}
+
+function saveServiceModal() {
+  const serviceId = serviceModalContext.serviceId;
+  if (!serviceId) return;
+  setServiceModalError("");
+  if (serviceId === "hinge_hole") {
+    const holes = (serviceModalDraft?.holes || []).filter(
+      (h) =>
+        h &&
+        Number.isFinite(Number(h.distance)) &&
+        Number(h.distance) > 0 &&
+        Number.isFinite(Number(h.verticalDistance)) &&
+        Number(h.verticalDistance) > 0
+    );
+    if (holes.length === 0) {
+      setServiceModalError("경첩 홀의 가로·세로 위치를 1개 이상 입력해주세요.");
+      return;
+    }
+    state.serviceDetails[serviceId] = {
+      holes: holes.map((h) => ({
+        edge: h.edge === "right" ? "right" : "left",
+        distance: Number(h.distance),
+        verticalRef: h.verticalRef === "bottom" ? "bottom" : "top",
+        verticalDistance: Number(h.verticalDistance),
+      })),
+      note: serviceModalDraft?.note?.trim() || "",
+    };
+  } else if (serviceId === "handle_hole") {
+    state.serviceDetails[serviceId] = {
+      holes: (serviceModalDraft?.holes || [])
+        .filter(
+          (h) =>
+            h &&
+            Number.isFinite(Number(h.distance)) &&
+            Number(h.distance) > 0 &&
+            Number.isFinite(Number(h.verticalDistance)) &&
+            Number(h.verticalDistance) > 0
+        )
+        .map((h) => ({
+          edge: h.edge === "right" ? "right" : "left",
+          distance: Number(h.distance),
+          verticalRef: h.verticalRef === "bottom" ? "bottom" : "top",
+          verticalDistance: Number(h.verticalDistance),
+        })),
+      note: serviceModalDraft?.note?.trim() || "",
+    };
+    if (state.serviceDetails[serviceId].holes.length === 0) {
+      setServiceModalError("피스 홀의 가로·세로 위치를 1개 이상 입력해주세요.");
+      return;
+    }
+  } else {
+    state.serviceDetails[serviceId] = cloneServiceDetails(serviceModalDraft);
+  }
+
+  updateServiceSummary(serviceId);
+  refreshTopEstimate();
+  updateAddButtonState();
+  closeServiceModal(false);
 }
 
 function updateItemQuantity(id, quantity) {
@@ -473,8 +1040,19 @@ function updateItemQuantity(id, quantity) {
     length2: item.length2,
     thickness: item.thickness,
     options: item.options,
+    services: item.services,
+    serviceDetails: item.serviceDetails,
   });
-  state.items[idx] = { ...item, quantity, total: detail.total * quantity, subtotal: detail.subtotal * quantity, vat: detail.vat * quantity, materialCost: detail.materialCost * quantity };
+  state.items[idx] = {
+    ...item,
+    quantity,
+    total: detail.total * quantity,
+    subtotal: detail.subtotal * quantity,
+    vat: detail.vat * quantity,
+    materialCost: detail.materialCost * quantity,
+    processingCost: detail.processingCost * quantity,
+    servicesLabel: detail.servicesLabel,
+  };
   renderTable();
   renderSummary();
 }
@@ -613,7 +1191,7 @@ function buildEmailContent() {
       lines.push(
         `${idx + 1}. ${item.typeName} x${item.quantity} | 크기 ${
           item.displaySize
-        } | 옵션 ${item.optionsLabel} | 금액 ${item.total.toLocaleString()}원`
+        } | 옵션 ${item.optionsLabel} | 가공 ${item.servicesLabel || "-"} | 금액 ${item.total.toLocaleString()}원`
       );
     });
   }
@@ -706,6 +1284,7 @@ function resetFlow() {
 function initTop() {
   renderTopTypeCards();
   renderOptions();
+  renderServiceCards();
   renderTable();
   renderSummary();
   updateSelectedTopTypeCard();
@@ -726,6 +1305,9 @@ function initTop() {
   $("#sendQuoteBtn")?.addEventListener("click", sendQuote);
   $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
   $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
+  $("#saveTopServiceModal")?.addEventListener("click", saveServiceModal);
+  $("#cancelTopServiceModal")?.addEventListener("click", () => closeServiceModal(true));
+  $("#topServiceModalBackdrop")?.addEventListener("click", () => closeServiceModal(true));
 
   ["topWidth", "topLength", "topLength2", "topThickness", "kitchenShape"].forEach((id) => {
     const el = document.getElementById(id);
