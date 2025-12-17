@@ -44,6 +44,9 @@
   --title-sub-font-size: clamp(28px, 2.5vw, 34px);
 }
 
+html.wf-loading body { visibility: hidden; }
+html.wf-active body { visibility: visible; }
+
 body, h1, h2, h3, h4, h5, h6, p, span {
   font-family: var(--font-ko);
   font-weight: 400;
@@ -157,6 +160,7 @@ b[lang="en"],
   color: var(--color-text);
   box-shadow: var(--shadow-card);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-direction: column
 }
 
 .landing-card:hover {
@@ -165,8 +169,11 @@ b[lang="en"],
 }
 
 .landing-thumb {
-  width: 96px;
-  height: 96px;
+  width: 100%;
+  height: auto;
+  display: block; 
+  aspect-ratio: 4/2; 
+  object-fit: cover;
   border-radius: 10px;
   background: linear-gradient(135deg, #f3f3f3 0%, #dcdcdc 100%);
   flex-shrink: 0;
@@ -988,7 +995,7 @@ th, td {
 
 #infoModal .modal-content {
   max-width: 480px;
-  min-height: 10vw;
+  min-height: 2vw;
 }
 
 .modal-footer {
