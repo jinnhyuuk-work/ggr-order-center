@@ -45,7 +45,7 @@ function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
 function getHoleCountForService(serviceId, serviceDetails) {
   const detail = serviceDetails?.[serviceId];
   if (!detail) return 1;
-  if (serviceId === "hinge_hole") {
+  if (serviceId === "hinge_hole" || serviceId === "handle_hole") {
     const holes = Array.isArray(detail.holes) ? detail.holes.length : 0;
     const fallback = detail.count || 1;
     return Math.max(1, holes || fallback || 1);

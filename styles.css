@@ -7,7 +7,7 @@
   --color-surface-alt: #fbfbfb;
   --color-surface-muted: #fafafa;
   --color-surface-placeholder: #f5f5f5;
-  --color-text: #111;
+  --color-text: #000;
   --color-text-strong: #333;
   --color-text-sub: #666;
   --color-text-muted: #444;
@@ -19,7 +19,7 @@
   --color-border-weak: #d9dde3;
   --color-border-placeholder: #cfcfcf;
   --color-primary: #0d6efd;
-  --color-accent: #111;
+  --color-accent: #000;
   --color-disabled: #999;
   --color-preview-bg: #f3f3f3;
   --color-info-bg: #f6f9ff;
@@ -507,9 +507,9 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 :is(button, .next-page-btn, .prev-page-btn, .secondary-btn, .send-btn, .ghost-btn, .service-detail-btn) {
-  --btn-bg: var(--color-accent);
-  --btn-color: #fff;
-  --btn-border: none;
+  --btn-bg: #fff;
+  --btn-color: #000;
+  --btn-border: 1px solid;
   --btn-padding: 12px 16px;
   --btn-radius: var(--radius-btn);
   display: inline-flex;
@@ -523,11 +523,12 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--btn-color);
   text-decoration: none;
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.3s ease, background-color 0.3s ease;
 }
 
 :is(button, .next-page-btn, .prev-page-btn, .secondary-btn, .send-btn, .ghost-btn, .service-detail-btn):hover {
-  opacity: 0.9;
+  background-color: var(--btn-color);
+  color: var(--btn-bg)
 }
 
 :is(button, .next-page-btn, .prev-page-btn, .secondary-btn, .send-btn, .ghost-btn, .service-detail-btn):active {
@@ -544,6 +545,10 @@ input[type="number"]::-webkit-outer-spin-button {
 button {
   --btn-padding: 10px 15px;
   --btn-radius: var(--radius-sm);
+}
+
+.deleteBtn {
+  padding: 6px 10px;
 }
 
 table {
@@ -1022,11 +1027,6 @@ th, td {
 #saveServiceModal,
 #saveTopServiceModal {
   padding: 12px 18px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-accent);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-weight: 700;
   min-width: 110px;
 }
 .modal-body {
