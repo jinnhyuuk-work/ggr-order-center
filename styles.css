@@ -905,7 +905,7 @@ th, td {
   margin-top: 12px;
 }
 
-.material-card {
+.card-base {
   display: block;
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-lg);
@@ -915,13 +915,14 @@ th, td {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.material-card input[type="radio"] {
+.card-base input[type="radio"],
+.card-base input[type="checkbox"] {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.material-card .material-visual {
+.card-base .material-visual {
   width: 100%;
   height: 120px;
   border-radius: var(--radius-md);
@@ -930,26 +931,34 @@ th, td {
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
 }
 
-.material-card .name {
+.card-base .name {
   font-weight: 700;
   margin-bottom: 4px;
 }
 
-.material-card .price {
+.card-base .price {
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: 2px;
 }
 
-.material-card .size {
+.card-base .size {
   color: var(--color-text-meta);
   font-size: 13px;
 }
 
-.material-card .description {
+.card-base .description {
   color: var(--color-text-sub);
   font-size: 13px;
   margin-top: 4px;
+}
+
+.material-card {
+  /* 전용 훅: 재질 카드 커스텀 여지 */
+}
+
+.service-card {
+  /* 전용 훅: 가공 카드 커스텀 여지 */
 }
 
 /* Modal */
@@ -1049,12 +1058,12 @@ th, td {
   display: none; /* Chrome/Safari: hide scrollbar */
 }
 
-.material-card:hover {
+.card-base:hover {
   border-color: var(--color-border-hover);
   box-shadow: 0 6px 16px rgba(0,0,0,0.06);
 }
 
-.material-card.selected {
+.card-base.selected {
   border-color: var(--color-accent);
   box-shadow: 0 8px 20px rgba(0,0,0,0.12);
   background: var(--color-surface);
