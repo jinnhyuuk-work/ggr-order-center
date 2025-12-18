@@ -1427,7 +1427,8 @@ export const MATERIAL_CATEGORIES_DESC = {
   LPM: "LPM 마감재 카테고리입니다.",
 };
 
-export const PROCESSING_SERVICES = {
+// 공통 가공 서비스 정의(필요 시 각 도메인에서 확장)
+const COMMON_PROCESSING_SERVICES = {
   hinge_hole: {
     id: "hinge_hole",
     label: "경첩 홀 가공",
@@ -1444,6 +1445,15 @@ export const PROCESSING_SERVICES = {
     swatch: "linear-gradient(135deg, #fef4e6 0%, #ffd9a8 100%)",
     description: "피스 홀 1개당",
   },
+};
+
+// 도메인별 가공 서비스
+export const BOARD_PROCESSING_SERVICES = {
+  ...COMMON_PROCESSING_SERVICES,
+};
+
+export const TOP_PROCESSING_SERVICES = {
+  ...COMMON_PROCESSING_SERVICES,
 };
 
 export const ADDON_ITEMS = [
@@ -1495,3 +1505,17 @@ export const PACKING_SETTINGS = {
   packingPricePerKg: 400,
   basePackingPrice: 2000,
 };
+
+// 상판(Top) 데이터
+export const TOP_TYPES = [
+  { id: "solid", name: "솔리드 상판", basePrice: 200000 },
+  { id: "engineered", name: "엔지니어드 스톤", basePrice: 260000 },
+  { id: "stainless", name: "스테인리스 상판", basePrice: 230000 },
+];
+
+export const TOP_OPTIONS = [
+  { id: "sink_cut", name: "싱크 타공", price: 30000 },
+  { id: "faucet_hole", name: "수전 타공", price: 10000 },
+  { id: "cooktop_cut", name: "쿡탑 타공", price: 20000 },
+  { id: "edge_finish", name: "엣지 마감", price: 15000 },
+];

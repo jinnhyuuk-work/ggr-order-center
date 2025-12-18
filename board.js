@@ -1,6 +1,6 @@
 import {
   MATERIALS,
-  PROCESSING_SERVICES,
+  BOARD_PROCESSING_SERVICES,
   ADDON_ITEMS,
   MATERIAL_CATEGORIES_DESC,
 } from "./data.js";
@@ -144,7 +144,7 @@ function buildServiceModels(configs) {
   return models;
 }
 
-const SERVICES = buildServiceModels(PROCESSING_SERVICES);
+const SERVICES = buildServiceModels(BOARD_PROCESSING_SERVICES);
 
 function getPricePerM2(material, thickness) {
   if (material.pricePerM2ByThickness) {

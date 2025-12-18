@@ -1,59 +1,51 @@
 import { VAT_RATE, EMAILJS_CONFIG, initEmailJS } from "./shared.js";
-import { PROCESSING_SERVICES } from "./data.js";
+import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS } from "./data.js";
 
-const TOP_TYPES = [
-  { id: "solid", name: "솔리드 상판", basePrice: 200000 },
-  { id: "engineered", name: "엔지니어드 스톤", basePrice: 260000 },
-  { id: "stainless", name: "스테인리스 상판", basePrice: 230000 },
-];
-
-const TOP_OPTIONS = [
-  { id: "sink_cut", name: "싱크 타공", price: 30000 },
-  { id: "faucet_hole", name: "수전 타공", price: 10000 },
-  { id: "cooktop_cut", name: "쿡탑 타공", price: 20000 },
-  { id: "edge_finish", name: "엣지 마감", price: 15000 },
-];
-
-function cloneServiceDetails(details) {
-  return JSON.parse(JSON.stringify(details || {}));
-}
-
-function getDefaultServiceDetail(serviceId) {
-  if (serviceId === "hinge_hole" || serviceId === "handle_hole") {
-    return {
-      holes: [{ edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 }],
-      note: "",
-    };
+class BaseService {
+  constructor(cfg) {
+    this.id = cfg.id;
+    this.label = cfg.label;
+    this.type = cfg.type || "simple";
+    this.pricePerHole = cfg.pricePerHole;
+    this.pricePerMeter = cfg.pricePerMeter;
+    this.pricePerCorner = cfg.pricePerCorner;
+    this.swatch = cfg.swatch;
+    this.description = cfg.description;
   }
-  return { note: "" };
-}
-
-function getHoleCountForService(serviceId, serviceDetails) {
-  const detail = serviceDetails?.[serviceId];
-  if (!detail) return 1;
-  if (serviceId === "hinge_hole") {
-    const holes = Array.isArray(detail.holes) ? detail.holes.length : 0;
-    const fallback = detail.count || 1;
-    return Math.max(1, holes || fallback || 1);
+  hasDetail() {
+    return this.type === "detail";
   }
-  if (detail.count) return Math.max(1, detail.count);
-  return 1;
-}
-
-function calcServiceProcessingCost({ services = [], serviceDetails = {}, quantity = 1 }) {
-  let processingCost = 0;
-  services.forEach((id) => {
-    const srv = PROCESSING_SERVICES[id];
-    if (!srv) return;
-    const count = getHoleCountForService(id, serviceDetails);
-    if (srv.pricePerHole) {
-      processingCost += srv.pricePerHole * count * quantity;
+  defaultDetail() {
+    return null;
+  }
+  normalizeDetail(detail) {
+    return detail || this.defaultDetail();
+  }
+  validateDetail(detail) {
+    return { ok: true, detail: this.normalizeDetail(detail), message: "" };
+  }
+  getCount(detail) {
+    return 1;
+  }
+  formatDetail(detail, { includeNote = false } = {}) {
+    if (!this.hasDetail()) return "세부 설정 없음";
+    const note = includeNote && detail?.note ? ` (메모: ${detail.note})` : "";
+    return `세부 옵션 저장됨${note}`;
+  }
+  calcProcessingCost(quantity, detail) {
+    let unitCost = 0;
+    if (this.pricePerHole) {
+      unitCost = this.pricePerHole * this.getCount(detail);
+    } else if (this.pricePerMeter) {
+      unitCost = this.pricePerMeter;
+    } else if (this.pricePerCorner) {
+      unitCost = this.pricePerCorner;
     }
-  });
-  return { processingCost };
+    return unitCost * quantity;
+  }
 }
 
-function formatHingeDetail(detail, { short = false, includeNote = false } = {}) {
+function formatHoleDetail(detail, { includeNote = false, short = false } = {}) {
   if (!detail) return short ? "세부 옵션을 설정해주세요." : "세부 옵션 미입력";
   const holes = Array.isArray(detail.holes) ? detail.holes : [];
   const count = holes.length || detail.count || 1;
@@ -72,37 +64,110 @@ function formatHingeDetail(detail, { short = false, includeNote = false } = {}) 
   return `${count}개${suffix}${noteText}`;
 }
 
-function formatHandleDetail(detail, { includeNote = false } = {}) {
-  if (!detail) return "세부 옵션을 설정해주세요.";
-  const holes = Array.isArray(detail.holes) ? detail.holes : [];
-  const count = holes.length || detail.count || 1;
-  const positions = holes
-    .filter((h) => h && (h.distance || h.verticalDistance))
-    .map((h) => {
-      const edgeLabel = h.edge === "right" ? "우" : "좌";
-      const verticalLabel = h.verticalRef === "bottom" ? "하" : "상";
-      const vert = h.verticalDistance ? `${verticalLabel} ${h.verticalDistance}mm` : "";
-      const horiz = h.distance ? `${edgeLabel} ${h.distance}mm` : "";
-      return [horiz, vert].filter(Boolean).join(" / ");
-    })
-    .join(", ");
-  const noteText = includeNote && detail.note ? ` · 메모: ${detail.note}` : "";
-  const suffix = positions ? ` · ${positions}` : "";
-  return `${count}개${suffix}${noteText}`;
+class HoleService extends BaseService {
+  constructor(cfg) {
+    super({ ...cfg, type: "detail" });
+  }
+  defaultDetail() {
+    return {
+      holes: [{ edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 }],
+      note: "",
+    };
+  }
+  normalizeDetail(detail) {
+    if (!detail || !Array.isArray(detail.holes)) return this.defaultDetail();
+    const holes =
+      detail.holes.length > 0
+        ? detail.holes
+        : [{ edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 }];
+    return {
+      holes: holes.map((h) => ({
+        edge: h.edge === "right" ? "right" : "left",
+        distance: Number(h.distance),
+        verticalRef: h.verticalRef === "bottom" ? "bottom" : "top",
+        verticalDistance: Number(h.verticalDistance),
+      })),
+      note: detail.note || "",
+    };
+  }
+  validateDetail(detail) {
+    const normalized = this.normalizeDetail(detail);
+    const validHoles = (normalized.holes || []).filter(
+      (h) =>
+        h &&
+        Number.isFinite(Number(h.distance)) &&
+        Number(h.distance) > 0 &&
+        Number.isFinite(Number(h.verticalDistance)) &&
+        Number(h.verticalDistance) > 0
+    );
+    if (validHoles.length === 0) {
+      return {
+        ok: false,
+        message: `${this.label}의 가로·세로 위치를 1개 이상 입력해주세요.`,
+        detail: normalized,
+      };
+    }
+    return {
+      ok: true,
+      detail: {
+        holes: validHoles,
+        note: normalized.note?.trim() || "",
+      },
+      message: "",
+    };
+  }
+  getCount(detail) {
+    const normalized = this.normalizeDetail(detail);
+    const holes = Array.isArray(normalized.holes) ? normalized.holes.length : 0;
+    const fallback = normalized.count || 1;
+    return Math.max(1, holes || fallback || 1);
+  }
+  formatDetail(detail, { includeNote = false, short = false } = {}) {
+    return formatHoleDetail(detail, { includeNote, short });
+  }
+}
+
+function buildServiceModels(configs) {
+  const models = {};
+  Object.values(configs).forEach((cfg) => {
+    if (cfg.type === "detail" || cfg.pricePerHole) {
+      models[cfg.id] = new HoleService(cfg);
+    } else {
+      models[cfg.id] = new BaseService(cfg);
+    }
+  });
+  return models;
+}
+
+const SERVICES = buildServiceModels(TOP_PROCESSING_SERVICES);
+
+function cloneServiceDetails(details) {
+  return JSON.parse(JSON.stringify(details || {}));
+}
+
+function getDefaultServiceDetail(serviceId) {
+  const srv = SERVICES[serviceId];
+  if (!srv) return { note: "" };
+  return cloneServiceDetails(srv.defaultDetail ? srv.defaultDetail() : { note: "" });
+}
+
+function calcServiceProcessingCost({ services = [], serviceDetails = {}, quantity = 1 }) {
+  let processingCost = 0;
+  services.forEach((id) => {
+    const srv = SERVICES[id];
+    if (!srv) return;
+    const detail = serviceDetails?.[id];
+    processingCost += srv.calcProcessingCost(quantity, detail);
+  });
+  return { processingCost };
 }
 
 function formatServiceDetail(serviceId, detail, { includeNote = false } = {}) {
-  const srv = PROCESSING_SERVICES[serviceId];
+  const srv = SERVICES[serviceId];
   const name = srv?.label || serviceId;
-  if (serviceId === "hinge_hole") {
-    return `${name} (${formatHingeDetail(detail, { includeNote })})`;
-  }
-  if (serviceId === "handle_hole") {
-    return `${name} (${formatHandleDetail(detail, { includeNote })})`;
-  }
-  if (!detail) return name;
-  const noteText = includeNote && detail.note ? ` (${detail.note})` : "";
-  return `${name}${noteText}`;
+  if (!srv) return name;
+  if (!srv.hasDetail()) return name;
+  return `${name} (${srv.formatDetail(detail, { includeNote })})`;
 }
 
 function formatServiceList(services, serviceDetails = {}, opts = {}) {
@@ -114,9 +179,143 @@ function formatServiceList(services, serviceDetails = {}, opts = {}) {
 }
 
 function formatServiceSummaryText(serviceId, detail) {
-  if (serviceId === "hinge_hole") return formatHingeDetail(detail, { short: true });
-  if (serviceId === "handle_hole") return formatHandleDetail(detail);
-  return detail ? "세부 옵션 저장됨" : "세부 옵션을 설정해주세요.";
+  const srv = SERVICES[serviceId];
+  if (!srv) return "세부 옵션을 설정해주세요.";
+  if (!srv.hasDetail()) return "세부 옵션 없음";
+  const formatted = srv.formatDetail(detail, { short: true });
+  return formatted || "세부 옵션을 설정해주세요.";
+}
+
+function renderHoleModal(serviceId) {
+  const body = $("#topServiceModalBody");
+  const srv = SERVICES[serviceId];
+  if (!body || !srv) return;
+  const normalized = srv.normalizeDetail(serviceModalDraft);
+  const holes =
+    Array.isArray(normalized?.holes) && normalized.holes.length > 0
+      ? normalized.holes
+      : srv.defaultDetail().holes;
+  serviceModalDraft = { ...normalized, holes: holes.map((h) => ({ ...h })) };
+
+  const rowsHtml = holes
+    .map(
+      (hole, idx) => `
+        <div class="service-row">
+          <div class="service-row-header">
+            <span>${srv.label} ${idx + 1}</span>
+            ${
+              holes.length > 1
+                ? `<button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>`
+                : ""
+            }
+          </div>
+          <div class="service-field-grid">
+            <div>
+              <label>측면</label>
+              <select class="service-input" data-field="edge" data-index="${idx}">
+                <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
+                <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
+              </select>
+            </div>
+            <div>
+              <label>가로(mm)</label>
+              <input
+                type="number"
+                class="service-input"
+                data-field="distance"
+                data-index="${idx}"
+                value="${hole.distance ?? ""}"
+                min="1"
+              />
+            </div>
+            <div>
+              <label>세로 기준</label>
+              <select class="service-input" data-field="verticalRef" data-index="${idx}">
+                <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
+                <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
+              </select>
+            </div>
+            <div>
+              <label>세로(mm)</label>
+              <input
+                type="number"
+                class="service-input"
+                data-field="verticalDistance"
+                data-index="${idx}"
+                value="${hole.verticalDistance ?? ""}"
+                min="1"
+              />
+            </div>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+
+  body.innerHTML = `
+    <p class="service-option-tip">${srv.label} 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
+    ${rowsHtml}
+    <div class="service-actions">
+      <button type="button" class="secondary-btn" data-add-hole>위치 추가</button>
+    </div>
+    <div>
+      <label>추가 메모 (선택)</label>
+      <textarea class="service-textarea" id="topServiceNote">${serviceModalDraft?.note || ""}</textarea>
+    </div>
+  `;
+
+  body.querySelectorAll("[data-field]").forEach((input) => {
+    input.addEventListener("input", (e) => {
+      const idx = Number(e.target.dataset.index);
+      const field = e.target.dataset.field;
+      if (Number.isNaN(idx) || !field) return;
+      if (!serviceModalDraft.holes[idx]) {
+        serviceModalDraft.holes[idx] = { edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 };
+      }
+      if (field === "edge") serviceModalDraft.holes[idx].edge = e.target.value === "right" ? "right" : "left";
+      if (field === "distance") serviceModalDraft.holes[idx].distance = Number(e.target.value);
+      if (field === "verticalRef")
+        serviceModalDraft.holes[idx].verticalRef = e.target.value === "bottom" ? "bottom" : "top";
+      if (field === "verticalDistance") serviceModalDraft.holes[idx].verticalDistance = Number(e.target.value);
+    });
+  });
+
+  const noteEl = body.querySelector("#topServiceNote");
+  if (noteEl) {
+    noteEl.addEventListener("input", (e) => {
+      serviceModalDraft.note = e.target.value;
+    });
+  }
+
+  const addBtn = body.querySelector("[data-add-hole]");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      serviceModalDraft.holes.push({
+        edge: "left",
+        distance: 100,
+        verticalRef: "top",
+        verticalDistance: 100,
+      });
+      renderHoleModal(serviceId);
+    });
+  }
+
+  body.querySelectorAll(".remove-hole").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const idx = Number(e.target.dataset.index);
+      if (Number.isNaN(idx)) return;
+      serviceModalDraft.holes.splice(idx, 1);
+      if (serviceModalDraft.holes.length === 0) {
+        serviceModalDraft.holes.push({
+          edge: "left",
+          distance: 100,
+          verticalRef: "top",
+          verticalDistance: 100,
+        });
+      }
+      renderHoleModal(serviceId);
+    });
+  });
 }
 
 let selectedTopType = "";
@@ -250,7 +449,7 @@ function renderTopTypeCards() {
   container.innerHTML = "";
   TOP_TYPES.forEach((t) => {
     const label = document.createElement("label");
-    label.className = `material-card${selectedTopType === t.id ? " selected" : ""}`;
+    label.className = `card-base material-card${selectedTopType === t.id ? " selected" : ""}`;
     label.innerHTML = `
       <input type="radio" name="topType" value="${t.id}" ${selectedTopType === t.id ? "checked" : ""} />
       <div class="material-visual"></div>
@@ -276,7 +475,7 @@ function renderOptions() {
   container.innerHTML = "";
   TOP_OPTIONS.forEach((opt) => {
     const label = document.createElement("label");
-    label.className = "material-card";
+    label.className = "card-base option-card";
     label.innerHTML = `
       <input type="checkbox" value="${opt.id}" />
       <div class="material-visual"></div>
@@ -287,12 +486,12 @@ function renderOptions() {
   });
   // 초기 선택 상태 반영
   container.querySelectorAll("input[type='checkbox']").forEach((input) => {
-    input.closest(".material-card")?.classList.toggle("selected", input.checked);
+    input.closest(".option-card")?.classList.toggle("selected", input.checked);
   });
   container.addEventListener("change", (e) => {
     const input = e.target.closest("input[type='checkbox']");
     if (!input) return;
-    input.closest(".material-card")?.classList.toggle("selected", input.checked);
+    input.closest(".option-card")?.classList.toggle("selected", input.checked);
     refreshTopEstimate();
   });
 }
@@ -300,10 +499,17 @@ function renderOptions() {
 function updateServiceSummary(serviceId) {
   const summaryEl = document.querySelector(`[data-service-summary="${serviceId}"]`);
   if (!summaryEl) return;
+  const srv = SERVICES[serviceId];
+  if (!srv) {
+    summaryEl.textContent = "세부 옵션을 설정해주세요.";
+    return;
+  }
   const detail = state.serviceDetails[serviceId];
   summaryEl.textContent = detail
     ? formatServiceSummaryText(serviceId, detail)
-    : "세부 옵션을 설정해주세요.";
+    : srv.hasDetail()
+    ? "세부 옵션을 설정해주세요."
+    : "추가 설정 없음";
 }
 
 function renderServiceCards() {
@@ -311,10 +517,16 @@ function renderServiceCards() {
   if (!container) return;
   container.innerHTML = "";
 
-  Object.values(PROCESSING_SERVICES).forEach((srv) => {
+  Object.values(SERVICES).forEach((srv) => {
     const label = document.createElement("label");
-    label.className = "material-card";
-    const priceText = srv.pricePerHole ? `개당 ${srv.pricePerHole.toLocaleString()}원` : "";
+    label.className = "card-base service-card";
+    const priceText = srv.pricePerHole
+      ? `개당 ${srv.pricePerHole.toLocaleString()}원`
+      : srv.pricePerMeter
+      ? `m당 ${srv.pricePerMeter.toLocaleString()}원`
+      : srv.pricePerCorner
+      ? `모서리당 ${srv.pricePerCorner.toLocaleString()}원`
+      : "";
     label.innerHTML = `
       <input type="checkbox" name="service" value="${srv.id}" />
       <div class="material-visual" style="background: ${srv.swatch || "#eee"}"></div>
@@ -322,22 +534,33 @@ function renderServiceCards() {
       <div class="price">${priceText}</div>
       <div class="description">${srv.description || ""}</div>
       <div class="service-actions">
-        <div class="service-detail-chip" data-service-summary="${srv.id}">세부 옵션을 설정해주세요.</div>
-        <button type="button" class="service-detail-btn" data-service="${srv.id}">세부 설정</button>
+        <div class="service-detail-chip" data-service-summary="${srv.id}">
+          ${srv.hasDetail() ? "세부 옵션을 설정해주세요." : "추가 설정 없음"}
+        </div>
+        <button type="button" class="service-detail-btn" data-service="${srv.id}" ${
+          srv.hasDetail() ? "" : 'style="display:none;"'
+        }>세부 설정</button>
       </div>
     `;
     container.appendChild(label);
   });
 
-  Object.keys(PROCESSING_SERVICES).forEach((id) => updateServiceSummary(id));
+  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
 
   container.addEventListener("change", (e) => {
     if (e.target.name === "service") {
       const serviceId = e.target.value;
-      const card = e.target.closest(".material-card");
+      const srv = SERVICES[serviceId];
+      const card = e.target.closest(".service-card");
       if (e.target.checked) {
         card?.classList.add("selected");
-        openServiceModal(serviceId, e.target, "change");
+        if (srv?.hasDetail()) {
+          openServiceModal(serviceId, e.target, "change");
+        } else {
+          state.serviceDetails[serviceId] = srv?.defaultDetail() || null;
+          updateServiceSummary(serviceId);
+          refreshTopEstimate();
+        }
       } else {
         card?.classList.remove("selected");
         delete state.serviceDetails[serviceId];
@@ -353,11 +576,13 @@ function renderServiceCards() {
       e.preventDefault();
       e.stopPropagation();
       const serviceId = btn.dataset.service;
+      const srv = SERVICES[serviceId];
+      if (!srv?.hasDetail()) return;
       const checkbox = container.querySelector(`input[value="${serviceId}"]`);
       const wasChecked = checkbox?.checked;
       if (checkbox && !checkbox.checked) {
         checkbox.checked = true;
-        checkbox.closest(".material-card")?.classList.add("selected");
+        checkbox.closest(".service-card")?.classList.add("selected");
       }
       openServiceModal(serviceId, checkbox, wasChecked ? "edit" : "change");
     }
@@ -553,16 +778,14 @@ function resetSelections() {
   $("#topThickness").value = "";
   document.querySelectorAll("#topOptionCards input[type='checkbox']").forEach((el) => {
     el.checked = false;
-    el.closest(".material-card")?.classList.remove("selected");
+    el.closest(".option-card")?.classList.remove("selected");
   });
   document.querySelectorAll("#topServiceCards input[type='checkbox']").forEach((el) => {
     el.checked = false;
-    el.closest(".material-card")?.classList.remove("selected");
+    el.closest(".service-card")?.classList.remove("selected");
   });
   state.serviceDetails = {};
-  document.querySelectorAll("[data-service-summary]").forEach((el) => {
-    el.textContent = "세부 옵션을 설정해주세요.";
-  });
+  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
   updateSelectedTopTypeCard();
   refreshTopEstimate();
   updateTopPreview(readTopInputs(), null);
@@ -668,277 +891,16 @@ function setServiceModalError(message = "") {
   if (errEl) errEl.textContent = message;
 }
 
-function renderHingeHoleModal() {
-  const body = $("#topServiceModalBody");
-  if (!body) return;
-  const holes = Array.isArray(serviceModalDraft?.holes) && serviceModalDraft.holes.length > 0
-    ? serviceModalDraft.holes
-    : [{ edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 }];
-  serviceModalDraft.holes = holes;
-
-  const rowsHtml = holes
-    .map(
-      (hole, idx) => `
-        <div class="service-row">
-          <div class="service-row-header">
-            <span>경첩 홀 ${idx + 1}</span>
-            ${
-              holes.length > 1
-                ? `<button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>`
-                : ""
-            }
-          </div>
-          <div class="service-field-grid">
-            <div>
-              <label>측면</label>
-              <select class="service-input" data-field="edge" data-index="${idx}">
-                <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
-                <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
-              </select>
-            </div>
-            <div>
-              <label>가로(mm)</label>
-              <input
-                type="number"
-                class="service-input"
-                data-field="distance"
-                data-index="${idx}"
-                value="${hole.distance ?? ""}"
-                min="1"
-              />
-            </div>
-            <div>
-              <label>세로 기준</label>
-              <select class="service-input" data-field="verticalRef" data-index="${idx}">
-                <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
-                <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
-              </select>
-            </div>
-            <div>
-              <label>세로(mm)</label>
-              <input
-                type="number"
-                class="service-input"
-                data-field="verticalDistance"
-                data-index="${idx}"
-                value="${hole.verticalDistance ?? ""}"
-                min="1"
-              />
-            </div>
-          </div>
-        </div>
-      `
-    )
-    .join("");
-
-  body.innerHTML = `
-    <p class="service-option-tip">각 경첩 홀 위치를 원의 중심을 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
-    ${rowsHtml}
-    <div class="service-actions">
-      <button type="button" class="secondary-btn" id="addHingeHoleRow">위치 추가</button>
-    </div>
-    <div>
-      <label>추가 메모 (선택)</label>
-      <textarea class="service-textarea" id="topServiceNote">${serviceModalDraft?.note || ""}</textarea>
-    </div>
-  `;
-
-  body.querySelectorAll("[data-field]").forEach((input) => {
-    input.addEventListener("input", (e) => {
-      const idx = Number(e.target.dataset.index);
-      const field = e.target.dataset.field;
-      if (Number.isNaN(idx) || !field) return;
-      if (!serviceModalDraft.holes[idx]) {
-        serviceModalDraft.holes[idx] = { edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 };
-      }
-      if (field === "edge") serviceModalDraft.holes[idx].edge = e.target.value === "right" ? "right" : "left";
-      if (field === "distance") serviceModalDraft.holes[idx].distance = Number(e.target.value);
-      if (field === "verticalRef")
-        serviceModalDraft.holes[idx].verticalRef = e.target.value === "bottom" ? "bottom" : "top";
-      if (field === "verticalDistance") serviceModalDraft.holes[idx].verticalDistance = Number(e.target.value);
-    });
-  });
-
-  const noteEl = body.querySelector("#topServiceNote");
-  if (noteEl) {
-    noteEl.addEventListener("input", (e) => {
-      serviceModalDraft.note = e.target.value;
-    });
-  }
-
-  const addBtn = body.querySelector("#addHingeHoleRow");
-  if (addBtn) {
-    addBtn.addEventListener("click", () => {
-      serviceModalDraft.holes.push({
-        edge: "left",
-        distance: 100,
-        verticalRef: "top",
-        verticalDistance: 100,
-      });
-      renderHingeHoleModal();
-    });
-  }
-
-  body.querySelectorAll(".remove-hole").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const idx = Number(e.target.dataset.index);
-      if (Number.isNaN(idx)) return;
-      serviceModalDraft.holes.splice(idx, 1);
-      if (serviceModalDraft.holes.length === 0) {
-        serviceModalDraft.holes.push({
-          edge: "left",
-          distance: 100,
-          verticalRef: "top",
-          verticalDistance: 100,
-        });
-      }
-      renderHingeHoleModal();
-    });
-  });
-}
-
-function renderHandleHoleModal() {
-  const body = $("#topServiceModalBody");
-  if (!body) return;
-  const holes = Array.isArray(serviceModalDraft?.holes) && serviceModalDraft.holes.length > 0
-    ? serviceModalDraft.holes
-    : [{ edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 }];
-  serviceModalDraft.holes = holes;
-
-  const rowsHtml = holes
-    .map(
-      (hole, idx) => `
-        <div class="service-row">
-          <div class="service-row-header">
-            <span>피스 홀 ${idx + 1}</span>
-            ${
-              holes.length > 1
-                ? `<button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>`
-                : ""
-            }
-          </div>
-          <div class="service-field-grid">
-            <div>
-              <label>측면</label>
-              <select class="service-input" data-field="edge" data-index="${idx}">
-                <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
-                <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
-              </select>
-            </div>
-            <div>
-              <label>가로(mm)</label>
-              <input
-                type="number"
-                class="service-input"
-                data-field="distance"
-                data-index="${idx}"
-                value="${hole.distance ?? ""}"
-                min="1"
-              />
-            </div>
-            <div>
-              <label>세로 기준</label>
-              <select class="service-input" data-field="verticalRef" data-index="${idx}">
-                <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
-                <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
-              </select>
-            </div>
-            <div>
-              <label>세로(mm)</label>
-              <input
-                type="number"
-                class="service-input"
-                data-field="verticalDistance"
-                data-index="${idx}"
-                value="${hole.verticalDistance ?? ""}"
-                min="1"
-              />
-            </div>
-          </div>
-        </div>
-      `
-    )
-    .join("");
-
-  body.innerHTML = `
-    <p class="service-option-tip">피스 홀 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
-    ${rowsHtml}
-    <div class="service-actions">
-      <button type="button" class="secondary-btn" id="addHandleHoleRow">위치 추가</button>
-    </div>
-    <div>
-      <label>추가 메모 (선택)</label>
-      <textarea class="service-textarea" id="topServiceNote">${serviceModalDraft?.note || ""}</textarea>
-    </div>
-  `;
-
-  body.querySelectorAll("[data-field]").forEach((input) => {
-    input.addEventListener("input", (e) => {
-      const idx = Number(e.target.dataset.index);
-      const field = e.target.dataset.field;
-      if (Number.isNaN(idx) || !field) return;
-      if (!serviceModalDraft.holes[idx]) {
-        serviceModalDraft.holes[idx] = { edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 };
-      }
-      if (field === "edge") serviceModalDraft.holes[idx].edge = e.target.value === "right" ? "right" : "left";
-      if (field === "distance") serviceModalDraft.holes[idx].distance = Number(e.target.value);
-      if (field === "verticalRef")
-        serviceModalDraft.holes[idx].verticalRef = e.target.value === "bottom" ? "bottom" : "top";
-      if (field === "verticalDistance") serviceModalDraft.holes[idx].verticalDistance = Number(e.target.value);
-    });
-  });
-
-  const noteEl = body.querySelector("#topServiceNote");
-  if (noteEl) {
-    noteEl.addEventListener("input", (e) => {
-      serviceModalDraft.note = e.target.value;
-    });
-  }
-
-  const addBtn = body.querySelector("#addHandleHoleRow");
-  if (addBtn) {
-    addBtn.addEventListener("click", () => {
-      serviceModalDraft.holes.push({
-        edge: "left",
-        distance: 100,
-        verticalRef: "top",
-        verticalDistance: 100,
-      });
-      renderHandleHoleModal();
-    });
-  }
-
-  body.querySelectorAll(".remove-hole").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const idx = Number(e.target.dataset.index);
-      if (Number.isNaN(idx)) return;
-      serviceModalDraft.holes.splice(idx, 1);
-      if (serviceModalDraft.holes.length === 0) {
-        serviceModalDraft.holes.push({
-          edge: "left",
-          distance: 100,
-          verticalRef: "top",
-          verticalDistance: 100,
-        });
-      }
-      renderHandleHoleModal();
-    });
-  });
-}
-
 function renderServiceModalContent(serviceId) {
   const titleEl = $("#topServiceModalTitle");
-  if (titleEl) titleEl.textContent = PROCESSING_SERVICES[serviceId]?.label || "가공 옵션 설정";
+  const srv = SERVICES[serviceId];
+  if (titleEl) titleEl.textContent = srv?.label || "가공 옵션 설정";
   setServiceModalError("");
   if (!serviceModalDraft) {
     serviceModalDraft = getDefaultServiceDetail(serviceId);
   }
-  if (serviceId === "hinge_hole") {
-    renderHingeHoleModal();
-    return;
-  }
-  if (serviceId === "handle_hole") {
-    renderHandleHoleModal();
+  if (srv?.hasDetail()) {
+    renderHoleModal(serviceId);
     return;
   }
   const body = $("#topServiceModalBody");
@@ -948,6 +910,8 @@ function renderServiceModalContent(serviceId) {
 }
 
 function openServiceModal(serviceId, triggerCheckbox, mode = "change") {
+  const srv = SERVICES[serviceId];
+  if (!srv?.hasDetail()) return;
   serviceModalContext = { serviceId, triggerCheckbox, mode };
   serviceModalDraft = cloneServiceDetails(state.serviceDetails[serviceId]) || getDefaultServiceDetail(serviceId);
   renderServiceModalContent(serviceId);
@@ -959,7 +923,7 @@ function closeServiceModal(revertSelection = true) {
   setServiceModalError("");
   if (revertSelection && serviceModalContext.mode === "change" && serviceModalContext.triggerCheckbox) {
     serviceModalContext.triggerCheckbox.checked = false;
-    serviceModalContext.triggerCheckbox.closest(".material-card")?.classList.remove("selected");
+    serviceModalContext.triggerCheckbox.closest(".service-card")?.classList.remove("selected");
     delete state.serviceDetails[serviceModalContext.serviceId];
     updateServiceSummary(serviceModalContext.serviceId);
     refreshTopEstimate();
@@ -971,55 +935,20 @@ function closeServiceModal(revertSelection = true) {
 
 function saveServiceModal() {
   const serviceId = serviceModalContext.serviceId;
-  if (!serviceId) return;
+  const srv = SERVICES[serviceId];
+  if (!serviceId || !srv) return;
   setServiceModalError("");
-  if (serviceId === "hinge_hole") {
-    const holes = (serviceModalDraft?.holes || []).filter(
-      (h) =>
-        h &&
-        Number.isFinite(Number(h.distance)) &&
-        Number(h.distance) > 0 &&
-        Number.isFinite(Number(h.verticalDistance)) &&
-        Number(h.verticalDistance) > 0
-    );
-    if (holes.length === 0) {
-      setServiceModalError("경첩 홀의 가로·세로 위치를 1개 이상 입력해주세요.");
+  if (srv.hasDetail()) {
+    const validation = srv.validateDetail(serviceModalDraft);
+    if (!validation.ok) {
+      setServiceModalError(validation.message || "세부 옵션을 확인해주세요.");
       return;
     }
-    state.serviceDetails[serviceId] = {
-      holes: holes.map((h) => ({
-        edge: h.edge === "right" ? "right" : "left",
-        distance: Number(h.distance),
-        verticalRef: h.verticalRef === "bottom" ? "bottom" : "top",
-        verticalDistance: Number(h.verticalDistance),
-      })),
-      note: serviceModalDraft?.note?.trim() || "",
-    };
-  } else if (serviceId === "handle_hole") {
-    state.serviceDetails[serviceId] = {
-      holes: (serviceModalDraft?.holes || [])
-        .filter(
-          (h) =>
-            h &&
-            Number.isFinite(Number(h.distance)) &&
-            Number(h.distance) > 0 &&
-            Number.isFinite(Number(h.verticalDistance)) &&
-            Number(h.verticalDistance) > 0
-        )
-        .map((h) => ({
-          edge: h.edge === "right" ? "right" : "left",
-          distance: Number(h.distance),
-          verticalRef: h.verticalRef === "bottom" ? "bottom" : "top",
-          verticalDistance: Number(h.verticalDistance),
-        })),
-      note: serviceModalDraft?.note?.trim() || "",
-    };
-    if (state.serviceDetails[serviceId].holes.length === 0) {
-      setServiceModalError("피스 홀의 가로·세로 위치를 1개 이상 입력해주세요.");
-      return;
-    }
+    state.serviceDetails[serviceId] = cloneServiceDetails(validation.detail);
   } else {
-    state.serviceDetails[serviceId] = cloneServiceDetails(serviceModalDraft);
+    state.serviceDetails[serviceId] = srv.normalizeDetail
+      ? cloneServiceDetails(srv.normalizeDetail(serviceModalDraft))
+      : null;
   }
 
   updateServiceSummary(serviceId);

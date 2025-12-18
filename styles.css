@@ -15,8 +15,7 @@
   --color-border: #000;
   --color-border-soft: #000;
   --color-border-faint: #ddd;
-  --color-border-hover: #ddd;
-  --color-border-weak: #d9dde3;
+  --color-border-muted: #d9dde3;
   --color-border-placeholder: #cfcfcf;
   --color-primary: #0d6efd;
   --color-accent: #000;
@@ -907,7 +906,7 @@ th, td {
 
 .card-base {
   display: block;
-  border: 1px solid var(--color-border-soft);
+  border: 1px solid var(--color-border-muted);
   border-radius: var(--radius-lg);
   padding: 10px;
   background: var(--color-surface-muted);
@@ -1059,13 +1058,13 @@ th, td {
 }
 
 .card-base:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--color-border);
   box-shadow: 0 6px 16px rgba(0,0,0,0.06);
 }
 
 .card-base.selected {
-  border-color: var(--color-accent);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  border-color: var(--color-border);
+  -shadow: 0 8px 20px rgba(0,0,0,0.12);
   background: var(--color-surface);
 }
 
@@ -1151,7 +1150,7 @@ th, td {
   padding: 10px 4px 8px 0;
   border-radius: 0;
   border: none;
-  border-bottom: 1px solid var(--color-border-weak);
+  border-bottom: 1px solid var(--color-border-muted);
   background: transparent;
 }
 
