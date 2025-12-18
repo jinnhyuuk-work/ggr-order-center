@@ -83,12 +83,12 @@
           </div>
         </section>
 
-        <section id="step3" class="step-card">
+        <section id="step3Options" class="step-card">
           <h2>추가 옵션을 선택해주세요.</h2>
           <div class="material-grid service-grid" id="topOptionCards"></div>
         </section>
         
-        <section id="step3" class="step-card">
+        <section id="step3Services" class="step-card">
           <h2>가공 서비스를 선택해주세요.</h2>
           <div class="material-grid service-grid" id="topServiceCards"></div>
         </section>
@@ -96,6 +96,24 @@
         <section class="step-card action-card">
           <div id="topEstimateText" class="item-price-display">금액: 0원</div>
           <button id="calcTopBtn">상판 담기</button>
+        </section>
+
+        <section id="step4" class="step-card addons-card hidden-step">
+          <h2>추가 부자재 주문</h2>
+          <p class="addons-desc">
+            상판 주문을 완료하셨다면 추가 부자재 주문도 이어서 진행해보세요.
+          </p>
+          <div class="addon-picker">
+            <button type="button" id="openTopAddonModal">부자재 선택하기</button>
+          </div>
+          <div class="addon-picker">
+            <div id="selectedTopAddonCard" class="selected-material-card addon-card-display">
+              <div class="placeholder">선택된 부자재 없음</div>
+            </div>
+          </div>
+          <div class="addons-actions">
+            <button type="button" class="secondary-btn" id="addTopAddonBtn">부자재 담기</button>
+          </div>
         </section>
 
         <section id="step5" class="step-card hidden-step">
@@ -160,7 +178,8 @@
     </div>
 
     <div id="orderComplete" class="order-complete hidden-step">
-      <p class="complete-message">주문 전송이 완료되었습니다.</p>
+      <p class="complete-title">주문 전송이 완료되었습니다.</p>
+      <p class="complete-message">내용 확인 후 기재된 연락처로 결제 링크 또는 상담 주문 연결을 도와드리겠습니다.</p>
       <div id="orderCompleteDetails" class="complete-details"></div>
       <button type="button" class="next-page-btn" id="resetFlowBtn">처음으로 돌아가기</button>
     </div>
@@ -178,6 +197,21 @@
       </div>
       <div class="modal-footer">
         <button type="button" id="closeTopTypeModal" class="modal-close">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="topAddonModal" class="modal hidden">
+    <div class="modal-backdrop" id="topAddonModalBackdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>부자재 선택</h3>
+      </div>
+      <div class="modal-body">
+        <div id="topAddonCards" class="material-grid addon-grid"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="closeTopAddonModal" class="modal-close">닫기</button>
       </div>
     </div>
   </div>

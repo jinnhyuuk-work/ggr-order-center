@@ -1,5 +1,5 @@
 import { VAT_RATE, EMAILJS_CONFIG, initEmailJS } from "./shared.js";
-import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS } from "./data.js";
+import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data.js";
 
 class BaseService {
   constructor(cfg) {
@@ -321,8 +321,8 @@ function renderHoleModal(serviceId) {
 let selectedTopType = "";
 const TOP_CATEGORIES = Array.from(new Set(TOP_TYPES.map((t) => t.category || "기타")));
 let selectedTopCategory = TOP_CATEGORIES[0] || "기타";
-let currentPhase = 1; // 1: 상판 선택/입력, 2: 고객정보
-const state = { items: [], serviceDetails: {} };
+let currentPhase = 1; // 1: 상판/가공, 2: 부자재, 3: 고객정보
+const state = { items: [], serviceDetails: {}, addons: [] };
 let sendingEmail = false;
 let orderCompleted = false;
 let serviceModalDraft = null;
@@ -420,9 +420,22 @@ function calcTopDetail(input) {
         : options
             .map((id) => TOP_OPTIONS.find((o) => o.id === id)?.name || id)
             .join(", "),
-    servicesLabel: formatServiceList(services, serviceDetails),
+    servicesLabel: formatServiceList(services, serviceDetails, { includeNote: true }),
     serviceDetails,
     services,
+  };
+}
+
+function calcAddonDetail(price) {
+  const subtotal = price;
+  const vat = Math.round(subtotal * VAT_RATE);
+  const total = subtotal + vat;
+  return {
+    materialCost: price,
+    processingCost: 0,
+    subtotal,
+    vat,
+    total,
   };
 }
 
@@ -526,6 +539,69 @@ function renderOptions() {
     input.closest(".option-card")?.classList.toggle("selected", input.checked);
     refreshTopEstimate();
   });
+}
+
+function renderTopAddonCards() {
+  const container = $("#topAddonCards");
+  if (!container) return;
+  container.innerHTML = "";
+
+  TOP_ADDON_ITEMS.forEach((item) => {
+    const label = document.createElement("label");
+    label.className = `card-base addon-card${
+      state.addons.includes(item.id) ? " selected" : ""
+    }`;
+    label.innerHTML = `
+      <input type="checkbox" value="${item.id}" ${state.addons.includes(item.id) ? "checked" : ""} />
+      <div class="material-visual"></div>
+      <div class="name">${item.name}</div>
+      <div class="price">${formatPrice(item.price)}원</div>
+      ${descriptionHTML(item.description)}
+    `;
+    container.appendChild(label);
+  });
+
+  container.onchange = (e) => {
+    const input = e.target.closest('input[type="checkbox"]');
+    if (!input) return;
+    const id = input.value;
+    if (input.checked) {
+      if (!state.addons.includes(id)) state.addons.push(id);
+    } else {
+      state.addons = state.addons.filter((x) => x !== id);
+    }
+    updateSelectedTopAddonsDisplay();
+    $$("#topAddonCards .addon-card").forEach((card) => card.classList.remove("selected"));
+    state.addons.forEach((id) => {
+      const card = container.querySelector(`input[value="${id}"]`)?.closest(".addon-card");
+      card?.classList.add("selected");
+    });
+  };
+}
+
+function updateSelectedTopAddonsDisplay() {
+  const target = $("#selectedTopAddonCard");
+  if (!target) return;
+  if (state.addons.length === 0) {
+    target.innerHTML = `<div class="placeholder">선택된 부자재 없음</div>`;
+    return;
+  }
+  const chips = state.addons
+    .map((id) => TOP_ADDON_ITEMS.find((i) => i.id === id))
+    .filter(Boolean)
+    .map(
+      (item) => `
+        <div class="addon-chip">
+          <div class="material-visual" style="background:#ddd;"></div>
+          <div class="info">
+            <div class="name">${item.name}</div>
+            <div class="meta">${formatPrice(item.price)}원</div>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+  target.innerHTML = chips;
 }
 
 function updateServiceSummary(serviceId) {
@@ -634,9 +710,11 @@ function renderTable() {
   if (emptyBanner) emptyBanner.style.display = "none";
 
   state.items.forEach((item) => {
+    const isAddon = item.type === "addon";
+    const addonInfo = isAddon ? TOP_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${item.typeName}</td>
+      <td>${isAddon ? addonInfo?.name || "부자재" : item.typeName}</td>
       <td>
         <input
           type="number"
@@ -655,15 +733,26 @@ function renderTable() {
 
     const detailRow = document.createElement("tr");
     detailRow.className = "detail-row";
-    const baseCost = Math.max(0, item.materialCost - item.processingCost);
-    detailRow.innerHTML = `
-      <td colspan="4">
-        <div class="sub-detail">
-          <div class="detail-line">사이즈 ${item.displaySize} · 옵션 ${item.optionsLabel} · 가공 ${item.servicesLabel || "-"}</div>
-          <div class="detail-line">상판비 ${baseCost.toLocaleString()}원 · 가공비 ${item.processingCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
-        </div>
-      </td>
-    `;
+    if (isAddon) {
+      detailRow.innerHTML = `
+        <td colspan="4">
+          <div class="sub-detail">
+            <div class="detail-line">부자재 ${addonInfo?.name || "부자재"}</div>
+            <div class="detail-line">상품가 ${item.materialCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
+          </div>
+        </td>
+      `;
+    } else {
+      const baseCost = Math.max(0, item.materialCost - item.processingCost);
+      detailRow.innerHTML = `
+        <td colspan="4">
+          <div class="sub-detail">
+            <div class="detail-line">사이즈 ${item.displaySize} · 옵션 ${item.optionsLabel} · 가공 ${item.servicesLabel || "-"}</div>
+            <div class="detail-line">상판비 ${baseCost.toLocaleString()}원 · 가공비 ${item.processingCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
+          </div>
+        </td>
+      `;
+    }
     tbody.appendChild(detailRow);
   });
 
@@ -715,9 +804,11 @@ function renderOrderCompleteDetails() {
       : state.items
           .map(
             (item, idx) =>
-              `<p class="item-line">${idx + 1}. ${item.typeName} x${item.quantity} · 크기 ${
-                item.displaySize
-              } · 옵션 ${item.optionsLabel} · 가공 ${item.servicesLabel || "-"} · 금액 ${item.total.toLocaleString()}원</p>`
+              `<p class="item-line">${idx + 1}. ${item.type === "addon" ? "부자재" : "상판"} ${item.typeName} x${item.quantity}${
+                item.type === "addon"
+                  ? ""
+                  : ` · 크기 ${item.displaySize} · 옵션 ${item.optionsLabel} · 가공 ${item.servicesLabel || "-"}`
+              } · 금액 ${item.total.toLocaleString()}원</p>`
           )
           .join("");
 
@@ -779,6 +870,7 @@ function addTopItem() {
     id: crypto.randomUUID(),
     typeId: input.typeId,
     typeName: type?.name || "상판",
+    type: "top",
     shape: input.shape,
     width: input.width,
     length: input.length,
@@ -800,6 +892,7 @@ function addTopItem() {
 function resetSelections() {
   selectedTopType = "";
   selectedTopCategory = TOP_CATEGORIES[0] || "기타";
+  state.addons = [];
   document.querySelectorAll('input[name="topType"]').forEach((el) => {
     el.checked = false;
     el.closest(".material-card")?.classList.remove("selected");
@@ -817,11 +910,65 @@ function resetSelections() {
     el.checked = false;
     el.closest(".service-card")?.classList.remove("selected");
   });
+  document.querySelectorAll("#topAddonCards input[type='checkbox']").forEach((el) => {
+    el.checked = false;
+    el.closest(".addon-card")?.classList.remove("selected");
+  });
   state.serviceDetails = {};
   Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
   updateSelectedTopTypeCard();
+  updateSelectedTopAddonsDisplay();
   refreshTopEstimate();
   updateTopPreview(readTopInputs(), null);
+}
+
+function addTopAddonItems() {
+  if (state.addons.length === 0) {
+    showInfoModal("부자재를 선택해주세요.");
+    return;
+  }
+  const existingAddonIds = state.items.filter((it) => it.type === "addon").map((it) => it.addonId);
+  const duplicateIds = state.addons.filter((id) => existingAddonIds.includes(id));
+  const newIds = state.addons.filter((id) => !existingAddonIds.includes(id));
+
+  if (duplicateIds.length > 0 && newIds.length === 0) {
+    const names = duplicateIds.map((id) => TOP_ADDON_ITEMS.find((a) => a.id === id)?.name || id).join(", ");
+    showInfoModal(`이미 담겨있는 부자재입니다: ${names}`);
+    return;
+  }
+
+  if (duplicateIds.length > 0) {
+    const names = duplicateIds.map((id) => TOP_ADDON_ITEMS.find((a) => a.id === id)?.name || id).join(", ");
+    showInfoModal(`이미 담겨있는 부자재는 제외하고 추가합니다: ${names}`);
+  }
+
+  newIds.forEach((id) => {
+    const addon = TOP_ADDON_ITEMS.find((a) => a.id === id);
+    if (!addon) return;
+    const detail = calcAddonDetail(addon.price);
+    state.items.push({
+      id: crypto.randomUUID(),
+      type: "addon",
+      addonId: id,
+      typeName: addon.name,
+      quantity: 1,
+      materialCost: detail.materialCost,
+      processingCost: detail.processingCost,
+      subtotal: detail.subtotal,
+      vat: detail.vat,
+      total: detail.total,
+      displaySize: "-",
+      optionsLabel: "-",
+      servicesLabel: "-",
+      serviceDetails: {},
+      services: [],
+    });
+  });
+  state.addons = [];
+  renderTopAddonCards();
+  updateSelectedTopAddonsDisplay();
+  renderTable();
+  renderSummary();
 }
 
 function updateLength2Visibility() {
@@ -1033,7 +1180,9 @@ function closeInfoModal() {
 function updateStepVisibility() {
   const step1 = $("#step1");
   const step2 = $("#step2");
-  const step3 = $("#step3");
+  const step3Options = $("#step3Options");
+  const step3Services = $("#step3Services");
+  const step4 = $("#step4");
   const step5 = $("#step5");
   const actionCard = document.querySelector(".action-card");
   const navPrev = $("#prevStepsBtn");
@@ -1046,9 +1195,10 @@ function updateStepVisibility() {
 
   const showPhase1 = currentPhase === 1;
   const showPhase2 = currentPhase === 2;
+  const showPhase3 = currentPhase === 3;
 
   if (orderCompleted) {
-    [step1, step2, step3, step5, actionCard, summaryCard].forEach((el) =>
+    [step1, step2, step3Options, step3Services, step4, step5, actionCard, summaryCard].forEach((el) =>
       el?.classList.add("hidden-step")
     );
     navActions?.classList.add("hidden-step");
@@ -1056,26 +1206,27 @@ function updateStepVisibility() {
     return;
   }
 
-  [step1, step2, step3, actionCard].forEach((el) => {
+  [step1, step2, step3Options, step3Services, actionCard].forEach((el) => {
     el?.classList.toggle("hidden-step", !showPhase1);
   });
-  step5?.classList.toggle("hidden-step", !showPhase2);
+  step4?.classList.toggle("hidden-step", !showPhase2);
+  step5?.classList.toggle("hidden-step", !showPhase3);
 
   if (navPrev) {
     navPrev.classList.toggle("hidden-step", currentPhase === 1);
     navPrev.style.display = currentPhase === 1 ? "none" : "";
   }
   if (sendBtn) {
-    sendBtn.classList.toggle("hidden-step", !showPhase2);
-    sendBtn.style.display = showPhase2 ? "" : "none";
+    sendBtn.classList.toggle("hidden-step", !showPhase3);
+    sendBtn.style.display = showPhase3 ? "" : "none";
   }
   if (backToCenterBtn) {
     backToCenterBtn.classList.toggle("hidden-step", !showPhase1);
     backToCenterBtn.style.display = showPhase1 ? "" : "none";
   }
   if (navNext) {
-    navNext.classList.toggle("hidden-step", showPhase2);
-    navNext.style.display = showPhase2 ? "none" : "";
+    navNext.classList.toggle("hidden-step", showPhase3);
+    navNext.style.display = showPhase3 ? "none" : "";
   }
 }
 
@@ -1086,13 +1237,23 @@ function goToNextStep() {
       return;
     }
     currentPhase = 2;
-    updateStepVisibility();
+    updateStepVisibility(document.getElementById("step4"));
+    return;
+  }
+  if (currentPhase === 2) {
+    const hasItem = state.items.length > 0;
+    if (!hasItem) {
+      showInfoModal("상판이나 부자재 중 하나 이상 담아주세요.");
+      return;
+    }
+    currentPhase = 3;
+    updateStepVisibility(document.getElementById("step5"));
   }
 }
 
 function goToPrevStep() {
   if (currentPhase === 1) return;
-  currentPhase = 1;
+  currentPhase -= 1;
   updateStepVisibility();
 }
 
@@ -1100,7 +1261,7 @@ function resetOrderCompleteUI() {
   orderCompleted = false;
   const orderComplete = $("#orderComplete");
   const navActions = document.querySelector(".nav-actions");
-  ["step1", "step2", "step3", "step5", "stepFinal"].forEach((id) =>
+  ["step1", "step2", "step3Options", "step3Services", "step4", "step5", "stepFinal"].forEach((id) =>
     document.getElementById(id)?.classList.remove("hidden-step")
   );
   navActions?.classList.remove("hidden-step");
@@ -1128,7 +1289,7 @@ function updateSendButtonEnabled() {
   const customer = getCustomerInfo();
   const hasRequired = Boolean(customer.name && customer.phone && customer.email);
   const hasItems = state.items.length > 0;
-  const onFinalStep = currentPhase === 2;
+  const onFinalStep = currentPhase === 3;
   btn.disabled = !(hasRequired && hasItems && onFinalStep) || sendingEmail;
 }
 
@@ -1231,6 +1392,7 @@ function resetFlow() {
   sendingEmail = false;
   orderCompleted = false;
   state.items = [];
+  state.addons = [];
   ["#customerName", "#customerPhone", "#customerEmail", "#customerMemo"].forEach((sel) => {
     const el = document.querySelector(sel);
     if (el) el.value = "";
@@ -1241,16 +1403,20 @@ function resetFlow() {
   currentPhase = 1;
   updateStepVisibility();
   updateSendButtonEnabled();
+  renderTopAddonCards();
+  updateSelectedTopAddonsDisplay();
 }
 
 function initTop() {
   renderTopTypeTabs();
   renderTopTypeCards();
   renderOptions();
+  renderTopAddonCards();
   renderServiceCards();
   renderTable();
   renderSummary();
   updateSelectedTopTypeCard();
+  updateSelectedTopAddonsDisplay();
   resetOrderCompleteUI();
   initEmailJS();
   const priceEl = $("#topEstimateText");
@@ -1260,6 +1426,10 @@ function initTop() {
   $("#openTopTypeModal").addEventListener("click", openTopTypeModal);
   $("#closeTopTypeModal").addEventListener("click", closeTopTypeModal);
   $("#topTypeModalBackdrop")?.addEventListener("click", closeTopTypeModal);
+  $("#openTopAddonModal")?.addEventListener("click", openTopAddonModal);
+  $("#closeTopAddonModal")?.addEventListener("click", closeTopAddonModal);
+  $("#topAddonModalBackdrop")?.addEventListener("click", closeTopAddonModal);
+  $("#addTopAddonBtn")?.addEventListener("click", addTopAddonItems);
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
   $("#backToCenterBtn")?.addEventListener("click", () => {
@@ -1298,6 +1468,14 @@ function openTopTypeModal() {
 
 function closeTopTypeModal() {
   $("#topTypeModal")?.classList.add("hidden");
+}
+
+function openTopAddonModal() {
+  $("#topAddonModal")?.classList.remove("hidden");
+}
+
+function closeTopAddonModal() {
+  $("#topAddonModal")?.classList.add("hidden");
 }
 
 if (document.readyState === "loading") {

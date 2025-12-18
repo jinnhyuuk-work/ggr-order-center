@@ -1,7 +1,7 @@
 import {
   MATERIALS,
   BOARD_PROCESSING_SERVICES,
-  ADDON_ITEMS,
+  BOARD_ADDON_ITEMS,
   MATERIAL_CATEGORIES_DESC,
 } from "./data.js";
 import { VAT_RATE, calcPackingCost, calcShippingCost, initEmailJS, EMAILJS_CONFIG } from "./shared.js";
@@ -578,7 +578,7 @@ function renderAddonCards() {
   if (!container) return;
   container.innerHTML = "";
 
-  ADDON_ITEMS.forEach((item) => {
+  BOARD_ADDON_ITEMS.forEach((item) => {
     const label = document.createElement("label");
     label.className = `card-base addon-card${
       state.addons.includes(item.id) ? " selected" : ""
@@ -619,7 +619,7 @@ function updateSelectedAddonsDisplay() {
     return;
   }
   const chips = state.addons
-    .map((id) => ADDON_ITEMS.find((i) => i.id === id))
+    .map((id) => BOARD_ADDON_ITEMS.find((i) => i.id === id))
     .filter(Boolean)
     .map(
       (item) => `
@@ -732,7 +732,7 @@ if (addAddonBtn) {
 
     if (duplicateIds.length > 0 && newIds.length === 0) {
       const names = duplicateIds
-        .map((id) => ADDON_ITEMS.find((a) => a.id === id)?.name || id)
+        .map((id) => BOARD_ADDON_ITEMS.find((a) => a.id === id)?.name || id)
         .join(", ");
       showInfoModal(`이미 담겨있는 부자재입니다: ${names}`);
       return;
@@ -740,13 +740,13 @@ if (addAddonBtn) {
 
     if (duplicateIds.length > 0) {
       const names = duplicateIds
-        .map((id) => ADDON_ITEMS.find((a) => a.id === id)?.name || id)
+        .map((id) => BOARD_ADDON_ITEMS.find((a) => a.id === id)?.name || id)
         .join(", ");
       showInfoModal(`이미 담겨있는 부자재는 제외하고 추가합니다: ${names}`);
     }
 
     newIds.forEach((id) => {
-      const addon = ADDON_ITEMS.find((a) => a.id === id);
+      const addon = BOARD_ADDON_ITEMS.find((a) => a.id === id);
       if (!addon) return;
       const detail = calcAddonDetail(addon.price);
       state.items.push({
@@ -929,7 +929,7 @@ function renderTable() {
     const tr = document.createElement("tr");
 
     const isAddon = item.type === "addon";
-    const addonInfo = isAddon ? ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
+    const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
 
     const materialName = isAddon
       ? addonInfo?.name || "부자재"
@@ -1006,7 +1006,7 @@ function updateItemQuantity(id, quantity) {
   if (idx === -1) return;
   const item = state.items[idx];
   if (item.type === "addon") {
-    const addon = ADDON_ITEMS.find((a) => a.id === item.addonId);
+    const addon = BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId);
     if (!addon) return;
     const detail = calcAddonDetail(addon.price * quantity);
     state.items[idx] = { ...item, quantity, ...detail };
@@ -1062,7 +1062,7 @@ function buildEmailContent() {
   } else {
     state.items.forEach((item, idx) => {
       const isAddon = item.type === "addon";
-      const addonInfo = isAddon ? ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
+      const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
       const materialName = isAddon
         ? addonInfo?.name || "부자재"
         : MATERIALS[item.materialId].name;
@@ -1172,7 +1172,7 @@ function renderOrderCompleteDetails() {
       : state.items
           .map((item, idx) => {
             const isAddon = item.type === "addon";
-            const addonInfo = isAddon ? ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
+            const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
             const materialName = isAddon
               ? addonInfo?.name || "부자재"
               : MATERIALS[item.materialId].name;

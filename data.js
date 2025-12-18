@@ -1456,7 +1456,27 @@ export const TOP_PROCESSING_SERVICES = {
   ...COMMON_PROCESSING_SERVICES,
 };
 
-export const ADDON_ITEMS = [
+export const PACKING_SETTINGS = {
+  packingPricePerKg: 400,
+  basePackingPrice: 2000,
+};
+
+// 상판(Top) 데이터
+export const TOP_TYPES = [
+  { id: "solid", name: "솔리드 상판", basePrice: 200000, category: "솔리드" },
+  { id: "engineered", name: "엔지니어드 스톤", basePrice: 260000, category: "엔지니어드 스톤" },
+  { id: "stainless", name: "스테인리스 상판", basePrice: 230000, category: "스테인리스" },
+];
+
+export const TOP_OPTIONS = [
+  { id: "sink_cut", name: "싱크볼 타공", price: 30000, description: "싱크볼의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
+  { id: "faucet_hole", name: "수전 타공", price: 10000, description: "싱크볼에 수전 타공을 추가합니다.<br>정확한 사이즈를 위해 상담이 필요합니다."},
+  { id: "cooktop_cut", name: "쿡탑 타공", price: 20000, description: "쿡탑의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
+  { id: "edge_finish", name: "뒷턱/뒷선반 추가", price: 15000, description: "상판에 뒷선반을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
+];
+
+// 부자재
+const COMMON_ADDON_ITEMS = [
   {
     id: "hinge_basic",
     name: "경첩(일반)",
@@ -1501,21 +1521,5 @@ export const ADDON_ITEMS = [
   },
 ];
 
-export const PACKING_SETTINGS = {
-  packingPricePerKg: 400,
-  basePackingPrice: 2000,
-};
-
-// 상판(Top) 데이터
-export const TOP_TYPES = [
-  { id: "solid", name: "솔리드 상판", basePrice: 200000, category: "솔리드" },
-  { id: "engineered", name: "엔지니어드 스톤", basePrice: 260000, category: "엔지니어드 스톤" },
-  { id: "stainless", name: "스테인리스 상판", basePrice: 230000, category: "스테인리스" },
-];
-
-export const TOP_OPTIONS = [
-  { id: "sink_cut", name: "싱크볼 타공", price: 30000, description: "싱크볼의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
-  { id: "faucet_hole", name: "수전 타공", price: 10000, description: "싱크볼에 수전 타공을 추가합니다.<br>정확한 사이즈를 위해 상담이 필요합니다."},
-  { id: "cooktop_cut", name: "쿡탑 타공", price: 20000, description: "쿡탑의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
-  { id: "edge_finish", name: "뒷턱/뒷선반 추가", price: 15000, description: "상판에 뒷선반을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
-];
+export const BOARD_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
+export const TOP_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];

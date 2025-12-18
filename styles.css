@@ -681,10 +681,16 @@ th, td {
   display: none;
 }
 
+.order-complete .complete-title {
+  margin: 0 0 10px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
 .order-complete .complete-message {
   margin: 0 0 10px;
-  font-weight: 700;
-  color: #0d6efd;
+  font-weight: 400;
+  color: var(--color-text);
 }
 
 .order-complete .complete-details {
