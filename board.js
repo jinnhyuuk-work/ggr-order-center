@@ -1108,7 +1108,9 @@ function updateSendButtonEnabled() {
   const hasRequired = Boolean(customer.name && customer.phone && customer.email);
   const hasItems = state.items.length > 0;
   const onFinalStep = currentPhase === 3;
-  btn.disabled = !(hasRequired && hasItems && onFinalStep) || sendingEmail;
+  const consentEl = document.getElementById("privacyConsent");
+  const hasConsent = consentEl ? consentEl.checked : true;
+  btn.disabled = !(hasRequired && hasItems && onFinalStep && hasConsent) || sendingEmail;
 }
 
 function resetOrderCompleteUI() {
@@ -1167,6 +1169,8 @@ function resetFlow() {
   const summaryCard = document.getElementById("stepFinal");
   summaryCard?.classList.remove("order-complete-visible");
   summaryCard?.classList.remove("hidden-step");
+  const consentEl = document.getElementById("privacyConsent");
+  if (consentEl) consentEl.checked = false;
   updateSendButtonEnabled();
 }
 
@@ -1796,6 +1800,7 @@ function init() {
     window.location.href = "index.html";
   });
   $("#sendQuoteBtn")?.addEventListener("click", sendQuote);
+  document.getElementById("privacyConsent")?.addEventListener("change", updateSendButtonEnabled);
   ["#customerName", "#customerPhone", "#customerEmail"].forEach((sel) => {
     const el = document.querySelector(sel);
     el?.addEventListener("input", updateSendButtonEnabled);

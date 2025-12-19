@@ -1300,7 +1300,9 @@ function updateSendButtonEnabled() {
   const hasRequired = Boolean(customer.name && customer.phone && customer.email);
   const hasItems = state.items.length > 0;
   const onFinalStep = currentPhase === 3;
-  btn.disabled = !(hasRequired && hasItems && onFinalStep) || sendingEmail;
+  const consentEl = document.getElementById("privacyConsent");
+  const hasConsent = consentEl ? consentEl.checked : true;
+  btn.disabled = !(hasRequired && hasItems && onFinalStep && hasConsent) || sendingEmail;
 }
 
 function buildEmailContent() {
@@ -1415,6 +1417,8 @@ function resetFlow() {
   updateSendButtonEnabled();
   renderTopAddonCards();
   updateSelectedTopAddonsDisplay();
+  const consentEl = document.getElementById("privacyConsent");
+  if (consentEl) consentEl.checked = false;
 }
 
 function initTop() {
@@ -1466,6 +1470,7 @@ function initTop() {
   $("#resetFlowBtn")?.addEventListener("click", () => {
     window.location.href = "index.html";
   });
+  document.getElementById("privacyConsent")?.addEventListener("change", updateSendButtonEnabled);
   updateAddButtonState();
   updateStepVisibility();
   updateSendButtonEnabled();
