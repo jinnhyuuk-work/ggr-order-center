@@ -39,3 +39,41 @@ export function initEmailJS() {
     });
   }
 }
+
+function resolveElement(target) {
+  if (!target || typeof document === "undefined") return null;
+  return typeof target === "string" ? document.querySelector(target) : target;
+}
+
+function resetModalScroll(modal, bodySelector) {
+  const body = bodySelector ? modal?.querySelector(bodySelector) : null;
+  if (!body) return;
+  body.scrollTop = 0;
+  if (typeof body.scrollTo === "function") {
+    body.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }
+  requestAnimationFrame(() => {
+    body.scrollTop = 0;
+  });
+  setTimeout(() => {
+    body.scrollTop = 0;
+  }, 0);
+}
+
+export function openModal(modal, { focusTarget = null, bodySelector = ".modal-body", resetScroll = true } = {}) {
+  if (typeof document === "undefined") return;
+  document.activeElement?.blur();
+  const modalEl = resolveElement(modal);
+  modalEl?.classList.remove("hidden");
+  const focusEl = resolveElement(focusTarget);
+  focusEl?.focus();
+  if (resetScroll) resetModalScroll(modalEl, bodySelector);
+}
+
+export function closeModal(modal, { bodySelector = ".modal-body", resetScroll = true } = {}) {
+  if (typeof document === "undefined") return;
+  document.activeElement?.blur();
+  const modalEl = resolveElement(modal);
+  if (resetScroll) resetModalScroll(modalEl, bodySelector);
+  modalEl?.classList.add("hidden");
+}

@@ -336,7 +336,8 @@ input[type="number"] {
   padding: 8px 6px 8px 4px;
 }
 
-#thicknessSelect {
+#thicknessSelect,
+#topThickness {
   max-width: 180px;
   appearance: none;
   -webkit-appearance: none;
@@ -360,7 +361,8 @@ select.service-input {
   background-repeat: no-repeat;
 }
 
-#thicknessSelect option {
+#thicknessSelect option,
+#topThickness option {
   padding-left: 0;
   text-indent: 0;
 }

@@ -4,7 +4,15 @@ import {
   BOARD_ADDON_ITEMS,
   MATERIAL_CATEGORIES_DESC,
 } from "./data.js";
-import { VAT_RATE, calcPackingCost, calcShippingCost, initEmailJS, EMAILJS_CONFIG } from "./shared.js";
+import {
+  VAT_RATE,
+  calcPackingCost,
+  calcShippingCost,
+  initEmailJS,
+  EMAILJS_CONFIG,
+  openModal,
+  closeModal,
+} from "./shared.js";
 
 class BaseService {
   constructor(cfg) {
@@ -824,12 +832,11 @@ function showInfoModal(message) {
   const modal = document.getElementById("infoModal");
   const msgEl = document.getElementById("infoMessage");
   if (msgEl) msgEl.textContent = message;
-  modal?.classList.remove("hidden");
-  document.getElementById("infoModalTitle")?.focus();
+  openModal(modal, { focusTarget: "#infoModalTitle" });
 }
 
 function closeInfoModal() {
-  document.getElementById("infoModal")?.classList.add("hidden");
+  closeModal("#infoModal");
 }
 
 function updateStepVisibility(scrollTarget) {
@@ -1643,12 +1650,11 @@ function openServiceModal(serviceId, triggerCheckbox, mode = "change") {
   serviceModalContext = { serviceId, triggerCheckbox, mode };
   serviceModalDraft = cloneServiceDetails(state.serviceDetails[serviceId]) || getDefaultServiceDetail(serviceId);
   renderServiceModalContent(serviceId);
-  $("#serviceModal")?.classList.remove("hidden");
-  $("#serviceModalTitle")?.focus();
+  openModal("#serviceModal", { focusTarget: "#serviceModalTitle" });
 }
 
 function closeServiceModal(revertSelection = true) {
-  $("#serviceModal")?.classList.add("hidden");
+  closeModal("#serviceModal");
   setServiceModalError("");
   if (revertSelection && serviceModalContext.mode === "change" && serviceModalContext.triggerCheckbox) {
     serviceModalContext.triggerCheckbox.checked = false;
@@ -1689,38 +1695,19 @@ function saveServiceModal() {
 }
 
 function openMaterialModal() {
-  document.activeElement?.blur();
-  const modal = $("#materialModal");
-  modal?.classList.remove("hidden");
-  $("#materialModalTitle")?.focus();
-  const body = modal?.querySelector(".modal-body");
-  if (body) {
-    body.scrollTop = 0;
-    body.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    requestAnimationFrame(() => {
-      body.scrollTop = 0;
-    });
-    setTimeout(() => {
-      body.scrollTop = 0;
-    }, 0);
-  }
+  openModal("#materialModal", { focusTarget: "#materialModalTitle" });
 }
 
 function closeMaterialModal() {
-  document.activeElement?.blur();
-  const modal = $("#materialModal");
-  const body = modal?.querySelector(".modal-body");
-  if (body) body.scrollTop = 0;
-  modal?.classList.add("hidden");
+  closeModal("#materialModal");
 }
 
 function openAddonModal() {
-  $("#addonModal")?.classList.remove("hidden");
-  $("#addonModalTitle")?.focus();
+  openModal("#addonModal", { focusTarget: "#addonModalTitle" });
 }
 
 function closeAddonModal() {
-  $("#addonModal")?.classList.add("hidden");
+  closeModal("#addonModal");
 }
 
 function updateModalCardPreviews() {

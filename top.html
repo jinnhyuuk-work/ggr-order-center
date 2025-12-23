@@ -51,6 +51,19 @@
             </div>
           </div>
           <div class="form-row">
+            <label>두께 (mm)</label>
+            <div class="field-col">
+              <select id="topThickness">
+                <option value="">두께를 선택해주세요</option>
+                <option value="12">12T</option>
+                <option value="24">24T</option>
+                <option value="30">30T</option>
+                <option value="40">40T</option>
+                <option value="50">50T</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
             <label>폭 (mm)</label>
             <div class="field-col">
               <input type="number" id="topWidth" placeholder="예: 650" />
@@ -66,12 +79,6 @@
             <label>길이2 (mm)</label>
             <div class="field-col">
               <input type="number" id="topLength2" placeholder="예: 1800 (ㄱ자 추가 변)" />
-            </div>
-          </div>
-          <div class="form-row">
-            <label>두께 (mm)</label>
-            <div class="field-col">
-              <input type="number" id="topThickness" placeholder="예: 30" />
             </div>
           </div>
 
@@ -224,6 +231,10 @@
       </div>
       <div class="modal-tabs">
         <div id="topTypeTabs" class="material-tabs"></div>
+        <div class="material-category-header">
+          <div id="topTypeCategoryName" class="material-category-title"></div>
+          <p id="topTypeCategoryDesc" class="material-category-desc"></p>
+        </div>
       </div>
       <div class="modal-body">
         <div id="topTypeCards" class="material-grid top-type-grid"></div>

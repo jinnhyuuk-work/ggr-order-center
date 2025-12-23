@@ -1,4 +1,4 @@
-import { VAT_RATE, EMAILJS_CONFIG, initEmailJS } from "./shared.js";
+import { VAT_RATE, EMAILJS_CONFIG, initEmailJS, openModal, closeModal } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data.js";
 
 class BaseService {
@@ -327,6 +327,11 @@ let sendingEmail = false;
 let orderCompleted = false;
 let serviceModalDraft = null;
 let serviceModalContext = { serviceId: null, triggerCheckbox: null, mode: null };
+const DEFAULT_TOP_THICKNESSES = [12, 24, 30, 40, 50];
+const TOP_CATEGORY_DESC = {
+  인조대리석: "가성비 좋은 기본 상판 소재입니다.",
+  하이막스: "내구성과 균일한 표면감이 장점인 프리미엄 상판입니다.",
+};
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
   if (!width || !length) return { w: 120, h: 120 };
@@ -383,6 +388,15 @@ function validateTopInputs({ typeId, shape, width, length, length2, thickness })
   const needsSecond = shape === "l" || shape === "rl";
   if (needsSecond && !length2) return "ㄱ자 형태일 때 길이2를 입력해주세요.";
   if (!thickness) return "두께를 입력해주세요.";
+  const type = TOP_TYPES.find((t) => t.id === typeId);
+  if (type?.minWidth && width < type.minWidth) return `폭은 최소 ${type.minWidth}mm 입니다.`;
+  if (type?.maxWidth && width > type.maxWidth) return `폭은 최대 ${type.maxWidth}mm 입니다.`;
+  if (type?.minLength && length < type.minLength) return `길이는 최소 ${type.minLength}mm 입니다.`;
+  if (type?.maxLength && length > type.maxLength) return `길이는 최대 ${type.maxLength}mm 입니다.`;
+  if (needsSecond) {
+    if (type?.minLength && length2 < type.minLength) return `길이2는 최소 ${type.minLength}mm 입니다.`;
+    if (type?.maxLength && length2 > type.maxLength) return `길이2는 최대 ${type.maxLength}mm 입니다.`;
+  }
   return null;
 }
 
@@ -472,6 +486,43 @@ function updateSelectedTopTypeCard() {
   `;
 }
 
+function updateTopThicknessOptions(typeId) {
+  const select = $("#topThickness");
+  if (!select) return;
+  const type = TOP_TYPES.find((t) => t.id === typeId);
+  const options = type?.availableThickness?.length ? type.availableThickness : DEFAULT_TOP_THICKNESSES;
+  const current = select.value;
+  select.innerHTML = `<option value="">두께를 선택해주세요</option>`;
+  options.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = String(t);
+    opt.textContent = `${t}T`;
+    select.appendChild(opt);
+  });
+  if (options.map(String).includes(current)) {
+    select.value = current;
+  } else {
+    select.value = "";
+  }
+}
+
+function updateTopSizePlaceholders(typeId) {
+  const widthEl = $("#topWidth");
+  const lengthEl = $("#topLength");
+  const length2El = $("#topLength2");
+  if (!widthEl || !lengthEl) return;
+  const type = TOP_TYPES.find((t) => t.id === typeId);
+  if (!type?.minWidth || !type?.maxWidth || !type?.minLength || !type?.maxLength) {
+    widthEl.placeholder = "예: 650";
+    lengthEl.placeholder = "예: 2400";
+    if (length2El) length2El.placeholder = "예: 1800 (ㄱ자 추가 변)";
+    return;
+  }
+  widthEl.placeholder = `폭 ${type.minWidth}~${type.maxWidth}mm`;
+  lengthEl.placeholder = `길이 ${type.minLength}~${type.maxLength}mm`;
+  if (length2El) length2El.placeholder = `길이2 ${type.minLength}~${type.maxLength}mm`;
+}
+
 function renderTopTypeTabs() {
   const tabs = $("#topTypeTabs");
   if (!tabs) return;
@@ -489,10 +540,21 @@ function renderTopTypeTabs() {
       renderTopTypeTabs();
       renderTopTypeCards();
       updateSelectedTopTypeCard();
+      updateTopThicknessOptions(selectedTopType);
+      updateTopSizePlaceholders(selectedTopType);
+      renderTopCategoryDesc();
       refreshTopEstimate();
     });
     tabs.appendChild(btn);
   });
+}
+
+function renderTopCategoryDesc() {
+  const descEl = $("#topTypeCategoryDesc");
+  const titleEl = $("#topTypeCategoryName");
+  if (!descEl || !titleEl) return;
+  titleEl.textContent = selectedTopCategory || "";
+  descEl.textContent = TOP_CATEGORY_DESC[selectedTopCategory] || "";
 }
 
 function renderTopTypeCards() {
@@ -501,13 +563,18 @@ function renderTopTypeCards() {
   container.innerHTML = "";
   const list = TOP_TYPES.filter((t) => (t.category || "기타") === selectedTopCategory);
   list.forEach((t) => {
+    const thicknessText = (t.availableThickness || DEFAULT_TOP_THICKNESSES)
+      .map((v) => `${v}T`)
+      .join(", ");
     const label = document.createElement("label");
     label.className = `card-base material-card${selectedTopType === t.id ? " selected" : ""}`;
     label.innerHTML = `
       <input type="radio" name="topType" value="${t.id}" ${selectedTopType === t.id ? "checked" : ""} />
       <div class="material-visual"></div>
       <div class="name">${t.name}</div>
-      <div class="price">기본가 ${formatPrice(t.basePrice)}원</div>
+      <div class="price">㎡당 ${formatPrice(t.basePrice)}원</div>
+      <div class="size">가능 두께: ${thicknessText}</div>
+      <div class="size">폭 ${t.minWidth}~${t.maxWidth}mm / 길이 ${t.minLength}~${t.maxLength}mm</div>
       ${descriptionHTML(t.description)}
     `;
     container.appendChild(label);
@@ -519,6 +586,8 @@ function renderTopTypeCards() {
     updateSelectedTopTypeCard();
     renderTopTypeCards();
     closeTopTypeModal();
+    updateTopThicknessOptions(selectedTopType);
+    updateTopSizePlaceholders(selectedTopType);
     refreshTopEstimate();
   };
 }
@@ -1105,12 +1174,11 @@ function openServiceModal(serviceId, triggerCheckbox, mode = "change") {
   serviceModalContext = { serviceId, triggerCheckbox, mode };
   serviceModalDraft = cloneServiceDetails(state.serviceDetails[serviceId]) || getDefaultServiceDetail(serviceId);
   renderServiceModalContent(serviceId);
-  $("#topServiceModal")?.classList.remove("hidden");
-  $("#topServiceModalTitle")?.focus();
+  openModal("#topServiceModal", { focusTarget: "#topServiceModalTitle" });
 }
 
 function closeServiceModal(revertSelection = true) {
-  $("#topServiceModal")?.classList.add("hidden");
+  closeModal("#topServiceModal");
   setServiceModalError("");
   if (revertSelection && serviceModalContext.mode === "change" && serviceModalContext.triggerCheckbox) {
     serviceModalContext.triggerCheckbox.checked = false;
@@ -1181,12 +1249,11 @@ function showInfoModal(message) {
   const modal = $("#infoModal");
   const msgEl = $("#infoMessage");
   if (msgEl) msgEl.textContent = message;
-  modal?.classList.remove("hidden");
-  $("#infoModalTitle")?.focus();
+  openModal(modal, { focusTarget: "#infoModalTitle" });
 }
 
 function closeInfoModal() {
-  $("#infoModal")?.classList.add("hidden");
+  closeModal("#infoModal");
 }
 
 function updateStepVisibility() {
@@ -1433,6 +1500,9 @@ function initTop() {
   renderSummary();
   updateSelectedTopTypeCard();
   updateSelectedTopAddonsDisplay();
+  updateTopThicknessOptions(selectedTopType);
+  updateTopSizePlaceholders(selectedTopType);
+  renderTopCategoryDesc();
   resetOrderCompleteUI();
   initEmailJS();
   const priceEl = $("#topEstimateText");
@@ -1480,21 +1550,19 @@ function initTop() {
 }
 
 function openTopTypeModal() {
-  $("#topTypeModal")?.classList.remove("hidden");
-  $("#topTypeModalTitle")?.focus();
+  openModal("#topTypeModal", { focusTarget: "#topTypeModalTitle" });
 }
 
 function closeTopTypeModal() {
-  $("#topTypeModal")?.classList.add("hidden");
+  closeModal("#topTypeModal");
 }
 
 function openTopAddonModal() {
-  $("#topAddonModal")?.classList.remove("hidden");
-  $("#topAddonModalTitle")?.focus();
+  openModal("#topAddonModal", { focusTarget: "#topAddonModalTitle" });
 }
 
 function closeTopAddonModal() {
-  $("#topAddonModal")?.classList.add("hidden");
+  closeModal("#topAddonModal");
 }
 
 if (document.readyState === "loading") {
