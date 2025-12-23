@@ -3,6 +3,7 @@ import {
   DOOR_PROCESSING_SERVICES as BOARD_PROCESSING_SERVICES,
   DOOR_ADDON_ITEMS as BOARD_ADDON_ITEMS,
   DOOR_MATERIAL_CATEGORIES_DESC as MATERIAL_CATEGORIES_DESC,
+  DOOR_PRICE_TIERS_BY_CATEGORY,
 } from "./data/door-data.js";
 import {
   VAT_RATE,
@@ -17,6 +18,8 @@ import {
   updateSendButtonEnabled as updateSendButtonEnabledShared,
   isConsentChecked,
   getEmailJSInstance,
+  getTieredPrice,
+  formatTierLabel,
 } from "./shared.js";
 
 class BaseService {
@@ -159,31 +162,26 @@ function buildServiceModels(configs) {
 
 const SERVICES = buildServiceModels(BOARD_PROCESSING_SERVICES);
 
-function getPricePerM2(material, thickness) {
-  if (material.pricePerM2ByThickness) {
-    if (thickness && material.pricePerM2ByThickness[thickness]) {
-      return material.pricePerM2ByThickness[thickness];
-    }
-    const firstAvailable = material.availableThickness?.find(
-      (t) => material.pricePerM2ByThickness[t]
-    );
-    if (firstAvailable !== undefined) {
-      return material.pricePerM2ByThickness[firstAvailable];
-    }
-    const firstPrice = Object.values(material.pricePerM2ByThickness)[0];
-    if (firstPrice) return firstPrice;
-  }
-  return material.pricePerM2;
+function getDoorTierPrice(material, width, length) {
+  const tiers = DOOR_PRICE_TIERS_BY_CATEGORY[material.category] || [];
+  return getTieredPrice({ tiers, width, length, customLabel: "비규격 상담 안내" });
+}
+
+function formatDoorPriceTiers(category) {
+  const tiers = DOOR_PRICE_TIERS_BY_CATEGORY[category] || [];
+  return formatTierLabel(tiers, "비규격 상담 안내");
 }
 
 // 1) 도어 금액 계산
 function calcMaterialCost({ materialId, width, length, quantity, thickness }) {
   const material = MATERIALS[materialId];
+  if (!material) {
+    return { areaM2: 0, materialCost: 0, error: "도어를 선택해주세요." };
+  }
   const areaM2 = (width / 1000) * (length / 1000); // mm → m
-  const pricePerM2 = getPricePerM2(material, thickness);
-
-  const materialCost = areaM2 * pricePerM2 * quantity;
-  return { areaM2, materialCost };
+  const { price, isCustom } = getDoorTierPrice(material, width, length);
+  const materialCost = price * quantity;
+  return { areaM2, materialCost, price, isCustom };
 }
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
@@ -245,13 +243,16 @@ function calcItemDetail(input) {
     serviceDetails = {},
   } = input;
 
-  const { areaM2, materialCost } = calcMaterialCost({
+  const { areaM2, materialCost, isCustom } = calcMaterialCost({
     materialId,
     width,
     length,
     quantity,
     thickness,
   });
+  if (Number.isNaN(materialCost)) {
+    return { error: "금액 계산에 실패했습니다. 입력값을 확인해주세요." };
+  }
 
   const { processingCost } = calcProcessingCost({
     materialId,
@@ -282,6 +283,7 @@ function calcItemDetail(input) {
     vat,
     total,
     weightKg,
+    isCustomPrice: isCustom,
   };
 }
 
@@ -537,6 +539,7 @@ function renderMaterialCards() {
   );
 
   list.forEach((mat) => {
+    const priceText = formatDoorPriceTiers(mat.category);
     const label = document.createElement("label");
     label.className = `card-base material-card${
       selectedMaterialId === mat.id ? " selected" : ""
@@ -547,7 +550,7 @@ function renderMaterialCards() {
       } />
       <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
       <div class="name">${mat.name}</div>
-      <div class="price">㎡당 ${getPricePerM2(mat).toLocaleString()}원</div>
+      <div class="price">${priceText}</div>
       <div class="size">가능 두께: ${(mat.availableThickness || [])
         .map((t) => `${t}T`)
         .join(", ")}</div>
@@ -684,17 +687,17 @@ function validateInputs(input) {
   if (!width) return "폭을 입력해주세요.";
   const widthMin = mat?.minWidth ?? WIDTH_MIN;
   const widthMax = mat?.maxWidth ?? WIDTH_MAX;
-  if (width < widthMin || width > widthMax)
-    return `폭은 ${widthMin} ~ ${widthMax}mm 사이여야 합니다.`;
+  if (width < widthMin) return `폭은 최소 ${widthMin}mm 이상이어야 합니다.`;
+  if (width > widthMax) return `폭은 최대 ${widthMax}mm 이하만 가능합니다.`;
   if (!length) return "길이를 입력해주세요.";
   const lengthMin = mat?.minLength ?? LENGTH_MIN;
   const lengthMax = mat?.maxLength ?? LENGTH_MAX;
-  if (length < lengthMin || length > lengthMax)
-    return `길이는 ${lengthMin} ~ ${lengthMax}mm 사이여야 합니다.`;
+  if (length < lengthMin) return `길이는 최소 ${lengthMin}mm 이상이어야 합니다.`;
+  if (length > lengthMax) return `길이는 최대 ${lengthMax}mm 이하만 가능합니다.`;
 
   const material = mat;
   if (!material.availableThickness?.includes(thickness)) {
-    return `선택한 도어은 ${material.availableThickness.join(", ")}T만 가능합니다.`;
+    return `선택한 도어는 ${material.availableThickness.join(", ")}T만 가능합니다.`;
   }
   return null;
 }
@@ -713,6 +716,10 @@ if (addItemBtn) {
 
     const quantity = 1;
     const detail = calcItemDetail({ ...input, quantity });
+    if (detail.error) {
+      showInfoModal(detail.error);
+      return;
+    }
     const itemServiceDetails = cloneServiceDetails(input.serviceDetails);
 
     state.items.push({
@@ -939,6 +946,11 @@ function renderTable() {
   }
   if (emptyBanner) emptyBanner.style.display = "none";
 
+  const formatItemTotal = (item) =>
+    item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
+  const formatItemMaterial = (item) =>
+    item.isCustomPrice ? "상담 안내" : `${item.materialCost.toLocaleString()}원`;
+
   state.items.forEach((item) => {
     const tr = document.createElement("tr");
 
@@ -965,7 +977,7 @@ function renderTable() {
         />
       </td>
       <td>
-        <div>총: ${item.total.toLocaleString()}원</div>
+        <div>총: ${formatItemTotal(item)}</div>
       </td>
       <td><button data-id="${item.id}" class="deleteBtn">삭제</button></td>
     `;
@@ -988,7 +1000,7 @@ function renderTable() {
         <td colspan="4">
           <div class="sub-detail">
             <div class="detail-line">주문크기 ${escapeHtml(sizeText)} · 가공 ${escapeHtml(servicesText)}</div>
-          <div class="detail-line">도어비 ${item.materialCost.toLocaleString()}원 · 가공비 ${item.processingCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
+          <div class="detail-line">도어비 ${formatItemMaterial(item)} · 가공비 ${item.processingCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
           </div>
         </td>
       `;
@@ -1084,8 +1096,9 @@ function buildEmailContent() {
       const servicesText = isAddon
         ? "-"
         : formatServiceList(item.services, item.serviceDetails, { includeNote: true });
+      const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
       lines.push(
-        `${idx + 1}. ${materialName} x${item.quantity} | 크기 ${sizeText} | 가공 ${servicesText} | 금액 ${item.total.toLocaleString()}원`
+        `${idx + 1}. ${materialName} x${item.quantity} | 크기 ${sizeText} | 가공 ${servicesText} | 금액 ${amountText}`
       );
     });
   }
@@ -1197,7 +1210,8 @@ function renderOrderCompleteDetails() {
             const servicesText = isAddon
               ? "-"
               : formatServiceList(item.services, item.serviceDetails, { includeNote: true });
-            return `<p class="item-line">${idx + 1}. ${escapeHtml(materialName)} x${item.quantity} · 크기 ${escapeHtml(sizeText)} · 가공 ${escapeHtml(servicesText)} · 금액 ${item.total.toLocaleString()}원</p>`;
+            const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
+            return `<p class="item-line">${idx + 1}. ${escapeHtml(materialName)} x${item.quantity} · 크기 ${escapeHtml(sizeText)} · 가공 ${escapeHtml(servicesText)} · 금액 ${amountText}</p>`;
           })
           .join("");
 
@@ -1345,6 +1359,16 @@ function autoCalculatePrice() {
     return;
   }
   const detail = calcItemDetail({ ...input, quantity: 1 });
+  if (detail.error) {
+    $("#itemPriceDisplay").textContent = detail.error;
+    updateAddItemState();
+    return;
+  }
+  if (detail.isCustomPrice) {
+    $("#itemPriceDisplay").textContent = "비규격 상담 안내";
+    updateAddItemState();
+    return;
+  }
   $("#itemPriceDisplay").textContent =
     `금액(부가세 포함): ${detail.total.toLocaleString()}원 ` +
     `(도어비 ${detail.materialCost.toLocaleString()} + 가공비 ${detail.processingCost.toLocaleString()})`;
@@ -1464,11 +1488,13 @@ function updateSelectedMaterialLabel() {
     `;
     return;
   }
+  const priceText = formatDoorPriceTiers(mat.category);
 
   cardEl.innerHTML = `
     <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
     <div class="info">
       <div class="name">${mat.name}</div>
+      <div class="meta">${priceText}</div>
       <div class="meta">가능 두께: ${(mat.availableThickness || [])
         .map((t) => `${t}T`)
         .join(", ")}</div>

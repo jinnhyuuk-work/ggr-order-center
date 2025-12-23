@@ -1168,6 +1168,39 @@ export const DOOR_MATERIAL_CATEGORIES_DESC = {
   "LPM": "LPM 마감재 카테고리입니다.",
 };
 
+export const DOOR_PRICE_TIERS_BY_CATEGORY = {
+  "LX SMR PET": [
+    { maxWidth: 300, maxLength: 800, price: 40000 },
+    { maxWidth: 400, maxLength: 800, price: 45000 },
+    { maxWidth: 600, maxLength: 800, price: 50000 },
+  ],
+  "LX Texture PET": [
+    { maxWidth: 300, maxLength: 800, price: 40000 },
+    { maxWidth: 400, maxLength: 800, price: 45000 },
+    { maxWidth: 600, maxLength: 800, price: 50000 },
+  ],
+  "LX PET": [
+    { maxWidth: 300, maxLength: 800, price: 35000 },
+    { maxWidth: 400, maxLength: 800, price: 40000 },
+    { maxWidth: 600, maxLength: 800, price: 45000 },
+  ],
+  "Hansol PET": [
+    { maxWidth: 300, maxLength: 800, price: 40000 },
+    { maxWidth: 400, maxLength: 800, price: 45000 },
+    { maxWidth: 600, maxLength: 800, price: 50000 },
+  ],
+  "Original PET": [
+    { maxWidth: 300, maxLength: 800, price: 35000 },
+    { maxWidth: 400, maxLength: 800, price: 40000 },
+    { maxWidth: 600, maxLength: 800, price: 45000 },
+  ],
+  LPM: [
+    { maxWidth: 300, maxLength: 800, price: 35000 },
+    { maxWidth: 400, maxLength: 800, price: 40000 },
+    { maxWidth: 600, maxLength: 800, price: 45000 },
+  ],
+};
+
 export const DOOR_PROCESSING_SERVICES = {
   ...COMMON_PROCESSING_SERVICES,
 };

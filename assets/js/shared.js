@@ -130,3 +130,23 @@ export function getEmailJSInstance(showInfoModal) {
   }
   return emailjsInstance;
 }
+
+export function getTieredPrice({ tiers = [], width, length, customLabel = "상담 안내" } = {}) {
+  const match = tiers.find(
+    (tier) => width <= tier.maxWidth && length <= tier.maxLength
+  );
+  if (!match) {
+    return { price: 0, isCustom: true, label: customLabel };
+  }
+  return { price: match.price, isCustom: false, label: "" };
+}
+
+export function formatTierLabel(tiers = [], customLabel = "상담 안내") {
+  const tierText = tiers
+    .map(
+      (tier) =>
+        `${tier.maxWidth}×${tier.maxLength} 이하 ${tier.price.toLocaleString()}원`
+    )
+    .join(" / ");
+  return `${tierText} / ${customLabel}`;
+}
