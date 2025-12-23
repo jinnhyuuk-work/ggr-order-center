@@ -16,7 +16,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/01-lx-smr-white.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/01-lx-smr-white.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_02",
@@ -29,7 +29,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/02-lx-smr-marshmallow.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/02-lx-smr-marshmallow.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_03",
@@ -42,7 +42,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/03-lx-smr-foggray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/03-lx-smr-foggray.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_04",
@@ -55,7 +55,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/04-lx-smr-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/04-lx-smr-gray.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_05",
@@ -68,7 +68,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/05-lx-smr-mushroom.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/05-lx-smr-mushroom.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_06",
@@ -81,7 +81,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/06-lx-smr-beige.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/06-lx-smr-beige.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_07",
@@ -94,7 +94,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/07-lx-smr-vanilla.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/07-lx-smr-vanilla.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_08",
@@ -107,7 +107,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/08-lx-smr-peachwhip.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/08-lx-smr-peachwhip.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_09",
@@ -120,7 +120,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/09-lx-smr-carbongray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/09-lx-smr-carbongray.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_10",
@@ -133,7 +133,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/10-lx-smr-tealgreen.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/10-lx-smr-tealgreen.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_11",
@@ -146,7 +146,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/11-lx-smr-terragreen.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/11-lx-smr-terragreen.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_12",
@@ -159,7 +159,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('/img/product/board/01-lx-smr-pet/12-lx-smr-nightblue.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/board/01-lx-smr-pet/12-lx-smr-nightblue.jpg') center/cover no-repeat",
   },
 ];
 
@@ -175,7 +175,7 @@ const LX_TEXTURE_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #f5f0e9 0%, #d3c4b5 100%)",
+    swatch: "url('assets/img/product/board/02-lx-texture-pet/01-lx-texture-pet-slategray.jpg') center/cover no-repeat",
   },
   {
     id: "lx_texture_pet_02",
@@ -188,7 +188,7 @@ const LX_TEXTURE_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #f5f0e9 0%, #d3c4b5 100%)",
+    swatch: "url('assets/img/product/board/02-lx-texture-pet/02-lx-texture-pet-slatebeige.jpg') center/cover no-repeat",
   },
 ];
 
@@ -204,7 +204,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+    swatch: "url('assets/img/product/board/03-lx-pet/01-lx-pet-white-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_02",
@@ -217,7 +217,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+    swatch: "url('assets/img/product/board/03-lx-pet/02-lx-pet-white-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_03",
@@ -230,7 +230,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+    swatch: "url('assets/img/product/board/03-lx-pet/03-lx-pet-ivory-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_04",
@@ -243,7 +243,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+    swatch: "url('assets/img/product/board/03-lx-pet/04-lx-pet-ivory-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_05",
@@ -256,7 +256,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+    swatch: "url('assets/img/product/board/03-lx-pet/05-lx-pet-gray-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_06",
@@ -269,7 +269,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+    swatch: "url('assets/img/product/board/03-lx-pet/06-lx-pet-gray-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_07",
@@ -282,7 +282,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+    swatch: "url('assets/img/product/board/03-lx-pet/07-lx-pet-lightgray-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_08",
@@ -295,7 +295,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+    swatch: "url('assets/img/product/board/03-lx-pet/07-lx-pet-lightgray-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_09",
@@ -308,7 +308,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "linear-gradient(135deg, #eef2ff 0%, #cdd8ff 100%)",
+    swatch: "url('assets/img/product/board/03-lx-pet/07-lx-pet-silkygray-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_10",
