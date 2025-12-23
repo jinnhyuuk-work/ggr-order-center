@@ -176,7 +176,7 @@ b[lang="en"],
   width: 100%;
   height: auto;
   display: block; 
-  aspect-ratio: 4/2; 
+  aspect-ratio: 4/3; 
   object-fit: cover;
   border-radius: 10px;
   background: linear-gradient(135deg, #f3f3f3 0%, #dcdcdc 100%);
@@ -184,15 +184,15 @@ b[lang="en"],
 }
 
 .landing-thumb.board {
-  background: url(../img/page/index/board-service.jpg) center/100% auto no-repeat;
+  background: url(../img/page/index/board-service.jpg) center/cover no-repeat;
 }
 
 .landing-thumb.door {
-  background: url(../img/page/index/board-service.jpg) center/100% auto no-repeat;
+  background: url(../img/page/index/door-service.jpg) center/cover no-repeat;
 }
 
 .landing-thumb.top {
-  background: url(../img/page/index/top-service.jpg) center/100% auto no-repeat;
+  background: url(../img/page/index/top-service.jpg) center/cover no-repeat;
 }
 
 .landing-body h3 {

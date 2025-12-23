@@ -10,7 +10,7 @@ import {
   isConsentChecked,
   getEmailJSInstance,
 } from "./shared.js";
-import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data.js";
+import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
 
 class BaseService {
   constructor(cfg) {

@@ -3,7 +3,7 @@ import {
   DOOR_PROCESSING_SERVICES as BOARD_PROCESSING_SERVICES,
   DOOR_ADDON_ITEMS as BOARD_ADDON_ITEMS,
   DOOR_MATERIAL_CATEGORIES_DESC as MATERIAL_CATEGORIES_DESC,
-} from "./data.js";
+} from "./data/door-data.js";
 import {
   VAT_RATE,
   calcPackingCost,

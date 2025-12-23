@@ -1,8 +1,4 @@
-const arrayToMap = (list) =>
-  list.reduce((acc, item) => {
-    acc[item.id] = item;
-    return acc;
-  }, {});
+import { arrayToMap, COMMON_PROCESSING_SERVICES, COMMON_ADDON_ITEMS } from "./common-data.js";
 
 const LX_SMR_PET_ITEMS = [
   {
@@ -1153,7 +1149,7 @@ const LPM_ITEMS = [
   },
 ];
 
-export const MATERIALS = {
+export const DOOR_MATERIALS = {
   ...arrayToMap(LX_SMR_PET_ITEMS),
   ...arrayToMap(LX_TEXTURE_PET_ITEMS),
   ...arrayToMap(LX_PET_ITEMS),
@@ -1161,12 +1157,9 @@ export const MATERIALS = {
   ...arrayToMap(ORIGINAL_PET_ITEMS),
   ...arrayToMap(LPM_ITEMS),
 
-
 };
 
-export const DOOR_MATERIALS = { ...MATERIALS };
-
-export const MATERIAL_CATEGORIES_DESC = {
+export const DOOR_MATERIAL_CATEGORIES_DESC = {
   "LX SMR PET": "LX SMR PET 마감재 카테고리입니다.",
   "LX Texture PET": "LX Texture PET 마감재 카테고리입니다.",
   "LX PET": "LX PET 마감재 카테고리입니다.",
@@ -1175,274 +1168,8 @@ export const MATERIAL_CATEGORIES_DESC = {
   "LPM": "LPM 마감재 카테고리입니다.",
 };
 
-export const DOOR_MATERIAL_CATEGORIES_DESC = { ...MATERIAL_CATEGORIES_DESC };
-
-// 공통 가공 서비스 정의(필요 시 각 도메인에서 확장)
-const COMMON_PROCESSING_SERVICES = {
-  hinge_hole: {
-    id: "hinge_hole",
-    label: "경첩 홀 가공",
-    pricePerHole: 1500,
-    type: "detail",
-    swatch: "linear-gradient(135deg, #f0f7ff 0%, #c1dbff 100%)",
-    description: "경첩 홀 1개당",
-  },
-  handle_hole: {
-    id: "handle_hole",
-    label: "피스 홀 타공",
-    pricePerHole: 1200,
-    type: "detail",
-    swatch: "linear-gradient(135deg, #fef4e6 0%, #ffd9a8 100%)",
-    description: "피스 홀 1개당",
-  },
-};
-
-// 도메인별 가공 서비스
-export const BOARD_PROCESSING_SERVICES = {
-  ...COMMON_PROCESSING_SERVICES,
-};
-
 export const DOOR_PROCESSING_SERVICES = {
   ...COMMON_PROCESSING_SERVICES,
 };
 
-export const TOP_PROCESSING_SERVICES = {
-  ...COMMON_PROCESSING_SERVICES,
-};
-
-// 상판(Top) 데이터
-export const TOP_TYPES = [
-  {
-    id: "artificial_01",
-    name: "인조대리석 01",
-    basePrice: 200000,
-    category: "인조대리석",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "artificial_02",
-    name: "인조대리석 02",
-    basePrice: 205000,
-    category: "인조대리석",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "artificial_03",
-    name: "인조대리석 03",
-    basePrice: 210000,
-    category: "인조대리석",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "artificial_04",
-    name: "인조대리석 04",
-    basePrice: 215000,
-    category: "인조대리석",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "artificial_05",
-    name: "인조대리석 05",
-    basePrice: 220000,
-    category: "인조대리석",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "artificial_06",
-    name: "인조대리석 06",
-    basePrice: 225000,
-    category: "인조대리석",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "artificial_07",
-    name: "인조대리석 07",
-    basePrice: 230000,
-    category: "인조대리석",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "artificial_08",
-    name: "인조대리석 08",
-    basePrice: 235000,
-    category: "인조대리석",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "himacs_01",
-    name: "하이막스 01",
-    basePrice: 260000,
-    category: "하이막스",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "himacs_02",
-    name: "하이막스 02",
-    basePrice: 265000,
-    category: "하이막스",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "himacs_03",
-    name: "하이막스 03",
-    basePrice: 270000,
-    category: "하이막스",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "himacs_04",
-    name: "하이막스 04",
-    basePrice: 275000,
-    category: "하이막스",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "himacs_05",
-    name: "하이막스 05",
-    basePrice: 280000,
-    category: "하이막스",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "himacs_06",
-    name: "하이막스 06",
-    basePrice: 285000,
-    category: "하이막스",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "himacs_07",
-    name: "하이막스 07",
-    basePrice: 290000,
-    category: "하이막스",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-  {
-    id: "himacs_08",
-    name: "하이막스 08",
-    basePrice: 295000,
-    category: "하이막스",
-    availableThickness: [12, 24, 30, 40, 50],
-    minWidth: 300,
-    maxWidth: 1200,
-    minLength: 300,
-    maxLength: 3000,
-  },
-];
-
-export const TOP_OPTIONS = [
-  { id: "sink_cut", name: "싱크볼 타공", price: 30000, description: "싱크볼의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
-  { id: "faucet_hole", name: "수전 타공", price: 10000, description: "싱크볼에 수전 타공을 추가합니다.<br>정확한 사이즈를 위해 상담이 필요합니다."},
-  { id: "cooktop_cut", name: "쿡탑 타공", price: 20000, description: "쿡탑의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
-  { id: "edge_finish", name: "뒷턱/뒷선반 추가", price: 15000, description: "상판에 뒷선반을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
-];
-
-// 부자재
-const COMMON_ADDON_ITEMS = [
-  {
-    id: "hinge_basic",
-    name: "경첩(일반)",
-    price: 2000,
-    description: "소형 캐비닛용 기본 경첩",
-  },
-  {
-    id: "screw_set",
-    name: "목재용 피스 세트",
-    price: 3000,
-    description: "다양한 길이의 피스 50ea",
-  },
-  {
-    id: "handle_simple",
-    name: "손잡이(블랙)",
-    price: 4500,
-    description: "미니멀 블랙 손잡이 2ea",
-  },
-  {
-    id: "soft_close",
-    name: "소프트클로징 댐퍼",
-    price: 6000,
-    description: "도어 닫힘을 부드럽게",
-  },
-  {
-    id: "glide_runner",
-    name: "서랍 레일 세트",
-    price: 8000,
-    description: "볼레일 1세트",
-  },
-  {
-    id: "felt_pad",
-    name: "가구 패드",
-    price: 1500,
-    description: "바닥 긁힘 방지 패드 20개",
-  },
-  {
-    id: "wood_glue",
-    name: "목공용 본드",
-    price: 2500,
-    description: "빠른 경화 목공용 접착제",
-  },
-];
-
-export const BOARD_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
 export const DOOR_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
-export const TOP_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];

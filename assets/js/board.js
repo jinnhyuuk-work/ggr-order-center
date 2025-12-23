@@ -3,7 +3,7 @@ import {
   BOARD_PROCESSING_SERVICES,
   BOARD_ADDON_ITEMS,
   MATERIAL_CATEGORIES_DESC,
-} from "./data.js";
+} from "./data/board-data.js";
 import {
   VAT_RATE,
   calcPackingCost,
