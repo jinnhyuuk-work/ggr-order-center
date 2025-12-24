@@ -5,7 +5,6 @@ import {
   MATERIAL_CATEGORIES_DESC,
 } from "./data/board-data.js";
 import {
-  VAT_RATE,
   calcPackingCost,
   calcShippingCost,
   initEmailJS,
@@ -233,7 +232,7 @@ function calcWeightKg({ materialId, width, length, thickness, quantity }) {
   return { weightKg };
 }
 
-// 6) 한 아이템 전체 계산 (합판비 + 가공비 + 무게 + VAT 전까지)
+// 6) 한 아이템 전체 계산 (합판비 + 가공비 + 무게 계산까지)
 function calcItemDetail(input) {
   const {
     materialId,
@@ -270,9 +269,9 @@ function calcItemDetail(input) {
     quantity,
   });
 
-  const subtotal = materialCost + processingCost; // VAT 전 금액
-  const vat = Math.round(subtotal * VAT_RATE);
-  const total = Math.round(subtotal + vat);
+  const subtotal = materialCost + processingCost;
+  const vat = 0;
+  const total = Math.round(subtotal);
 
   return {
     areaM2,
@@ -287,8 +286,8 @@ function calcItemDetail(input) {
 
 function calcAddonDetail(price) {
   const subtotal = price;
-  const vat = Math.round(subtotal * VAT_RATE);
-  const total = subtotal + vat;
+  const vat = 0;
+  const total = subtotal;
   return {
     materialCost: price,
     processingCost: 0,
@@ -306,13 +305,13 @@ function calcOrderSummary(items) {
     .reduce((s, i) => s + i.materialCost, 0);
   const processingTotal = items.reduce((s, i) => s + i.processingCost, 0);
   const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
-  const vat = items.reduce((s, i) => s + i.vat, 0);
+  const vat = 0;
   const totalWeight = items.reduce((s, i) => s + i.weightKg, 0);
 
   const packingCost = calcPackingCost(totalWeight);
   const shippingCost = calcShippingCost(totalWeight);
 
-  const grandTotal = subtotal + packingCost + shippingCost + vat;
+  const grandTotal = subtotal + packingCost + shippingCost;
 
   return {
     materialsTotal,
@@ -979,7 +978,7 @@ function renderTable() {
         <td colspan="4">
           <div class="sub-detail">
             <div class="detail-line">부자재 ${escapeHtml(materialName)}</div>
-            <div class="detail-line">상품가 ${item.materialCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
+            <div class="detail-line">상품가 ${item.materialCost.toLocaleString()}원</div>
           </div>
         </td>
       `;
@@ -988,7 +987,7 @@ function renderTable() {
         <td colspan="4">
           <div class="sub-detail">
             <div class="detail-line">주문크기 ${escapeHtml(sizeText)} · 가공 ${escapeHtml(servicesText)}</div>
-          <div class="detail-line">합판비 ${item.materialCost.toLocaleString()}원 · 가공비 ${item.processingCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
+          <div class="detail-line">합판비 ${item.materialCost.toLocaleString()}원 · 가공비 ${item.processingCost.toLocaleString()}원</div>
           </div>
         </td>
       `;
@@ -1047,10 +1046,7 @@ function renderSummary() {
   $("#packingCost").textContent = summary.packingCost.toLocaleString();
   $("#grandTotal").textContent = summary.grandTotal.toLocaleString();
 
-  // 필요하면 VAT/배송비도 화면에 추가
-  const vatEl = document.getElementById("vatTotal");
   const shippingEl = document.getElementById("shippingCost");
-  if (vatEl) vatEl.textContent = summary.vat.toLocaleString();
   if (shippingEl) shippingEl.textContent = summary.shippingCost.toLocaleString();
 
   const naverUnits = Math.ceil(summary.grandTotal / 1000);

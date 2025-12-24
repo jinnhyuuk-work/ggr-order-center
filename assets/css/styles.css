@@ -39,6 +39,7 @@
   --shadow-card-hover: 0 10px 26px rgba(0, 0, 0, 0.08);
   --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.04);
   --shadow-panel-hover: 0 10px 28px rgba(0, 0, 0, 0.08);
+  --shadow-preview: 0 1px 2px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(0,0,0,0.08);
   --title-font-size: clamp(32px, 3vw, 48px);
   --title-sub-font-size: clamp(28px, 2.5vw, 34px);
   --font-size-body: clamp(15px, 1.2vw, 17px);
@@ -444,24 +445,28 @@ input[type="number"]::-webkit-outer-spin-button {
   overflow: hidden;
 }
 
+#previewBox .preview-color,
+#topPreviewBox .preview-color {
+  box-shadow: var(--shadow-preview);
+}
+
 #topPreviewColor {
   width: 120px;
   height: 120px;
   border-radius: 0;
   background: var(--color-border-faint);
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
   min-width: 40px;
   min-height: 40px;
   transition: width 0.2s ease, height 0.2s ease;
 }
 .l-shape-preview {
   position: relative;
-  box-shadow: none !important;
+  box-shadow: var(--shadow-preview) !important;
 }
 .l-shape-preview .preview-leg {
   position: absolute;
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-preview);
   transition: width 0.2s ease, height 0.2s ease, left 0.2s ease, top 0.2s ease;
 }
 
@@ -482,7 +487,6 @@ input[type="number"]::-webkit-outer-spin-button {
   height: 120px;
   border-radius: 0;
   background: var(--color-border-faint);
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
   min-width: 40px;
   min-height: 40px;
   transition: width 0.2s ease, height 0.2s ease;

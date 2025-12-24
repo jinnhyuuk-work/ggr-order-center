@@ -1,5 +1,3 @@
-export const VAT_RATE = 0.1; // 공통 VAT 비율
-
 export const EMAILJS_CONFIG = {
   serviceId: "service_8iw3ovj",
   templateId: "template_iaid1xl",

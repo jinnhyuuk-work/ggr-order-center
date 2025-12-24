@@ -6,7 +6,6 @@ import {
   DOOR_PRICE_TIERS_BY_CATEGORY,
 } from "./data/door-data.js";
 import {
-  VAT_RATE,
   calcPackingCost,
   calcShippingCost,
   initEmailJS,
@@ -19,7 +18,6 @@ import {
   isConsentChecked,
   getEmailJSInstance,
   getTieredPrice,
-  formatTierLabel,
 } from "./shared.js";
 
 class BaseService {
@@ -167,9 +165,12 @@ function getDoorTierPrice(material, width, length) {
   return getTieredPrice({ tiers, width, length, customLabel: "비규격 상담 안내" });
 }
 
-function formatDoorPriceTiers(category) {
+function formatDoorPriceTierLines(category) {
   const tiers = DOOR_PRICE_TIERS_BY_CATEGORY[category] || [];
-  return formatTierLabel(tiers, "비규격 상담 안내");
+  const tierLines = tiers.map(
+    (tier) => `${tier.maxWidth}×${tier.maxLength} 이하 ${tier.price.toLocaleString()}원`
+  );
+  return [...tierLines, "비규격 상담 안내"];
 }
 
 // 1) 도어 금액 계산
@@ -231,7 +232,7 @@ function calcWeightKg({ materialId, width, length, thickness, quantity }) {
   return { weightKg };
 }
 
-// 6) 한 아이템 전체 계산 (도어비 + 가공비 + 무게 + VAT 전까지)
+// 6) 한 아이템 전체 계산 (도어비 + 가공비 + 무게 계산까지)
 function calcItemDetail(input) {
   const {
     materialId,
@@ -271,9 +272,9 @@ function calcItemDetail(input) {
     quantity,
   });
 
-  const subtotal = materialCost + processingCost; // VAT 전 금액
-  const vat = Math.round(subtotal * VAT_RATE);
-  const total = Math.round(subtotal + vat);
+  const subtotal = materialCost + processingCost;
+  const vat = 0;
+  const total = Math.round(subtotal);
 
   return {
     areaM2,
@@ -289,8 +290,8 @@ function calcItemDetail(input) {
 
 function calcAddonDetail(price) {
   const subtotal = price;
-  const vat = Math.round(subtotal * VAT_RATE);
-  const total = subtotal + vat;
+  const vat = 0;
+  const total = subtotal;
   return {
     materialCost: price,
     processingCost: 0,
@@ -308,13 +309,13 @@ function calcOrderSummary(items) {
     .reduce((s, i) => s + i.materialCost, 0);
   const processingTotal = items.reduce((s, i) => s + i.processingCost, 0);
   const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
-  const vat = items.reduce((s, i) => s + i.vat, 0);
+  const vat = 0;
   const totalWeight = items.reduce((s, i) => s + i.weightKg, 0);
 
   const packingCost = calcPackingCost(totalWeight);
   const shippingCost = calcShippingCost(totalWeight);
 
-  const grandTotal = subtotal + packingCost + shippingCost + vat;
+  const grandTotal = subtotal + packingCost + shippingCost;
 
   return {
     materialsTotal,
@@ -539,7 +540,7 @@ function renderMaterialCards() {
   );
 
   list.forEach((mat) => {
-    const priceText = formatDoorPriceTiers(mat.category);
+    const priceLines = formatDoorPriceTierLines(mat.category);
     const label = document.createElement("label");
     label.className = `card-base material-card${
       selectedMaterialId === mat.id ? " selected" : ""
@@ -550,7 +551,7 @@ function renderMaterialCards() {
       } />
       <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
       <div class="name">${mat.name}</div>
-      <div class="price">${priceText}</div>
+      ${priceLines.map((line) => `<div class="price">${line}</div>`).join("")}
       <div class="size">가능 두께: ${(mat.availableThickness || [])
         .map((t) => `${t}T`)
         .join(", ")}</div>
@@ -991,7 +992,7 @@ function renderTable() {
         <td colspan="4">
           <div class="sub-detail">
             <div class="detail-line">부자재 ${escapeHtml(materialName)}</div>
-            <div class="detail-line">상품가 ${item.materialCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
+            <div class="detail-line">상품가 ${item.materialCost.toLocaleString()}원</div>
           </div>
         </td>
       `;
@@ -1000,7 +1001,7 @@ function renderTable() {
         <td colspan="4">
           <div class="sub-detail">
             <div class="detail-line">주문크기 ${escapeHtml(sizeText)} · 가공 ${escapeHtml(servicesText)}</div>
-          <div class="detail-line">도어비 ${formatItemMaterial(item)} · 가공비 ${item.processingCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
+          <div class="detail-line">도어비 ${formatItemMaterial(item)} · 가공비 ${item.processingCost.toLocaleString()}원</div>
           </div>
         </td>
       `;
@@ -1059,10 +1060,7 @@ function renderSummary() {
   $("#packingCost").textContent = summary.packingCost.toLocaleString();
   $("#grandTotal").textContent = summary.grandTotal.toLocaleString();
 
-  // 필요하면 VAT/배송비도 화면에 추가
-  const vatEl = document.getElementById("vatTotal");
   const shippingEl = document.getElementById("shippingCost");
-  if (vatEl) vatEl.textContent = summary.vat.toLocaleString();
   if (shippingEl) shippingEl.textContent = summary.shippingCost.toLocaleString();
 
   const naverUnits = Math.ceil(summary.grandTotal / 1000);
@@ -1488,13 +1486,13 @@ function updateSelectedMaterialLabel() {
     `;
     return;
   }
-  const priceText = formatDoorPriceTiers(mat.category);
+  const priceLines = formatDoorPriceTierLines(mat.category);
 
   cardEl.innerHTML = `
     <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
     <div class="info">
       <div class="name">${mat.name}</div>
-      <div class="meta">${priceText}</div>
+      ${priceLines.map((line) => `<div class="meta">${line}</div>`).join("")}
       <div class="meta">가능 두께: ${(mat.availableThickness || [])
         .map((t) => `${t}T`)
         .join(", ")}</div>

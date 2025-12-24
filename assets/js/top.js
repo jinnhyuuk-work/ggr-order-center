@@ -1,5 +1,4 @@
 import {
-  VAT_RATE,
   EMAILJS_CONFIG,
   initEmailJS,
   openModal,
@@ -436,8 +435,8 @@ function calcTopDetail(input) {
   const processingCost = optionPrice + shapeFee + serviceProcessingCost;
   const materialCost = base + processingCost;
   const subtotal = materialCost;
-  const vat = Math.round(subtotal * VAT_RATE);
-  const total = Math.round(subtotal + vat);
+  const vat = 0;
+  const total = Math.round(subtotal);
 
   return {
     materialCost,
@@ -463,8 +462,8 @@ function calcTopDetail(input) {
 
 function calcAddonDetail(price) {
   const subtotal = price;
-  const vat = Math.round(subtotal * VAT_RATE);
-  const total = subtotal + vat;
+  const vat = 0;
+  const total = subtotal;
   return {
     materialCost: price,
     processingCost: 0,
@@ -489,7 +488,7 @@ function updateSelectedTopTypeCard() {
     return;
   }
   card.innerHTML = `
-    <div class="material-visual"></div>
+    <div class="material-visual" style="background: ${type.swatch || "#ddd"}"></div>
     <div class="info">
       <div class="name">${type.name}</div>
       <div class="meta">기본가 ${formatPrice(type.basePrice)}원</div>
@@ -581,7 +580,7 @@ function renderTopTypeCards() {
     label.className = `card-base material-card${selectedTopType === t.id ? " selected" : ""}`;
     label.innerHTML = `
       <input type="radio" name="topType" value="${t.id}" ${selectedTopType === t.id ? "checked" : ""} />
-      <div class="material-visual"></div>
+      <div class="material-visual" style="background: ${t.swatch || "#ddd"}"></div>
       <div class="name">${t.name}</div>
       <div class="price">㎡당 ${formatPrice(t.basePrice)}원</div>
       <div class="size">가능 두께: ${thicknessText}</div>
@@ -828,7 +827,7 @@ function renderTable() {
         <td colspan="4">
           <div class="sub-detail">
             <div class="detail-line">부자재 ${escapeHtml(addonInfo?.name || "부자재")}</div>
-            <div class="detail-line">상품가 ${item.materialCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
+            <div class="detail-line">상품가 ${item.materialCost.toLocaleString()}원</div>
           </div>
         </td>
       `;
@@ -838,7 +837,7 @@ function renderTable() {
         <td colspan="4">
           <div class="sub-detail">
             <div class="detail-line">사이즈 ${escapeHtml(item.displaySize)} · 옵션 ${escapeHtml(item.optionsLabel)} · 가공 ${escapeHtml(item.servicesLabel || "-")}</div>
-            <div class="detail-line">상판비 ${baseCost.toLocaleString()}원 · 가공비 ${item.processingCost.toLocaleString()}원 · VAT ${item.vat.toLocaleString()}원</div>
+            <div class="detail-line">상판비 ${baseCost.toLocaleString()}원 · 가공비 ${item.processingCost.toLocaleString()}원</div>
           </div>
         </td>
       `;
@@ -1088,7 +1087,6 @@ function updateTopPreview(input, detail) {
     colorEl.style.background = "#ddd";
     colorEl.style.width = "120px";
     colorEl.style.height = "120px";
-    colorEl.style.boxShadow = "inset 0 0 0 1px rgba(0,0,0,0.04)";
     colorEl.style.clipPath = "none";
     textEl.textContent = "상판과 사이즈를 선택하면 미리보기가 표시됩니다.";
     return;
@@ -1099,7 +1097,7 @@ function updateTopPreview(input, detail) {
     engineered: "linear-gradient(135deg, #f2f7ff 0%, #d6e4ff 100%)",
     stainless: "linear-gradient(135deg, #f0f0f0 0%, #c7c7c7 100%)",
   };
-  const swatch = swatchMap[type.id] || "#ddd";
+  const swatch = type.swatch || swatchMap[type.id] || "#ddd";
 
   if (needsSecond) {
     const maxPx = 180;
@@ -1116,7 +1114,6 @@ function updateTopPreview(input, detail) {
 
     colorEl.classList.add("l-shape-preview");
     colorEl.style.background = swatch;
-    colorEl.style.boxShadow = "none";
     colorEl.style.width = `${overallPxW}px`;
     colorEl.style.height = `${overallPxH}px`;
 
@@ -1141,9 +1138,9 @@ function updateTopPreview(input, detail) {
         ${overallPxW}px ${widthPx}px
       )`;
     }
+
   } else {
     colorEl.style.background = swatch;
-    colorEl.style.boxShadow = "inset 0 0 0 1px rgba(0,0,0,0.04)";
     colorEl.style.clipPath = "none";
 
     const { w, h } = getPreviewDimensions(input.length, input.width, 180, 40);

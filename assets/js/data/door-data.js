@@ -12,7 +12,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/01-lx-smr-white.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/01-lx-smr-white.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_02",
@@ -25,7 +25,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/02-lx-smr-marshmallow.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/02-lx-smr-marshmallow.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_03",
@@ -38,7 +38,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/03-lx-smr-fog-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/03-lx-smr-fog-gray.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_04",
@@ -51,7 +51,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/04-lx-smr-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/04-lx-smr-gray.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_05",
@@ -64,7 +64,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/05-lx-smr-mushroom.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/05-lx-smr-mushroom.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_06",
@@ -77,7 +77,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/06-lx-smr-beige.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/06-lx-smr-beige.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_07",
@@ -90,7 +90,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/07-lx-smr-vanilla.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/07-lx-smr-vanilla.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_08",
@@ -103,7 +103,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/08-lx-smr-peach-whip.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/08-lx-smr-peach-whip.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_09",
@@ -116,7 +116,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/09-lx-smr-carbon-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/09-lx-smr-carbon-gray.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_10",
@@ -129,7 +129,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/10-lx-smr-teal-green.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/10-lx-smr-teal-green.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_11",
@@ -142,7 +142,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/11-lx-smr-terra-green.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/11-lx-smr-terra-green.jpg') center/cover no-repeat",
   },
   {
     id: "lx_smr_pet_12",
@@ -155,7 +155,7 @@ const LX_SMR_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/01-lx-smr-pet/12-lx-smr-night-blue.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/01-lx-smr-pet/12-lx-smr-night-blue.jpg') center/cover no-repeat",
   },
 ];
 
@@ -171,7 +171,7 @@ const LX_TEXTURE_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/02-lx-texture-pet/01-lx-texture-pet-slate-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/02-lx-texture-pet/01-lx-texture-pet-slate-gray.jpg') center/cover no-repeat",
   },
   {
     id: "lx_texture_pet_02",
@@ -184,7 +184,7 @@ const LX_TEXTURE_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/02-lx-texture-pet/02-lx-texture-pet-slate-beige.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/02-lx-texture-pet/02-lx-texture-pet-slate-beige.jpg') center/cover no-repeat",
   },
 ];
 
@@ -200,7 +200,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/01-lx-pet-white-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/01-lx-pet-white-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_02",
@@ -213,7 +213,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/02-lx-pet-white-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/02-lx-pet-white-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_03",
@@ -226,7 +226,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/03-lx-pet-ivory-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/03-lx-pet-ivory-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_04",
@@ -239,7 +239,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/04-lx-pet-ivory-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/04-lx-pet-ivory-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_05",
@@ -252,7 +252,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/05-lx-pet-gray-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/05-lx-pet-gray-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_06",
@@ -265,7 +265,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/06-lx-pet-gray-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/06-lx-pet-gray-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_07",
@@ -278,7 +278,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/07-lx-pet-light-gray-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/07-lx-pet-light-gray-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_08",
@@ -291,7 +291,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/08-lx-pet-light-gray-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/08-lx-pet-light-gray-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_09",
@@ -304,7 +304,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/09-lx-pet-silky-gray-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/09-lx-pet-silky-gray-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_10",
@@ -317,7 +317,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/10-lx-pet-silky-gray-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/10-lx-pet-silky-gray-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_11",
@@ -330,7 +330,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/11-lx-pet-indigo-blue-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/11-lx-pet-indigo-blue-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_12",
@@ -343,7 +343,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/12-lx-pet-indigo-blue-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/12-lx-pet-indigo-blue-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_13",
@@ -356,7 +356,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/13-lx-pet-dark-gray-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/13-lx-pet-dark-gray-matte.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_14",
@@ -369,7 +369,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/14-lx-pet-dark-gray-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/14-lx-pet-dark-gray-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_15",
@@ -382,7 +382,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/15-lx-pet-white-pearl.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/15-lx-pet-white-pearl.jpg') center/cover no-repeat",
   },
   {
     id: "lx_pet_16",
@@ -395,7 +395,7 @@ const LX_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/03-lx-pet/16-lx-pet-blue-pearl.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/03-lx-pet/16-lx-pet-blue-pearl.jpg') center/cover no-repeat",
   },
 ];
 
@@ -411,7 +411,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/01-hansol-pet-perfect-white.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/01-hansol-pet-perfect-white.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_02",
@@ -424,7 +424,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/02-hansol-pet-perfect-white-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/02-hansol-pet-perfect-white-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_03",
@@ -437,7 +437,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/03-hansol-pet-fog-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/03-hansol-pet-fog-gray.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_04",
@@ -450,7 +450,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/04-hansol-pet-light-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/04-hansol-pet-light-gray.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_05",
@@ -463,7 +463,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/05-hansol-pet-dove-white.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/05-hansol-pet-dove-white.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_06",
@@ -476,7 +476,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/06-hansol-pet-truepearl-white.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/06-hansol-pet-truepearl-white.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_07",
@@ -489,7 +489,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/07-hansol-pet-sand-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/07-hansol-pet-sand-gray.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_08",
@@ -502,7 +502,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/08-hansol-pet-sand-gray-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/08-hansol-pet-sand-gray-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_09",
@@ -515,7 +515,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/09-hansol-pet-cream-white.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/09-hansol-pet-cream-white.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_10",
@@ -528,7 +528,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/10-hansol-pet-cream-white-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/10-hansol-pet-cream-white-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_11",
@@ -541,7 +541,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/11-hansol-pet-satin-beige.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/11-hansol-pet-satin-beige.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_12",
@@ -554,7 +554,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/12-hansol-pet-ash-beige.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/12-hansol-pet-ash-beige.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_13",
@@ -567,7 +567,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/13-hansol-pet-rosy-pink.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/13-hansol-pet-rosy-pink.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_14",
@@ -580,7 +580,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/14-hansol-pet-lotus-pink.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/14-hansol-pet-lotus-pink.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_15",
@@ -593,7 +593,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/15-hansol-pet-mono-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/15-hansol-pet-mono-gray.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_16",
@@ -606,7 +606,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/16-hansol-pet-mono-gray-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/16-hansol-pet-mono-gray-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_17",
@@ -619,7 +619,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/17-hansol-pet-mist-green.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/17-hansol-pet-mist-green.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_18",
@@ -632,7 +632,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/18-hansol-pet-jasper-green.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/18-hansol-pet-jasper-green.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_19",
@@ -645,7 +645,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/19-hansol-pet-dark-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/19-hansol-pet-dark-gray.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_20",
@@ -658,7 +658,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/20-hansol-pet-dark-gray-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/20-hansol-pet-dark-gray-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_21",
@@ -671,7 +671,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/21-hansol-pet-cotton-blue.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/21-hansol-pet-cotton-blue.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_22",
@@ -684,7 +684,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/22-hansol-pet-smoky-olive.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/22-hansol-pet-smoky-olive.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_23",
@@ -697,7 +697,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/23-hansol-pet-indigo-blue.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/23-hansol-pet-indigo-blue.jpg') center/cover no-repeat",
   },
   {
     id: "hansol_pet_24",
@@ -710,7 +710,7 @@ const HANSOL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/04-hansol-pet/24-hansol-pet-luxe-black.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/04-hansol-pet/24-hansol-pet-luxe-black.jpg') center/cover no-repeat",
   },
 ];
 
@@ -726,7 +726,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/01-og-pet-satin-yellow-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/01-og-pet-satin-yellow-matte.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_02",
@@ -739,7 +739,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/02-og-pet-satin-yellow-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/02-og-pet-satin-yellow-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_03",
@@ -752,7 +752,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/03-og-pet-satin-coral-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/03-og-pet-satin-coral-matte.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_04",
@@ -765,7 +765,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/04-og-pet-satin-coral-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/04-og-pet-satin-coral-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_05",
@@ -778,7 +778,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/05-og-pet-cotta-mint-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/05-og-pet-cotta-mint-matte.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_06",
@@ -791,7 +791,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/06-og-pet-cotta-mint-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/06-og-pet-cotta-mint-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_07",
@@ -804,7 +804,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/07-og-pet-glam-pink-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/07-og-pet-glam-pink-matte.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_08",
@@ -817,7 +817,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/08-og-pet-glam-pink-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/08-og-pet-glam-pink-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_09",
@@ -830,7 +830,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/09-og-pet-satin-skyblue-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/09-og-pet-satin-skyblue-matte.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_10",
@@ -843,7 +843,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/10-og-pet-satin-skyblue-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/10-og-pet-satin-skyblue-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_11",
@@ -856,7 +856,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/11-og-pet-glam-lavender-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/11-og-pet-glam-lavender-matte.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_12",
@@ -869,7 +869,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/12-og-pet-glam-lavender-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/12-og-pet-glam-lavender-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_13",
@@ -882,7 +882,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/13-og-pet-mint-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/13-og-pet-mint-matte.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_14",
@@ -895,7 +895,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/14-og-pet-mint-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/14-og-pet-mint-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_15",
@@ -908,7 +908,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/15-og-pet-black-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/15-og-pet-black-matte.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_16",
@@ -921,7 +921,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/05-original-pet/16-og-pet-black-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/16-og-pet-black-glossy.jpg') center/cover no-repeat",
   },
 ];
 
@@ -937,7 +937,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/01-lpm-white-wash.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/01-lpm-white-wash.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_02",
@@ -950,7 +950,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/02-lpm-monaco.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/02-lpm-monaco.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_03",
@@ -963,7 +963,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/03-lpm-dl07.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/03-lpm-dl07.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_04",
@@ -976,7 +976,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/04-lpm-dl05.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/04-lpm-dl05.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_05",
@@ -989,7 +989,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/05-lpm-light-wood.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/05-lpm-light-wood.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_06",
@@ -1002,7 +1002,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/06-lpm-dark-wood.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/06-lpm-dark-wood.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_07",
@@ -1015,7 +1015,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/07-lpm-oak-white.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/07-lpm-oak-white.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_08",
@@ -1028,7 +1028,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/08-lpm-oak-brown.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/08-lpm-oak-brown.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_09",
@@ -1041,7 +1041,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/09-lpm-touch-white.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/09-lpm-touch-white.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_10",
@@ -1054,7 +1054,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/10-lpm-touch-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/10-lpm-touch-gray.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_11",
@@ -1067,7 +1067,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/11-lpm-touch-black.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/11-lpm-touch-black.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_12",
@@ -1080,7 +1080,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/12-lpm-sera-white.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/12-lpm-sera-white.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_13",
@@ -1093,7 +1093,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/13-lpm-sera-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/13-lpm-sera-gray.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_14",
@@ -1106,7 +1106,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/14-lpm-concrete-light-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/14-lpm-concrete-light-gray.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_15",
@@ -1119,7 +1119,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/15-lpm-concrete-gray.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/15-lpm-concrete-gray.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_16",
@@ -1132,7 +1132,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/16-lpm-white-embo.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/16-lpm-white-embo.jpg') center/cover no-repeat",
   },
   {
     id: "lpm_17",
@@ -1145,7 +1145,7 @@ const LPM_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/board/06-lpm/17-lpm-gray-embo.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/06-lpm/17-lpm-gray-embo.jpg') center/cover no-repeat",
   },
 ];
 
