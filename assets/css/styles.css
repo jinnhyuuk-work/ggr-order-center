@@ -642,12 +642,6 @@ th, td {
   border-bottom: 1px solid var(--color-border);
 }
 
-.summary-subtext {
-  font-size: 12px;
-  color: var(--color-text-sub);
-  font-weight: 400;
-}
-
 .hidden-step {
   display: none;
 }
