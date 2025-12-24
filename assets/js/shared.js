@@ -230,3 +230,324 @@ export function updateSizeErrors({
     valid: widthValid && lengthValid && length2Valid,
   };
 }
+
+export function bindSizeInputHandlers({
+  widthId,
+  lengthId,
+  handlers = [],
+  thicknessId,
+  thicknessHandlers = [],
+} = {}) {
+  const widthEl = widthId ? document.getElementById(widthId) : null;
+  const lengthEl = lengthId ? document.getElementById(lengthId) : null;
+  handlers.forEach((fn) => {
+    widthEl?.addEventListener("input", fn);
+    lengthEl?.addEventListener("input", fn);
+  });
+  if (thicknessId) {
+    const thicknessEl = document.getElementById(thicknessId);
+    thicknessHandlers.forEach((fn) => thicknessEl?.addEventListener("change", fn));
+  }
+}
+
+export function renderEstimateTable({
+  items = [],
+  tbodySelector = "#estimateTable tbody",
+  emptySelector = "#estimateEmpty",
+  getName,
+  getTotalText,
+  getDetailLines,
+  onQuantityChange,
+  onDelete,
+} = {}) {
+  const tbody = document.querySelector(tbodySelector);
+  if (!tbody) return;
+  const emptyBanner = emptySelector ? document.querySelector(emptySelector) : null;
+  tbody.innerHTML = "";
+
+  if (!items.length) {
+    if (emptyBanner) emptyBanner.style.display = "block";
+    return;
+  }
+  if (emptyBanner) emptyBanner.style.display = "none";
+
+  items.forEach((item) => {
+    const tr = document.createElement("tr");
+    const nameText = getName ? getName(item) : "";
+    const totalText = getTotalText ? getTotalText(item) : "-";
+    tr.innerHTML = `
+      <td>${nameText}</td>
+      <td>
+        <input
+          type="number"
+          class="qty-input"
+          data-id="${item.id}"
+          value="${item.quantity}"
+          min="1"
+        />
+      </td>
+      <td>
+        <div>총: ${totalText}</div>
+      </td>
+      <td><button data-id="${item.id}" class="deleteBtn">삭제</button></td>
+    `;
+    tbody.appendChild(tr);
+
+    const detailLines = getDetailLines ? getDetailLines(item) : [];
+    const detailRow = document.createElement("tr");
+    detailRow.className = "detail-row";
+    detailRow.innerHTML = `
+      <td colspan="4">
+        <div class="sub-detail">
+          ${detailLines.map((line) => `<div class="detail-line">${line}</div>`).join("")}
+        </div>
+      </td>
+    `;
+    tbody.appendChild(detailRow);
+  });
+
+  tbody.querySelectorAll(".qty-input").forEach((input) => {
+    input.addEventListener("change", (e) => {
+      const id = e.target.dataset.id;
+      const value = Math.max(1, Number(e.target.value) || 1);
+      onQuantityChange?.(id, value);
+    });
+  });
+
+  tbody.querySelectorAll(".deleteBtn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const id = e.target.dataset.id;
+      onDelete?.(id);
+    });
+  });
+}
+
+export function createServiceModalController({
+  modalId,
+  titleId,
+  bodyId,
+  errorId,
+  noteId,
+  focusTarget,
+  services,
+  state,
+  getDefaultServiceDetail,
+  cloneServiceDetails,
+  updateServiceSummary,
+  openModal,
+  closeModal,
+  onRevertSelection,
+  onAfterSave,
+  onAfterClose,
+} = {}) {
+  let draft = null;
+  let context = { serviceId: null, triggerCheckbox: null, mode: null };
+
+  const setError = (message = "") => {
+    const errEl = errorId ? document.querySelector(errorId) : null;
+    if (errEl) errEl.textContent = message || "";
+  };
+
+  const renderHoleModal = (serviceId) => {
+    const body = bodyId ? document.querySelector(bodyId) : null;
+    const srv = services?.[serviceId];
+    if (!body || !srv) return;
+    const normalized = srv.normalizeDetail(draft);
+    const holes =
+      Array.isArray(normalized?.holes) && normalized.holes.length > 0
+        ? normalized.holes
+        : srv.defaultDetail().holes;
+    draft = { ...normalized, holes: holes.map((h) => ({ ...h })) };
+
+    const rowsHtml = holes
+      .map(
+        (hole, idx) => `
+          <div class="service-row">
+            <div class="service-row-header">
+              <span>${srv.label} ${idx + 1}</span>
+              ${
+                holes.length > 1
+                  ? `<button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>`
+                  : ""
+              }
+            </div>
+            <div class="service-field-grid">
+              <div>
+                <label>측면</label>
+                <select class="service-input" data-field="edge" data-index="${idx}">
+                  <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
+                  <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
+                </select>
+              </div>
+              <div>
+                <label>가로(mm)</label>
+                <input
+                  type="number"
+                  class="service-input"
+                  data-field="distance"
+                  data-index="${idx}"
+                  value="${hole.distance ?? ""}"
+                  min="1"
+                />
+              </div>
+              <div>
+                <label>세로 기준</label>
+                <select class="service-input" data-field="verticalRef" data-index="${idx}">
+                  <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
+                  <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
+                </select>
+              </div>
+              <div>
+                <label>세로(mm)</label>
+                <input
+                  type="number"
+                  class="service-input"
+                  data-field="verticalDistance"
+                  data-index="${idx}"
+                  value="${hole.verticalDistance ?? ""}"
+                  min="1"
+                />
+              </div>
+            </div>
+          </div>
+        `
+      )
+      .join("");
+
+    body.innerHTML = `
+      <p class="service-option-tip">${srv.label} 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
+      ${rowsHtml}
+      <div class="service-actions">
+        <button type="button" class="secondary-btn" data-add-hole>위치 추가</button>
+      </div>
+      <div>
+        <label>추가 메모 (선택)</label>
+        <textarea class="service-textarea" id="${noteId}">${draft?.note || ""}</textarea>
+      </div>
+    `;
+
+    body.querySelectorAll("[data-field]").forEach((input) => {
+      input.addEventListener("input", (e) => {
+        const idx = Number(e.target.dataset.index);
+        const field = e.target.dataset.field;
+        if (Number.isNaN(idx) || !field) return;
+        if (!draft.holes[idx]) {
+          draft.holes[idx] = { edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 };
+        }
+        if (field === "edge") draft.holes[idx].edge = e.target.value === "right" ? "right" : "left";
+        if (field === "distance") draft.holes[idx].distance = Number(e.target.value);
+        if (field === "verticalRef")
+          draft.holes[idx].verticalRef = e.target.value === "bottom" ? "bottom" : "top";
+        if (field === "verticalDistance") draft.holes[idx].verticalDistance = Number(e.target.value);
+      });
+    });
+
+    const noteEl = body.querySelector(`#${noteId}`);
+    if (noteEl) {
+      noteEl.addEventListener("input", (e) => {
+        draft.note = e.target.value;
+      });
+    }
+
+    const addBtn = body.querySelector("[data-add-hole]");
+    if (addBtn) {
+      addBtn.addEventListener("click", () => {
+        draft.holes.push({
+          edge: "left",
+          distance: 100,
+          verticalRef: "top",
+          verticalDistance: 100,
+        });
+        renderHoleModal(serviceId);
+      });
+    }
+
+    body.querySelectorAll(".remove-hole").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const idx = Number(e.target.dataset.index);
+        if (Number.isNaN(idx)) return;
+        draft.holes.splice(idx, 1);
+        if (draft.holes.length === 0) {
+          draft.holes.push({
+            edge: "left",
+            distance: 100,
+            verticalRef: "top",
+            verticalDistance: 100,
+          });
+        }
+        renderHoleModal(serviceId);
+      });
+    });
+  };
+
+  const renderContent = (serviceId) => {
+    const titleEl = titleId ? document.querySelector(titleId) : null;
+    const srv = services?.[serviceId];
+    if (titleEl) titleEl.textContent = srv?.label || "가공 옵션 설정";
+    setError("");
+    if (!draft) {
+      draft = getDefaultServiceDetail?.(serviceId) || { note: "" };
+    }
+    if (srv?.hasDetail()) {
+      renderHoleModal(serviceId);
+      return;
+    }
+    const body = bodyId ? document.querySelector(bodyId) : null;
+    if (body) {
+      body.innerHTML = `<p class="service-option-tip">선택한 가공의 세부 설정을 입력해주세요.</p>`;
+    }
+  };
+
+  const open = (serviceId, triggerCheckbox, mode = "change") => {
+    const srv = services?.[serviceId];
+    if (!srv?.hasDetail()) return;
+    context = { serviceId, triggerCheckbox, mode };
+    draft =
+      cloneServiceDetails?.(state?.serviceDetails?.[serviceId]) ||
+      getDefaultServiceDetail?.(serviceId) ||
+      { note: "" };
+    renderContent(serviceId);
+    openModal?.(modalId, { focusTarget });
+  };
+
+  const close = (revertSelection = true) => {
+    closeModal?.(modalId);
+    setError("");
+    if (revertSelection && context.mode === "change" && context.triggerCheckbox) {
+      context.triggerCheckbox.checked = false;
+      context.triggerCheckbox.closest(".service-card")?.classList.remove("selected");
+      if (state?.serviceDetails) {
+        delete state.serviceDetails[context.serviceId];
+      }
+      updateServiceSummary?.(context.serviceId);
+      onRevertSelection?.();
+    }
+    draft = null;
+    context = { serviceId: null, triggerCheckbox: null, mode: null };
+    onAfterClose?.();
+  };
+
+  const save = () => {
+    const serviceId = context.serviceId;
+    const srv = services?.[serviceId];
+    if (!serviceId || !srv) return;
+    setError("");
+    if (srv.hasDetail()) {
+      const validation = srv.validateDetail(draft);
+      if (!validation.ok) {
+        setError(validation.message || "세부 옵션을 확인해주세요.");
+        return;
+      }
+      state.serviceDetails[serviceId] = cloneServiceDetails(validation.detail);
+    } else {
+      state.serviceDetails[serviceId] = srv.normalizeDetail
+        ? cloneServiceDetails(srv.normalizeDetail(draft))
+        : null;
+    }
+    updateServiceSummary?.(serviceId);
+    onAfterSave?.();
+    close(false);
+  };
+
+  return { open, close, save };
+}

@@ -19,6 +19,9 @@ import {
   getEmailJSInstance,
   getTieredPrice,
   updateSizeErrors,
+  bindSizeInputHandlers,
+  renderEstimateTable,
+  createServiceModalController,
 } from "./shared.js";
 
 class BaseService {
@@ -354,8 +357,6 @@ const categories = Array.from(
 );
 let selectedCategory = categories[0];
 let selectedMaterialId = "";
-let serviceModalDraft = null;
-let serviceModalContext = { serviceId: null, triggerCheckbox: null, mode: null };
 
 function cloneServiceDetails(details) {
   return JSON.parse(JSON.stringify(details || {}));
@@ -938,94 +939,47 @@ function goToPrevStep() {
 }
 
 function renderTable() {
-  const tbody = $("#estimateTable tbody");
-  tbody.innerHTML = "";
-  const emptyBanner = $("#estimateEmpty");
-
-  if (state.items.length === 0) {
-    if (emptyBanner) emptyBanner.style.display = "block";
-    return;
-  }
-  if (emptyBanner) emptyBanner.style.display = "none";
-
   const formatItemTotal = (item) =>
     item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
   const formatItemMaterial = (item) =>
     item.isCustomPrice ? "상담 안내" : `${item.materialCost.toLocaleString()}원`;
 
-  state.items.forEach((item) => {
-    const tr = document.createElement("tr");
-
-    const isAddon = item.type === "addon";
-    const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
-
-    const materialName = isAddon
-      ? addonInfo?.name || "부자재"
-      : MATERIALS[item.materialId].name;
-    const sizeText = isAddon
-      ? "-"
-      : `${item.thickness}T / ${item.width}×${item.length}mm`;
-    const servicesText = isAddon ? "-" : formatServiceList(item.services, item.serviceDetails);
-
-    tr.innerHTML = `
-      <td>${escapeHtml(materialName)}</td>
-      <td>
-        <input
-          type="number"
-          class="qty-input"
-          data-id="${item.id}"
-          value="${item.quantity}"
-          min="1"
-        />
-      </td>
-      <td>
-        <div>총: ${formatItemTotal(item)}</div>
-      </td>
-      <td><button data-id="${item.id}" class="deleteBtn">삭제</button></td>
-    `;
-
-    tbody.appendChild(tr);
-
-    const detailRow = document.createElement("tr");
-    detailRow.className = "detail-row";
-    if (isAddon) {
-      detailRow.innerHTML = `
-        <td colspan="4">
-          <div class="sub-detail">
-            <div class="detail-line">부자재 ${escapeHtml(materialName)}</div>
-            <div class="detail-line">상품가 ${item.materialCost.toLocaleString()}원</div>
-          </div>
-        </td>
-      `;
-    } else {
-      detailRow.innerHTML = `
-        <td colspan="4">
-          <div class="sub-detail">
-            <div class="detail-line">주문크기 ${escapeHtml(sizeText)} · 가공 ${escapeHtml(servicesText)}</div>
-          <div class="detail-line">도어비 ${formatItemMaterial(item)} · 가공비 ${item.processingCost.toLocaleString()}원</div>
-          </div>
-        </td>
-      `;
-    }
-    tbody.appendChild(detailRow);
-  });
-
-  // 수량 변경
-  $$("#estimateTable .qty-input").forEach((input) => {
-    input.addEventListener("change", (e) => {
-      const id = e.target.dataset.id;
-      const value = Math.max(1, Number(e.target.value) || 1);
-      updateItemQuantity(id, value);
-    });
-  });
-
-  $$("#estimateTable .deleteBtn").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const id = e.target.dataset.id;
+  renderEstimateTable({
+    items: state.items,
+    getName: (item) => {
+      const isAddon = item.type === "addon";
+      const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
+      const materialName = isAddon
+        ? addonInfo?.name || "부자재"
+        : MATERIALS[item.materialId].name;
+      return escapeHtml(materialName);
+    },
+    getTotalText: (item) => formatItemTotal(item),
+    getDetailLines: (item) => {
+      const isAddon = item.type === "addon";
+      const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
+      const materialName = isAddon
+        ? addonInfo?.name || "부자재"
+        : MATERIALS[item.materialId].name;
+      if (isAddon) {
+        return [
+          `부자재 ${escapeHtml(materialName)}`,
+          `상품가 ${item.materialCost.toLocaleString()}원`,
+        ];
+      }
+      const sizeText = `${item.thickness}T / ${item.width}×${item.length}mm`;
+      const servicesText = formatServiceList(item.services, item.serviceDetails);
+      return [
+        `주문크기 ${escapeHtml(sizeText)} · 가공 ${escapeHtml(servicesText)}`,
+        `도어비 ${formatItemMaterial(item)} · 가공비 ${item.processingCost.toLocaleString()}원`,
+      ];
+    },
+    onQuantityChange: (id, value) => updateItemQuantity(id, value),
+    onDelete: (id) => {
       state.items = state.items.filter((it) => it.id !== id);
       renderTable();
       renderSummary();
-    });
+    },
   });
 }
 
@@ -1476,209 +1430,44 @@ function updateSelectedMaterialLabel() {
   `;
 }
 
-function setServiceModalError(message) {
-  const errEl = $("#serviceModalError");
-  if (errEl) errEl.textContent = message || "";
-}
-
-function renderHoleModal(serviceId) {
-  const body = $("#serviceModalBody");
-  const srv = SERVICES[serviceId];
-  if (!body || !srv) return;
-  const normalized = srv.normalizeDetail(serviceModalDraft);
-  const holes =
-    Array.isArray(normalized?.holes) && normalized.holes.length > 0
-      ? normalized.holes
-      : srv.defaultDetail().holes;
-  serviceModalDraft = { ...normalized, holes: holes.map((h) => ({ ...h })) };
-
-  const rowsHtml = holes
-    .map(
-      (hole, idx) => `
-        <div class="service-row">
-          <div class="service-row-header">
-            <span>${srv.label} ${idx + 1}</span>
-            ${
-              holes.length > 1
-                ? `<button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>`
-                : ""
-            }
-          </div>
-          <div class="service-field-grid">
-            <div>
-              <label>측면</label>
-              <select class="service-input" data-field="edge" data-index="${idx}">
-                <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
-                <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
-              </select>
-            </div>
-            <div>
-              <label>가로(mm)</label>
-              <input
-                type="number"
-                class="service-input"
-                data-field="distance"
-                data-index="${idx}"
-                value="${hole.distance ?? ""}"
-                min="1"
-              />
-            </div>
-            <div>
-              <label>세로 기준</label>
-              <select class="service-input" data-field="verticalRef" data-index="${idx}">
-                <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
-                <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
-              </select>
-            </div>
-            <div>
-              <label>세로(mm)</label>
-              <input
-                type="number"
-                class="service-input"
-                data-field="verticalDistance"
-                data-index="${idx}"
-                value="${hole.verticalDistance ?? ""}"
-                min="1"
-              />
-            </div>
-          </div>
-        </div>
-      `
-    )
-    .join("");
-
-  body.innerHTML = `
-    <p class="service-option-tip">${srv.label} 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
-    ${rowsHtml}
-    <div class="service-actions">
-      <button type="button" class="secondary-btn" data-add-hole>위치 추가</button>
-    </div>
-    <div>
-      <label>추가 메모 (선택)</label>
-      <textarea class="service-textarea" id="serviceNote">${serviceModalDraft?.note || ""}</textarea>
-    </div>
-  `;
-
-  body.querySelectorAll("[data-field]").forEach((input) => {
-    input.addEventListener("input", (e) => {
-      const idx = Number(e.target.dataset.index);
-      const field = e.target.dataset.field;
-      if (Number.isNaN(idx) || !field) return;
-      if (!serviceModalDraft.holes[idx]) {
-        serviceModalDraft.holes[idx] = { edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 };
-      }
-      if (field === "edge") serviceModalDraft.holes[idx].edge = e.target.value === "right" ? "right" : "left";
-      if (field === "distance") serviceModalDraft.holes[idx].distance = Number(e.target.value);
-      if (field === "verticalRef")
-        serviceModalDraft.holes[idx].verticalRef = e.target.value === "bottom" ? "bottom" : "top";
-      if (field === "verticalDistance") serviceModalDraft.holes[idx].verticalDistance = Number(e.target.value);
-    });
-  });
-
-  const noteEl = body.querySelector("#serviceNote");
-  if (noteEl) {
-    noteEl.addEventListener("input", (e) => {
-      serviceModalDraft.note = e.target.value;
-    });
-  }
-
-  const addBtn = body.querySelector("[data-add-hole]");
-  if (addBtn) {
-    addBtn.addEventListener("click", () => {
-      serviceModalDraft.holes.push({
-        edge: "left",
-        distance: 100,
-        verticalRef: "top",
-        verticalDistance: 100,
-      });
-      renderHoleModal(serviceId);
-    });
-  }
-
-  body.querySelectorAll(".remove-hole").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const idx = Number(e.target.dataset.index);
-      if (Number.isNaN(idx)) return;
-      serviceModalDraft.holes.splice(idx, 1);
-      if (serviceModalDraft.holes.length === 0) {
-        serviceModalDraft.holes.push({
-          edge: "left",
-          distance: 100,
-          verticalRef: "top",
-          verticalDistance: 100,
-        });
-      }
-      renderHoleModal(serviceId);
-    });
-  });
-}
-
-function renderServiceModalContent(serviceId) {
-  const titleEl = $("#serviceModalTitle");
-  const srv = SERVICES[serviceId];
-  if (titleEl) titleEl.textContent = srv?.label || "가공 옵션 설정";
-  setServiceModalError("");
-  if (!serviceModalDraft) {
-    serviceModalDraft = getDefaultServiceDetail(serviceId);
-  }
-  if (srv?.hasDetail()) {
-    renderHoleModal(serviceId);
-    return;
-  }
-  const body = $("#serviceModalBody");
-  if (body) {
-    body.innerHTML = `<p class="service-option-tip">선택한 가공의 세부 설정을 입력해주세요.</p>`;
-  }
-}
+const serviceModalController = createServiceModalController({
+  modalId: "#serviceModal",
+  titleId: "#serviceModalTitle",
+  bodyId: "#serviceModalBody",
+  errorId: "#serviceModalError",
+  noteId: "serviceNote",
+  focusTarget: "#serviceModalTitle",
+  services: SERVICES,
+  state,
+  getDefaultServiceDetail,
+  cloneServiceDetails,
+  updateServiceSummary,
+  openModal,
+  closeModal,
+  onRevertSelection: () => {
+    autoCalculatePrice();
+    updateAddItemState();
+  },
+  onAfterSave: () => {
+    autoCalculatePrice();
+    updateAddItemState();
+    updatePreview();
+  },
+  onAfterClose: () => {
+    updatePreview();
+  },
+});
 
 function openServiceModal(serviceId, triggerCheckbox, mode = "change") {
-  const srv = SERVICES[serviceId];
-  if (!srv?.hasDetail()) return;
-  serviceModalContext = { serviceId, triggerCheckbox, mode };
-  serviceModalDraft = cloneServiceDetails(state.serviceDetails[serviceId]) || getDefaultServiceDetail(serviceId);
-  renderServiceModalContent(serviceId);
-  openModal("#serviceModal", { focusTarget: "#serviceModalTitle" });
+  serviceModalController.open(serviceId, triggerCheckbox, mode);
 }
 
 function closeServiceModal(revertSelection = true) {
-  closeModal("#serviceModal");
-  setServiceModalError("");
-  if (revertSelection && serviceModalContext.mode === "change" && serviceModalContext.triggerCheckbox) {
-    serviceModalContext.triggerCheckbox.checked = false;
-    serviceModalContext.triggerCheckbox.closest(".service-card")?.classList.remove("selected");
-    delete state.serviceDetails[serviceModalContext.serviceId];
-    updateServiceSummary(serviceModalContext.serviceId);
-    autoCalculatePrice();
-    updateAddItemState();
-  }
-  serviceModalDraft = null;
-  serviceModalContext = { serviceId: null, triggerCheckbox: null, mode: null };
-  updatePreview();
+  serviceModalController.close(revertSelection);
 }
 
 function saveServiceModal() {
-  const serviceId = serviceModalContext.serviceId;
-  const srv = SERVICES[serviceId];
-  if (!serviceId || !srv) return;
-  setServiceModalError("");
-  if (srv.hasDetail()) {
-    const validation = srv.validateDetail(serviceModalDraft);
-    if (!validation.ok) {
-      setServiceModalError(validation.message || "세부 옵션을 확인해주세요.");
-      return;
-    }
-    state.serviceDetails[serviceId] = cloneServiceDetails(validation.detail);
-  } else {
-    state.serviceDetails[serviceId] = srv.normalizeDetail
-      ? cloneServiceDetails(srv.normalizeDetail(serviceModalDraft))
-      : null;
-  }
-
-  updateServiceSummary(serviceId);
-  autoCalculatePrice();
-  updateAddItemState();
-  updatePreview();
-  closeServiceModal(false);
+  serviceModalController.save();
 }
 
 function openMaterialModal() {
@@ -1759,29 +1548,24 @@ function init() {
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
 
-  $("#widthInput").addEventListener("input", validateSizeFields);
-  $("#lengthInput").addEventListener("input", validateSizeFields);
-  $("#widthInput").addEventListener("input", resetServiceOptions);
-  $("#lengthInput").addEventListener("input", resetServiceOptions);
-  $("#widthInput").addEventListener("input", autoCalculatePrice);
-  $("#lengthInput").addEventListener("input", autoCalculatePrice);
-  $("#widthInput").addEventListener("input", updatePreview);
-  $("#lengthInput").addEventListener("input", updatePreview);
-  $("#widthInput").addEventListener("input", () => {
+  const handleSizeInputChange = () => {
     updateModalCardPreviews();
     updateSelectedMaterialLabel();
-  });
-  $("#lengthInput").addEventListener("input", () => {
-    updateModalCardPreviews();
-    updateSelectedMaterialLabel();
-  });
-  $("#thicknessSelect").addEventListener("change", () => {
-    resetServiceOptions();
-    autoCalculatePrice();
-    updatePreview();
-    updateSelectedMaterialLabel();
-    const selected = MATERIALS[selectedMaterialId];
-    updateSizePlaceholders(selected);
+  };
+
+  bindSizeInputHandlers({
+    widthId: "widthInput",
+    lengthId: "lengthInput",
+    handlers: [validateSizeFields, resetServiceOptions, autoCalculatePrice, updatePreview, handleSizeInputChange],
+    thicknessId: "thicknessSelect",
+    thicknessHandlers: [() => {
+      resetServiceOptions();
+      autoCalculatePrice();
+      updatePreview();
+      updateSelectedMaterialLabel();
+      const selected = MATERIALS[selectedMaterialId];
+      updateSizePlaceholders(selected);
+    }],
   });
   $("#openMaterialModal").addEventListener("click", openMaterialModal);
   $("#closeMaterialModal").addEventListener("click", closeMaterialModal);
