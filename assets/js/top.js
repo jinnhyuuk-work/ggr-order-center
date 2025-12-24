@@ -8,6 +8,7 @@ import {
   updateSendButtonEnabled as updateSendButtonEnabledShared,
   isConsentChecked,
   getEmailJSInstance,
+  updateSizeErrors,
 } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
 
@@ -931,6 +932,23 @@ function updateAddButtonState() {
 function refreshTopEstimate() {
   const priceEl = $("#topEstimateText");
   const input = readTopInputs();
+  const type = TOP_TYPES.find((t) => t.id === input.typeId);
+  const needsSecond = input.shape === "l" || input.shape === "rl";
+  updateSizeErrors({
+    widthId: "topWidth",
+    lengthId: "topLength",
+    length2Id: "topLength2",
+    widthErrorId: "topWidthError",
+    lengthErrorId: "topLengthError",
+    length2ErrorId: "topLength2Error",
+    widthMin: type?.minWidth,
+    widthMax: type?.maxWidth,
+    lengthMin: type?.minLength,
+    lengthMax: type?.maxLength,
+    length2Min: type?.minLength,
+    length2Max: type?.maxLength,
+    enableLength2: needsSecond,
+  });
   const detail = calcTopDetail(input);
   if (detail.error) {
     priceEl.textContent = detail.error;

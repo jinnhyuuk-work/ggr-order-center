@@ -18,6 +18,7 @@ import {
   isConsentChecked,
   getEmailJSInstance,
   getTieredPrice,
+  updateSizeErrors,
 } from "./shared.js";
 
 class BaseService {
@@ -1300,51 +1301,25 @@ function updateThicknessOptions(materialId) {
 }
 
 function validateSizeFields() {
-  const widthEl = $("#widthInput");
-  const lengthEl = $("#lengthInput");
-  const widthErrEl = $("#widthError");
-  const lengthErrEl = $("#lengthError");
   const calcBtn = $("#calcItemBtn");
-  const addBtn = $("#addItemBtn");
-
-  const widthVal = Number(widthEl.value);
-  const lengthVal = Number(lengthEl.value);
   const mat = MATERIALS[selectedMaterialId];
-
-  let widthValid = true;
-  let lengthValid = true;
-
   const widthMin = mat?.minWidth ?? WIDTH_MIN;
   const widthMax = mat?.maxWidth ?? WIDTH_MAX;
   const lengthMin = mat?.minLength ?? LENGTH_MIN;
   const lengthMax = mat?.maxLength ?? LENGTH_MAX;
 
-  const widthHint = `폭: ${widthMin}~${widthMax}mm`;
-  const lengthHint = `길이: ${lengthMin}~${lengthMax}mm`;
+  const { valid } = updateSizeErrors({
+    widthId: "widthInput",
+    lengthId: "lengthInput",
+    widthErrorId: "widthError",
+    lengthErrorId: "lengthError",
+    widthMin,
+    widthMax,
+    lengthMin,
+    lengthMax,
+  });
 
-  widthErrEl.textContent = "";
-  lengthErrEl.textContent = "";
-  widthErrEl.classList.remove("error");
-  lengthErrEl.classList.remove("error");
-  widthEl.classList.remove("input-error");
-  lengthEl.classList.remove("input-error");
-
-  if (widthEl.value && (widthVal < widthMin || widthVal > widthMax)) {
-    widthValid = false;
-    widthErrEl.textContent = `${widthHint} 범위로 입력해주세요.`;
-    widthErrEl.classList.add("error");
-    widthEl.classList.add("input-error");
-  }
-
-  if (lengthEl.value && (lengthVal < lengthMin || lengthVal > lengthMax)) {
-    lengthValid = false;
-    lengthErrEl.textContent = `${lengthHint} 범위로 입력해주세요.`;
-    lengthErrEl.classList.add("error");
-    lengthEl.classList.add("input-error");
-  }
-
-  const disable = !widthValid || !lengthValid;
-  if (calcBtn) calcBtn.disabled = disable;
+  if (calcBtn) calcBtn.disabled = !valid;
   updateAddItemState();
 }
 

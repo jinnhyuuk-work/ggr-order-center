@@ -148,3 +148,85 @@ export function formatTierLabel(tiers = [], customLabel = "상담 안내") {
     .join(" / ");
   return `${tierText} / ${customLabel}`;
 }
+
+export function updateSizeErrors({
+  widthId,
+  lengthId,
+  length2Id,
+  widthErrorId,
+  lengthErrorId,
+  length2ErrorId,
+  widthMin,
+  widthMax,
+  lengthMin,
+  lengthMax,
+  length2Min,
+  length2Max,
+  enableLength2 = false,
+} = {}) {
+  const widthEl = widthId ? document.getElementById(widthId) : null;
+  const lengthEl = lengthId ? document.getElementById(lengthId) : null;
+  const length2El = length2Id ? document.getElementById(length2Id) : null;
+  const widthErrEl = widthErrorId ? document.getElementById(widthErrorId) : null;
+  const lengthErrEl = lengthErrorId ? document.getElementById(lengthErrorId) : null;
+  const length2ErrEl = length2ErrorId ? document.getElementById(length2ErrorId) : null;
+
+  const clearField = (el, errEl) => {
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.classList.remove("error");
+    }
+    el?.classList.remove("input-error");
+  };
+
+  clearField(widthEl, widthErrEl);
+  clearField(lengthEl, lengthErrEl);
+  clearField(length2El, length2ErrEl);
+
+  let widthValid = true;
+  let lengthValid = true;
+  let length2Valid = true;
+
+  if (widthEl?.value && Number.isFinite(widthMin) && Number.isFinite(widthMax)) {
+    const widthVal = Number(widthEl.value);
+    if (widthVal < widthMin || widthVal > widthMax) {
+      widthValid = false;
+      if (widthErrEl) {
+        widthErrEl.textContent = `폭: ${widthMin}~${widthMax}mm 범위로 입력해주세요.`;
+        widthErrEl.classList.add("error");
+      }
+      widthEl.classList.add("input-error");
+    }
+  }
+
+  if (lengthEl?.value && Number.isFinite(lengthMin) && Number.isFinite(lengthMax)) {
+    const lengthVal = Number(lengthEl.value);
+    if (lengthVal < lengthMin || lengthVal > lengthMax) {
+      lengthValid = false;
+      if (lengthErrEl) {
+        lengthErrEl.textContent = `길이: ${lengthMin}~${lengthMax}mm 범위로 입력해주세요.`;
+        lengthErrEl.classList.add("error");
+      }
+      lengthEl.classList.add("input-error");
+    }
+  }
+
+  if (enableLength2 && length2El?.value && Number.isFinite(length2Min) && Number.isFinite(length2Max)) {
+    const length2Val = Number(length2El.value);
+    if (length2Val < length2Min || length2Val > length2Max) {
+      length2Valid = false;
+      if (length2ErrEl) {
+        length2ErrEl.textContent = `길이2: ${length2Min}~${length2Max}mm 범위로 입력해주세요.`;
+        length2ErrEl.classList.add("error");
+      }
+      length2El.classList.add("input-error");
+    }
+  }
+
+  return {
+    widthValid,
+    lengthValid,
+    length2Valid,
+    valid: widthValid && lengthValid && length2Valid,
+  };
+}
