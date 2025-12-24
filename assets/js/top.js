@@ -1087,6 +1087,9 @@ function updateTopPreview(input, detail) {
     colorEl.style.background = "#ddd";
     colorEl.style.width = "120px";
     colorEl.style.height = "120px";
+    colorEl.style.setProperty("--cutout-alpha", "0");
+    colorEl.style.setProperty("--cutout-w", "0px");
+    colorEl.style.setProperty("--cutout-h", "0px");
     colorEl.style.clipPath = "none";
     textEl.textContent = "상판과 사이즈를 선택하면 미리보기가 표시됩니다.";
     return;
@@ -1139,9 +1142,23 @@ function updateTopPreview(input, detail) {
       )`;
     }
 
+    const cutoutW = Math.max(0, overallPxW - widthPx);
+    const cutoutH = Math.max(0, length2Px - widthPx);
+    const cutoutX = isL ? 0 : widthPx;
+    const cutoutY = widthPx;
+    const cutoutAlpha = cutoutW > 0 && cutoutH > 0 ? 1 : 0;
+    colorEl.style.setProperty("--cutout-x", `${cutoutX}px`);
+    colorEl.style.setProperty("--cutout-y", `${cutoutY}px`);
+    colorEl.style.setProperty("--cutout-w", `${cutoutW}px`);
+    colorEl.style.setProperty("--cutout-h", `${cutoutH}px`);
+    colorEl.style.setProperty("--cutout-alpha", String(cutoutAlpha));
+
   } else {
     colorEl.style.background = swatch;
     colorEl.style.clipPath = "none";
+    colorEl.style.setProperty("--cutout-alpha", "0");
+    colorEl.style.setProperty("--cutout-w", "0px");
+    colorEl.style.setProperty("--cutout-h", "0px");
 
     const { w, h } = getPreviewDimensions(input.length, input.width, 180, 40);
     colorEl.style.width = `${w}px`;
