@@ -1056,16 +1056,18 @@ function updateItemQuantity(id, quantity) {
 }
 function renderSummary() {
   const summary = calcOrderSummary(state.items);
+  const hasCustom = state.items.some((item) => item.isCustomPrice);
+  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
 
   const materialsTotalEl = $("#materialsTotal");
   if (materialsTotalEl) materialsTotalEl.textContent = summary.materialsTotal.toLocaleString();
-  $("#grandTotal").textContent = summary.grandTotal.toLocaleString();
+  $("#grandTotal").textContent = `${summary.grandTotal.toLocaleString()}${suffix}`;
 
   const shippingEl = document.getElementById("shippingCost");
   if (shippingEl) shippingEl.textContent = summary.shippingCost.toLocaleString();
 
   const naverUnits = Math.ceil(summary.grandTotal / 1000);
-  $("#naverUnits").textContent = naverUnits;
+  $("#naverUnits").textContent = `${naverUnits}${suffix}`;
   updateSendButtonEnabled();
 }
 
@@ -1106,7 +1108,9 @@ function buildEmailContent() {
   lines.push("");
   lines.push("[합계]");
   lines.push(`도어비: ${summary.materialsTotal.toLocaleString()}원`);
-  lines.push(`총결제금액: ${summary.grandTotal.toLocaleString()}원`);
+  const hasCustom = state.items.some((item) => item.isCustomPrice);
+  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
+  lines.push(`예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}`);
   lines.push(`예상무게: ${summary.totalWeight.toFixed(2)}kg`);
 
   const subject = `[GGR 견적요청] ${customer.name || "고객명"} (${customer.phone || "연락처"})`;
@@ -1229,7 +1233,9 @@ function renderOrderCompleteDetails() {
     </div>
     <div class="complete-section">
       <h4>합계</h4>
-      <p>총결제금액: ${summary.grandTotal.toLocaleString()}원</p>
+      <p>예상 결제금액: ${summary.grandTotal.toLocaleString()}원${
+        state.items.some((item) => item.isCustomPrice) ? "(상담 필요 품목 미포함)" : ""
+      }</p>
       <p>도어비: ${summary.materialsTotal.toLocaleString()}원</p>
       <p>예상무게: ${summary.totalWeight.toFixed(2)}kg</p>
     </div>

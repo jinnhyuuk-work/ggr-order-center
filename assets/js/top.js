@@ -683,11 +683,13 @@ function renderTable() {
 function renderSummary() {
   const materialsTotal = state.items.reduce((sum, it) => sum + it.subtotal, 0);
   const grandTotal = state.items.reduce((sum, it) => sum + it.total, 0);
+  const hasCustom = state.items.some((item) => item.isCustomPrice);
+  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
   const grandEl = $("#grandTotal");
-  if (grandEl) grandEl.textContent = grandTotal.toLocaleString();
+  if (grandEl) grandEl.textContent = `${grandTotal.toLocaleString()}${suffix}`;
   const naverUnits = Math.ceil(grandTotal / 1000) || 0;
   const naverEl = $("#naverUnits");
-  if (naverEl) naverEl.textContent = naverUnits;
+  if (naverEl) naverEl.textContent = `${naverUnits}${suffix}`;
   updateSendButtonEnabled();
 }
 
@@ -727,7 +729,9 @@ function renderOrderCompleteDetails() {
     </div>
     <div class="complete-section">
       <h4>합계</h4>
-      <p>총결제금액: ${grandTotal.toLocaleString()}원</p>
+      <p>예상 결제금액: ${grandTotal.toLocaleString()}원${
+        state.items.some((item) => item.isCustomPrice) ? "(상담 필요 품목 미포함)" : ""
+      }</p>
     </div>
   `;
 }
@@ -1220,7 +1224,9 @@ function buildEmailContent() {
   lines.push("");
   lines.push("[합계]");
   lines.push(`상판 금액 합계: ${materialsTotal.toLocaleString()}원`);
-  lines.push(`총결제금액: ${grandTotal.toLocaleString()}원`);
+  const hasCustom = state.items.some((item) => item.isCustomPrice);
+  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
+  lines.push(`예상 결제금액: ${grandTotal.toLocaleString()}원${suffix}`);
 
   const subject = `[GGR 상판 견적요청] ${customer.name || "고객명"} (${customer.phone || "연락처"})`;
   return {
