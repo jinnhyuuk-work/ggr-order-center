@@ -362,7 +362,7 @@ const state = {
 let currentPhase = 1; // 1: 합판/가공, 2: 부자재, 3: 고객 정보
 let sendingEmail = false;
 let orderCompleted = false;
-const EXTRA_CATEGORIES = ["LX SMR PET", "LX Texture PET", "LX PET", "Hansol PET", "Original PET", "LPM"];
+const EXTRA_CATEGORIES = ["LPM", "PP"];
 const categories = Array.from(
   new Set(
     [...Object.values(MATERIALS).map((m) => m.category || "기타"), ...EXTRA_CATEGORIES]
