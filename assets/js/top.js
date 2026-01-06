@@ -1146,6 +1146,7 @@ function goToNextStep() {
     }
     currentPhase = 2;
     updateStepVisibility(document.getElementById("step4"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
   if (currentPhase === 2) {
@@ -1156,6 +1157,7 @@ function goToNextStep() {
     }
     currentPhase = 3;
     updateStepVisibility(document.getElementById("step5"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 
@@ -1163,6 +1165,7 @@ function goToPrevStep() {
   if (currentPhase === 1) return;
   currentPhase -= 1;
   updateStepVisibility();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function resetOrderCompleteUI() {

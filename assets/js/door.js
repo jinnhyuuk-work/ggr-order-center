@@ -951,6 +951,7 @@ function goToNextStep() {
   if (currentPhase === 1) {
     currentPhase = 2;
     updateStepVisibility(document.getElementById("step4"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
   if (currentPhase === 2) {
@@ -962,6 +963,7 @@ function goToNextStep() {
     }
     currentPhase = 3;
     updateStepVisibility(document.getElementById("step5"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
 }
@@ -971,9 +973,11 @@ function goToPrevStep() {
   currentPhase -= 1;
   if (currentPhase === 2) {
     updateStepVisibility(document.getElementById("step4"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
   updateStepVisibility(document.getElementById("step1"));
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function renderTable() {

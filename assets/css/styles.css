@@ -46,7 +46,7 @@
   --font-size-body: clamp(15px, 1.2vw, 17px);
   --font-size-lg: clamp(18px, 1.6vw, 22px);
   --font-size-md: clamp(16px, 1.3vw, 18px);
-  --font-size-sm: clamp(13px, 1vw, 15px);
+  --font-size-sm: clamp(12px, 1vw, 15px);
   --font-size-xs: clamp(12px, 0.9vw, 13px);
 }
 
