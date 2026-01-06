@@ -14,6 +14,8 @@ import {
   renderSelectedCard,
   renderSelectedAddonChips,
   updateServiceSummaryChip,
+  initCollapsibleSections,
+  updatePreviewSummary,
   buildEstimateDetailLines,
 } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
@@ -206,6 +208,10 @@ const TOP_CATEGORIES = Array.from(new Set(TOP_TYPES.map((t) => t.category || "�
 let selectedTopCategory = TOP_CATEGORIES[0] || "기타";
 let currentPhase = 1; // 1: 상판/가공, 2: 부자재, 3: 고객정보
 const state = { items: [], serviceDetails: {}, addons: [] };
+const previewSummaryConfig = {
+  optionSelector: "#topOptionCards input:checked",
+  serviceSelector: 'input[name="service"]:checked',
+};
 let sendingEmail = false;
 let orderCompleted = false;
 const DEFAULT_TOP_THICKNESSES = [12, 24, 30, 40, 50];
@@ -494,12 +500,12 @@ function renderOptions() {
   container.querySelectorAll("input[type='checkbox']").forEach((input) => {
     input.closest(".option-card")?.classList.toggle("selected", input.checked);
   });
-  updateOptionHeaderSummary();
+  updatePreviewSummary(previewSummaryConfig);
   container.addEventListener("change", (e) => {
     const input = e.target.closest("input[type='checkbox']");
     if (!input) return;
     input.closest(".option-card")?.classList.toggle("selected", input.checked);
-    updateOptionHeaderSummary();
+    updatePreviewSummary(previewSummaryConfig);
     refreshTopEstimate();
   });
 }
@@ -558,44 +564,7 @@ function updateServiceSummary(serviceId) {
     serviceDetails: state.serviceDetails,
     formatSummaryText: formatServiceSummaryText,
   });
-  updatePreviewSummary();
-}
-
-function updateOptionHeaderSummary() {
-  const previewEl = $("#previewOptionSummary");
-  if (!previewEl) return;
-  const count = document.querySelectorAll("#topOptionCards input:checked").length;
-  const text = count ? `옵션 ${count}개 선택` : "옵션 선택 없음";
-  if (previewEl) previewEl.textContent = text;
-}
-
-function updateServiceHeaderSummary() {
-  const previewEl = $("#previewServiceSummary");
-  if (!previewEl) return;
-  const count = document.querySelectorAll('input[name="service"]:checked').length;
-  const text = count ? `가공 ${count}개 선택` : "가공 선택 없음";
-  if (previewEl) previewEl.textContent = text;
-}
-
-function updatePreviewSummary() {
-  updateOptionHeaderSummary();
-  updateServiceHeaderSummary();
-}
-
-function initCollapsibleSections() {
-  document.querySelectorAll(".step-toggle").forEach((btn) => {
-    const targetId = btn.dataset.toggleTarget;
-    const section = targetId ? document.getElementById(targetId) : null;
-    if (!section) return;
-    const isCollapsed = section.classList.contains("is-collapsed");
-    btn.textContent = isCollapsed ? "열기" : "접기";
-    btn.setAttribute("aria-expanded", String(!isCollapsed));
-    btn.addEventListener("click", () => {
-      const nowCollapsed = section.classList.toggle("is-collapsed");
-      btn.textContent = nowCollapsed ? "열기" : "접기";
-      btn.setAttribute("aria-expanded", String(!nowCollapsed));
-    });
-  });
+  updatePreviewSummary(previewSummaryConfig);
 }
 
 function renderServiceCards() {
@@ -629,7 +598,7 @@ function renderServiceCards() {
   });
 
   Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
-  updatePreviewSummary();
+  updatePreviewSummary(previewSummaryConfig);
 
   container.addEventListener("change", (e) => {
     if (e.target.name === "service") {
@@ -645,7 +614,7 @@ function renderServiceCards() {
           updateServiceSummary(serviceId);
           refreshTopEstimate();
         }
-        updateServiceHeaderSummary();
+        updatePreviewSummary(previewSummaryConfig);
       } else {
         if (srv?.hasDetail()) {
           e.target.checked = true;
@@ -656,7 +625,7 @@ function renderServiceCards() {
         delete state.serviceDetails[serviceId];
         updateServiceSummary(serviceId);
         refreshTopEstimate();
-        updateServiceHeaderSummary();
+        updatePreviewSummary(previewSummaryConfig);
       }
     }
   });
@@ -890,7 +859,7 @@ function resetSelections() {
   });
   state.serviceDetails = {};
   Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
-  updateOptionHeaderSummary();
+  updatePreviewSummary(previewSummaryConfig);
   updateSelectedTopTypeCard();
   updateSelectedTopAddonsDisplay();
   refreshTopEstimate();
@@ -1390,7 +1359,7 @@ function initTop() {
   renderTopCategoryDesc();
   resetOrderCompleteUI();
   initEmailJS();
-  updatePreviewSummary();
+  updatePreviewSummary(previewSummaryConfig);
   const priceEl = $("#topEstimateText");
   if (priceEl) priceEl.textContent = "상판 타입을 선택해주세요.";
 

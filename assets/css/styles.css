@@ -638,7 +638,7 @@ th, td {
 #estimateTable th:first-child,
 #estimateTable td:first-child {
   width: 40%;
-  text-align: center;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1371,6 +1371,11 @@ th, td {
 }
 
 @media (max-width: 540px) {
+  .preview-summary-line {
+    white-space: normal;
+    line-height: 1.4;
+  }
+
   .card-grid,
   .card-grid--2col,
   .card-grid--3col,

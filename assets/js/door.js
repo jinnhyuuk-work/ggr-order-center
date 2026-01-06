@@ -25,6 +25,8 @@ import {
   renderSelectedCard,
   renderSelectedAddonChips,
   updateServiceSummaryChip,
+  initCollapsibleSections,
+  updatePreviewSummary,
   buildEstimateDetailLines,
 } from "./shared.js";
 
@@ -351,6 +353,10 @@ const state = {
   addons: [],
   serviceDetails: {}, // 현재 선택된 가공별 세부 옵션
 };
+const previewSummaryConfig = {
+  optionSelector: 'input[name="doorOption"]:checked',
+  serviceSelector: 'input[name="service"]:checked',
+};
 let currentPhase = 1; // 1: 도어/가공, 2: 부자재, 3: 고객 정보
 let sendingEmail = false;
 let orderCompleted = false;
@@ -443,44 +449,7 @@ function updateServiceSummary(serviceId) {
     serviceDetails: state.serviceDetails,
     formatSummaryText: formatServiceSummaryText,
   });
-  updatePreviewSummary();
-}
-
-function updateOptionHeaderSummary() {
-  const previewEl = $("#previewOptionSummary");
-  if (!previewEl) return;
-  const count = document.querySelectorAll('input[name="doorOption"]:checked').length;
-  const text = count ? `옵션 ${count}개 선택` : "옵션 선택 없음";
-  if (previewEl) previewEl.textContent = text;
-}
-
-function updateServiceHeaderSummary() {
-  const previewEl = $("#previewServiceSummary");
-  if (!previewEl) return;
-  const count = document.querySelectorAll('input[name="service"]:checked').length;
-  const text = count ? `가공 ${count}개 선택` : "가공 선택 없음";
-  if (previewEl) previewEl.textContent = text;
-}
-
-function updatePreviewSummary() {
-  updateOptionHeaderSummary();
-  updateServiceHeaderSummary();
-}
-
-function initCollapsibleSections() {
-  document.querySelectorAll(".step-toggle").forEach((btn) => {
-    const targetId = btn.dataset.toggleTarget;
-    const section = targetId ? document.getElementById(targetId) : null;
-    if (!section) return;
-    const isCollapsed = section.classList.contains("is-collapsed");
-    btn.textContent = isCollapsed ? "열기" : "접기";
-    btn.setAttribute("aria-expanded", String(!isCollapsed));
-    btn.addEventListener("click", () => {
-      const nowCollapsed = section.classList.toggle("is-collapsed");
-      btn.textContent = nowCollapsed ? "열기" : "접기";
-      btn.setAttribute("aria-expanded", String(!nowCollapsed));
-    });
-  });
+  updatePreviewSummary(previewSummaryConfig);
 }
 
 function renderServiceCards() {
@@ -514,7 +483,7 @@ function renderServiceCards() {
   });
 
   Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
-  updatePreviewSummary();
+  updatePreviewSummary(previewSummaryConfig);
 
   container.addEventListener("change", (e) => {
     if (e.target.name === "service") {
@@ -530,7 +499,7 @@ function renderServiceCards() {
           updateServiceSummary(serviceId);
           autoCalculatePrice();
         }
-        updateServiceHeaderSummary();
+        updatePreviewSummary(previewSummaryConfig);
       } else {
         if (srv?.hasDetail()) {
           e.target.checked = true;
@@ -541,7 +510,7 @@ function renderServiceCards() {
         delete state.serviceDetails[serviceId];
         updateServiceSummary(serviceId);
         autoCalculatePrice();
-        updateServiceHeaderSummary();
+        updatePreviewSummary(previewSummaryConfig);
       }
     }
   });
@@ -584,7 +553,7 @@ function renderOptionCards() {
     `;
     container.appendChild(label);
   });
-  updateOptionHeaderSummary();
+  updatePreviewSummary(previewSummaryConfig);
   container.addEventListener("change", (e) => {
     if (e.target.name !== "doorOption") return;
     const card = e.target.closest(".option-card");
@@ -593,7 +562,7 @@ function renderOptionCards() {
     } else {
       card?.classList.remove("selected");
     }
-    updateOptionHeaderSummary();
+    updatePreviewSummary(previewSummaryConfig);
     autoCalculatePrice();
     updateAddItemState();
   });
@@ -1447,7 +1416,7 @@ function resetServiceOptions() {
   });
   state.serviceDetails = {};
   Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
-  updatePreviewSummary();
+  updatePreviewSummary(previewSummaryConfig);
   clearPreviewHoles();
   autoCalculatePrice();
   updateAddItemState();
@@ -1642,7 +1611,7 @@ function init() {
   validateSizeFields();
   autoCalculatePrice();
   updatePreview();
-  updatePreviewSummary();
+  updatePreviewSummary(previewSummaryConfig);
   updateModalCardPreviews();
   updateSelectedMaterialLabel();
   updateSizePlaceholders(MATERIALS[selectedMaterialId]);

@@ -656,6 +656,58 @@ export function updateServiceSummaryChip({
     : noDetailText;
 }
 
+export function initCollapsibleSections({
+  toggleSelector = ".step-toggle",
+  collapsedClass = "is-collapsed",
+  openText = "접기",
+  closedText = "열기",
+} = {}) {
+  if (typeof document === "undefined") return;
+  document.querySelectorAll(toggleSelector).forEach((btn) => {
+    const targetId = btn.dataset.toggleTarget;
+    const section = targetId ? document.getElementById(targetId) : null;
+    if (!section) return;
+    const isCollapsed = section.classList.contains(collapsedClass);
+    btn.textContent = isCollapsed ? closedText : openText;
+    btn.setAttribute("aria-expanded", String(!isCollapsed));
+    btn.addEventListener("click", () => {
+      const nowCollapsed = section.classList.toggle(collapsedClass);
+      btn.textContent = nowCollapsed ? closedText : openText;
+      btn.setAttribute("aria-expanded", String(!nowCollapsed));
+    });
+  });
+}
+
+export function updatePreviewSummary({
+  optionSelector,
+  serviceSelector,
+  optionSummarySelector = "#previewOptionSummary",
+  serviceSummarySelector = "#previewServiceSummary",
+  optionEmptyText = "옵션 선택 없음",
+  serviceEmptyText = "가공 선택 없음",
+} = {}) {
+  if (typeof document === "undefined") return;
+  const optionSummaryEl = document.querySelector(optionSummarySelector);
+  const serviceSummaryEl = document.querySelector(serviceSummarySelector);
+  if (!optionSummaryEl && !serviceSummaryEl) return;
+  const optionCount = optionSelector
+    ? document.querySelectorAll(optionSelector).length
+    : 0;
+  const serviceCount = serviceSelector
+    ? document.querySelectorAll(serviceSelector).length
+    : 0;
+  if (optionSummaryEl) {
+    optionSummaryEl.textContent = optionCount
+      ? `옵션 ${optionCount}개 선택`
+      : optionEmptyText;
+  }
+  if (serviceSummaryEl) {
+    serviceSummaryEl.textContent = serviceCount
+      ? `가공 ${serviceCount}개 선택`
+      : serviceEmptyText;
+  }
+}
+
 export function buildEstimateDetailLines({
   sizeText,
   optionsText,
