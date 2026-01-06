@@ -515,14 +515,15 @@ function renderTopAddonCards() {
   const container = $("#topAddonCards");
   if (!container) return;
   container.innerHTML = "";
+  const selectedIds = state.items.filter((it) => it.type === "addon").map((it) => it.addonId);
+  state.addons = [...selectedIds];
 
   TOP_ADDON_ITEMS.forEach((item) => {
     const label = document.createElement("label");
-    label.className = `card-base addon-card${
-      state.addons.includes(item.id) ? " selected" : ""
-    }`;
+    const isSelected = selectedIds.includes(item.id);
+    label.className = `card-base addon-card${isSelected ? " selected" : ""}`;
     label.innerHTML = `
-      <input type="checkbox" value="${item.id}" ${state.addons.includes(item.id) ? "checked" : ""} />
+      <input type="checkbox" value="${item.id}" ${isSelected ? "checked" : ""} />
       <div class="material-visual"></div>
       <div class="name">${item.name}</div>
       <div class="price">${formatPrice(item.price)}원</div>
@@ -536,17 +537,55 @@ function renderTopAddonCards() {
     if (!input) return;
     const id = input.value;
     if (input.checked) {
-      if (!state.addons.includes(id)) state.addons.push(id);
+      addTopAddonItem(id);
     } else {
-      state.addons = state.addons.filter((x) => x !== id);
+      removeTopAddonItem(id);
     }
+    state.addons = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(
+      (el) => el.value
+    );
     updateSelectedTopAddonsDisplay();
     $$("#topAddonCards .addon-card").forEach((card) => card.classList.remove("selected"));
-    state.addons.forEach((id) => {
-      const card = container.querySelector(`input[value="${id}"]`)?.closest(".addon-card");
+    state.addons.forEach((selectedId) => {
+      const card = container.querySelector(`input[value="${selectedId}"]`)?.closest(".addon-card");
       card?.classList.add("selected");
     });
   };
+}
+
+function addTopAddonItem(addonId) {
+  const existing = state.items.some((it) => it.type === "addon" && it.addonId === addonId);
+  if (existing) return;
+  const addon = TOP_ADDON_ITEMS.find((a) => a.id === addonId);
+  if (!addon) return;
+  const detail = calcAddonDetail(addon.price);
+  state.items.push({
+    id: crypto.randomUUID(),
+    type: "addon",
+    addonId,
+    typeName: addon.name,
+    quantity: 1,
+    materialCost: detail.materialCost,
+    processingCost: detail.processingCost,
+    subtotal: detail.subtotal,
+    vat: detail.vat,
+    total: detail.total,
+    displaySize: "-",
+    optionsLabel: "-",
+    servicesLabel: "-",
+    serviceDetails: {},
+    services: [],
+  });
+  renderTable();
+  renderSummary();
+  updateStepVisibility();
+}
+
+function removeTopAddonItem(addonId) {
+  state.items = state.items.filter((it) => !(it.type === "addon" && it.addonId === addonId));
+  renderTable();
+  renderSummary();
+  updateStepVisibility();
 }
 
 function updateSelectedTopAddonsDisplay() {
@@ -555,6 +594,19 @@ function updateSelectedTopAddonsDisplay() {
     addons: state.addons,
     allItems: TOP_ADDON_ITEMS,
     formatPrice,
+  });
+}
+
+function syncTopAddonSelectionFromItems() {
+  const selectedIds = state.items.filter((it) => it.type === "addon").map((it) => it.addonId);
+  state.addons = [...selectedIds];
+  updateSelectedTopAddonsDisplay();
+  const container = $("#topAddonCards");
+  if (!container) return;
+  container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    const isSelected = selectedIds.includes(input.value);
+    input.checked = isSelected;
+    input.closest(".addon-card")?.classList.toggle("selected", isSelected);
   });
 }
 
@@ -688,10 +740,14 @@ function renderTable() {
     },
     onQuantityChange: (id, value) => updateItemQuantity(id, value),
     onDelete: (id) => {
+      const removedItem = state.items.find((it) => it.id === id);
       state.items = state.items.filter((it) => it.id !== id);
       renderTable();
       renderSummary();
       updateStepVisibility();
+      if (removedItem?.type === "addon") {
+        syncTopAddonSelectionFromItems();
+      }
     },
   });
   requestStickyOffsetUpdate();
@@ -867,55 +923,6 @@ function resetSelections() {
   updateSelectedTopAddonsDisplay();
   refreshTopEstimate();
   updateTopPreview(readTopInputs(), null);
-}
-
-function addTopAddonItems() {
-  if (state.addons.length === 0) {
-    showInfoModal("부자재를 선택해주세요.");
-    return;
-  }
-  const existingAddonIds = state.items.filter((it) => it.type === "addon").map((it) => it.addonId);
-  const duplicateIds = state.addons.filter((id) => existingAddonIds.includes(id));
-  const newIds = state.addons.filter((id) => !existingAddonIds.includes(id));
-
-  if (duplicateIds.length > 0 && newIds.length === 0) {
-    const names = duplicateIds.map((id) => TOP_ADDON_ITEMS.find((a) => a.id === id)?.name || id).join(", ");
-    showInfoModal(`이미 담겨있는 부자재입니다: ${names}`);
-    return;
-  }
-
-  if (duplicateIds.length > 0) {
-    const names = duplicateIds.map((id) => TOP_ADDON_ITEMS.find((a) => a.id === id)?.name || id).join(", ");
-    showInfoModal(`이미 담겨있는 부자재는 제외하고 추가합니다: ${names}`);
-  }
-
-  newIds.forEach((id) => {
-    const addon = TOP_ADDON_ITEMS.find((a) => a.id === id);
-    if (!addon) return;
-    const detail = calcAddonDetail(addon.price);
-    state.items.push({
-      id: crypto.randomUUID(),
-      type: "addon",
-      addonId: id,
-      typeName: addon.name,
-      quantity: 1,
-      materialCost: detail.materialCost,
-      processingCost: detail.processingCost,
-      subtotal: detail.subtotal,
-      vat: detail.vat,
-      total: detail.total,
-      displaySize: "-",
-      optionsLabel: "-",
-      servicesLabel: "-",
-      serviceDetails: {},
-      services: [],
-    });
-  });
-  state.addons = [];
-  renderTopAddonCards();
-  updateSelectedTopAddonsDisplay();
-  renderTable();
-  renderSummary();
 }
 
 function updateLength2Visibility() {
@@ -1192,10 +1199,6 @@ function updateStepVisibility() {
 
 function goToNextStep() {
   if (currentPhase === 1) {
-    if (state.items.length === 0) {
-      showInfoModal("상판을 담아주세요.");
-      return;
-    }
     currentPhase = 2;
     updateStepVisibility(document.getElementById("step4"));
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1393,7 +1396,6 @@ function initTop() {
   $("#openTopAddonModal")?.addEventListener("click", openTopAddonModal);
   $("#closeTopAddonModal")?.addEventListener("click", closeTopAddonModal);
   $("#topAddonModalBackdrop")?.addEventListener("click", closeTopAddonModal);
-  $("#addTopAddonBtn")?.addEventListener("click", addTopAddonItems);
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
   $("#backToCenterBtn")?.addEventListener("click", () => {

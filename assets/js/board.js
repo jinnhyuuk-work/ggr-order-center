@@ -662,14 +662,15 @@ function renderAddonCards() {
   const container = $("#addonCards");
   if (!container) return;
   container.innerHTML = "";
+  const selectedIds = state.items.filter((it) => it.type === "addon").map((it) => it.addonId);
+  state.addons = [...selectedIds];
 
   BOARD_ADDON_ITEMS.forEach((item) => {
     const label = document.createElement("label");
-    label.className = `card-base addon-card${
-      state.addons.includes(item.id) ? " selected" : ""
-    }`;
+    const isSelected = selectedIds.includes(item.id);
+    label.className = `card-base addon-card${isSelected ? " selected" : ""}`;
     label.innerHTML = `
-      <input type="checkbox" value="${item.id}" ${state.addons.includes(item.id) ? "checked" : ""} />
+      <input type="checkbox" value="${item.id}" ${isSelected ? "checked" : ""} />
       <div class="material-visual"></div>
       <div class="name">${item.name}</div>
       <div class="price">${item.price.toLocaleString()}원</div>
@@ -683,17 +684,48 @@ function renderAddonCards() {
     if (!input) return;
     const id = input.value;
     if (input.checked) {
-      if (!state.addons.includes(id)) state.addons.push(id);
+      addAddonItem(id);
     } else {
-      state.addons = state.addons.filter((x) => x !== id);
+      removeAddonItem(id);
     }
+    state.addons = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(
+      (el) => el.value
+    );
     updateSelectedAddonsDisplay();
     $$("#addonCards .addon-card").forEach((card) => card.classList.remove("selected"));
-    state.addons.forEach((id) => {
-      const card = container.querySelector(`input[value="${id}"]`)?.closest(".addon-card");
+    state.addons.forEach((selectedId) => {
+      const card = container.querySelector(`input[value="${selectedId}"]`)?.closest(".addon-card");
       card?.classList.add("selected");
     });
   };
+}
+
+function addAddonItem(addonId) {
+  const existing = state.items.some((it) => it.type === "addon" && it.addonId === addonId);
+  if (existing) return;
+  const addon = BOARD_ADDON_ITEMS.find((a) => a.id === addonId);
+  if (!addon) return;
+  const detail = calcAddonDetail(addon.price);
+  state.items.push({
+    id: crypto.randomUUID(),
+    type: "addon",
+    addonId,
+    quantity: 1,
+    materialCost: detail.materialCost,
+    processingCost: detail.processingCost,
+    subtotal: detail.subtotal,
+    vat: detail.vat,
+    total: detail.total,
+    weightKg: 0,
+  });
+  renderTable();
+  renderSummary();
+}
+
+function removeAddonItem(addonId) {
+  state.items = state.items.filter((it) => !(it.type === "addon" && it.addonId === addonId));
+  renderTable();
+  renderSummary();
 }
 
 function updateSelectedAddonsDisplay() {
@@ -701,6 +733,19 @@ function updateSelectedAddonsDisplay() {
     targetId: "selectedAddonCard",
     addons: state.addons,
     allItems: BOARD_ADDON_ITEMS,
+  });
+}
+
+function syncAddonSelectionFromItems() {
+  const selectedIds = state.items.filter((it) => it.type === "addon").map((it) => it.addonId);
+  state.addons = [...selectedIds];
+  updateSelectedAddonsDisplay();
+  const container = $("#addonCards");
+  if (!container) return;
+  container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    const isSelected = selectedIds.includes(input.value);
+    input.checked = isSelected;
+    input.closest(".addon-card")?.classList.toggle("selected", isSelected);
   });
 }
 
@@ -780,60 +825,6 @@ if (addItemBtn) {
     renderSummary();
     $("#itemPriceDisplay").textContent = "금액: 0원";
     resetStepsAfterAdd();
-  });
-}
-
-const addAddonBtn = document.getElementById("addAddonBtn");
-if (addAddonBtn) {
-  addAddonBtn.addEventListener("click", () => {
-    if (state.addons.length === 0) {
-      showInfoModal("부자재를 선택해주세요.");
-      return;
-    }
-    const existingAddonIds = state.items
-      .filter((it) => it.type === "addon")
-      .map((it) => it.addonId);
-
-    const duplicateIds = state.addons.filter((id) => existingAddonIds.includes(id));
-    const newIds = state.addons.filter((id) => !existingAddonIds.includes(id));
-
-    if (duplicateIds.length > 0 && newIds.length === 0) {
-      const names = duplicateIds
-        .map((id) => BOARD_ADDON_ITEMS.find((a) => a.id === id)?.name || id)
-        .join(", ");
-      showInfoModal(`이미 담겨있는 부자재입니다: ${names}`);
-      return;
-    }
-
-    if (duplicateIds.length > 0) {
-      const names = duplicateIds
-        .map((id) => BOARD_ADDON_ITEMS.find((a) => a.id === id)?.name || id)
-        .join(", ");
-      showInfoModal(`이미 담겨있는 부자재는 제외하고 추가합니다: ${names}`);
-    }
-
-    newIds.forEach((id) => {
-      const addon = BOARD_ADDON_ITEMS.find((a) => a.id === id);
-      if (!addon) return;
-      const detail = calcAddonDetail(addon.price);
-      state.items.push({
-        id: crypto.randomUUID(),
-        type: "addon",
-        addonId: id,
-        quantity: 1,
-        materialCost: detail.materialCost,
-        processingCost: detail.processingCost,
-        subtotal: detail.subtotal,
-        vat: detail.vat,
-        total: detail.total,
-        weightKg: 0,
-      });
-    });
-    state.addons = [];
-    renderAddonCards();
-    updateSelectedAddonsDisplay();
-    renderTable();
-    renderSummary();
   });
 }
 
@@ -1036,9 +1027,13 @@ function renderTable() {
     },
     onQuantityChange: (id, value) => updateItemQuantity(id, value),
     onDelete: (id) => {
+      const removedItem = state.items.find((it) => it.id === id);
       state.items = state.items.filter((it) => it.id !== id);
       renderTable();
       renderSummary();
+      if (removedItem?.type === "addon") {
+        syncAddonSelectionFromItems();
+      }
     },
   });
   requestStickyOffsetUpdate();
