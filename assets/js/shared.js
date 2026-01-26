@@ -444,7 +444,7 @@ export function createServiceModalController({
       <p class="service-option-tip">${srv.label} 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
       ${rowsHtml}
       <div class="service-actions">
-        <button type="button" class="secondary-btn" data-add-hole>위치 추가</button>
+        <button type="button" data-add-hole>위치 추가</button>
       </div>
       <div>
         <label>추가 메모 (선택)</label>

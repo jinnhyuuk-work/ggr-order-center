@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>합판 주문하기</title>
+  <title>시스템 수납장 주문하기</title>
    <script>
     (function(d) {
       var config = {
@@ -20,92 +20,137 @@
   <main class="container">
     <header class="page-header">
       <div class="title-block">
-        <h1 class="title-main">합판 주문하기</h1>
-        <p lang="en" class="title-sub">Board Order</p>
+        <h1 class="title-main">시스템 수납장 주문하기</h1>
+        <p lang="en" class="title-sub">System Storage Order</p>
       </div>
       <div class="header-divider"></div>
     </header>
 
     <div class="main-grid">
       <div class="steps-main">
-        <!-- STEP 01: 합판 선택 -->
-        <!-- STEP 01: 합판 선택 -->
-        <section id="step1" class="step-card is-accordion is-collapsed">
+        <section id="stepShape" class="step-card is-accordion is-collapsed">
           <div class="step-card-header">
-            <h2>구매하실 합판의 종류를 선택해주세요.</h2>
+            <h2>구성 형태와 사이즈를 입력해주세요.</h2>
             <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step1" aria-expanded="false">열기</button>
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepShape" aria-expanded="false">열기</button>
             </div>
           </div>
-          <div class="accordion-body" id="step1Body">
+          <div class="accordion-body" id="stepShapeBody">
+            <div id="shapeCards" class="grid-cards grid-cards--2 grid-cards--keep-2">
+              <label class="card-base material-card">
+                <input type="radio" name="systemShape" value="i_single" checked />
+                <div class="name">ㅣ자형</div>
+                <div class="meta">일자 구성</div>
+              </label>
+              <label class="card-base material-card">
+                <input type="radio" name="systemShape" value="i_double" />
+                <div class="name">ㅣㅣ자형</div>
+                <div class="meta">양면 구성</div>
+              </label>
+              <label class="card-base material-card">
+                <input type="radio" name="systemShape" value="l_shape" />
+                <div class="name">ㄱ자형</div>
+                <div class="meta">코너 구성</div>
+              </label>
+              <label class="card-base material-card">
+                <input type="radio" name="systemShape" value="u_shape" />
+                <div class="name">ㄷ자형</div>
+                <div class="meta">ㄷ자 구성</div>
+              </label>
+              <label class="card-base material-card">
+                <input type="radio" name="systemShape" value="box_shape" />
+                <div class="name">ㅁ자형</div>
+                <div class="meta">박스 구성</div>
+              </label>
+            </div>
+            <div class="shape-preview-box">
+              <div class="shape-preview-title">구성 형태 미리보기</div>
+              <div class="shape-preview-placeholder">이미지 영역</div>
+            </div>
+          </div>
+          <div class="accordion-body accordion-body--nested">
+            <div class="form-row">
+              <label>가장 낮은 천장 높이 (mm)</label>
+              <div class="field-col">
+                <input type="number" id="columnLengthMinInput" placeholder="1800~2700mm" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label>가장 높은 천장 높이 (mm)</label>
+              <div class="field-col">
+                <input type="number" id="columnLengthMaxInput" placeholder="1800~2700mm" />
+                <div class="error-msg" id="columnLengthError"></div>
+                <div class="field-note">천장 높이가 2400mm를 초과하면 추가 비용이 발생합니다.</div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label>구성 변 길이 (mm)</label>
+              <div class="field-col">
+                <div id="shapeSizeInputs"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="stepColumnMaterial" class="step-card is-accordion is-collapsed">
+          <div class="step-card-header">
+            <h2>기둥 컬러를 선택해주세요.</h2>
+            <div class="step-card-meta">
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepColumnMaterial" aria-expanded="false">열기</button>
+            </div>
+          </div>
+          <div class="accordion-body" id="stepColumnMaterialBody">
             <div class="material-picker">
-              <button type="button" id="openMaterialModal">합판 선택하기</button>
+              <button type="button" id="openColumnMaterialModal">기둥 컬러 선택</button>
             </div>
-            <div id="selectedMaterialCard" class="selected-material-card">
-              <div class="placeholder">선택된 합판 없음</div>
-            </div>
-          </div>
-        </section>
-
-        <!-- STEP 02: 사이즈 입력 -->
-        <section id="step2" class="step-card is-accordion is-collapsed">
-          <div class="step-card-header">
-            <h2>선택하신 합판의 사이즈를 입력해주세요.</h2>
-            <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step2" aria-expanded="false">열기</button>
-            </div>
-          </div>
-          <div class="accordion-body" id="step2Body">
-            <div class="form-row">
-              <label>두께 (mm)</label>
-              <div class="field-col">
-                <select id="thicknessSelect">
-                  <option value="">합판을 선택해주세요</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-row">
-              <label>폭 (mm)</label>
-              <div class="field-col">
-                <input type="number" id="widthInput" placeholder="폭 100~800mm" />
-                <div class="error-msg" id="widthError"></div>
-              </div>
-            </div>
-
-            <div class="form-row">
-              <label>길이 (mm)</label>
-              <div class="field-col">
-                <input type="number" id="lengthInput" placeholder="길이 200~2400mm" />
-                <div class="error-msg" id="lengthError"></div>
-              </div>
+            <div id="selectedColumnMaterialCard" class="selected-material-card">
+              <div class="placeholder">선택된 기둥 컬러 없음</div>
             </div>
           </div>
         </section>
 
-        <section id="step3Options" class="step-card is-accordion is-collapsed">
+        <section id="stepShelfMaterial" class="step-card is-accordion is-collapsed">
           <div class="step-card-header">
-            <h2>옵션을 선택해주세요.</h2>
+            <h2>선반 컬러를 선택해주세요.</h2>
             <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step3Options" aria-expanded="false">열기</button>
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepShelfMaterial" aria-expanded="false">열기</button>
             </div>
           </div>
-          <div class="accordion-body" id="step3OptionsBody">
-            <div id="boardOptionCards" class="grid-cards grid-cards--2 grid-cards--keep-2"></div>
+          <div class="accordion-body" id="stepShelfMaterialBody">
+            <div class="material-picker">
+              <button type="button" id="openShelfMaterialModal">선반 컬러 선택</button>
+            </div>
+            <div id="selectedShelfMaterialCard" class="selected-material-card">
+              <div class="placeholder">선택된 선반 컬러 없음</div>
+            </div>
           </div>
         </section>
 
-        <!-- STEP 03: 가공 서비스 선택 -->
-        <section id="step3" class="step-card is-accordion is-collapsed">
+        <section id="stepBayConfig" class="step-card is-accordion is-collapsed">
           <div class="step-card-header">
-            <h2>가공 서비스를 선택해주세요.</h2>
+            <h2>칸 정보를 입력해주세요.</h2>
             <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step3" aria-expanded="false">열기</button>
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepBayConfig" aria-expanded="false">열기</button>
             </div>
           </div>
-          <div class="accordion-body" id="step3Body">
-            <div id="serviceCards" class="grid-cards grid-cards--2 grid-cards--keep-2"></div>
+          <div class="accordion-body" id="stepBayConfigBody">
+            <div class="form-row">
+              <div class="field-col">
+                <div class="field-note">칸을 원하는 만큼 추가해주세요.</div>
+                <div id="bayInputs"></div>
+              </div>
+            </div>
+            <div class="step-card-actions">
+              <button type="button" id="removeBayBtn">칸 삭제</button>
+              <button type="button" class="next-page-btn" id="addBayBtn">칸 추가</button>
+            </div>
           </div>
+        </section>
+        <section class="step-card action-card">
+          <div id="itemPriceDisplay">금액: 0원</div>
+          <button id="addEstimateBtn">견적 담기</button>
         </section>
 
         <section id="stepPreview" class="step-card preview-panel">
@@ -113,36 +158,18 @@
             <h2>미리보기</h2>
           </div>
           <div class="preview-panel-grid">
-            <div class="preview-box" id="previewBox">
-              <div class="preview-text" id="previewText">합판과 사이즈를 선택하면 미리보기가 표시됩니다.</div>
-              <div class="preview-frame">
-                <div class="preview-color" id="previewColor"></div>
-              </div>
+            <div class="preview-box system-preview" id="systemPreviewBox">
+            <div class="preview-text" id="systemPreviewText">선반과 기둥을 선택하면 미리보기가 표시됩니다.</div>
+            <div class="preview-frame" id="systemPreviewFrame">
+              <div class="system-column" id="systemPreviewColumnLeft"></div>
+              <div class="system-column" id="systemPreviewColumnRight"></div>
+                <div id="systemPreviewShelves"></div>
             </div>
+          </div>
             <div class="preview-panel-summary">
-              <span id="previewOptionSummary">옵션 선택 없음</span>
+              <span id="previewShapeSummary">구성 미선택</span>
               <span class="preview-panel-sep">·</span>
-              <span id="previewServiceSummary">가공 선택 없음</span>
-            </div>
-          </div>
-        </section>
-
-        <section class="step-card action-card">
-          <div id="itemPriceDisplay">금액: 0원</div>
-          <button id="addItemBtn">합판담기</button>
-        </section>
-
-        <section id="step4" class="step-card addons-card hidden-step">
-          <h2>추가 부자재 주문</h2>
-          <p class="addons-desc">
-            합판 주문을 완료하셨다면 추가 부자재(피스, 경첩, 손잡이 등) 주문도 이어서 진행해보세요.
-          </p>
-          <div class="addon-picker">
-            <button type="button" id="openAddonModal">부자재 선택하기</button>
-          </div>
-          <div class="addon-picker">
-            <div id="selectedAddonCard" class="selected-material-card addon-card-display">
-              <div class="placeholder">선택된 부자재 없음</div>
+              <span id="previewCustomSummary">비규격 없음</span>
             </div>
           </div>
         </section>
@@ -263,55 +290,46 @@
     </div>
   </main>
 
-  <div id="materialModal" class="modal hidden">
-    <div class="modal-backdrop" id="materialModalBackdrop"></div>
+  <div id="shelfMaterialModal" class="modal hidden">
+    <div class="modal-backdrop" id="shelfMaterialModalBackdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="materialModalTitle" tabindex="-1">합판 선택</h3>
+        <h3 id="shelfMaterialModalTitle" tabindex="-1">선반 컬러 선택</h3>
       </div>
       <div class="modal-tabs">
-        <div id="materialTabs" class="material-tabs"></div>
+        <div id="shelfMaterialTabs" class="material-tabs"></div>
         <div class="material-category-header">
-          <div id="materialCategoryName" class="material-category-title"></div>
-          <p id="materialCategoryDesc" class="material-category-desc"></p>
+          <div id="shelfMaterialCategoryName" class="material-category-title"></div>
+          <p id="shelfMaterialCategoryDesc" class="material-category-desc"></p>
         </div>
       </div>
       <div class="modal-body">
-        <div id="materialCards" class="grid-cards grid-cards--3"></div>
+        <div id="shelfMaterialCards" class="grid-cards grid-cards--3"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeMaterialModal" class="modal-close">닫기</button>
+        <button type="button" id="closeShelfMaterialModal" class="modal-close">닫기</button>
       </div>
     </div>
   </div>
 
-  <div id="addonModal" class="modal hidden">
-    <div class="modal-backdrop" id="addonModalBackdrop"></div>
+  <div id="columnMaterialModal" class="modal hidden">
+    <div class="modal-backdrop" id="columnMaterialModalBackdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="addonModalTitle" tabindex="-1">부자재 선택</h3>
+        <h3 id="columnMaterialModalTitle" tabindex="-1">기둥 컬러 선택</h3>
+      </div>
+      <div class="modal-tabs">
+        <div id="columnMaterialTabs" class="material-tabs"></div>
+        <div class="material-category-header">
+          <div id="columnMaterialCategoryName" class="material-category-title"></div>
+          <p id="columnMaterialCategoryDesc" class="material-category-desc"></p>
+        </div>
       </div>
       <div class="modal-body">
-        <div id="addonCards" class="grid-cards grid-cards--3 grid-cards--keep-2"></div>
+        <div id="columnMaterialCards" class="grid-cards grid-cards--3"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeAddonModal" class="modal-close">닫기</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="serviceModal" class="modal hidden">
-    <div class="modal-backdrop" id="serviceModalBackdrop"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="serviceModalTitle" tabindex="-1">가공 옵션 설정</h3>
-      </div>
-      <div id="serviceModalError" class="error-msg"></div>
-      <div class="modal-body" id="serviceModalBody"></div>
-      <div class="modal-footer">
-        <button type="button" id="removeServiceModal">옵션 제거</button>
-        <button type="button" id="cancelServiceModal">취소</button>
-        <button type="button" id="saveServiceModal">적용</button>
+        <button type="button" id="closeColumnMaterialModal" class="modal-close">닫기</button>
       </div>
     </div>
   </div>
@@ -325,6 +343,21 @@
       <div id="infoMessage" class="info-message">안내 메시지</div>
       <div class="modal-footer">
         <button type="button" id="closeInfoModal" class="modal-close">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="systemAddonModal" class="modal hidden">
+    <div class="modal-backdrop" id="systemAddonModalBackdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="systemAddonModalTitle" tabindex="-1">칸 구성품 선택</h3>
+      </div>
+      <div class="modal-body">
+        <div id="systemAddonCards" class="grid-cards grid-cards--2 grid-cards--keep-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="closeSystemAddonModal" class="modal-close">닫기</button>
       </div>
     </div>
   </div>
@@ -350,6 +383,6 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script type="module" src="assets/js/board.js"></script>
+  <script type="module" src="assets/js/system.js"></script>
 </body>
 </html>

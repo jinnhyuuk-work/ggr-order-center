@@ -30,45 +30,57 @@
       <div class="steps-main">
         <!-- STEP 01: 도어 선택 -->
         <!-- STEP 01: 도어 선택 -->
-        <section id="step1" class="step-card">
-          <h2>구매하실 도어의 종류를 선택해주세요.</h2>
-          <div class="material-picker">
-            <button type="button" id="openMaterialModal">도어 선택하기</button>
+        <section id="step1" class="step-card is-accordion is-collapsed">
+          <div class="step-card-header">
+            <h2>구매하실 도어의 종류를 선택해주세요.</h2>
+            <div class="step-card-meta">
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step1" aria-expanded="false">열기</button>
+            </div>
           </div>
-          <div id="selectedMaterialCard" class="selected-material-card">
-            <div class="placeholder">선택된 도어 없음</div>
+          <div class="accordion-body" id="step1Body">
+            <div class="material-picker">
+              <button type="button" id="openMaterialModal">도어 선택하기</button>
+            </div>
+            <div id="selectedMaterialCard" class="selected-material-card">
+              <div class="placeholder">선택된 도어 없음</div>
+            </div>
           </div>
         </section>
 
         <!-- STEP 02: 사이즈 입력 -->
-        <section id="step2" class="step-card">
-          <h2>선택하신 도어의 사이즈를 입력해주세요.</h2>
-
-          <div class="form-row">
-            <label>두께 (mm)</label>
-            <div class="field-col">
-              <select id="thicknessSelect">
-                <option value="">도어를 선택해주세요</option>
-              </select>
+        <section id="step2" class="step-card is-accordion is-collapsed">
+          <div class="step-card-header">
+            <h2>선택하신 도어의 사이즈를 입력해주세요.</h2>
+            <div class="step-card-meta">
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step2" aria-expanded="false">열기</button>
             </div>
           </div>
+          <div class="accordion-body" id="step2Body">
+            <div class="form-row">
+              <label>두께 (mm)</label>
+              <div class="field-col">
+                <select id="thicknessSelect">
+                  <option value="">도어를 선택해주세요</option>
+                </select>
+              </div>
+            </div>
 
-          <div class="form-row">
-            <label>폭 (mm)</label>
-            <div class="field-col">
-              <input type="number" id="widthInput" placeholder="폭 100~800mm" />
-              <div class="error-msg" id="widthError"></div>
+            <div class="form-row">
+              <label>폭 (mm)</label>
+              <div class="field-col">
+                <input type="number" id="widthInput" placeholder="폭 100~800mm" />
+                <div class="error-msg" id="widthError"></div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label>길이 (mm)</label>
+              <div class="field-col">
+                <input type="number" id="lengthInput" placeholder="길이 200~2400mm" />
+                <div class="error-msg" id="lengthError"></div>
+              </div>
             </div>
           </div>
-
-          <div class="form-row">
-            <label>길이 (mm)</label>
-            <div class="field-col">
-              <input type="number" id="lengthInput" placeholder="길이 200~2400mm" />
-              <div class="error-msg" id="lengthError"></div>
-            </div>
-          </div>
-
         </section>
 
         <section id="step3Options" class="step-card is-accordion is-collapsed">
@@ -297,8 +309,8 @@
       <div id="serviceModalError" class="error-msg"></div>
       <div class="modal-body" id="serviceModalBody"></div>
       <div class="modal-footer">
-        <button type="button" class="secondary-btn" id="removeServiceModal">옵션 제거</button>
-        <button type="button" class="secondary-btn" id="cancelServiceModal">취소</button>
+        <button type="button" id="removeServiceModal">옵션 제거</button>
+        <button type="button" id="cancelServiceModal">취소</button>
         <button type="button" id="saveServiceModal">적용</button>
       </div>
     </div>

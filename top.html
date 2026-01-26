@@ -28,64 +28,77 @@
 
     <div class="main-grid">
       <div class="steps-main">
-        <section id="step1" class="step-card">
-          <h2>상판을 선택해주세요.</h2>
-          <div class="material-picker">
-            <button type="button" id="openTopTypeModal">상판 선택하기</button>
+        <section id="step1" class="step-card is-accordion is-collapsed">
+          <div class="step-card-header">
+            <h2>상판을 선택해주세요.</h2>
+            <div class="step-card-meta">
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step1" aria-expanded="false">열기</button>
+            </div>
           </div>
-          <div id="selectedTopTypeCard" class="selected-toptype-card">
-            <div class="placeholder">선택된 상판 타입 없음</div>
+          <div class="accordion-body" id="step1Body">
+            <div class="material-picker">
+              <button type="button" id="openTopTypeModal">상판 선택하기</button>
+            </div>
+            <div id="selectedTopTypeCard" class="selected-toptype-card">
+              <div class="placeholder">선택된 상판 타입 없음</div>
+            </div>
           </div>
         </section>
 
-        <section id="step2" class="step-card">
-          <h2>사이즈를 입력해주세요.</h2>
-          <div class="form-row">
-            <label>상판 타입</label>
-            <div class="field-col">
-              <select id="kitchenShape">
-                <option value="">타입을 선택해주세요</option>
-                <option value="i">I자</option>
-                <option value="l">ㄱ자</option>
-                <option value="rl">역ㄱ자</option>
-              </select>
+        <section id="step2" class="step-card is-accordion is-collapsed">
+          <div class="step-card-header">
+            <h2>사이즈를 입력해주세요.</h2>
+            <div class="step-card-meta">
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step2" aria-expanded="false">열기</button>
             </div>
           </div>
-          <div class="form-row">
-            <label>두께 (mm)</label>
-            <div class="field-col">
-              <select id="topThickness">
-                <option value="">두께를 선택해주세요</option>
-                <option value="12">12T</option>
-                <option value="24">24T</option>
-                <option value="30">30T</option>
-                <option value="40">40T</option>
-                <option value="50">50T</option>
-              </select>
+          <div class="accordion-body" id="step2Body">
+            <div class="form-row">
+              <label>상판 타입</label>
+              <div class="field-col">
+                <select id="kitchenShape">
+                  <option value="">타입을 선택해주세요</option>
+                  <option value="i">I자</option>
+                  <option value="l">ㄱ자</option>
+                  <option value="rl">역ㄱ자</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>두께 (mm)</label>
+              <div class="field-col">
+                <select id="topThickness">
+                  <option value="">두께를 선택해주세요</option>
+                  <option value="12">12T</option>
+                  <option value="24">24T</option>
+                  <option value="30">30T</option>
+                  <option value="40">40T</option>
+                  <option value="50">50T</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>폭 (mm)</label>
+              <div class="field-col">
+                <input type="number" id="topWidth" placeholder="예: 650" />
+                <div class="error-msg" id="topWidthError"></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>길이 (mm)</label>
+              <div class="field-col">
+                <input type="number" id="topLength" placeholder="예: 2400" />
+                <div class="error-msg" id="topLengthError"></div>
+              </div>
+            </div>
+            <div class="form-row hidden-step" id="topLength2Row">
+              <label>길이2 (mm)</label>
+              <div class="field-col">
+                <input type="number" id="topLength2" placeholder="예: 1800 (ㄱ자 추가 변)" />
+                <div class="error-msg" id="topLength2Error"></div>
+              </div>
             </div>
           </div>
-          <div class="form-row">
-            <label>폭 (mm)</label>
-            <div class="field-col">
-              <input type="number" id="topWidth" placeholder="예: 650" />
-              <div class="error-msg" id="topWidthError"></div>
-            </div>
-          </div>
-          <div class="form-row">
-            <label>길이 (mm)</label>
-            <div class="field-col">
-              <input type="number" id="topLength" placeholder="예: 2400" />
-              <div class="error-msg" id="topLengthError"></div>
-            </div>
-          </div>
-          <div class="form-row hidden-step" id="topLength2Row">
-            <label>길이2 (mm)</label>
-            <div class="field-col">
-              <input type="number" id="topLength2" placeholder="예: 1800 (ㄱ자 추가 변)" />
-              <div class="error-msg" id="topLength2Error"></div>
-            </div>
-          </div>
-
         </section>
 
         <section id="step3Options" class="step-card is-accordion is-collapsed">
@@ -325,8 +338,8 @@
       <div id="topServiceModalError" class="error-msg"></div>
       <div class="modal-body" id="topServiceModalBody"></div>
       <div class="modal-footer">
-        <button type="button" class="secondary-btn" id="removeTopServiceModal">옵션 제거</button>
-        <button type="button" class="secondary-btn" id="cancelTopServiceModal">취소</button>
+        <button type="button" id="removeTopServiceModal">옵션 제거</button>
+        <button type="button" id="cancelTopServiceModal">취소</button>
         <button type="button" id="saveTopServiceModal">적용</button>
       </div>
     </div>
