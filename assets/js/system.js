@@ -35,6 +35,7 @@ const COLUMN_EXTRA_LENGTH_THRESHOLD = 2400;
 const SHELF_LENGTH_MM = 600;
 const SHELF_THICKNESS_MM = 18;
 const COLUMN_THICKNESS_MM = 18;
+const BAY_WIDTH_LIMITS = { min: 400, max: 800 };
 
 const SHAPE_LABELS = {
   i_single: "ㅣ자형",
@@ -313,7 +314,7 @@ function readBayInputs() {
   for (let i = 0; i < count; i += 1) {
     const width = Number($(`#bayWidth-${i}`)?.value || 0);
     const shelfCount = Math.max(1, Number($(`#bayCount-${i}`)?.value || 1));
-    const customProcessing = Boolean($(`#bayCustom-${i}`)?.checked);
+    const customProcessing = false;
     const addons = state.bayAddons[i] || [];
     bays.push({
       width,
@@ -350,15 +351,12 @@ function validateInputs(input, bays) {
     const bay = bays[i];
     if (!bay.width) return `칸 ${i + 1} 선반 폭을 입력해주세요.`;
     if (!bay.count || bay.count < 1) return `칸 ${i + 1} 선반 갯수를 입력해주세요.`;
-    if (bay.width < shelfLimits.minWidth) {
-      return `칸 ${i + 1} 선반 폭은 ${shelfLimits.minWidth}mm 이상 입력해주세요.`;
-    }
-    if (bay.width > shelfLimits.maxWidth && !bay.customProcessing) {
-      return `칸 ${i + 1} 선반 비규격 가공을 선택해주세요.`;
+    if (bay.width < BAY_WIDTH_LIMITS.min || bay.width > BAY_WIDTH_LIMITS.max) {
+      return `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`;
     }
   }
   if (SHELF_LENGTH_MM > shelfLimits.maxLength) {
-    return "선반 비규격 가공을 확인해주세요.";
+    return `선반 길이는 ${shelfLimits.maxLength}mm 이하입니다.`;
   }
 
   const columnLimits = LIMITS.column;
@@ -438,10 +436,8 @@ function updateSizeErrorsUI(input, bays) {
     const widthError = $(`#bayWidthError-${idx}`);
     const countError = $(`#bayCountError-${idx}`);
     const widthMsg =
-      bay.width && bay.width < shelfLimits.minWidth
-        ? `선반 폭은 ${shelfLimits.minWidth}mm 이상 입력해주세요.`
-        : bay.width > shelfLimits.maxWidth && !bay.customProcessing
-        ? `선반 폭은 ${shelfLimits.maxWidth}mm 이하입니다.`
+      bay.width && (bay.width < BAY_WIDTH_LIMITS.min || bay.width > BAY_WIDTH_LIMITS.max)
+        ? `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`
         : "";
     const countMsg = bay.count < 1 ? "선반 갯수는 1개 이상이어야 합니다." : "";
     setFieldError(widthEl, widthError, widthMsg);
@@ -822,14 +818,14 @@ function renderBayInputs(presetBays = null) {
       <div class="form-row">
         <label>선반 폭 (mm)</label>
         <div class="field-col">
-          <select id="bayWidthPreset-${i}" class="thickness-select">
+          <select id="bayWidthPreset-${i}" class="select-caret">
             <option value="">선택</option>
             <option value="400">400</option>
             <option value="600">600</option>
             <option value="800">800</option>
             <option value="custom">직접 입력</option>
           </select>
-          <input type="number" id="bayWidth-${i}" placeholder="직접 입력" value="${previous?.width || ""}" />
+          <input type="number" id="bayWidth-${i}" class="bay-width-input" placeholder="직접 입력 (400~800mm)" value="${previous?.width || ""}" />
           <div class="error-msg" id="bayWidthError-${i}"></div>
         </div>
       </div>
@@ -838,15 +834,6 @@ function renderBayInputs(presetBays = null) {
         <div class="field-col">
           <input type="number" id="bayCount-${i}" min="1" value="${previous?.count || 1}" />
           <div class="error-msg" id="bayCountError-${i}"></div>
-        </div>
-      </div>
-      <div class="form-row">
-        <label>선반 비규격 가공</label>
-        <div class="field-col">
-          <label class="consent-check">
-            <input type="checkbox" id="bayCustom-${i}" ${previous?.customProcessing ? "checked" : ""} />
-            규격 외 사이즈 요청
-          </label>
         </div>
       </div>
       <div class="bay-addon-section">
@@ -889,22 +876,16 @@ function renderBayInputs(presetBays = null) {
           widthInput.disabled = presetSelect.value !== "";
           widthInput.classList.add("hidden");
         }
-        syncBayCustomProcessing(i);
         updatePreview();
         autoCalculatePrice();
       });
     }
 
     widthInput?.addEventListener("input", () => {
-      syncBayCustomProcessing(i);
       updatePreview();
       autoCalculatePrice();
     });
     $(`#bayCount-${i}`)?.addEventListener("input", () => {
-      updatePreview();
-      autoCalculatePrice();
-    });
-    $(`#bayCustom-${i}`)?.addEventListener("change", () => {
       updatePreview();
       autoCalculatePrice();
     });
@@ -976,15 +957,6 @@ function openBayAddonModal(index) {
   activeBayAddonIndex = index;
   syncSystemAddonModalSelection();
   openModal("#systemAddonModal", { focusTarget: "#systemAddonModalTitle" });
-}
-
-function syncBayCustomProcessing(index) {
-  const width = Number($(`#bayWidth-${index}`)?.value || 0);
-  const checkbox = $(`#bayCustom-${index}`);
-  if (!checkbox) return;
-  const needsCustom = width > LIMITS.shelf.maxWidth;
-  checkbox.checked = needsCustom || checkbox.checked;
-  checkbox.disabled = needsCustom;
 }
 
 function updateBayAddonAvailability() {

@@ -399,7 +399,7 @@ export function createServiceModalController({
                   <div class="service-field-grid">
                     <div>
                       <label>측면</label>
-                      <select class="service-input" data-field="edge" data-index="${idx}">
+                      <select class="service-input select-caret" data-field="edge" data-index="${idx}">
                         <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
                         <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
                       </select>
@@ -417,7 +417,7 @@ export function createServiceModalController({
                     </div>
                     <div>
                       <label>세로 기준</label>
-                      <select class="service-input" data-field="verticalRef" data-index="${idx}">
+                      <select class="service-input select-caret" data-field="verticalRef" data-index="${idx}">
                         <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
                         <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
                       </select>
