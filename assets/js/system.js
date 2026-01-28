@@ -335,11 +335,11 @@ function validateInputs(input, bays) {
 
   if (!columnMin || !columnMax) return "가장 낮은/높은 천장 높이를 입력해주세요.";
   if (columnMin > columnMax) return "가장 낮은 천장 높이는 가장 높은 천장 이하로 입력해주세요.";
-  if (!shapeSizes.length) return "구성 형태에 맞춰 변 길이를 입력해주세요.";
+  if (!shapeSizes.length) return "구성 형태에 맞춰 너비를 입력해주세요.";
   for (let i = 0; i < shapeSizes.length; i += 1) {
-    if (!shapeSizes[i]) return `변 ${i + 1} 길이를 입력해주세요.`;
+    if (!shapeSizes[i]) return `너비 ${i + 1}을 입력해주세요.`;
     if (shapeSizes[i] < LIMITS.shelf.minWidth) {
-      return `변 ${i + 1} 길이는 ${LIMITS.shelf.minWidth}mm 이상 입력해주세요.`;
+      return `너비 ${i + 1}은 ${LIMITS.shelf.minWidth}mm 이상 입력해주세요.`;
     }
   }
 
@@ -425,7 +425,7 @@ function updateSizeErrorsUI(input, bays) {
     const lengthError = $(`#shapeSizeError-${idx}`);
     const lengthMsg =
       length && length < shelfLimits.minWidth
-        ? `변 길이는 ${shelfLimits.minWidth}mm 이상 입력해주세요.`
+        ? `너비는 ${shelfLimits.minWidth}mm 이상 입력해주세요.`
         : "";
     setFieldError(lengthEl, lengthError, lengthMsg);
   });
@@ -782,9 +782,9 @@ function renderShapeSizeInputs() {
     const row = document.createElement("div");
     row.className = "form-row";
     row.innerHTML = `
-      <label>변 ${i + 1} 길이 (mm)</label>
+      <label>너비 ${i + 1} (mm)</label>
       <div class="field-col">
-        <input type="number" id="shapeSize-${i}" placeholder="길이 100mm 이상" />
+        <input type="number" id="shapeSize-${i}" placeholder="너비 100mm 이상" />
         <div class="error-msg" id="shapeSizeError-${i}"></div>
       </div>
     `;
