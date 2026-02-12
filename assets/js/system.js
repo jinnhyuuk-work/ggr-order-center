@@ -26,7 +26,7 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 const LIMITS = {
-  shelf: { minWidth: 100, maxWidth: 1200, minLength: 200, maxLength: 2400 },
+  shelf: { minWidth: 460, maxWidth: 1200, minLength: 200, maxLength: 2400 },
   column: { minLength: 1800, maxLength: 2700 },
 };
 
@@ -300,8 +300,12 @@ function initShelfStateForShape(shape) {
 
 function readCurrentInputs() {
   const shape = getSelectedShape();
-  const columnMinLength = Number($("#columnLengthMinInput")?.value || 0);
-  const columnMaxLength = Number($("#columnLengthMaxInput")?.value || 0);
+  const spaces = readSpaceConfigs(shape);
+  const shapeSizes = spaces.map((space) => Number(space.width || 0));
+  const minValues = spaces.map((space) => Number(space.min || 0)).filter((v) => v > 0);
+  const maxValues = spaces.map((space) => Number(space.max || 0)).filter((v) => v > 0);
+  const columnMinLength = minValues.length ? Math.min(...minValues) : 0;
+  const columnMaxLength = maxValues.length ? Math.max(...maxValues) : 0;
   const shelf = {
     materialId: materialPickers.shelf.selectedMaterialId,
     thickness: SHELF_THICKNESS_MM,
@@ -315,19 +319,28 @@ function readCurrentInputs() {
     minLength: columnMinLength,
     maxLength: columnMaxLength,
     customProcessing: false,
+    spaceMins: spaces.map((space) => Number(space.min || 0)),
+    spaceMaxs: spaces.map((space) => Number(space.max || 0)),
+    spaceExtraHeights: spaces.map((space) => [...(space.extraHeights || [])]),
   };
-  const shapeSizes = readShapeSizes(shape);
-  return { shelf, column, shape, shapeSizes };
+  return { shelf, column, shape, shapeSizes, spaces };
 }
 
-function readShapeSizes(shape) {
+function readSpaceConfigs(shape) {
   const count = getBayCountForShape(shape);
-  const sizes = [];
+  const spaces = [];
   for (let i = 0; i < count; i += 1) {
-    const length = Number($(`#shapeSize-${i}`)?.value || 0);
-    sizes.push(length);
+    const min = Number($(`#spaceMin-${i}`)?.value || 0);
+    const max = Number($(`#spaceMax-${i}`)?.value || 0);
+    const width = Number($(`#spaceWidth-${i}`)?.value || 0);
+    const extraHeights = Array.from(
+      document.querySelectorAll(`[data-space-extra-height="${i}"]`)
+    )
+      .map((input) => Number(input.value || 0))
+      .filter((value) => value > 0);
+    spaces.push({ min, max, width, extraHeights });
   }
-  return sizes;
+  return spaces;
 }
 
 function setErrorMessage(errorEl, message) {
@@ -416,7 +429,7 @@ function getCornerLabel(corner) {
 
 function transitionShapeWithState(nextShape, ensureCornerIndex = null) {
   const currentShape = getSelectedShape();
-  const prevSizes = readShapeSizes(currentShape);
+  const prevSpaces = readSpaceConfigs(currentShape);
   const prevSides = state.sides.map((side) => ({
     shelves: (side.shelves || []).map((shelf) => ({ ...shelf })),
   }));
@@ -452,10 +465,14 @@ function transitionShapeWithState(nextShape, ensureCornerIndex = null) {
   renderShapeSizeInputs();
   const nextCount = getBayCountForShape(nextShape);
   for (let i = 0; i < nextCount; i += 1) {
-    const input = $(`#shapeSize-${i}`);
-    if (!input) continue;
-    const prev = Number(prevSizes[i] || 0);
-    input.value = prev > 0 ? String(prev) : "";
+    const prev = prevSpaces[i] || { min: 0, max: 0, width: 0, extraHeights: [] };
+    const minInput = $(`#spaceMin-${i}`);
+    const maxInput = $(`#spaceMax-${i}`);
+    const widthInput = $(`#spaceWidth-${i}`);
+    if (minInput) minInput.value = prev.min > 0 ? String(prev.min) : "";
+    if (maxInput) maxInput.value = prev.max > 0 ? String(prev.max) : "";
+    if (widthInput) widthInput.value = prev.width > 0 ? String(prev.width) : "";
+    setSpaceExtraHeights(i, prev.extraHeights || []);
   }
   document.querySelectorAll("#shapeCards .material-card").forEach((card) =>
     card.classList.remove("selected")
@@ -523,16 +540,33 @@ function validateInputs(input, bays) {
   const shelfMat = SYSTEM_SHELF_MATERIALS[input.shelf.materialId];
   const columnMat = SYSTEM_COLUMN_MATERIALS[input.column.materialId];
   const shapeSizes = input.shapeSizes || [];
-  const columnMin = input.column.minLength || 0;
-  const columnMax = input.column.maxLength || 0;
+  const spaces = input.spaces || [];
 
-  if (!columnMin || !columnMax) return "가장 낮은/높은 천장 높이를 입력해주세요.";
-  if (columnMin > columnMax) return "가장 낮은 천장 높이는 가장 높은 천장 이하로 입력해주세요.";
   if (!shapeSizes.length) return "구성 형태에 맞춰 너비를 입력해주세요.";
-  for (let i = 0; i < shapeSizes.length; i += 1) {
-    if (!shapeSizes[i]) return `너비 ${i + 1}을 입력해주세요.`;
-    const shapeLengthError = getShapeLengthError(shapeSizes[i]);
+  for (let i = 0; i < spaces.length; i += 1) {
+    const space = spaces[i];
+    if (!space.min || !space.max) {
+      return `섹션 ${i + 1}의 가장 낮은/높은 천장 높이를 입력해주세요.`;
+    }
+    if (space.min > space.max) {
+      return `섹션 ${i + 1}의 가장 낮은 천장 높이는 가장 높은 천장 이하로 입력해주세요.`;
+    }
+    if (space.min < LIMITS.column.minLength || space.max < LIMITS.column.minLength) {
+      return `섹션 ${i + 1}의 천장 높이는 ${LIMITS.column.minLength}mm 이상 입력해주세요.`;
+    }
+    if (space.min > LIMITS.column.maxLength || space.max > LIMITS.column.maxLength) {
+      return `최대 천장 높이는 ${LIMITS.column.maxLength}mm 이하입니다.`;
+    }
+    if (!space.width) return `섹션 ${i + 1}의 너비를 입력해주세요.`;
+    const shapeLengthError = getShapeLengthError(space.width);
     if (shapeLengthError) return shapeLengthError;
+    const extraHeights = space.extraHeights || [];
+    for (let j = 0; j < extraHeights.length; j += 1) {
+      const h = Number(extraHeights[j] || 0);
+      if (h < LIMITS.column.minLength || h > LIMITS.column.maxLength) {
+        return `섹션 ${i + 1}의 개별높이는 ${LIMITS.column.minLength}~${LIMITS.column.maxLength}mm 범위여야 합니다.`;
+      }
+    }
   }
 
   if (!input.column.materialId) return "기둥 컬러를 선택해주세요.";
@@ -564,14 +598,6 @@ function validateInputs(input, bays) {
     return `선반 길이는 ${shelfLimits.maxLength}mm 이하입니다.`;
   }
 
-  const columnLimits = LIMITS.column;
-  if (columnMin < columnLimits.minLength || columnMax < columnLimits.minLength) {
-    return `천장 높이는 ${columnLimits.minLength}mm 이상 입력해주세요.`;
-  }
-  if (columnMin > columnLimits.maxLength || columnMax > columnLimits.maxLength) {
-    return `천장 높이는 ${columnLimits.maxLength}mm 이하입니다.`;
-  }
-
   if (!shelfMat?.availableThickness?.includes(input.shelf.thickness)) {
     return `선택한 선반 컬러는 ${shelfMat.availableThickness.join(", ")}T만 가능합니다.`;
   }
@@ -601,34 +627,50 @@ function setFieldError(inputEl, errorEl, message) {
 }
 
 function updateSizeErrorsUI(input, bays) {
-  const columnLimits = LIMITS.column;
-  const columnMinEl = $("#columnLengthMinInput");
-  const columnMaxEl = $("#columnLengthMaxInput");
-  const columnLengthError = $("#columnLengthError");
-  const shapeSizes = input.shapeSizes || [];
-  const columnMin = input.column.minLength || 0;
-  const columnMax = input.column.maxLength || 0;
+  const spaces = input.spaces || [];
+  spaces.forEach((space, idx) => {
+    const minEl = $(`#spaceMin-${idx}`);
+    const maxEl = $(`#spaceMax-${idx}`);
+    const widthEl = $(`#spaceWidth-${idx}`);
+    const heightError = $(`#spaceHeightError-${idx}`);
+    const widthError = $(`#spaceWidthError-${idx}`);
+    const extraError = $(`#spaceExtraError-${idx}`);
 
-  let columnLengthMsg = "";
-  if (columnMin && columnMin < columnLimits.minLength) {
-    columnLengthMsg = `천장 높이는 ${columnLimits.minLength}mm 이상 입력해주세요.`;
-  } else if (columnMax && columnMax < columnLimits.minLength) {
-    columnLengthMsg = `천장 높이는 ${columnLimits.minLength}mm 이상 입력해주세요.`;
-  } else if (columnMin && columnMin > columnLimits.maxLength) {
-    columnLengthMsg = `천장 높이는 ${columnLimits.maxLength}mm 이하입니다.`;
-  } else if (columnMax && columnMax > columnLimits.maxLength) {
-    columnLengthMsg = `천장 높이는 ${columnLimits.maxLength}mm 이하입니다.`;
-  } else if (columnMin && columnMax && columnMin > columnMax) {
-    columnLengthMsg = "가장 낮은 천장 높이는 가장 높은 천장 이하로 입력해주세요.";
-  }
-  setFieldError(columnMinEl, columnLengthError, columnLengthMsg);
-  setFieldError(columnMaxEl, columnLengthError, columnLengthMsg);
+    let heightMsg = "";
+    if (!space.min || !space.max) {
+      heightMsg = `섹션 ${idx + 1}의 가장 낮은/높은 천장 높이를 입력해주세요.`;
+    } else if (space.min > space.max) {
+      heightMsg = `섹션 ${idx + 1}의 가장 낮은 천장 높이는 가장 높은 천장 이하로 입력해주세요.`;
+    } else if (space.min < LIMITS.column.minLength || space.max < LIMITS.column.minLength) {
+      heightMsg = `섹션 ${idx + 1}의 천장 높이는 ${LIMITS.column.minLength}mm 이상 입력해주세요.`;
+    } else if (space.min > LIMITS.column.maxLength || space.max > LIMITS.column.maxLength) {
+      heightMsg = `최대 천장 높이는 ${LIMITS.column.maxLength}mm 이하입니다.`;
+    }
+    setFieldError(minEl, heightError, heightMsg);
+    setFieldError(maxEl, heightError, heightMsg);
 
-  shapeSizes.forEach((length, idx) => {
-    const lengthEl = $(`#shapeSize-${idx}`);
-    const lengthError = $(`#shapeSizeError-${idx}`);
-    const lengthMsg = getShapeLengthError(length);
-    setFieldError(lengthEl, lengthError, lengthMsg);
+    const widthMsg = getShapeLengthError(space.width);
+    setFieldError(widthEl, widthError, widthMsg);
+
+    const extraInputs = Array.from(document.querySelectorAll(`[data-space-extra-height="${idx}"]`));
+    let extraMsg = "";
+    extraInputs.forEach((inputEl) => {
+      const value = Number(inputEl.value || 0);
+      const invalid =
+        value &&
+        (value < LIMITS.column.minLength || value > LIMITS.column.maxLength);
+      inputEl.classList.toggle("input-error", Boolean(invalid));
+      if (!extraMsg && invalid) {
+        extraMsg = `개별높이는 ${LIMITS.column.minLength}~${LIMITS.column.maxLength}mm 범위여야 합니다.`;
+      }
+    });
+    if (!extraMsg && (space.extraHeights || []).length > 1) {
+      extraMsg = "개별높이 2개 이상 입력 시 추가 비용이 발생합니다.";
+    }
+    if (extraError) {
+      extraError.textContent = extraMsg;
+      extraError.classList.toggle("error", Boolean(extraMsg));
+    }
   });
 
   bays.forEach((bay) => {
@@ -647,6 +689,47 @@ function updateSizeErrorsUI(input, bays) {
   });
 }
 
+function bindSpaceExtraHeightEvents(spaceIndex) {
+  document
+    .querySelectorAll(`[data-space-extra-height="${spaceIndex}"]`)
+    .forEach((inputEl) => {
+      if (inputEl.dataset.bound === "true") return;
+      inputEl.dataset.bound = "true";
+      inputEl.addEventListener("input", () => {
+        autoCalculatePrice();
+        updateAddItemState();
+      });
+    });
+  document
+    .querySelectorAll(`[data-space-extra-remove="${spaceIndex}"]`)
+    .forEach((btn) => {
+      if (btn.dataset.bound === "true") return;
+      btn.dataset.bound = "true";
+      btn.addEventListener("click", () => {
+        btn.closest(".space-extra-row")?.remove();
+        autoCalculatePrice();
+        updateAddItemState();
+      });
+    });
+}
+
+function setSpaceExtraHeights(spaceIndex, values) {
+  const list = $(`#spaceExtraList-${spaceIndex}`);
+  if (!list) return;
+  const rows = (values || []).filter((v) => Number(v || 0) > 0);
+  list.innerHTML = rows
+    .map(
+      (value) => `
+        <div class="space-extra-row">
+          <input type="number" data-space-extra-height="${spaceIndex}" placeholder="개별높이 (1800~2700mm)" value="${Number(value)}" />
+          <button type="button" class="ghost-btn" data-space-extra-remove="${spaceIndex}">삭제</button>
+        </div>
+      `
+    )
+    .join("");
+  bindSpaceExtraHeightEvents(spaceIndex);
+}
+
 function getSideRequiredLength(sideIndex, shape, additionalShelfWidth = 0) {
   const items = buildSideLengthItems(sideIndex, shape);
   if (additionalShelfWidth > 0) {
@@ -663,7 +746,7 @@ function getSideRequiredLength(sideIndex, shape, additionalShelfWidth = 0) {
 
 function updateShelfAddButtonState(input) {
   const shape = input.shape;
-  const shapeSizes = input.shapeSizes || [];
+  const shapeSizes = (input.spaces || []).map((space) => Number(space.width || 0));
   document.querySelectorAll("[data-add-shelf]").forEach((btn) => {
     const sideIndex = Number(btn.dataset.addShelf);
     if (Number.isNaN(sideIndex)) return;
@@ -1214,20 +1297,60 @@ function renderShapeSizeInputs() {
   container.innerHTML = "";
   for (let i = 0; i < sideCount; i += 1) {
     const row = document.createElement("div");
-    row.className = "form-row";
-    const placeholder = "구성 너비 100mm 이상";
+    row.className = "bay-input";
     row.innerHTML = `
-      <label>너비 ${i + 1} (mm)</label>
-      <div class="field-col">
-        <input type="number" id="shapeSize-${i}" placeholder="${placeholder}" />
-        <div class="error-msg" id="shapeSizeError-${i}"></div>
+      <div class="bay-input-title">섹션 ${i + 1}</div>
+      <div class="form-row">
+        <label>가장 낮은 천장 높이 (mm)</label>
+        <div class="field-col">
+          <input type="number" id="spaceMin-${i}" placeholder="1800~2700mm" />
+        </div>
+      </div>
+      <div class="form-row">
+        <label>가장 높은 천장 높이 (mm)</label>
+        <div class="field-col">
+          <input type="number" id="spaceMax-${i}" placeholder="1800~2700mm" />
+          <div class="error-msg" id="spaceHeightError-${i}"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>개별높이 (mm)</label>
+        <div class="field-col">
+          <button type="button" class="ghost-btn space-extra-add-btn" id="addSpaceExtra-${i}">개별높이 추가</button>
+          <div id="spaceExtraList-${i}" class="field-stack"></div>
+          <div class="field-note">개별높이 2개 이상 입력 시 추가 비용이 발생합니다.</div>
+          <div class="error-msg" id="spaceExtraError-${i}"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>너비 (mm)</label>
+        <div class="field-col">
+          <input type="number" id="spaceWidth-${i}" placeholder="구성 너비 460mm 이상" />
+          <div class="error-msg" id="spaceWidthError-${i}"></div>
+        </div>
       </div>
     `;
     container.appendChild(row);
   }
 
   for (let i = 0; i < sideCount; i += 1) {
-    $(`#shapeSize-${i}`)?.addEventListener("input", () => {
+    [`#spaceMin-${i}`, `#spaceMax-${i}`, `#spaceWidth-${i}`].forEach((sel) => {
+      $(sel)?.addEventListener("input", () => {
+        autoCalculatePrice();
+        updateAddItemState();
+      });
+    });
+    $(`#addSpaceExtra-${i}`)?.addEventListener("click", () => {
+      const list = $(`#spaceExtraList-${i}`);
+      if (!list) return;
+      const row = document.createElement("div");
+      row.className = "space-extra-row";
+      row.innerHTML = `
+        <input type="number" data-space-extra-height="${i}" placeholder="개별높이 (1800~2700mm)" />
+        <button type="button" class="ghost-btn" data-space-extra-remove="${i}">삭제</button>
+      `;
+      list.appendChild(row);
+      bindSpaceExtraHeightEvents(i);
       autoCalculatePrice();
       updateAddItemState();
     });
@@ -1448,9 +1571,10 @@ function syncCornerOptionModal() {
   const swapSelect = $("#cornerSwapSelect");
   const countInput = $("#cornerCountInput");
   const addonBtn = $("#cornerAddonBtn");
-  const columnMin = Number($("#columnLengthMinInput")?.value || 0);
-  const columnMax = Number($("#columnLengthMaxInput")?.value || 0);
-  const hasColumnHeight = columnMin > 0 && columnMax > 0;
+  const spaces = readSpaceConfigs(getSelectedShape());
+  const hasColumnHeight =
+    spaces.length > 0 &&
+    spaces.every((space) => Number(space.min || 0) > 0 && Number(space.max || 0) > 0);
   if (titleEl) titleEl.textContent = `${getCornerLabel(corner)} 옵션 설정`;
   if (swapSelect) swapSelect.value = corner.swap ? "swap" : "default";
   if (countInput) countInput.value = String(corner.count || 1);
@@ -1475,9 +1599,10 @@ function syncBayOptionModal() {
   const customInput = $("#bayWidthCustomInput");
   const countInput = $("#bayCountInput");
   const addonBtn = $("#bayAddonBtn");
-  const columnMin = Number($("#columnLengthMinInput")?.value || 0);
-  const columnMax = Number($("#columnLengthMaxInput")?.value || 0);
-  const hasColumnHeight = columnMin > 0 && columnMax > 0;
+  const spaces = readSpaceConfigs(getSelectedShape());
+  const hasColumnHeight =
+    spaces.length > 0 &&
+    spaces.every((space) => Number(space.min || 0) > 0 && Number(space.max || 0) > 0);
 
   const width = Number(shelf.width || 0);
   const presetValue =
@@ -1640,9 +1765,16 @@ function openShelfAddonModal(id) {
 }
 
 function updateBayAddonAvailability() {
-  const columnMin = Number($("#columnLengthMinInput")?.value || 0);
-  const columnMax = Number($("#columnLengthMaxInput")?.value || 0);
-  const hasColumnHeight = columnMin > 0 && columnMax > 0;
+  const spaces = readSpaceConfigs(getSelectedShape());
+  const hasColumnHeight =
+    spaces.length > 0 &&
+    spaces.every((space) => {
+      if (!space.min || !space.max) return false;
+      if (space.min > space.max) return false;
+      if (space.min < LIMITS.column.minLength || space.max < LIMITS.column.minLength) return false;
+      if (space.min > LIMITS.column.maxLength || space.max > LIMITS.column.maxLength) return false;
+      return true;
+    });
   document.querySelectorAll("[data-shelf-addon-btn]").forEach((btn) => {
     btn.disabled = !hasColumnHeight;
   });
@@ -2286,14 +2418,6 @@ function init() {
     $(picker.thicknessSelectId)?.addEventListener("change", () => {
       updatePreview();
       autoCalculatePrice();
-    });
-  });
-
-  ["#columnLengthMinInput", "#columnLengthMaxInput"].forEach((sel) => {
-    $(sel)?.addEventListener("input", () => {
-      updatePreview();
-      autoCalculatePrice();
-      updateBayAddonAvailability();
     });
   });
 

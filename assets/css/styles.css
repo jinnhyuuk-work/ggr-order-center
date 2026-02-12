@@ -420,6 +420,25 @@ section {
   max-width: 240px;
 }
 
+.space-extra-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.space-extra-add-btn {
+  --btn-padding: 6px 10px;
+  font-size: 12px;
+  align-self: flex-start;
+  min-width: 0;
+}
+
+.space-extra-row .ghost-btn {
+  --btn-padding: 6px 10px;
+  font-size: 12px;
+  min-width: 0;
+}
+
 input[type="number"] {
   padding: 8px;
   width: 100%;
