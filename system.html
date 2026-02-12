@@ -142,10 +142,6 @@
                 <div id="bayInputs"></div>
               </div>
             </div>
-            <div class="step-card-actions">
-              <button type="button" id="removeBayBtn">칸 삭제</button>
-              <button type="button" class="next-page-btn" id="addBayBtn">칸 추가</button>
-            </div>
           </div>
         </section>
         <section class="step-card action-card">
@@ -358,6 +354,85 @@
       </div>
       <div class="modal-footer">
         <button type="button" id="closeSystemAddonModal" class="modal-close">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cornerOptionModal" class="modal hidden">
+    <div class="modal-backdrop" id="cornerOptionModalBackdrop"></div>
+    <div class="modal-content corner-option-modal">
+      <div class="modal-header">
+        <h3 id="cornerOptionModalTitle" tabindex="-1">코너 옵션 설정</h3>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label>코너 방향</label>
+          <div class="field-col">
+            <select id="cornerSwapSelect" class="select-caret">
+              <option value="default">800 × 600</option>
+              <option value="swap">600 × 800</option>
+            </select>
+            <div class="field-note">깊이 400mm 고정</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>선반 갯수</label>
+          <div class="field-col">
+            <input type="number" id="cornerCountInput" min="1" />
+            <div class="error-msg" id="cornerCountError"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>칸 구성품</label>
+          <div class="field-col">
+            <button type="button" id="cornerAddonBtn">구성품 선택</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="saveCornerOptionModal">적용</button>
+        <button type="button" id="closeCornerOptionModal" class="modal-close">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bayOptionModal" class="modal hidden">
+    <div class="modal-backdrop" id="bayOptionModalBackdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="bayOptionModalTitle" tabindex="-1">Bay 옵션 설정</h3>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label>선반 폭 (mm)</label>
+          <div class="field-col">
+            <select id="bayWidthPresetSelect" class="select-caret">
+              <option value="400">400</option>
+              <option value="600">600</option>
+              <option value="800">800</option>
+              <option value="custom">직접 입력</option>
+            </select>
+            <input type="number" id="bayWidthCustomInput" class="hidden" placeholder="직접 입력 (400~800mm)" />
+            <div class="error-msg" id="bayWidthError"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>선반 갯수</label>
+          <div class="field-col">
+            <input type="number" id="bayCountInput" min="1" />
+            <div class="error-msg" id="bayCountError"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>칸 구성품</label>
+          <div class="field-col">
+            <button type="button" id="bayAddonBtn">구성품 선택</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="saveBayOptionModal">적용</button>
+        <button type="button" id="closeBayOptionModal" class="modal-close">닫기</button>
       </div>
     </div>
   </div>

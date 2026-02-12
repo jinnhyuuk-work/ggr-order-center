@@ -585,9 +585,45 @@ input[type="number"]::-webkit-outer-spin-button {
   transition: width 0.2s ease, height 0.2s ease, left 0.2s ease, top 0.2s ease;
 }
 
+.system-preview .system-corner-shelf {
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.28), var(--shadow-preview);
+}
+
+.system-preview .system-corner-shelf:hover {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.48), var(--shadow-preview);
+}
+
+.system-preview .system-corner-arm {
+  position: absolute;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.system-preview .system-bay-shelf {
+  cursor: pointer;
+}
+
 #systemPreviewShelves {
   position: absolute;
   inset: 0;
+}
+
+.system-preview-add-btn {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #111;
+  background: #fff;
+  color: #111;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 700;
+  padding: 0;
+  min-width: 0;
+  z-index: 2;
 }
 
 #bayList {
@@ -609,6 +645,23 @@ input[type="number"]::-webkit-outer-spin-button {
 .bay-input-title {
   font-weight: 700;
   margin-bottom: 8px;
+}
+
+.shelf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shelf-item {
+  padding: 10px;
+  border: 1px solid var(--color-border-faint);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.corner-item {
+  border-style: dashed;
 }
 
 .bay-input .grid-cards {
@@ -1256,6 +1309,11 @@ th, td {
 #infoModal .modal-content {
   max-width: 480px;
   min-height: 2vw;
+}
+
+#cornerOptionModal .modal-content {
+  max-width: 520px;
+  min-height: auto;
 }
 
 .modal-footer {

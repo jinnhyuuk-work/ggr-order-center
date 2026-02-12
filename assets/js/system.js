@@ -30,12 +30,13 @@ const LIMITS = {
   column: { minLength: 1800, maxLength: 2700 },
 };
 
-const COLUMN_WIDTH_MM = 50;
+const COLUMN_WIDTH_MM = 20;
 const COLUMN_EXTRA_LENGTH_THRESHOLD = 2400;
 const SHELF_LENGTH_MM = 600;
 const SHELF_THICKNESS_MM = 18;
 const COLUMN_THICKNESS_MM = 18;
 const BAY_WIDTH_LIMITS = { min: 400, max: 800 };
+const SUPPORT_THICKNESS_MM = 20;
 
 const SHAPE_LABELS = {
   i_single: "ㅣ자형",
@@ -55,15 +56,18 @@ const SHAPE_BAY_COUNTS = {
 
 const state = {
   items: [],
-  bayCount: 1,
-  bayAddons: [],
+  sides: [],
+  corners: [],
+  shelfAddons: {},
 };
 
 let currentPhase = 1;
 let sendingEmail = false;
 let orderCompleted = false;
 let stickyOffsetTimer = null;
-let activeBayAddonIndex = null;
+let activeShelfAddonId = null;
+let activeCornerOptionId = null;
+let activeBayOptionId = null;
 
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
@@ -276,6 +280,33 @@ function getBayCountForShape(shape) {
   return SHAPE_BAY_COUNTS[shape] || 1;
 }
 
+function getCornerFlags(shape) {
+  const sideCount = getBayCountForShape(shape);
+  if (shape === "box_shape") return new Array(sideCount).fill(true);
+  if (shape === "u_shape") return [false, true, true];
+  if (shape === "l_shape") return [false, true];
+  return new Array(sideCount).fill(false);
+}
+
+function initShelfStateForShape(shape) {
+  const sideCount = getBayCountForShape(shape);
+  state.sides = Array.from({ length: sideCount }, (_, idx) => ({
+    id: `side-${idx}`,
+    shelves: [],
+  }));
+  const cornerFlags = getCornerFlags(shape);
+  state.corners = cornerFlags.map((hasCorner, idx) =>
+    hasCorner
+      ? {
+          id: `corner-${idx}`,
+          sideIndex: idx,
+          swap: false,
+          count: 1,
+        }
+      : null
+  );
+}
+
 function readCurrentInputs() {
   const shape = getSelectedShape();
   const columnMinLength = Number($("#columnLengthMinInput")?.value || 0);
@@ -308,21 +339,123 @@ function readShapeSizes(shape) {
   return sizes;
 }
 
-function readBayInputs() {
-  const count = state.bayCount;
-  const bays = [];
-  for (let i = 0; i < count; i += 1) {
-    const width = Number($(`#bayWidth-${i}`)?.value || 0);
-    const shelfCount = Math.max(1, Number($(`#bayCount-${i}`)?.value || 1));
-    const customProcessing = false;
-    const addons = state.bayAddons[i] || [];
-    bays.push({
+function setErrorMessage(errorEl, message) {
+  if (!errorEl) return;
+  if (message) {
+    errorEl.textContent = message;
+    errorEl.classList.add("error");
+  } else {
+    errorEl.textContent = "";
+    errorEl.classList.remove("error");
+  }
+}
+
+function getShapeLengthError(length) {
+  if (!length) return "";
+  if (length < LIMITS.shelf.minWidth) {
+    return `구성 너비는 ${LIMITS.shelf.minWidth}mm 이상 입력해주세요.`;
+  }
+  return "";
+}
+
+function getShelfAddonIds(id) {
+  return state.shelfAddons[id] || [];
+}
+
+function getCornerSizeAlongSide(sideIndex, swap) {
+  const isHorizontal = sideIndex === 0 || sideIndex === 2;
+  if (isHorizontal) return swap ? 600 : 800;
+  return swap ? 800 : 600;
+}
+
+function getCornerAtEnd(sideIndex, shape) {
+  const sideCount = getBayCountForShape(shape);
+  const nextIndex = sideIndex + 1;
+  if (shape !== "box_shape" && nextIndex >= sideCount) return null;
+  return state.corners[nextIndex % sideCount];
+}
+
+function buildSideLengthItems(sideIndex, shape) {
+  const items = [];
+  const startCorner = state.corners[sideIndex];
+  if (startCorner) {
+    items.push({ width: getCornerSizeAlongSide(sideIndex, startCorner.swap) });
+  }
+  (state.sides[sideIndex]?.shelves || []).forEach((shelf) => {
+    items.push({ width: shelf.width || 0 });
+  });
+  const endCorner = getCornerAtEnd(sideIndex, shape);
+  if (endCorner && endCorner !== startCorner) {
+    items.push({ width: getCornerSizeAlongSide(sideIndex, endCorner.swap) });
+  }
+  return items;
+}
+
+function buildSideShelfSequence(sideIndex) {
+  const corner = state.corners[sideIndex];
+  const shelves = state.sides[sideIndex]?.shelves || [];
+  const sequence = [];
+  if (corner) {
+    const width = getCornerSizeAlongSide(sideIndex, corner.swap);
+    sequence.push({
+      id: corner.id,
       width,
-      count: shelfCount,
-      customProcessing,
-      addons,
+      count: corner.count || 1,
+      addons: getShelfAddonIds(corner.id),
+      isCorner: true,
+      sideIndex: corner.sideIndex,
     });
   }
+  shelves.forEach((shelf) => {
+    sequence.push({
+      id: shelf.id,
+      width: shelf.width || 0,
+      count: shelf.count || 1,
+      addons: getShelfAddonIds(shelf.id),
+      isCorner: false,
+    });
+  });
+  return sequence;
+}
+
+function getCornerLabel(corner) {
+  const sideNumber = Number(corner?.sideIndex) + 1;
+  return Number.isFinite(sideNumber) ? `코너 ${sideNumber}` : "코너";
+}
+
+function addShelfToSide(sideIndex) {
+  if (Number.isNaN(sideIndex)) return;
+  const newShelf = {
+    id: `shelf-${sideIndex}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    width: 400,
+    count: 1,
+  };
+  state.sides[sideIndex].shelves.push(newShelf);
+  renderBayInputs();
+}
+
+function buildRectBounds(startX, startY, dir, inward, length, depth) {
+  const x1 = startX;
+  const y1 = startY;
+  const x2 = startX + dir.dx * length;
+  const y2 = startY + dir.dy * length;
+  const x3 = startX + inward.x * depth;
+  const y3 = startY + inward.y * depth;
+  const x4 = x2 + inward.x * depth;
+  const y4 = y2 + inward.y * depth;
+  return {
+    minX: Math.min(x1, x2, x3, x4),
+    minY: Math.min(y1, y2, y3, y4),
+    maxX: Math.max(x1, x2, x3, x4),
+    maxY: Math.max(y1, y2, y3, y4),
+  };
+}
+
+function readBayInputs() {
+  const bays = [];
+  state.sides.forEach((_, sideIndex) => {
+    buildSideShelfSequence(sideIndex).forEach((item) => bays.push(item));
+  });
   return bays;
 }
 
@@ -338,9 +471,8 @@ function validateInputs(input, bays) {
   if (!shapeSizes.length) return "구성 형태에 맞춰 너비를 입력해주세요.";
   for (let i = 0; i < shapeSizes.length; i += 1) {
     if (!shapeSizes[i]) return `너비 ${i + 1}을 입력해주세요.`;
-    if (shapeSizes[i] < LIMITS.shelf.minWidth) {
-      return `너비 ${i + 1}은 ${LIMITS.shelf.minWidth}mm 이상 입력해주세요.`;
-    }
+    const shapeLengthError = getShapeLengthError(shapeSizes[i]);
+    if (shapeLengthError) return shapeLengthError;
   }
 
   if (!input.column.materialId) return "기둥 컬러를 선택해주세요.";
@@ -349,10 +481,23 @@ function validateInputs(input, bays) {
   const shelfLimits = LIMITS.shelf;
   for (let i = 0; i < bays.length; i += 1) {
     const bay = bays[i];
-    if (!bay.width) return `칸 ${i + 1} 선반 폭을 입력해주세요.`;
-    if (!bay.count || bay.count < 1) return `칸 ${i + 1} 선반 갯수를 입력해주세요.`;
-    if (bay.width < BAY_WIDTH_LIMITS.min || bay.width > BAY_WIDTH_LIMITS.max) {
+    if (!bay.width) return `선반 폭을 입력해주세요.`;
+    if (!bay.count || bay.count < 1) return `선반 갯수를 입력해주세요.`;
+    if (!bay.isCorner && (bay.width < BAY_WIDTH_LIMITS.min || bay.width > BAY_WIDTH_LIMITS.max)) {
       return `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`;
+    }
+  }
+  for (let sideIndex = 0; sideIndex < state.sides.length; sideIndex += 1) {
+    const sideLength = shapeSizes[sideIndex] || 0;
+    const items = buildSideLengthItems(sideIndex, input.shape);
+    const required =
+      COLUMN_WIDTH_MM +
+      items.reduce(
+        (sum, item) => sum + (item.width + SUPPORT_THICKNESS_MM * 2) + COLUMN_WIDTH_MM,
+        0
+      );
+    if (sideLength && required > sideLength) {
+      return `너비 ${sideIndex + 1}의 선반 구성 길이가 너비를 초과했습니다.`;
     }
   }
   if (SHELF_LENGTH_MM > shelfLimits.maxLength) {
@@ -396,7 +541,6 @@ function setFieldError(inputEl, errorEl, message) {
 }
 
 function updateSizeErrorsUI(input, bays) {
-  const shelfLimits = LIMITS.shelf;
   const columnLimits = LIMITS.column;
   const columnMinEl = $("#columnLengthMinInput");
   const columnMaxEl = $("#columnLengthMaxInput");
@@ -423,25 +567,68 @@ function updateSizeErrorsUI(input, bays) {
   shapeSizes.forEach((length, idx) => {
     const lengthEl = $(`#shapeSize-${idx}`);
     const lengthError = $(`#shapeSizeError-${idx}`);
-    const lengthMsg =
-      length && length < shelfLimits.minWidth
-        ? `너비는 ${shelfLimits.minWidth}mm 이상 입력해주세요.`
-        : "";
+    const lengthMsg = getShapeLengthError(length);
     setFieldError(lengthEl, lengthError, lengthMsg);
   });
 
-  bays.forEach((bay, idx) => {
-    const widthEl = $(`#bayWidth-${idx}`);
-    const countEl = $(`#bayCount-${idx}`);
-    const widthError = $(`#bayWidthError-${idx}`);
-    const countError = $(`#bayCountError-${idx}`);
+  bays.forEach((bay) => {
+    if (!bay.id) return;
+    const widthEl = document.querySelector(`[data-shelf-width="${bay.id}"]`);
+    const countEl = document.querySelector(`[data-shelf-count="${bay.id}"]`);
+    const widthError = document.querySelector(`[data-shelf-width-error="${bay.id}"]`);
+    const countError = document.querySelector(`[data-shelf-count-error="${bay.id}"]`);
     const widthMsg =
-      bay.width && (bay.width < BAY_WIDTH_LIMITS.min || bay.width > BAY_WIDTH_LIMITS.max)
+      !bay.isCorner && bay.width && (bay.width < BAY_WIDTH_LIMITS.min || bay.width > BAY_WIDTH_LIMITS.max)
         ? `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`
         : "";
     const countMsg = bay.count < 1 ? "선반 갯수는 1개 이상이어야 합니다." : "";
     setFieldError(widthEl, widthError, widthMsg);
     setFieldError(countEl, countError, countMsg);
+  });
+}
+
+function getSideRequiredLength(sideIndex, shape, additionalShelfWidth = 0) {
+  const items = buildSideLengthItems(sideIndex, shape);
+  if (additionalShelfWidth > 0) {
+    items.push({ width: additionalShelfWidth });
+  }
+  return (
+    COLUMN_WIDTH_MM +
+    items.reduce(
+      (sum, item) => sum + (item.width + SUPPORT_THICKNESS_MM * 2) + COLUMN_WIDTH_MM,
+      0
+    )
+  );
+}
+
+function updateShelfAddButtonState(input) {
+  const shape = input.shape;
+  const shapeSizes = input.shapeSizes || [];
+  document.querySelectorAll("[data-add-shelf]").forEach((btn) => {
+    const sideIndex = Number(btn.dataset.addShelf);
+    if (Number.isNaN(sideIndex)) return;
+    const sideLength = Number(shapeSizes[sideIndex] || 0);
+    const errorEl = document.querySelector(`[data-side-length-error="${sideIndex}"]`);
+    let errorMsg = "";
+    let disabled = false;
+
+    if (!sideLength) {
+      disabled = true;
+      errorMsg = `너비 ${sideIndex + 1}을 입력하면 칸을 추가할 수 있습니다.`;
+    } else {
+      const currentRequired = getSideRequiredLength(sideIndex, shape, 0);
+      const requiredWithNew = getSideRequiredLength(sideIndex, shape, BAY_WIDTH_LIMITS.min);
+      if (currentRequired > sideLength) {
+        disabled = true;
+        errorMsg = `너비 ${sideIndex + 1}의 칸 구성 길이가 너비를 초과했습니다.`;
+      } else if (requiredWithNew > sideLength) {
+        disabled = true;
+        errorMsg = `너비 ${sideIndex + 1}에 더 이상 칸을 추가할 수 없습니다.`;
+      }
+    }
+
+    btn.disabled = disabled;
+    setErrorMessage(errorEl, errorMsg);
   });
 }
 
@@ -583,135 +770,193 @@ function updatePreview() {
   const columnMat = SYSTEM_COLUMN_MATERIALS[input.column.materialId];
   const frame = $("#systemPreviewFrame");
   const shelvesEl = $("#systemPreviewShelves");
-  const columnLeftEl = $("#systemPreviewColumnLeft");
-  const columnRightEl = $("#systemPreviewColumnRight");
   const textEl = $("#systemPreviewText");
-  if (!frame || !shelvesEl || !columnLeftEl || !columnRightEl || !textEl) return;
+  if (!frame || !shelvesEl || !textEl) return;
+  frame.querySelectorAll(".system-column").forEach((col) => {
+    col.style.display = "none";
+  });
 
   const bays = readBayInputs();
   const hasShelf = Boolean(shelfMat && input.shelf.thickness && bays.length);
-  const hasColumn = Boolean(
-    columnMat &&
-      input.column.minLength &&
-      input.column.maxLength &&
-      input.column.thickness
-  );
+  const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
 
   if (!hasShelf || !hasColumn) {
     textEl.textContent = "칸 사이즈를 입력하면 미리보기가 표시됩니다.";
-    [columnLeftEl, columnRightEl].forEach((el) => {
-      el.style.width = "0px";
-      el.style.height = "0px";
-      el.style.left = "50%";
-      el.style.top = "50%";
-      el.style.background = "#ddd";
-    });
     shelvesEl.innerHTML = "";
-    frame.querySelectorAll(".system-column").forEach((col) => {
-      if (col !== columnLeftEl && col !== columnRightEl) col.remove();
-    });
-  } else {
-    frame.querySelectorAll(".system-column").forEach((col) => {
-      if (col !== columnLeftEl && col !== columnRightEl) col.remove();
-    });
-    const bayCount = bays.length;
-    textEl.textContent =
-      `선반 ${shelfMat.name} / ${input.shelf.thickness}T / ` +
-      `${SHELF_LENGTH_MM}mm 고정 · ${bayCount}칸 · ` +
-      `기둥 ${columnMat.name} / ${input.column.thickness}T / ` +
-      `${input.column.width}×${input.column.minLength}~${input.column.maxLength}mm`;
+    return;
+  }
 
-    const frameRect = frame.getBoundingClientRect();
-    const frameW = frameRect.width || 260;
-    const frameH = frameRect.height || 220;
+  shelvesEl.innerHTML = "";
+  textEl.textContent = `탑뷰 · 선반 깊이 400mm · 기둥 ${COLUMN_WIDTH_MM}mm`;
 
-    const totalShelfWidthMm = bays.reduce((sum, bay) => sum + bay.width, 0);
-    const columnHeightMm = input.column.length;
-    const columnWidthMm = input.column.width;
-    const shelfThicknessMm = input.shelf.thickness;
+  const sideCount = getBayCountForShape(input.shape);
+  const sideLengths = input.shapeSizes || [];
+  const frameRect = frame.getBoundingClientRect();
+  const frameW = frameRect.width || 260;
+  const frameH = frameRect.height || 220;
+  const depthMm = 400;
 
-    let scale = Math.min(
-      (frameW * 0.8) / (totalShelfWidthMm + columnWidthMm * (bayCount + 1)),
-      (frameH * 0.7) / columnHeightMm
-    );
-    let columnHeightPx = Math.max(80, columnHeightMm * scale);
-    let columnWidthPx = Math.max(10, columnWidthMm * scale);
-    const shelfWidthsPx = bays.map((bay) => Math.max(30, bay.width * scale));
-    const shelfThicknessPx = Math.min(Math.max(10, shelfThicknessMm * scale * 1.2), columnHeightPx * 0.3);
+  const directions = [
+    { dx: 1, dy: 0 },
+    { dx: 0, dy: 1 },
+    { dx: -1, dy: 0 },
+    { dx: 0, dy: -1 },
+  ];
 
-    const totalWidthPx =
-      shelfWidthsPx.reduce((sum, width) => sum + width, 0) +
-      columnWidthPx * (bayCount + 1);
-    if (totalWidthPx > frameW * 0.9) {
-      const shrink = (frameW * 0.9) / totalWidthPx;
-      for (let i = 0; i < shelfWidthsPx.length; i += 1) {
-        shelfWidthsPx[i] *= shrink;
+  const toInward = (dir) => ({ x: -dir.dy, y: dir.dx });
+  const shelves = [];
+  const addButtons = [];
+  let cursorX = 0;
+  let cursorY = 0;
+
+  for (let sideIndex = 0; sideIndex < sideCount; sideIndex += 1) {
+    const length = sideLengths[sideIndex] || 0;
+    const dir = directions[sideIndex];
+    const inward = toInward(dir);
+    const sideEndX = cursorX + dir.dx * length;
+    const sideEndY = cursorY + dir.dy * length;
+    const hasStartCorner = Boolean(state.corners[sideIndex]);
+    const hasEndCorner = Boolean(getCornerAtEnd(sideIndex, input.shape));
+    const renderFromCornerEnd = !hasStartCorner && hasEndCorner;
+    const renderDir = renderFromCornerEnd ? { dx: -dir.dx, dy: -dir.dy } : dir;
+    const anchorX = renderFromCornerEnd ? sideEndX : cursorX;
+    const anchorY = renderFromCornerEnd ? sideEndY : cursorY;
+    const sequence = buildSideShelfSequence(sideIndex);
+    let offset = COLUMN_WIDTH_MM;
+    sequence.forEach((item) => {
+      const widthMm = (item.width || 0) + SUPPORT_THICKNESS_MM * 2;
+      const px = anchorX + renderDir.dx * offset;
+      const py = anchorY + renderDir.dy * offset;
+
+      if (item.isCorner) {
+        const corner = state.corners[sideIndex];
+        const prevSideIndex = (sideIndex - 1 + sideCount) % sideCount;
+        const prevDir = directions[prevSideIndex];
+        const prevInward = toInward(prevDir);
+        const prevLegDir = { dx: -prevDir.dx, dy: -prevDir.dy };
+        const prevLen =
+          (corner ? getCornerSizeAlongSide(prevSideIndex, corner.swap) : item.width || 0) +
+          SUPPORT_THICKNESS_MM * 2;
+        const currentArm = buildRectBounds(
+          anchorX + renderDir.dx * COLUMN_WIDTH_MM,
+          anchorY + renderDir.dy * COLUMN_WIDTH_MM,
+          renderDir,
+          inward,
+          widthMm,
+          depthMm
+        );
+        const prevArmAnchorX = renderFromCornerEnd
+          ? anchorX + renderDir.dx * COLUMN_WIDTH_MM
+          : cursorX + prevLegDir.dx * COLUMN_WIDTH_MM;
+        const prevArmAnchorY = renderFromCornerEnd
+          ? anchorY + renderDir.dy * COLUMN_WIDTH_MM
+          : cursorY + prevLegDir.dy * COLUMN_WIDTH_MM;
+        const prevArm = buildRectBounds(
+          prevArmAnchorX,
+          prevArmAnchorY,
+          prevLegDir,
+          prevInward,
+          prevLen,
+          depthMm
+        );
+        shelves.push({
+          id: item.id,
+          isCorner: true,
+          title: `${getCornerLabel(item)} 옵션 수정`,
+          minX: Math.min(currentArm.minX, prevArm.minX),
+          minY: Math.min(currentArm.minY, prevArm.minY),
+          maxX: Math.max(currentArm.maxX, prevArm.maxX),
+          maxY: Math.max(currentArm.maxY, prevArm.maxY),
+          arms: [currentArm, prevArm],
+        });
+      } else {
+        const rect = buildRectBounds(px, py, renderDir, inward, widthMm, depthMm);
+        shelves.push({
+          id: item.id,
+          isCorner: false,
+          title: "Bay 옵션 수정",
+          minX: rect.minX,
+          minY: rect.minY,
+          maxX: rect.maxX,
+          maxY: rect.maxY,
+        });
       }
-      columnWidthPx *= shrink;
-    }
-    if (columnHeightPx > frameH * 0.85) {
-      const shrink = (frameH * 0.85) / columnHeightPx;
-      columnHeightPx *= shrink;
-    }
-
-    const centerX = frameW / 2;
-    const baseY = frameH / 2 + columnHeightPx / 2;
-    const columnTop = baseY - columnHeightPx;
-
-    shelvesEl.innerHTML = "";
-    const totalWidthPxAdjusted =
-      shelfWidthsPx.reduce((sum, width) => sum + width, 0) +
-      columnWidthPx * (bayCount + 1);
-    const startX = centerX - totalWidthPxAdjusted / 2;
-
-    const columnCount = bayCount + 1;
-    [columnLeftEl, columnRightEl].forEach((el) => {
-      el.style.width = "0px";
-      el.style.height = "0px";
+      offset += widthMm + COLUMN_WIDTH_MM;
     });
 
-    for (let i = 0; i < columnCount; i += 1) {
-      const column = i === 0 ? columnLeftEl : i === columnCount - 1 ? columnRightEl : document.createElement("div");
-      if (i !== 0 && i !== columnCount - 1) {
-        column.className = "system-column";
-        frame.appendChild(column);
-      }
-      const offset = shelfWidthsPx.slice(0, i).reduce((sum, width) => sum + width, 0);
-      column.style.width = `${columnWidthPx}px`;
-      column.style.height = `${columnHeightPx}px`;
-      column.style.left = `${startX + columnWidthPx * i + offset}px`;
-      column.style.top = `${columnTop}px`;
-      column.style.background = columnMat.swatch || "#ddd";
+    if (length > 0) {
+      addButtons.push({
+        sideIndex,
+        x: anchorX + renderDir.dx * offset + inward.x * (depthMm / 2),
+        y: anchorY + renderDir.dy * offset + inward.y * (depthMm / 2),
+      });
     }
+    cursorX = sideEndX;
+    cursorY = sideEndY;
+  }
 
-    let shelfOffsetX = startX + columnWidthPx;
-    bays.forEach((bay, bayIndex) => {
-      const shelfCount = Math.max(1, Number(bay.count || 1));
-      const gap = columnHeightPx / (shelfCount + 1);
-      for (let row = 0; row < shelfCount; row += 1) {
-        const shelfTop = columnTop + gap * (row + 1) - shelfThicknessPx / 2;
-        const shelf = document.createElement("div");
-        shelf.className = "system-shelf";
-        shelf.style.width = `${shelfWidthsPx[bayIndex]}px`;
-        shelf.style.height = `${shelfThicknessPx}px`;
-        shelf.style.left = `${shelfOffsetX}px`;
-        shelf.style.top = `${shelfTop}px`;
+  let minX = 0;
+  let maxX = 1;
+  let minY = 0;
+  let maxY = 1;
+  if (shelves.length) {
+    minX = Math.min(...shelves.map((s) => s.minX), ...addButtons.map((p) => p.x));
+    maxX = Math.max(...shelves.map((s) => s.maxX), ...addButtons.map((p) => p.x));
+    minY = Math.min(...shelves.map((s) => s.minY), ...addButtons.map((p) => p.y));
+    maxY = Math.max(...shelves.map((s) => s.maxY), ...addButtons.map((p) => p.y));
+  }
+
+  const rangeX = Math.max(maxX - minX, 1);
+  const rangeY = Math.max(maxY - minY, 1);
+  const scale = Math.min((frameW * 0.75) / rangeX, (frameH * 0.75) / rangeY);
+  const tx = (frameW - rangeX * scale) / 2 - minX * scale;
+  const ty = (frameH - rangeY * scale) / 2 - minY * scale;
+
+  shelves.forEach((item) => {
+      const shelf = document.createElement("div");
+      shelf.className = "system-shelf";
+      if (item.isCorner) {
+        shelf.classList.add("system-corner-shelf");
+        shelf.dataset.cornerPreview = item.id;
+        shelf.title = item.title;
+      } else {
+        shelf.classList.add("system-bay-shelf");
+        shelf.dataset.bayPreview = item.id;
+        shelf.title = item.title;
+      }
+      shelf.style.width = `${(item.maxX - item.minX) * scale}px`;
+      shelf.style.height = `${(item.maxY - item.minY) * scale}px`;
+      shelf.style.left = `${item.minX * scale + tx}px`;
+      shelf.style.top = `${item.minY * scale + ty}px`;
+      if (item.isCorner && item.arms?.length) {
+        shelf.style.background = "transparent";
+        item.arms.forEach((arm) => {
+          const armEl = document.createElement("div");
+          armEl.className = "system-corner-arm";
+          armEl.style.left = `${(arm.minX - item.minX) * scale}px`;
+          armEl.style.top = `${(arm.minY - item.minY) * scale}px`;
+          armEl.style.width = `${(arm.maxX - arm.minX) * scale}px`;
+          armEl.style.height = `${(arm.maxY - arm.minY) * scale}px`;
+          armEl.style.background = shelfMat.swatch || "#ddd";
+          shelf.appendChild(armEl);
+        });
+      } else {
         shelf.style.background = shelfMat.swatch || "#ddd";
-        shelvesEl.appendChild(shelf);
       }
-      shelfOffsetX += shelfWidthsPx[bayIndex] + columnWidthPx;
-    });
-  }
+      shelvesEl.appendChild(shelf);
+  });
 
-  const shapeSummary = $("#previewShapeSummary");
-  if (shapeSummary) shapeSummary.textContent = SHAPE_LABELS[input.shape] || "구성 미선택";
-  const customSummary = $("#previewCustomSummary");
-  if (customSummary) {
-    const hasCustom =
-      bays.some((bay) => isShelfCustom(bay.width, bay.customProcessing)) ||
-      isColumnCustom(input.column.length);
-    customSummary.textContent = hasCustom ? "비규격 포함" : "비규격 없음";
-  }
+  addButtons.forEach((point) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "system-preview-add-btn";
+    btn.dataset.addShelf = String(point.sideIndex);
+    btn.title = `너비 ${point.sideIndex + 1}에 칸 추가`;
+    btn.textContent = "+";
+    btn.style.left = `${point.x * scale + tx}px`;
+    btn.style.top = `${point.y * scale + ty}px`;
+    shelvesEl.appendChild(btn);
+  });
 }
 
 function updateAddItemState() {
@@ -727,6 +972,7 @@ function autoCalculatePrice() {
   const input = readCurrentInputs();
   const bays = readBayInputs();
   updateSizeErrorsUI(input, bays);
+  updateShelfAddButtonState(input);
   const err = validateInputs(input, bays);
   if (err) {
     $("#itemPriceDisplay").textContent = err;
@@ -781,10 +1027,11 @@ function renderShapeSizeInputs() {
   for (let i = 0; i < sideCount; i += 1) {
     const row = document.createElement("div");
     row.className = "form-row";
+    const placeholder = "구성 너비 100mm 이상";
     row.innerHTML = `
       <label>너비 ${i + 1} (mm)</label>
       <div class="field-col">
-        <input type="number" id="shapeSize-${i}" placeholder="너비 100mm 이상" />
+        <input type="number" id="shapeSize-${i}" placeholder="${placeholder}" />
         <div class="error-msg" id="shapeSizeError-${i}"></div>
       </div>
     `;
@@ -799,113 +1046,344 @@ function renderShapeSizeInputs() {
   }
 }
 
-function renderBayInputs(presetBays = null) {
-  const bayCount = state.bayCount;
-  const sizeContainer = $("#bayInputs");
-  if (!sizeContainer) return;
-  const prevBays = presetBays || readBayInputs();
-  state.bayAddons = prevBays.map((bay) => bay.addons || []);
-  while (state.bayAddons.length < bayCount) {
-    state.bayAddons.push([]);
-  }
-  sizeContainer.innerHTML = "";
-  for (let i = 0; i < bayCount; i += 1) {
-    const previous = prevBays[i];
-    const bayBlock = document.createElement("div");
-    bayBlock.className = "bay-input";
-    bayBlock.innerHTML = `
-      <div class="bay-input-title">칸 ${i + 1}</div>
-      <div class="form-row">
-        <label>선반 폭 (mm)</label>
-        <div class="field-col">
-          <select id="bayWidthPreset-${i}" class="select-caret">
-            <option value="">선택</option>
-            <option value="400">400</option>
-            <option value="600">600</option>
-            <option value="800">800</option>
-            <option value="custom">직접 입력</option>
-          </select>
-          <input type="number" id="bayWidth-${i}" class="bay-width-input" placeholder="직접 입력 (400~800mm)" value="${previous?.width || ""}" />
-          <div class="error-msg" id="bayWidthError-${i}"></div>
-        </div>
+function renderBayInputs() {
+  const container = $("#bayInputs");
+  if (!container) return;
+  container.innerHTML = "";
+  const sideCount = state.sides.length;
+  for (let sideIndex = 0; sideIndex < sideCount; sideIndex += 1) {
+    const side = state.sides[sideIndex];
+    const sideBlock = document.createElement("div");
+    sideBlock.className = "bay-input";
+    sideBlock.innerHTML = `
+      <div class="bay-input-title">너비 ${sideIndex + 1} 선반</div>
+      <div class="shelf-list" data-side-index="${sideIndex}"></div>
+      <div class="step-card-actions">
+        <button type="button" data-add-shelf="${sideIndex}">선반 추가</button>
       </div>
-      <div class="form-row">
-        <label>선반 갯수</label>
-        <div class="field-col">
-          <input type="number" id="bayCount-${i}" min="1" value="${previous?.count || 1}" />
-          <div class="error-msg" id="bayCountError-${i}"></div>
-        </div>
-      </div>
-      <div class="bay-addon-section">
-        <div class="addon-picker">
-          <button type="button" data-bay-addon-btn="${i}">구성품 선택</button>
-        </div>
-        <div id="selectedBayAddon-${i}" class="selected-material-card addon-card-display"></div>
-      </div>
+      <div class="error-msg" data-side-length-error="${sideIndex}"></div>
     `;
-    sizeContainer.appendChild(bayBlock);
-    renderBayAddonSelection(i);
-  }
+    container.appendChild(sideBlock);
 
-  for (let i = 0; i < bayCount; i += 1) {
-    const presetSelect = $(`#bayWidthPreset-${i}`);
-    const widthInput = $(`#bayWidth-${i}`);
-    const previous = prevBays[i];
-    if (presetSelect && widthInput) {
-      const presetValue =
-        previous?.width === 400 || previous?.width === 600 || previous?.width === 800
-          ? String(previous.width)
-          : previous?.width
-          ? "custom"
-          : "";
-      presetSelect.value = presetValue;
-      const isCustom = presetValue === "custom";
-      widthInput.disabled = !isCustom;
-      widthInput.classList.toggle("hidden", !isCustom);
-      if (!isCustom) {
-        widthInput.value = presetValue || "";
-      }
-      presetSelect.addEventListener("change", () => {
-        if (presetSelect.value === "custom") {
-          widthInput.value = "";
-          widthInput.disabled = false;
-          widthInput.classList.remove("hidden");
-          widthInput.focus();
-        } else {
-          widthInput.value = presetSelect.value || "";
-          widthInput.disabled = presetSelect.value !== "";
-          widthInput.classList.add("hidden");
-        }
-        updatePreview();
-        autoCalculatePrice();
-      });
+    const list = sideBlock.querySelector(".shelf-list");
+    if (!list) continue;
+
+    const corner = state.corners[sideIndex];
+    if (corner) {
+      list.appendChild(buildCornerShelfItem(corner));
+      renderShelfAddonSelection(corner.id);
     }
 
-    widthInput?.addEventListener("input", () => {
-      updatePreview();
-      autoCalculatePrice();
+    side.shelves.forEach((shelf) => {
+      list.appendChild(buildShelfItem(shelf));
+      renderShelfAddonSelection(shelf.id);
     });
-    $(`#bayCount-${i}`)?.addEventListener("input", () => {
-      updatePreview();
-      autoCalculatePrice();
-    });
-    const addonBtn = sizeContainer.querySelector(`[data-bay-addon-btn="${i}"]`);
-    addonBtn?.addEventListener("click", () => openBayAddonModal(i));
   }
+  bindShelfInputEvents();
   updateBayAddonAvailability();
   updatePreview();
   autoCalculatePrice();
-  const removeBtn = $("#removeBayBtn");
-  if (removeBtn) removeBtn.disabled = state.bayCount <= 1;
 }
 
-function renderBayAddonSelection(index) {
+function buildShelfItem(shelf) {
+  const el = document.createElement("div");
+  el.className = "shelf-item";
+  el.innerHTML = `
+    <div class="form-row">
+      <label>선반 폭 (mm)</label>
+      <div class="field-col">
+        <select class="select-caret" data-shelf-preset="${shelf.id}">
+          <option value="">선택</option>
+          <option value="400">400</option>
+          <option value="600">600</option>
+          <option value="800">800</option>
+          <option value="custom">직접 입력</option>
+        </select>
+        <input type="number" class="bay-width-input" data-shelf-width="${shelf.id}" placeholder="직접 입력 (400~800mm)" value="${shelf.width || ""}" />
+        <div class="error-msg" data-shelf-width-error="${shelf.id}"></div>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>선반 갯수</label>
+      <div class="field-col">
+        <input type="number" min="1" value="${shelf.count || 1}" data-shelf-count="${shelf.id}" />
+        <div class="error-msg" data-shelf-count-error="${shelf.id}"></div>
+      </div>
+    </div>
+    <div class="bay-addon-section">
+      <div class="addon-picker">
+        <button type="button" data-shelf-addon-btn="${shelf.id}">구성품 선택</button>
+        <button type="button" class="ghost-btn" data-shelf-remove="${shelf.id}">삭제</button>
+      </div>
+      <div id="selectedShelfAddon-${shelf.id}" class="selected-material-card addon-card-display"></div>
+    </div>
+  `;
+  return el;
+}
+
+function buildCornerShelfItem(corner) {
+  const el = document.createElement("div");
+  el.className = "shelf-item corner-item";
+  el.innerHTML = `
+    <div class="form-row">
+      <label>코너 선반</label>
+      <div class="field-col">
+        <select class="select-caret" data-corner-swap="${corner.id}">
+          <option value="default"${corner.swap ? "" : " selected"}>800 × 600</option>
+          <option value="swap"${corner.swap ? " selected" : ""}>600 × 800</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>선반 갯수</label>
+      <div class="field-col">
+        <input type="number" min="1" value="${corner.count || 1}" data-shelf-count="${corner.id}" />
+        <div class="error-msg" data-shelf-count-error="${corner.id}"></div>
+      </div>
+    </div>
+    <div class="bay-addon-section">
+      <div class="addon-picker">
+        <button type="button" data-shelf-addon-btn="${corner.id}">구성품 선택</button>
+      </div>
+      <div id="selectedShelfAddon-${corner.id}" class="selected-material-card addon-card-display"></div>
+    </div>
+  `;
+  return el;
+}
+
+function renderShelfAddonSelection(id) {
   renderSelectedAddonChips({
-    targetId: `selectedBayAddon-${index}`,
+    targetId: `selectedShelfAddon-${id}`,
     emptyText: "선택된 구성품 없음",
-    addons: state.bayAddons[index] || [],
+    addons: getShelfAddonIds(id),
     allItems: SYSTEM_ADDON_ITEMS,
   });
+}
+
+function bindShelfInputEvents() {
+  const container = $("#bayInputs");
+  if (!container) return;
+  container.querySelectorAll("[data-add-shelf]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const sideIndex = Number(btn.dataset.addShelf);
+      addShelfToSide(sideIndex);
+    });
+  });
+
+  container.querySelectorAll("[data-shelf-remove]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.shelfRemove;
+      if (!id) return;
+      state.sides.forEach((side) => {
+        side.shelves = side.shelves.filter((shelf) => shelf.id !== id);
+      });
+      delete state.shelfAddons[id];
+      renderBayInputs();
+    });
+  });
+
+  container.querySelectorAll("[data-shelf-addon-btn]").forEach((btn) => {
+    btn.addEventListener("click", () => openShelfAddonModal(btn.dataset.shelfAddonBtn));
+  });
+
+  container.querySelectorAll("[data-shelf-preset]").forEach((select) => {
+    const id = select.dataset.shelfPreset;
+    const widthInput = container.querySelector(`[data-shelf-width="${id}"]`);
+    const shelf = findShelfById(id);
+    if (!widthInput || !shelf) return;
+    const presetValue =
+      shelf.width === 400 || shelf.width === 600 || shelf.width === 800
+        ? String(shelf.width)
+        : shelf.width
+        ? "custom"
+        : "";
+    select.value = presetValue;
+    const isCustom = presetValue === "custom";
+    widthInput.disabled = !isCustom;
+    widthInput.classList.toggle("hidden", !isCustom);
+    if (!isCustom) widthInput.value = presetValue || "";
+    select.addEventListener("change", () => {
+      if (select.value === "custom") {
+        widthInput.value = "";
+        widthInput.disabled = false;
+        widthInput.classList.remove("hidden");
+        widthInput.focus();
+      } else {
+        widthInput.value = select.value || "";
+        widthInput.disabled = select.value !== "";
+        widthInput.classList.add("hidden");
+      }
+      shelf.width = Number(widthInput.value || 0);
+      updatePreview();
+      autoCalculatePrice();
+    });
+  });
+
+  container.querySelectorAll("[data-shelf-width]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const id = input.dataset.shelfWidth;
+      const shelf = findShelfById(id);
+      if (shelf) shelf.width = Number(input.value || 0);
+      updatePreview();
+      autoCalculatePrice();
+    });
+  });
+
+  container.querySelectorAll("[data-shelf-count]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const id = input.dataset.shelfCount;
+      const shelf = findShelfById(id);
+      if (shelf) shelf.count = Number(input.value || 1);
+      updatePreview();
+      autoCalculatePrice();
+    });
+  });
+
+  container.querySelectorAll("[data-corner-swap]").forEach((select) => {
+    select.addEventListener("change", () => {
+      const id = select.dataset.cornerSwap;
+      const corner = state.corners.find((c) => c && c.id === id);
+      if (!corner) return;
+      corner.swap = select.value === "swap";
+      updatePreview();
+      autoCalculatePrice();
+    });
+  });
+}
+
+function findShelfById(id) {
+  const corner = state.corners.find((c) => c && c.id === id);
+  if (corner) return corner;
+  for (const side of state.sides) {
+    const shelf = side.shelves.find((s) => s.id === id);
+    if (shelf) return shelf;
+  }
+  return null;
+}
+
+function syncCornerOptionModal() {
+  if (!activeCornerOptionId) return;
+  const corner = state.corners.find((c) => c && c.id === activeCornerOptionId);
+  if (!corner) return;
+  const titleEl = $("#cornerOptionModalTitle");
+  const swapSelect = $("#cornerSwapSelect");
+  const countInput = $("#cornerCountInput");
+  const addonBtn = $("#cornerAddonBtn");
+  const columnMin = Number($("#columnLengthMinInput")?.value || 0);
+  const columnMax = Number($("#columnLengthMaxInput")?.value || 0);
+  const hasColumnHeight = columnMin > 0 && columnMax > 0;
+  if (titleEl) titleEl.textContent = `${getCornerLabel(corner)} 옵션 설정`;
+  if (swapSelect) swapSelect.value = corner.swap ? "swap" : "default";
+  if (countInput) countInput.value = String(corner.count || 1);
+  if (addonBtn) addonBtn.disabled = !hasColumnHeight;
+  setFieldError(countInput, $("#cornerCountError"), "");
+}
+
+function openCornerOptionModal(cornerId) {
+  const corner = state.corners.find((c) => c && c.id === cornerId);
+  if (!corner) return;
+  activeCornerOptionId = cornerId;
+  syncCornerOptionModal();
+  openModal("#cornerOptionModal", { focusTarget: "#cornerOptionModalTitle" });
+}
+
+function syncBayOptionModal() {
+  if (!activeBayOptionId) return;
+  const shelf = findShelfById(activeBayOptionId);
+  if (!shelf) return;
+  const titleEl = $("#bayOptionModalTitle");
+  const presetSelect = $("#bayWidthPresetSelect");
+  const customInput = $("#bayWidthCustomInput");
+  const countInput = $("#bayCountInput");
+  const addonBtn = $("#bayAddonBtn");
+  const columnMin = Number($("#columnLengthMinInput")?.value || 0);
+  const columnMax = Number($("#columnLengthMaxInput")?.value || 0);
+  const hasColumnHeight = columnMin > 0 && columnMax > 0;
+
+  const width = Number(shelf.width || 0);
+  const presetValue =
+    width === 400 || width === 600 || width === 800 ? String(width) : "custom";
+
+  if (titleEl) titleEl.textContent = "Bay 옵션 설정";
+  if (presetSelect) presetSelect.value = presetValue;
+  if (customInput) {
+    customInput.classList.toggle("hidden", presetValue !== "custom");
+    customInput.disabled = presetValue !== "custom";
+    customInput.value = presetValue === "custom" ? String(width || "") : "";
+  }
+  if (countInput) countInput.value = String(shelf.count || 1);
+  if (addonBtn) addonBtn.disabled = !hasColumnHeight;
+
+  setFieldError(customInput, $("#bayWidthError"), "");
+  setFieldError(countInput, $("#bayCountError"), "");
+}
+
+function openBayOptionModal(shelfId) {
+  const shelf = findShelfById(shelfId);
+  if (!shelf) return;
+  activeBayOptionId = shelfId;
+  syncBayOptionModal();
+  openModal("#bayOptionModal", { focusTarget: "#bayOptionModalTitle" });
+}
+
+function saveBayOptionModal() {
+  if (!activeBayOptionId) return;
+  const shelf = findShelfById(activeBayOptionId);
+  const presetSelect = $("#bayWidthPresetSelect");
+  const customInput = $("#bayWidthCustomInput");
+  const countInput = $("#bayCountInput");
+  const widthError = $("#bayWidthError");
+  const countError = $("#bayCountError");
+  if (!shelf || !presetSelect || !countInput || !customInput) return;
+
+  const isCustom = presetSelect.value === "custom";
+  const width = Number((isCustom ? customInput.value : presetSelect.value) || 0);
+  const count = Number(countInput.value || 0);
+
+  let hasError = false;
+  if (!width || width < BAY_WIDTH_LIMITS.min || width > BAY_WIDTH_LIMITS.max) {
+    setFieldError(
+      customInput,
+      widthError,
+      `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`
+    );
+    hasError = true;
+  } else {
+    setFieldError(customInput, widthError, "");
+  }
+
+  if (!count || count < 1) {
+    setFieldError(countInput, countError, "선반 갯수는 1개 이상이어야 합니다.");
+    hasError = true;
+  } else {
+    setFieldError(countInput, countError, "");
+  }
+  if (hasError) return;
+
+  shelf.width = width;
+  shelf.count = count;
+  closeModal("#bayOptionModal");
+  renderBayInputs();
+}
+
+function saveCornerOptionModal() {
+  if (!activeCornerOptionId) return;
+  const corner = state.corners.find((c) => c && c.id === activeCornerOptionId);
+  const swapSelect = $("#cornerSwapSelect");
+  const countInput = $("#cornerCountInput");
+  const countError = $("#cornerCountError");
+  if (!corner || !swapSelect || !countInput) return;
+
+  const count = Number(countInput.value || 0);
+  if (!count || count < 1) {
+    setFieldError(countInput, countError, "선반 갯수는 1개 이상이어야 합니다.");
+    return;
+  }
+
+  corner.swap = swapSelect.value === "swap";
+  corner.count = count;
+  closeModal("#cornerOptionModal");
+  renderBayInputs();
 }
 
 function renderSystemAddonModalCards() {
@@ -926,17 +1404,17 @@ function renderSystemAddonModalCards() {
   });
   container.addEventListener("change", (e) => {
     const input = e.target.closest('input[type="checkbox"]');
-    if (!input || activeBayAddonIndex === null) return;
+    if (!input || !activeShelfAddonId) return;
     const id = input.value;
-    const selected = new Set(state.bayAddons[activeBayAddonIndex] || []);
+    const selected = new Set(state.shelfAddons[activeShelfAddonId] || []);
     if (input.checked) {
       selected.add(id);
     } else {
       selected.delete(id);
     }
-    state.bayAddons[activeBayAddonIndex] = Array.from(selected);
+    state.shelfAddons[activeShelfAddonId] = Array.from(selected);
     input.closest(".option-card")?.classList.toggle("selected", input.checked);
-    renderBayAddonSelection(activeBayAddonIndex);
+    renderShelfAddonSelection(activeShelfAddonId);
     autoCalculatePrice();
     updateAddItemState();
   });
@@ -944,8 +1422,8 @@ function renderSystemAddonModalCards() {
 
 function syncSystemAddonModalSelection() {
   const container = $("#systemAddonCards");
-  if (!container || activeBayAddonIndex === null) return;
-  const selected = new Set(state.bayAddons[activeBayAddonIndex] || []);
+  if (!container || !activeShelfAddonId) return;
+  const selected = new Set(state.shelfAddons[activeShelfAddonId] || []);
   container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
     const isSelected = selected.has(input.value);
     input.checked = isSelected;
@@ -953,8 +1431,8 @@ function syncSystemAddonModalSelection() {
   });
 }
 
-function openBayAddonModal(index) {
-  activeBayAddonIndex = index;
+function openShelfAddonModal(id) {
+  activeShelfAddonId = id;
   syncSystemAddonModalSelection();
   openModal("#systemAddonModal", { focusTarget: "#systemAddonModalTitle" });
 }
@@ -963,14 +1441,17 @@ function updateBayAddonAvailability() {
   const columnMin = Number($("#columnLengthMinInput")?.value || 0);
   const columnMax = Number($("#columnLengthMaxInput")?.value || 0);
   const hasColumnHeight = columnMin > 0 && columnMax > 0;
-  const bayCount = state.bayCount;
-  for (let i = 0; i < bayCount; i += 1) {
-    const btn = document.querySelector(`[data-bay-addon-btn="${i}"]`);
-    if (btn) btn.disabled = !hasColumnHeight;
-    if (!hasColumnHeight) {
-      state.bayAddons[i] = [];
-      renderBayAddonSelection(i);
-    }
+  document.querySelectorAll("[data-shelf-addon-btn]").forEach((btn) => {
+    btn.disabled = !hasColumnHeight;
+  });
+  if (!hasColumnHeight) {
+    state.shelfAddons = {};
+    state.sides.forEach((side) => {
+      side.shelves.forEach((shelf) => renderShelfAddonSelection(shelf.id));
+    });
+    state.corners.forEach((corner) => {
+      if (corner) renderShelfAddonSelection(corner.id);
+    });
   }
   if (!hasColumnHeight) {
     autoCalculatePrice();
@@ -1528,6 +2009,7 @@ function init() {
     updateThicknessOptions(picker);
   });
 
+  initShelfStateForShape(getSelectedShape());
   renderShapeSizeInputs();
   renderBayInputs();
   renderTable();
@@ -1542,16 +2024,31 @@ function init() {
   $("#addEstimateBtn")?.addEventListener("click", commitBaysToEstimate);
   $("#closeSystemAddonModal")?.addEventListener("click", () => closeModal("#systemAddonModal"));
   $("#systemAddonModalBackdrop")?.addEventListener("click", () => closeModal("#systemAddonModal"));
-  $("#addBayBtn")?.addEventListener("click", () => {
-    const prevBays = readBayInputs();
-    state.bayCount += 1;
-    renderBayInputs(prevBays);
+  $("#closeCornerOptionModal")?.addEventListener("click", () => closeModal("#cornerOptionModal"));
+  $("#cornerOptionModalBackdrop")?.addEventListener("click", () => closeModal("#cornerOptionModal"));
+  $("#saveCornerOptionModal")?.addEventListener("click", saveCornerOptionModal);
+  $("#cornerAddonBtn")?.addEventListener("click", () => {
+    if (!activeCornerOptionId) return;
+    closeModal("#cornerOptionModal");
+    openShelfAddonModal(activeCornerOptionId);
   });
-  $("#removeBayBtn")?.addEventListener("click", () => {
-    if (state.bayCount <= 1) return;
-    const prevBays = readBayInputs();
-    state.bayCount -= 1;
-    renderBayInputs(prevBays.slice(0, state.bayCount));
+  $("#closeBayOptionModal")?.addEventListener("click", () => closeModal("#bayOptionModal"));
+  $("#bayOptionModalBackdrop")?.addEventListener("click", () => closeModal("#bayOptionModal"));
+  $("#saveBayOptionModal")?.addEventListener("click", saveBayOptionModal);
+  $("#bayWidthPresetSelect")?.addEventListener("change", () => {
+    const presetSelect = $("#bayWidthPresetSelect");
+    const customInput = $("#bayWidthCustomInput");
+    if (!presetSelect || !customInput) return;
+    const isCustom = presetSelect.value === "custom";
+    customInput.classList.toggle("hidden", !isCustom);
+    customInput.disabled = !isCustom;
+    if (isCustom) customInput.focus();
+    setFieldError(customInput, $("#bayWidthError"), "");
+  });
+  $("#bayAddonBtn")?.addEventListener("click", () => {
+    if (!activeBayOptionId) return;
+    closeModal("#bayOptionModal");
+    openShelfAddonModal(activeBayOptionId);
   });
   $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
   $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
@@ -1593,12 +2090,34 @@ function init() {
     });
   });
 
+  $("#systemPreviewShelves")?.addEventListener("click", (e) => {
+    const addTarget = e.target.closest("[data-add-shelf]");
+    if (addTarget) {
+      const sideIndex = Number(addTarget.dataset.addShelf);
+      addShelfToSide(sideIndex);
+      return;
+    }
+    const cornerTarget = e.target.closest("[data-corner-preview]");
+    if (cornerTarget) {
+      const cornerId = cornerTarget.dataset.cornerPreview;
+      if (!cornerId) return;
+      openCornerOptionModal(cornerId);
+      return;
+    }
+    const bayTarget = e.target.closest("[data-bay-preview]");
+    if (!bayTarget) return;
+    const shelfId = bayTarget.dataset.bayPreview;
+    if (!shelfId) return;
+    openBayOptionModal(shelfId);
+  });
+
   document.querySelectorAll('input[name="systemShape"]').forEach((input) => {
     input.addEventListener("change", () => {
       document.querySelectorAll("#shapeCards .material-card").forEach((card) =>
         card.classList.remove("selected")
       );
       input.closest(".material-card")?.classList.add("selected");
+      initShelfStateForShape(getSelectedShape());
       renderShapeSizeInputs();
       renderBayInputs();
       updateBayAddonAvailability();
