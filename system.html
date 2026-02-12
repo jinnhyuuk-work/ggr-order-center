@@ -28,6 +28,40 @@
 
     <div class="main-grid">
       <div class="steps-main">
+        <section id="stepColumnMaterial" class="step-card is-accordion is-collapsed">
+          <div class="step-card-header">
+            <h2>기둥 컬러를 선택해주세요.</h2>
+            <div class="step-card-meta">
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepColumnMaterial" aria-expanded="false">열기</button>
+            </div>
+          </div>
+          <div class="accordion-body" id="stepColumnMaterialBody">
+            <div class="material-picker">
+              <button type="button" id="openColumnMaterialModal">기둥 컬러 선택</button>
+            </div>
+            <div id="selectedColumnMaterialCard" class="selected-material-card">
+              <div class="placeholder">선택된 기둥 컬러 없음</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="stepShelfMaterial" class="step-card is-accordion is-collapsed">
+          <div class="step-card-header">
+            <h2>선반 컬러를 선택해주세요.</h2>
+            <div class="step-card-meta">
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepShelfMaterial" aria-expanded="false">열기</button>
+            </div>
+          </div>
+          <div class="accordion-body" id="stepShelfMaterialBody">
+            <div class="material-picker">
+              <button type="button" id="openShelfMaterialModal">선반 컬러 선택</button>
+            </div>
+            <div id="selectedShelfMaterialCard" class="selected-material-card">
+              <div class="placeholder">선택된 선반 컬러 없음</div>
+            </div>
+          </div>
+        </section>
+
         <section id="stepShape" class="step-card is-accordion is-collapsed">
           <div class="step-card-header">
             <h2>구성 형태와 사이즈를 입력해주세요.</h2>
@@ -92,61 +126,6 @@
               </div>
             </div>
           </div>
-        </section>
-
-        <section id="stepColumnMaterial" class="step-card is-accordion is-collapsed">
-          <div class="step-card-header">
-            <h2>기둥 컬러를 선택해주세요.</h2>
-            <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepColumnMaterial" aria-expanded="false">열기</button>
-            </div>
-          </div>
-          <div class="accordion-body" id="stepColumnMaterialBody">
-            <div class="material-picker">
-              <button type="button" id="openColumnMaterialModal">기둥 컬러 선택</button>
-            </div>
-            <div id="selectedColumnMaterialCard" class="selected-material-card">
-              <div class="placeholder">선택된 기둥 컬러 없음</div>
-            </div>
-          </div>
-        </section>
-
-        <section id="stepShelfMaterial" class="step-card is-accordion is-collapsed">
-          <div class="step-card-header">
-            <h2>선반 컬러를 선택해주세요.</h2>
-            <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepShelfMaterial" aria-expanded="false">열기</button>
-            </div>
-          </div>
-          <div class="accordion-body" id="stepShelfMaterialBody">
-            <div class="material-picker">
-              <button type="button" id="openShelfMaterialModal">선반 컬러 선택</button>
-            </div>
-            <div id="selectedShelfMaterialCard" class="selected-material-card">
-              <div class="placeholder">선택된 선반 컬러 없음</div>
-            </div>
-          </div>
-        </section>
-
-        <section id="stepBayConfig" class="step-card is-accordion is-collapsed">
-          <div class="step-card-header">
-            <h2>칸 정보를 입력해주세요.</h2>
-            <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepBayConfig" aria-expanded="false">열기</button>
-            </div>
-          </div>
-          <div class="accordion-body" id="stepBayConfigBody">
-            <div class="form-row">
-              <div class="field-col">
-                <div class="field-note">칸을 원하는 만큼 추가해주세요.</div>
-                <div id="bayInputs"></div>
-              </div>
-            </div>
-          </div>
-        </section>
-        <section class="step-card action-card">
-          <div id="itemPriceDisplay">금액: 0원</div>
-          <button id="addEstimateBtn">견적 담기</button>
         </section>
 
         <section id="stepPreview" class="step-card preview-panel">
@@ -238,6 +217,11 @@
               개인정보 처리방침에 동의합니다.
             </label>
           </div>
+        </section>
+
+        <section class="step-card action-card">
+          <div id="itemPriceDisplay">금액: 0원</div>
+          <button id="addEstimateBtn">견적 담기</button>
         </section>
       </div>
 
@@ -390,6 +374,7 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button type="button" id="removeCornerOptionModal" class="ghost-btn">코너 제거</button>
         <button type="button" id="saveCornerOptionModal">적용</button>
         <button type="button" id="closeCornerOptionModal" class="modal-close">닫기</button>
       </div>
@@ -431,8 +416,29 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button type="button" id="removeBayOptionModal" class="ghost-btn">Bay 제거</button>
         <button type="button" id="saveBayOptionModal">적용</button>
         <button type="button" id="closeBayOptionModal" class="modal-close">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="previewAddTypeModal" class="modal hidden">
+    <div class="modal-backdrop" id="previewAddTypeModalBackdrop"></div>
+    <div class="modal-content" id="previewAddTypeModalContent">
+      <div class="modal-header">
+        <h3 id="previewAddTypeModalTitle" tabindex="-1">추가 방식 선택</h3>
+      </div>
+      <div class="modal-body">
+        <p id="previewAddTypeDesc" class="field-note">끝점에서 연장할 Bay 유형을 선택하세요.</p>
+        <div class="step-card-actions" style="justify-content:flex-start;">
+          <button type="button" id="previewAddNormalBtn">일반 Bay 추가</button>
+          <button type="button" id="previewAddCornerBtn">코너 Bay 설정</button>
+        </div>
+        <div id="previewAddTypeError" class="error-msg"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="closePreviewAddTypeModal" class="modal-close">닫기</button>
       </div>
     </div>
   </div>

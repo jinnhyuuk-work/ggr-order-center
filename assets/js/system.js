@@ -68,6 +68,7 @@ let stickyOffsetTimer = null;
 let activeShelfAddonId = null;
 let activeCornerOptionId = null;
 let activeBayOptionId = null;
+let activePreviewAddTarget = null;
 
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
@@ -294,17 +295,7 @@ function initShelfStateForShape(shape) {
     id: `side-${idx}`,
     shelves: [],
   }));
-  const cornerFlags = getCornerFlags(shape);
-  state.corners = cornerFlags.map((hasCorner, idx) =>
-    hasCorner
-      ? {
-          id: `corner-${idx}`,
-          sideIndex: idx,
-          swap: false,
-          count: 1,
-        }
-      : null
-  );
+  state.corners = Array.from({ length: sideCount }, () => null);
 }
 
 function readCurrentInputs() {
@@ -423,15 +414,74 @@ function getCornerLabel(corner) {
   return Number.isFinite(sideNumber) ? `코너 ${sideNumber}` : "코너";
 }
 
-function addShelfToSide(sideIndex) {
+function transitionShapeWithState(nextShape, ensureCornerIndex = null) {
+  const currentShape = getSelectedShape();
+  const prevSizes = readShapeSizes(currentShape);
+  const prevSides = state.sides.map((side) => ({
+    shelves: (side.shelves || []).map((shelf) => ({ ...shelf })),
+  }));
+  const prevCorners = state.corners.map((corner) => (corner ? { ...corner } : null));
+
+  initShelfStateForShape(nextShape);
+
+  for (let i = 0; i < Math.min(prevSides.length, state.sides.length); i += 1) {
+    state.sides[i].shelves = prevSides[i].shelves;
+  }
+  for (let i = 0; i < Math.min(prevCorners.length, state.corners.length); i += 1) {
+    if (prevCorners[i] && state.corners[i]) {
+      state.corners[i].swap = Boolean(prevCorners[i].swap);
+      state.corners[i].count = Number(prevCorners[i].count || 1);
+      if (prevCorners[i].id && prevCorners[i].id !== state.corners[i].id) {
+        state.shelfAddons[state.corners[i].id] = state.shelfAddons[prevCorners[i].id] || [];
+      }
+    }
+  }
+  if (ensureCornerIndex !== null && state.corners[ensureCornerIndex]) {
+    const corner = state.corners[ensureCornerIndex];
+    corner.swap = false;
+    corner.count = corner.count || 1;
+  } else if (ensureCornerIndex !== null) {
+    state.corners[ensureCornerIndex] = {
+      id: `corner-${ensureCornerIndex}`,
+      sideIndex: ensureCornerIndex,
+      swap: false,
+      count: 1,
+    };
+  }
+
+  renderShapeSizeInputs();
+  const nextCount = getBayCountForShape(nextShape);
+  for (let i = 0; i < nextCount; i += 1) {
+    const input = $(`#shapeSize-${i}`);
+    if (!input) continue;
+    const prev = Number(prevSizes[i] || 0);
+    input.value = prev > 0 ? String(prev) : "";
+  }
+  document.querySelectorAll("#shapeCards .material-card").forEach((card) =>
+    card.classList.remove("selected")
+  );
+  const nextShapeInput = document.querySelector(`input[name="systemShape"][value="${nextShape}"]`);
+  if (nextShapeInput) {
+    nextShapeInput.checked = true;
+    nextShapeInput.closest(".material-card")?.classList.add("selected");
+  }
+  renderBayInputs();
+}
+
+function addShelfToSide(sideIndex, { atStart = false } = {}) {
   if (Number.isNaN(sideIndex)) return;
   const newShelf = {
     id: `shelf-${sideIndex}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     width: 400,
     count: 1,
   };
-  state.sides[sideIndex].shelves.push(newShelf);
+  if (atStart) {
+    state.sides[sideIndex].shelves.unshift(newShelf);
+  } else {
+    state.sides[sideIndex].shelves.push(newShelf);
+  }
   renderBayInputs();
+  return newShelf.id;
 }
 
 function buildRectBounds(startX, startY, dir, inward, length, depth) {
@@ -449,6 +499,16 @@ function buildRectBounds(startX, startY, dir, inward, length, depth) {
     maxX: Math.max(x1, x2, x3, x4),
     maxY: Math.max(y1, y2, y3, y4),
   };
+}
+
+function pushPreviewAddButton(list, entry) {
+  const exists = list.some((it) => {
+    if (it.sideIndex !== entry.sideIndex) return false;
+    const dx = Math.abs((it.x || 0) - (entry.x || 0));
+    const dy = Math.abs((it.y || 0) - (entry.y || 0));
+    return dx < 10 && dy < 10;
+  });
+  if (!exists) list.push(entry);
 }
 
 function readBayInputs() {
@@ -777,10 +837,10 @@ function updatePreview() {
   });
 
   const bays = readBayInputs();
-  const hasShelf = Boolean(shelfMat && input.shelf.thickness && bays.length);
+  const hasShelfBase = Boolean(shelfMat && input.shelf.thickness);
   const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
 
-  if (!hasShelf || !hasColumn) {
+  if (!hasShelfBase || !hasColumn) {
     textEl.textContent = "칸 사이즈를 입력하면 미리보기가 표시됩니다.";
     shelvesEl.innerHTML = "";
     return;
@@ -822,7 +882,14 @@ function updatePreview() {
     const anchorX = renderFromCornerEnd ? sideEndX : cursorX;
     const anchorY = renderFromCornerEnd ? sideEndY : cursorY;
     const sequence = buildSideShelfSequence(sideIndex);
-    let offset = COLUMN_WIDTH_MM;
+    const cornerAtEnd = getCornerAtEnd(sideIndex, input.shape);
+    const cornerLenAtEnd = cornerAtEnd
+      ? getCornerSizeAlongSide(sideIndex, cornerAtEnd.swap) + SUPPORT_THICKNESS_MM * 2
+      : 0;
+    const startOffset =
+      COLUMN_WIDTH_MM +
+      (renderFromCornerEnd && cornerLenAtEnd > 0 ? cornerLenAtEnd + COLUMN_WIDTH_MM : 0);
+    let offset = startOffset;
     sequence.forEach((item) => {
       const widthMm = (item.width || 0) + SUPPORT_THICKNESS_MM * 2;
       const px = anchorX + renderDir.dx * offset;
@@ -884,12 +951,46 @@ function updatePreview() {
       offset += widthMm + COLUMN_WIDTH_MM;
     });
 
-    if (length > 0) {
-      addButtons.push({
-        sideIndex,
-        x: anchorX + renderDir.dx * offset + inward.x * (depthMm / 2),
-        y: anchorY + renderDir.dy * offset + inward.y * (depthMm / 2),
-      });
+    if (sequence.length > 0) {
+      const rawStartCornerIndex = renderFromCornerEnd ? sideIndex + 1 : sideIndex;
+      const startCornerIndex =
+        rawStartCornerIndex >= 0 && rawStartCornerIndex < sideCount
+          ? rawStartCornerIndex
+          : input.shape === "box_shape"
+          ? ((rawStartCornerIndex % sideCount) + sideCount) % sideCount
+          : -1;
+      const rawEndCornerIndex = renderFromCornerEnd ? sideIndex : sideIndex + 1;
+      const endCornerIndex =
+        rawEndCornerIndex >= 0 && rawEndCornerIndex < sideCount
+          ? rawEndCornerIndex
+          : input.shape === "box_shape"
+          ? ((rawEndCornerIndex % sideCount) + sideCount) % sideCount
+          : -1;
+      const startCorner = startCornerIndex >= 0 ? state.corners[startCornerIndex] : null;
+      const endCorner = endCornerIndex >= 0 ? state.corners[endCornerIndex] : null;
+
+      // Corner 접합부(닫힌 끝)에는 버튼을 만들지 않는다.
+      if (!startCorner) {
+        pushPreviewAddButton(addButtons, {
+          sideIndex,
+          cornerId: "",
+          cornerIndex: startCornerIndex,
+          prepend: true,
+          x: anchorX + renderDir.dx * startOffset + inward.x * (depthMm / 2),
+          y: anchorY + renderDir.dy * startOffset + inward.y * (depthMm / 2),
+        });
+      }
+
+      if (!endCorner) {
+        pushPreviewAddButton(addButtons, {
+          sideIndex,
+          cornerId: "",
+          cornerIndex: endCornerIndex,
+          prepend: false,
+          x: anchorX + renderDir.dx * offset + inward.x * (depthMm / 2),
+          y: anchorY + renderDir.dy * offset + inward.y * (depthMm / 2),
+        });
+      }
     }
     cursorX = sideEndX;
     cursorY = sideEndY;
@@ -899,11 +1000,19 @@ function updatePreview() {
   let maxX = 1;
   let minY = 0;
   let maxY = 1;
-  if (shelves.length) {
-    minX = Math.min(...shelves.map((s) => s.minX), ...addButtons.map((p) => p.x));
-    maxX = Math.max(...shelves.map((s) => s.maxX), ...addButtons.map((p) => p.x));
-    minY = Math.min(...shelves.map((s) => s.minY), ...addButtons.map((p) => p.y));
-    maxY = Math.max(...shelves.map((s) => s.maxY), ...addButtons.map((p) => p.y));
+  if (shelves.length || addButtons.length) {
+    const xPoints = [
+      ...shelves.flatMap((s) => [s.minX, s.maxX]),
+      ...addButtons.map((p) => p.x),
+    ];
+    const yPoints = [
+      ...shelves.flatMap((s) => [s.minY, s.maxY]),
+      ...addButtons.map((p) => p.y),
+    ];
+    minX = Math.min(...xPoints);
+    maxX = Math.max(...xPoints);
+    minY = Math.min(...yPoints);
+    maxY = Math.max(...yPoints);
   }
 
   const rangeX = Math.max(maxX - minX, 1);
@@ -946,17 +1055,96 @@ function updatePreview() {
       shelvesEl.appendChild(shelf);
   });
 
+  if (!shelves.length && !addButtons.length) {
+    const startBtn = document.createElement("button");
+    startBtn.type = "button";
+    startBtn.className = "system-preview-add-btn";
+    startBtn.dataset.addShelf = "0";
+    startBtn.dataset.addRootStart = "true";
+    startBtn.title = "첫 Bay 추가";
+    startBtn.textContent = "+";
+    startBtn.style.left = `${frameW / 2}px`;
+    startBtn.style.top = `${frameH / 2}px`;
+    shelvesEl.appendChild(startBtn);
+  }
+
   addButtons.forEach((point) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "system-preview-add-btn";
     btn.dataset.addShelf = String(point.sideIndex);
+    if (point.cornerId) btn.dataset.anchorCorner = point.cornerId;
+    if (Number.isFinite(point.cornerIndex) && point.cornerIndex >= 0) {
+      btn.dataset.anchorCornerIndex = String(point.cornerIndex);
+    }
+    if (point.prepend) btn.dataset.addPrepend = "true";
     btn.title = `너비 ${point.sideIndex + 1}에 칸 추가`;
     btn.textContent = "+";
     btn.style.left = `${point.x * scale + tx}px`;
     btn.style.top = `${point.y * scale + ty}px`;
     shelvesEl.appendChild(btn);
   });
+}
+
+function openPreviewAddTypeModal(sideIndex, cornerId = "", prepend = false, cornerIndex = -1) {
+  if (Number.isNaN(sideIndex)) return;
+  const hasCornerSlot = Number.isFinite(cornerIndex) && cornerIndex >= 0;
+  activePreviewAddTarget = {
+    sideIndex,
+    cornerId: cornerId || "",
+    prepend: Boolean(prepend),
+    cornerIndex: hasCornerSlot ? cornerIndex : -1,
+  };
+  const cornerBtn = $("#previewAddCornerBtn");
+  const errorEl = $("#previewAddTypeError");
+  if (cornerBtn) cornerBtn.disabled = !(cornerId || hasCornerSlot);
+  if (errorEl) {
+    const hasCornerAction = Boolean(cornerId || hasCornerSlot);
+    errorEl.textContent = hasCornerAction
+      ? ""
+      : "이 끝점에서는 코너 추가가 불가합니다. 일반 Bay를 추가해주세요.";
+    errorEl.classList.toggle("error", !hasCornerAction);
+  }
+  openModal("#previewAddTypeModal", { focusTarget: "#previewAddTypeModalTitle" });
+}
+
+function commitPreviewAddNormal() {
+  const sideIndex = Number(activePreviewAddTarget?.sideIndex);
+  if (Number.isNaN(sideIndex)) return;
+  const shelfId = addShelfToSide(sideIndex, {
+    atStart: Boolean(activePreviewAddTarget?.prepend),
+  });
+  closeModal("#previewAddTypeModal");
+  if (shelfId) openBayOptionModal(shelfId);
+}
+
+function commitPreviewAddCorner() {
+  const cornerId = activePreviewAddTarget?.cornerId || "";
+  if (cornerId) {
+    closeModal("#previewAddTypeModal");
+    openCornerOptionModal(cornerId);
+    return;
+  }
+  const cornerIndex = Number(activePreviewAddTarget?.cornerIndex);
+  if (Number.isFinite(cornerIndex) && cornerIndex >= 0) {
+    if (!state.corners[cornerIndex]) {
+      state.corners[cornerIndex] = {
+        id: `corner-${cornerIndex}`,
+        sideIndex: cornerIndex,
+        swap: false,
+        count: 1,
+      };
+    }
+    closeModal("#previewAddTypeModal");
+    renderBayInputs();
+    openCornerOptionModal(state.corners[cornerIndex].id);
+    return;
+  }
+  const errorEl = $("#previewAddTypeError");
+  if (errorEl) {
+    errorEl.textContent = "이 끝점에는 코너 Bay를 추가할 수 없습니다.";
+    errorEl.classList.add("error");
+  }
 }
 
 function updateAddItemState() {
@@ -1048,36 +1236,34 @@ function renderShapeSizeInputs() {
 
 function renderBayInputs() {
   const container = $("#bayInputs");
-  if (!container) return;
-  container.innerHTML = "";
-  const sideCount = state.sides.length;
-  for (let sideIndex = 0; sideIndex < sideCount; sideIndex += 1) {
-    const side = state.sides[sideIndex];
-    const sideBlock = document.createElement("div");
-    sideBlock.className = "bay-input";
-    sideBlock.innerHTML = `
-      <div class="bay-input-title">너비 ${sideIndex + 1} 선반</div>
-      <div class="shelf-list" data-side-index="${sideIndex}"></div>
-      <div class="step-card-actions">
-        <button type="button" data-add-shelf="${sideIndex}">선반 추가</button>
-      </div>
-      <div class="error-msg" data-side-length-error="${sideIndex}"></div>
-    `;
-    container.appendChild(sideBlock);
+  if (container) {
+    container.innerHTML = "";
+    const sideCount = state.sides.length;
+    for (let sideIndex = 0; sideIndex < sideCount; sideIndex += 1) {
+      const side = state.sides[sideIndex];
+      const sideBlock = document.createElement("div");
+      sideBlock.className = "bay-input";
+      sideBlock.innerHTML = `
+        <div class="bay-input-title">너비 ${sideIndex + 1} 선반</div>
+        <div class="shelf-list" data-side-index="${sideIndex}"></div>
+        <div class="error-msg" data-side-length-error="${sideIndex}"></div>
+      `;
+      container.appendChild(sideBlock);
 
-    const list = sideBlock.querySelector(".shelf-list");
-    if (!list) continue;
+      const list = sideBlock.querySelector(".shelf-list");
+      if (!list) continue;
 
-    const corner = state.corners[sideIndex];
-    if (corner) {
-      list.appendChild(buildCornerShelfItem(corner));
-      renderShelfAddonSelection(corner.id);
+      const corner = state.corners[sideIndex];
+      if (corner) {
+        list.appendChild(buildCornerShelfItem(corner));
+        renderShelfAddonSelection(corner.id);
+      }
+
+      side.shelves.forEach((shelf) => {
+        list.appendChild(buildShelfItem(shelf));
+        renderShelfAddonSelection(shelf.id);
+      });
     }
-
-    side.shelves.forEach((shelf) => {
-      list.appendChild(buildShelfItem(shelf));
-      renderShelfAddonSelection(shelf.id);
-    });
   }
   bindShelfInputEvents();
   updateBayAddonAvailability();
@@ -1163,13 +1349,6 @@ function renderShelfAddonSelection(id) {
 function bindShelfInputEvents() {
   const container = $("#bayInputs");
   if (!container) return;
-  container.querySelectorAll("[data-add-shelf]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const sideIndex = Number(btn.dataset.addShelf);
-      addShelfToSide(sideIndex);
-    });
-  });
-
   container.querySelectorAll("[data-shelf-remove]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.shelfRemove;
@@ -1366,6 +1545,18 @@ function saveBayOptionModal() {
   renderBayInputs();
 }
 
+function removeBayFromModal() {
+  if (!activeBayOptionId) return;
+  const id = activeBayOptionId;
+  state.sides.forEach((side) => {
+    side.shelves = side.shelves.filter((shelf) => shelf.id !== id);
+  });
+  delete state.shelfAddons[id];
+  activeBayOptionId = null;
+  closeModal("#bayOptionModal");
+  renderBayInputs();
+}
+
 function saveCornerOptionModal() {
   if (!activeCornerOptionId) return;
   const corner = state.corners.find((c) => c && c.id === activeCornerOptionId);
@@ -1382,6 +1573,17 @@ function saveCornerOptionModal() {
 
   corner.swap = swapSelect.value === "swap";
   corner.count = count;
+  closeModal("#cornerOptionModal");
+  renderBayInputs();
+}
+
+function removeCornerFromModal() {
+  if (!activeCornerOptionId) return;
+  const idx = state.corners.findIndex((corner) => corner && corner.id === activeCornerOptionId);
+  if (idx === -1) return;
+  delete state.shelfAddons[activeCornerOptionId];
+  state.corners[idx] = null;
+  activeCornerOptionId = null;
   closeModal("#cornerOptionModal");
   renderBayInputs();
 }
@@ -1734,7 +1936,7 @@ function resetOrderCompleteUI() {
   const completeEl = $("#orderComplete");
   const summaryCard = $("#stepFinal");
   const actionCard = document.querySelector(".action-card");
-  ["stepShape", "stepColumnMaterial", "stepShelfMaterial", "stepBayConfig", "stepPreview"].forEach(
+  ["stepShape", "stepColumnMaterial", "stepShelfMaterial", "stepPreview"].forEach(
     (id) => document.getElementById(id)?.classList.remove("hidden-step")
   );
   actionCard?.classList.remove("hidden-step");
@@ -1766,7 +1968,6 @@ function updateStepVisibility(scrollTarget) {
   const stepShape = $("#stepShape");
   const stepColumn = $("#stepColumnMaterial");
   const stepShelf = $("#stepShelfMaterial");
-  const stepBayConfig = $("#stepBayConfig");
   const stepPreview = $("#stepPreview");
   const actionCard = document.querySelector(".action-card");
   const step5 = $("#step5");
@@ -1781,7 +1982,7 @@ function updateStepVisibility(scrollTarget) {
   const showPhase2 = currentPhase === 2;
 
   if (orderCompleted) {
-    [stepShape, stepColumn, stepShelf, stepBayConfig, stepPreview, step5, actionCard].forEach(
+    [stepShape, stepColumn, stepShelf, stepPreview, step5, actionCard].forEach(
       (el) => el?.classList.add("hidden-step")
     );
     navActions?.classList.add("hidden-step");
@@ -1793,7 +1994,7 @@ function updateStepVisibility(scrollTarget) {
     return;
   }
 
-  [stepShape, stepColumn, stepShelf, stepBayConfig, stepPreview, actionCard].forEach((el) => {
+  [stepShape, stepColumn, stepShelf, stepPreview, actionCard].forEach((el) => {
     if (el) el.classList.toggle("hidden-step", !showPhase1);
   });
   if (step5) step5.classList.toggle("hidden-step", !showPhase2 || orderCompleted);
@@ -2027,6 +2228,7 @@ function init() {
   $("#closeCornerOptionModal")?.addEventListener("click", () => closeModal("#cornerOptionModal"));
   $("#cornerOptionModalBackdrop")?.addEventListener("click", () => closeModal("#cornerOptionModal"));
   $("#saveCornerOptionModal")?.addEventListener("click", saveCornerOptionModal);
+  $("#removeCornerOptionModal")?.addEventListener("click", removeCornerFromModal);
   $("#cornerAddonBtn")?.addEventListener("click", () => {
     if (!activeCornerOptionId) return;
     closeModal("#cornerOptionModal");
@@ -2035,6 +2237,7 @@ function init() {
   $("#closeBayOptionModal")?.addEventListener("click", () => closeModal("#bayOptionModal"));
   $("#bayOptionModalBackdrop")?.addEventListener("click", () => closeModal("#bayOptionModal"));
   $("#saveBayOptionModal")?.addEventListener("click", saveBayOptionModal);
+  $("#removeBayOptionModal")?.addEventListener("click", removeBayFromModal);
   $("#bayWidthPresetSelect")?.addEventListener("change", () => {
     const presetSelect = $("#bayWidthPresetSelect");
     const customInput = $("#bayWidthCustomInput");
@@ -2050,6 +2253,10 @@ function init() {
     closeModal("#bayOptionModal");
     openShelfAddonModal(activeBayOptionId);
   });
+  $("#closePreviewAddTypeModal")?.addEventListener("click", () => closeModal("#previewAddTypeModal"));
+  $("#previewAddTypeModalBackdrop")?.addEventListener("click", () => closeModal("#previewAddTypeModal"));
+  $("#previewAddNormalBtn")?.addEventListener("click", commitPreviewAddNormal);
+  $("#previewAddCornerBtn")?.addEventListener("click", commitPreviewAddCorner);
   $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
   $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
@@ -2094,7 +2301,10 @@ function init() {
     const addTarget = e.target.closest("[data-add-shelf]");
     if (addTarget) {
       const sideIndex = Number(addTarget.dataset.addShelf);
-      addShelfToSide(sideIndex);
+      const cornerId = addTarget.dataset.anchorCorner || "";
+      const prepend = addTarget.dataset.addPrepend === "true";
+      const cornerIndex = Number(addTarget.dataset.anchorCornerIndex || -1);
+      openPreviewAddTypeModal(sideIndex, cornerId, prepend, cornerIndex);
       return;
     }
     const cornerTarget = e.target.closest("[data-corner-preview]");

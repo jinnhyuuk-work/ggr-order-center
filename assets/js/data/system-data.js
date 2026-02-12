@@ -56,14 +56,44 @@ export const SYSTEM_SHELF_MATERIALS = {
   ...arrayToMap(PP_ITEMS),
 };
 
+const COLUMN_ITEMS = [
+  {
+    id: "column_white",
+    name: "화이트",
+    category: "기둥",
+    availableThickness: [18],
+    pricePerM2: 45000,
+    density: 720,
+    swatch: "#f6f6f6",
+  },
+  {
+    id: "column_silver",
+    name: "실버",
+    category: "기둥",
+    availableThickness: [18],
+    pricePerM2: 45000,
+    density: 720,
+    swatch: "#b7bcc6",
+  },
+  {
+    id: "column_black",
+    name: "블랙",
+    category: "기둥",
+    availableThickness: [18],
+    pricePerM2: 45000,
+    density: 720,
+    swatch: "#2a2a2a",
+  },
+];
+
 export const SYSTEM_COLUMN_MATERIALS = {
-  ...arrayToMap(LPM_ITEMS),
-  ...arrayToMap(PP_ITEMS),
+  ...arrayToMap(COLUMN_ITEMS),
 };
 
 export const SYSTEM_MATERIAL_CATEGORIES_DESC = {
   LPM: "LPM 마감재 카테고리입니다.",
   PP: "PP 마감재 카테고리입니다.",
+  기둥: "기둥 컬러 카테고리입니다.",
 };
 
 export const SYSTEM_CUSTOM_PROCESSING = {

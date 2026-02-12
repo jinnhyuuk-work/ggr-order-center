@@ -574,6 +574,16 @@ input[type="number"]::-webkit-outer-spin-button {
 .system-preview .preview-frame {
   align-items: stretch;
   justify-content: stretch;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  height: auto;
+  min-height: 320px;
+}
+
+@media (max-width: 768px) {
+  .system-preview .preview-frame {
+    min-height: 240px;
+  }
 }
 
 .system-preview .system-column,
