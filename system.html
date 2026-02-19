@@ -81,10 +81,14 @@
           <div class="preview-panel-grid">
             <div class="builder-panel" id="builderPanel">
               <div class="builder-hint">끝점(+)을 눌러 모듈 또는 코너를 추가하세요.</div>
+              <div class="builder-history-actions">
+                <button type="button" class="ghost-btn" id="builderUndoBtn" disabled>되돌리기</button>
+                <button type="button" class="ghost-btn" id="builderRedoBtn" disabled>다시실행</button>
+              </div>
               <div class="builder-edge-list" id="builderEdgeList"></div>
             </div>
             <div class="preview-box system-preview" id="systemPreviewBox">
-            <div class="preview-text" id="systemPreviewText">선반과 기둥을 선택하면 미리보기가 표시됩니다.</div>
+            <div class="preview-text" id="systemPreviewText">옵션 선택 후 모듈을 추가하면 미리보기가 표시됩니다.</div>
             <div class="preview-frame" id="systemPreviewFrame">
               <div class="system-column" id="systemPreviewColumnLeft"></div>
               <div class="system-column" id="systemPreviewColumnRight"></div>

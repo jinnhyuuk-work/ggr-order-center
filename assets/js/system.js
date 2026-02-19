@@ -49,6 +49,7 @@ const SHAPE_BAY_COUNTS = {
   box_shape: 4,
 };
 const FREE_LAYOUT_MODE = true;
+const BUILDER_HISTORY_LIMIT = 80;
 
 const state = {
   items: [],
@@ -65,6 +66,12 @@ let activeCornerOptionId = null;
 let activeBayOptionId = null;
 let activePreviewAddTarget = null;
 let previewOpenEndpoints = new Map();
+let previewRenderTransform = { scale: 1, tx: 0, ty: 0, depthMm: 400 };
+const builderHistory = {
+  undo: [],
+  redo: [],
+  applying: false,
+};
 
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
@@ -589,6 +596,8 @@ function addShelfFromEndpoint(endpoint, target = {}) {
       endpoint?.sideIndex ??
       directionToSideIndex(dir.dx, dir.dy)
   );
+  if (Number.isNaN(sideIndex)) return "";
+  pushBuilderHistory("add-normal");
   const shelfId = addShelfToSide(sideIndex, {
     atStart: Boolean(target?.attachAtStart ?? endpoint?.attachAtStart),
     placement,
@@ -1036,6 +1045,234 @@ function isPreviewBuilderReady(input) {
     if (min > LIMITS.column.maxLength || max > LIMITS.column.maxLength) return false;
   }
   return true;
+}
+
+function getPreviewBuilderDisabledReason(input) {
+  if (!input?.column?.materialId) return "기둥 컬러를 먼저 선택해주세요.";
+  if (!input?.shelf?.materialId) return "선반 컬러를 먼저 선택해주세요.";
+  const space = (input?.spaces || [])[0] || { min: 0, max: 0 };
+  const min = Number(space.min || 0);
+  const max = Number(space.max || 0);
+  if (!min || !max) return "천장 높이(최소/최대)를 먼저 입력해주세요.";
+  if (min > max) return "천장 높이 입력값을 확인해주세요.";
+  if (min < LIMITS.column.minLength || max < LIMITS.column.minLength) {
+    return `천장 높이는 ${LIMITS.column.minLength}mm 이상이어야 합니다.`;
+  }
+  if (min > LIMITS.column.maxLength || max > LIMITS.column.maxLength) {
+    return `최대 천장 높이는 ${LIMITS.column.maxLength}mm 이하입니다.`;
+  }
+  return "";
+}
+
+function applyPreviewAddButtonState(btn, { enabled = true, reason = "" } = {}) {
+  if (!btn) return;
+  btn.disabled = !enabled;
+  btn.classList.toggle("is-disabled", !enabled);
+  if (enabled || !reason) {
+    delete btn.dataset.disabledReason;
+    btn.removeAttribute("aria-disabled");
+    return;
+  }
+  btn.dataset.disabledReason = reason;
+  btn.setAttribute("aria-disabled", "true");
+}
+
+function setPreviewRenderTransform(next) {
+  previewRenderTransform = {
+    scale: Number(next?.scale || 1),
+    tx: Number(next?.tx || 0),
+    ty: Number(next?.ty || 0),
+    depthMm: Number(next?.depthMm || 400),
+  };
+}
+
+function clearPreviewGhost() {
+  const container = $("#systemPreviewShelves");
+  if (!container) return;
+  container.querySelectorAll(".system-preview-ghost").forEach((el) => el.remove());
+}
+
+function renderPreviewGhostNormal(placement, container) {
+  if (!hasValidPlacement(placement) || !container) return;
+  const widthMm = 400 + SUPPORT_VISIBLE_MM * 2;
+  const depthMm = Number(previewRenderTransform.depthMm || 400);
+  const dir = normalizeDirection(placement.dirDx, placement.dirDy);
+  let inward = normalizeDirection(placement.inwardX, placement.inwardY);
+  const dot = dir.dx * inward.dx + dir.dy * inward.dy;
+  if (Math.abs(dot) > 0.9) inward = { dx: -dir.dy, dy: dir.dx };
+  const rect = buildRectBounds(
+    Number(placement.startX || 0),
+    Number(placement.startY || 0),
+    dir,
+    { x: inward.dx, y: inward.dy },
+    widthMm,
+    depthMm
+  );
+  const ghost = document.createElement("div");
+  ghost.className = "system-preview-ghost system-preview-ghost--normal";
+  ghost.style.left = `${rect.minX * previewRenderTransform.scale + previewRenderTransform.tx}px`;
+  ghost.style.top = `${rect.minY * previewRenderTransform.scale + previewRenderTransform.ty}px`;
+  ghost.style.width = `${Math.max(1, (rect.maxX - rect.minX) * previewRenderTransform.scale)}px`;
+  ghost.style.height = `${Math.max(1, (rect.maxY - rect.minY) * previewRenderTransform.scale)}px`;
+  container.appendChild(ghost);
+}
+
+function renderPreviewGhostCorner(placement, container) {
+  if (!hasValidPlacement(placement) || !container) return;
+  const depthMm = Number(previewRenderTransform.depthMm || 400);
+  const dir = normalizeDirection(placement.dirDx, placement.dirDy);
+  let inward = normalizeDirection(placement.inwardX, placement.inwardY);
+  const dot = dir.dx * inward.dx + dir.dy * inward.dy;
+  if (Math.abs(dot) > 0.9) inward = { dx: -dir.dy, dy: dir.dx };
+  const primaryLen = 800 + SUPPORT_VISIBLE_MM * 2;
+  const secondLen = 600 + SUPPORT_VISIBLE_MM * 2;
+  const startX = Number(placement.startX || 0);
+  const startY = Number(placement.startY || 0);
+  const secondStartX = startX + dir.dx * primaryLen;
+  const secondStartY = startY + dir.dy * primaryLen;
+  const armA = buildRectBounds(
+    startX,
+    startY,
+    dir,
+    { x: inward.dx, y: inward.dy },
+    primaryLen,
+    depthMm
+  );
+  const armB = buildRectBounds(
+    secondStartX,
+    secondStartY,
+    inward,
+    { x: -dir.dx, y: -dir.dy },
+    secondLen,
+    depthMm
+  );
+  const minX = Math.min(armA.minX, armB.minX);
+  const minY = Math.min(armA.minY, armB.minY);
+  const maxX = Math.max(armA.maxX, armB.maxX);
+  const maxY = Math.max(armA.maxY, armB.maxY);
+  const ghost = document.createElement("div");
+  ghost.className = "system-preview-ghost system-preview-ghost--corner";
+  ghost.style.left = `${minX * previewRenderTransform.scale + previewRenderTransform.tx}px`;
+  ghost.style.top = `${minY * previewRenderTransform.scale + previewRenderTransform.ty}px`;
+  ghost.style.width = `${Math.max(1, (maxX - minX) * previewRenderTransform.scale)}px`;
+  ghost.style.height = `${Math.max(1, (maxY - minY) * previewRenderTransform.scale)}px`;
+  [armA, armB].forEach((arm) => {
+    const armEl = document.createElement("div");
+    armEl.className = "system-preview-ghost-arm";
+    armEl.style.left = `${(arm.minX - minX) * previewRenderTransform.scale}px`;
+    armEl.style.top = `${(arm.minY - minY) * previewRenderTransform.scale}px`;
+    armEl.style.width = `${Math.max(1, (arm.maxX - arm.minX) * previewRenderTransform.scale)}px`;
+    armEl.style.height = `${Math.max(1, (arm.maxY - arm.minY) * previewRenderTransform.scale)}px`;
+    ghost.appendChild(armEl);
+  });
+  container.appendChild(ghost);
+}
+
+function showPreviewGhostForEndpoint(endpoint, preferType = "normal") {
+  const container = $("#systemPreviewShelves");
+  if (!endpoint || !container) return;
+  const placement = buildPlacementFromEndpoint(endpoint);
+  if (!placement) return;
+  clearPreviewGhost();
+  if (preferType === "corner") {
+    renderPreviewGhostCorner(placement, container);
+    return;
+  }
+  renderPreviewGhostNormal(placement, container);
+}
+
+function bindAddButtonPreviewInteractions(btn, endpoint, canAddFromPreview) {
+  if (!btn || !endpoint) return;
+  const allowedTypes = Array.isArray(endpoint.allowedTypes)
+    ? endpoint.allowedTypes
+    : ["normal", "corner"];
+  btn.dataset.allowedTypes = allowedTypes.join(",");
+  const preferredType =
+    allowedTypes.includes("normal") || !allowedTypes.length ? "normal" : allowedTypes[0];
+  const show = () => {
+    if (!canAddFromPreview || btn.disabled) return;
+    showPreviewGhostForEndpoint(endpoint, preferredType);
+  };
+  const hide = () => clearPreviewGhost();
+  btn.addEventListener("mouseenter", show);
+  btn.addEventListener("focus", show);
+  btn.addEventListener("mouseleave", hide);
+  btn.addEventListener("blur", hide);
+}
+
+function cloneBuilderStateSnapshot() {
+  return {
+    graph: state.graph ? JSON.parse(JSON.stringify(state.graph)) : null,
+    shelfAddons: state.shelfAddons ? JSON.parse(JSON.stringify(state.shelfAddons)) : {},
+  };
+}
+
+function getBuilderSnapshotKey(snapshot) {
+  try {
+    return JSON.stringify(snapshot || {});
+  } catch (err) {
+    return String(Date.now());
+  }
+}
+
+function updateBuilderHistoryButtons() {
+  const undoBtn = $("#builderUndoBtn");
+  const redoBtn = $("#builderRedoBtn");
+  if (undoBtn) undoBtn.disabled = builderHistory.undo.length === 0;
+  if (redoBtn) redoBtn.disabled = builderHistory.redo.length === 0;
+}
+
+function pushBuilderHistory(label = "") {
+  if (builderHistory.applying) return;
+  ensureGraph();
+  const snapshot = cloneBuilderStateSnapshot();
+  const key = getBuilderSnapshotKey(snapshot);
+  const last = builderHistory.undo[builderHistory.undo.length - 1];
+  if (last && last.key === key) return;
+  builderHistory.undo.push({ key, snapshot, label });
+  if (builderHistory.undo.length > BUILDER_HISTORY_LIMIT) builderHistory.undo.shift();
+  builderHistory.redo = [];
+  updateBuilderHistoryButtons();
+}
+
+function restoreBuilderSnapshot(snapshot) {
+  if (!snapshot) return;
+  builderHistory.applying = true;
+  try {
+    state.graph = snapshot.graph
+      ? JSON.parse(JSON.stringify(snapshot.graph))
+      : createGraphForShape(getSelectedShape());
+    state.shelfAddons = snapshot.shelfAddons
+      ? JSON.parse(JSON.stringify(snapshot.shelfAddons))
+      : {};
+    closeModal("#bayOptionModal");
+    closeModal("#cornerOptionModal");
+    closeModal("#previewAddTypeModal");
+    activePreviewAddTarget = null;
+    activeCornerOptionId = null;
+    activeBayOptionId = null;
+    normalizeDanglingAnchorIds();
+    renderBayInputs();
+  } finally {
+    builderHistory.applying = false;
+  }
+  updateBuilderHistoryButtons();
+}
+
+function undoBuilderHistory() {
+  if (!builderHistory.undo.length) return;
+  const current = cloneBuilderStateSnapshot();
+  const entry = builderHistory.undo.pop();
+  builderHistory.redo.push({ key: getBuilderSnapshotKey(current), snapshot: current, label: "redo" });
+  restoreBuilderSnapshot(entry.snapshot);
+}
+
+function redoBuilderHistory() {
+  if (!builderHistory.redo.length) return;
+  const current = cloneBuilderStateSnapshot();
+  const entry = builderHistory.redo.pop();
+  builderHistory.undo.push({ key: getBuilderSnapshotKey(current), snapshot: current, label: "undo" });
+  restoreBuilderSnapshot(entry.snapshot);
 }
 
 function collectOpenEndpointsFromCandidates(candidates = []) {
@@ -1551,13 +1788,16 @@ function updatePreview() {
   const hasShelfBase = Boolean(shelfMat && input.shelf.thickness);
   const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
   const canAddFromPreview = isPreviewBuilderReady(input);
+  const previewDisabledReason = canAddFromPreview ? "" : getPreviewBuilderDisabledReason(input);
   updatePreviewWidthSummary(input);
 
   if (!hasShelfBase || !hasColumn) {
-    textEl.textContent = "천장 높이를 입력하면 미리보기가 표시됩니다.";
+    textEl.textContent = "옵션 선택 후 모듈을 추가하면 미리보기가 표시됩니다.";
     shelvesEl.innerHTML = "";
+    clearPreviewGhost();
     if (!bays.length) {
       previewOpenEndpoints = new Map();
+      const rootEndpoint = buildRootEndpoint();
       const startBtn = document.createElement("button");
       startBtn.type = "button";
       startBtn.className = "system-preview-add-btn";
@@ -1568,16 +1808,21 @@ function updatePreview() {
       startBtn.dataset.endpointId = "root-endpoint";
       startBtn.title = "첫 모듈 추가";
       startBtn.textContent = "+";
-      startBtn.disabled = !canAddFromPreview;
+      applyPreviewAddButtonState(startBtn, {
+        enabled: canAddFromPreview,
+        reason: previewDisabledReason,
+      });
       startBtn.style.left = `${frameW / 2}px`;
       startBtn.style.top = `${frameH / 2}px`;
       shelvesEl.appendChild(startBtn);
-      previewOpenEndpoints.set("root-endpoint", buildRootEndpoint());
+      bindAddButtonPreviewInteractions(startBtn, rootEndpoint, canAddFromPreview);
+      previewOpenEndpoints.set("root-endpoint", rootEndpoint);
     }
     return;
   }
 
   shelvesEl.innerHTML = "";
+  clearPreviewGhost();
   textEl.textContent = `탑뷰 · 선반 깊이 400mm · 기둥 ${COLUMN_WIDTH_MM}mm`;
 
   const depthMm = 400;
@@ -1927,6 +2172,7 @@ function updatePreview() {
   const scale = Math.min((frameW * 0.75) / rangeX, (frameH * 0.75) / rangeY);
   const tx = (frameW - rangeX * scale) / 2 - minX * scale;
   const ty = (frameH - rangeY * scale) / 2 - minY * scale;
+  setPreviewRenderTransform({ scale, tx, ty, depthMm });
   const shelfBoxesPx = shelves.map((item) => ({
     left: item.minX * scale + tx,
     right: item.maxX * scale + tx,
@@ -2180,6 +2426,7 @@ function updatePreview() {
 
   if (!shelves.length && !addButtons.length) {
     previewOpenEndpoints = new Map();
+    const rootEndpoint = buildRootEndpoint();
     const startBtn = document.createElement("button");
     startBtn.type = "button";
     startBtn.className = "system-preview-add-btn";
@@ -2190,11 +2437,15 @@ function updatePreview() {
     startBtn.dataset.endpointId = "root-endpoint";
     startBtn.title = "첫 모듈 추가";
     startBtn.textContent = "+";
-    startBtn.disabled = !canAddFromPreview;
+    applyPreviewAddButtonState(startBtn, {
+      enabled: canAddFromPreview,
+      reason: previewDisabledReason,
+    });
     startBtn.style.left = `${frameW / 2}px`;
     startBtn.style.top = `${frameH / 2}px`;
     shelvesEl.appendChild(startBtn);
-    previewOpenEndpoints.set("root-endpoint", buildRootEndpoint());
+    bindAddButtonPreviewInteractions(startBtn, rootEndpoint, canAddFromPreview);
+    previewOpenEndpoints.set("root-endpoint", rootEndpoint);
   }
 
   const placedAddBtnBoxes = [];
@@ -2223,9 +2474,12 @@ function updatePreview() {
     );
     if (point.cornerId) btn.dataset.anchorCorner = point.cornerId;
     btn.dataset.attachAtStart = point.attachAtStart ? "true" : "false";
-    btn.title = `너비 ${point.sideIndex + 1}에 모듈 추가`;
+    btn.title = `끝점에 모듈 추가`;
     btn.textContent = "+";
-    btn.disabled = !canAddFromPreview;
+    applyPreviewAddButtonState(btn, {
+      enabled: canAddFromPreview,
+      reason: previewDisabledReason,
+    });
     const inwardX = Number(point.inwardX || 0);
     const inwardY = Number(point.inwardY || 0);
     const inwardLen = Math.hypot(inwardX, inwardY) || 1;
@@ -2264,6 +2518,7 @@ function updatePreview() {
     btn.style.left = `${btnX}px`;
     btn.style.top = `${btnY}px`;
     shelvesEl.appendChild(btn);
+    bindAddButtonPreviewInteractions(btn, point, canAddFromPreview);
     placedAddBtnBoxes.push({
       left: btnX - addBtnRadius,
       right: btnX + addBtnRadius,
@@ -2352,6 +2607,7 @@ function commitPreviewAddCorner() {
       count: 1,
       createdAt: Date.now(),
     };
+    pushBuilderHistory("add-corner");
     registerEdge(edge);
     closeModal("#previewAddTypeModal");
     renderBayInputs();
@@ -2630,6 +2886,7 @@ function bindShelfInputEvents() {
     widthInput.classList.toggle("hidden", !isCustom);
     if (!isCustom) widthInput.value = presetValue || "";
     select.addEventListener("change", () => {
+      const prevWidth = Number(shelf.width || 0);
       if (select.value === "custom") {
         widthInput.value = "";
         widthInput.disabled = false;
@@ -2640,14 +2897,23 @@ function bindShelfInputEvents() {
         widthInput.disabled = select.value !== "";
         widthInput.classList.add("hidden");
       }
-      shelf.width = Number(widthInput.value || 0);
+      const nextWidth = Number(widthInput.value || 0);
+      if (nextWidth !== prevWidth) pushBuilderHistory("update-normal-width");
+      shelf.width = nextWidth;
       updatePreview();
       autoCalculatePrice();
     });
   });
 
   container.querySelectorAll("[data-shelf-width]").forEach((input) => {
+    input.addEventListener("blur", () => {
+      delete input.dataset.historyCaptured;
+    });
     input.addEventListener("input", () => {
+      if (input.dataset.historyCaptured !== "true") {
+        input.dataset.historyCaptured = "true";
+        pushBuilderHistory("update-normal-width");
+      }
       const id = input.dataset.shelfWidth;
       const shelf = findShelfById(id);
       if (shelf) shelf.width = Number(input.value || 0);
@@ -2657,7 +2923,14 @@ function bindShelfInputEvents() {
   });
 
   container.querySelectorAll("[data-shelf-count]").forEach((input) => {
+    input.addEventListener("blur", () => {
+      delete input.dataset.historyCaptured;
+    });
     input.addEventListener("input", () => {
+      if (input.dataset.historyCaptured !== "true") {
+        input.dataset.historyCaptured = "true";
+        pushBuilderHistory("update-count");
+      }
       const id = input.dataset.shelfCount;
       const shelf = findShelfById(id);
       if (shelf) shelf.count = Number(input.value || 1);
@@ -2671,7 +2944,9 @@ function bindShelfInputEvents() {
       const id = select.dataset.cornerSwap;
       const corner = findShelfById(id);
       if (!corner) return;
-      corner.swap = select.value === "swap";
+      const nextSwap = select.value === "swap";
+      if (Boolean(corner.swap) !== nextSwap) pushBuilderHistory("update-corner-swap");
+      corner.swap = nextSwap;
       updatePreview();
       autoCalculatePrice();
     });
@@ -2776,6 +3051,11 @@ function saveBayOptionModal() {
   }
   if (hasError) return;
 
+  const prevWidth = Number(shelf.width || 0);
+  const prevCount = Number(shelf.count || 1);
+  if (prevWidth !== width || prevCount !== count) {
+    pushBuilderHistory("update-normal");
+  }
   shelf.width = width;
   shelf.count = count;
   closeModal("#bayOptionModal");
@@ -2835,6 +3115,8 @@ function removeBayById(id) {
   if (!id) return;
   ensureGraph();
   const removed = state.graph?.edges?.[id];
+  if (!removed) return;
+  pushBuilderHistory("remove-normal");
   if (removed) reanchorChildrenAfterEdgeRemoval(removed);
   unregisterEdge(id);
   normalizeDanglingAnchorIds();
@@ -2865,7 +3147,13 @@ function saveCornerOptionModal() {
     return;
   }
 
-  corner.swap = swapSelect.value === "swap";
+  const nextSwap = swapSelect.value === "swap";
+  const prevSwap = Boolean(corner.swap);
+  const prevCount = Number(corner.count || 1);
+  if (prevSwap !== nextSwap || prevCount !== count) {
+    pushBuilderHistory("update-corner");
+  }
+  corner.swap = nextSwap;
   corner.count = count;
   closeModal("#cornerOptionModal");
   renderBayInputs();
@@ -2875,6 +3163,7 @@ function removeCornerById(id) {
   if (!id) return;
   ensureGraph();
   if (!state.graph?.edges?.[id] || state.graph.edges[id].type !== "corner") return;
+  pushBuilderHistory("remove-corner");
   const removed = state.graph.edges[id];
   reanchorChildrenAfterEdgeRemoval(removed);
   unregisterEdge(id);
@@ -3517,6 +3806,7 @@ function init() {
     updateBayAddonAvailability();
     updateAddItemState();
     updateStepVisibility();
+    updateBuilderHistoryButtons();
     requestStickyOffsetUpdate();
   } catch (err) {
     console.error("init render failed", err);
@@ -3557,6 +3847,8 @@ function init() {
   $("#previewAddTypeModalBackdrop")?.addEventListener("click", () => closeModal("#previewAddTypeModal"));
   $("#previewAddNormalBtn")?.addEventListener("click", commitPreviewAddNormal);
   $("#previewAddCornerBtn")?.addEventListener("click", commitPreviewAddCorner);
+  $("#builderUndoBtn")?.addEventListener("click", undoBuilderHistory);
+  $("#builderRedoBtn")?.addEventListener("click", redoBuilderHistory);
   $("#builderEdgeList")?.addEventListener("click", (e) => {
     const row = e.target.closest("[data-builder-edge-id]");
     if (!row) return;
@@ -3602,6 +3894,7 @@ function init() {
   });
 
   $("#systemPreviewShelves")?.addEventListener("click", (e) => {
+    clearPreviewGhost();
     const addTarget = e.target.closest("[data-add-shelf]");
     if (addTarget) {
       if (!isPreviewBuilderReady(readCurrentInputs())) return;
@@ -3637,6 +3930,33 @@ function init() {
     const shelfId = bayTarget.dataset.bayPreview;
     if (!shelfId) return;
     openBayOptionModal(shelfId);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const target = e.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")
+    ) {
+      return;
+    }
+    const key = String(e.key || "").toLowerCase();
+    const isMeta = e.metaKey || e.ctrlKey;
+    if (!isMeta) return;
+    if (key === "z" && e.shiftKey) {
+      e.preventDefault();
+      redoBuilderHistory();
+      return;
+    }
+    if (key === "z") {
+      e.preventDefault();
+      undoBuilderHistory();
+      return;
+    }
+    if (key === "y") {
+      e.preventDefault();
+      redoBuilderHistory();
+    }
   });
 
   window.addEventListener("resize", requestStickyOffsetUpdate);
