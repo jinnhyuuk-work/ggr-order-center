@@ -996,6 +996,7 @@ function bindSpaceExtraHeightEvents(spaceIndex) {
       if (inputEl.dataset.bound === "true") return;
       inputEl.dataset.bound = "true";
       inputEl.addEventListener("input", () => {
+        updatePreview();
         autoCalculatePrice();
         updateAddItemState();
       });
@@ -1007,6 +1008,7 @@ function bindSpaceExtraHeightEvents(spaceIndex) {
       btn.dataset.bound = "true";
       btn.addEventListener("click", () => {
         btn.closest(".space-extra-row")?.remove();
+        updatePreview();
         autoCalculatePrice();
         updateAddItemState();
       });
@@ -1066,9 +1068,17 @@ function getPreviewBuilderDisabledReason(input) {
 
 function applyPreviewAddButtonState(btn, { enabled = true, reason = "" } = {}) {
   if (!btn) return;
-  btn.disabled = !enabled;
-  btn.classList.toggle("is-disabled", !enabled);
-  if (enabled || !reason) {
+  if (enabled) {
+    btn.disabled = false;
+    btn.removeAttribute("disabled");
+    btn.classList.remove("is-disabled");
+    delete btn.dataset.disabledReason;
+    btn.removeAttribute("aria-disabled");
+    return;
+  }
+  btn.disabled = true;
+  btn.classList.add("is-disabled");
+  if (!reason) {
     delete btn.dataset.disabledReason;
     btn.removeAttribute("aria-disabled");
     return;
@@ -2716,6 +2726,7 @@ function renderShapeSizeInputs() {
 
   ["#spaceMin-0", "#spaceMax-0"].forEach((sel) => {
     $(sel)?.addEventListener("input", () => {
+      updatePreview();
       autoCalculatePrice();
       updateAddItemState();
     });
@@ -2731,6 +2742,7 @@ function renderShapeSizeInputs() {
     `;
     list.appendChild(extraRow);
     bindSpaceExtraHeightEvents(0);
+    updatePreview();
     autoCalculatePrice();
     updateAddItemState();
   });
