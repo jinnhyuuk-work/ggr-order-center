@@ -18,7 +18,6 @@ import {
   getEmailJSInstance,
   renderEstimateTable,
   renderSelectedCard,
-  renderSelectedAddonChips,
   initCollapsibleSections,
 } from "./shared.js";
 
@@ -40,6 +39,7 @@ const BAY_WIDTH_LIMITS = { min: 400, max: 1000 };
 const SUPPORT_BRACKET_WIDTH_MM = 15;
 const SUPPORT_BRACKET_INSERT_MM = 10;
 const SUPPORT_VISIBLE_MM = SUPPORT_BRACKET_WIDTH_MM - SUPPORT_BRACKET_INSERT_MM;
+const ADDON_CLOTHES_ROD_ID = "clothes_rod";
 
 const SHAPE_BAY_COUNTS = {
   i_single: 1,
@@ -64,9 +64,11 @@ let stickyOffsetTimer = null;
 let activeShelfAddonId = null;
 let activeCornerOptionId = null;
 let activeBayOptionId = null;
+let shelfAddonModalReturnTo = "";
 let activePreviewAddTarget = null;
 let previewOpenEndpoints = new Map();
 let previewRenderTransform = { scale: 1, tx: 0, ty: 0, depthMm: 400 };
+let previewInfoMode = "size";
 const builderHistory = {
   undo: [],
   redo: [],
@@ -504,8 +506,167 @@ function setErrorMessage(errorEl, message) {
   }
 }
 
+function normalizeShelfAddonQuantities(raw) {
+  if (Array.isArray(raw)) {
+    return raw.reduce((acc, addonId) => {
+      const key = String(addonId || "");
+      if (!key) return acc;
+      acc[key] = Number(acc[key] || 0) + 1;
+      return acc;
+    }, {});
+  }
+  if (!raw || typeof raw !== "object") return {};
+  return Object.entries(raw).reduce((acc, [addonId, qty]) => {
+    const key = String(addonId || "");
+    const value = Number(qty || 0);
+    if (!key || !Number.isFinite(value) || value <= 0) return acc;
+    acc[key] = Math.floor(value);
+    return acc;
+  }, {});
+}
+
+function getShelfAddonQuantities(id) {
+  const key = String(id || "");
+  const normalized = normalizeShelfAddonQuantities(state.shelfAddons[key]);
+  state.shelfAddons[key] = normalized;
+  return normalized;
+}
+
+function getShelfAddonQuantity(id, addonId) {
+  const quantities = getShelfAddonQuantities(id);
+  return Number(quantities[String(addonId || "")] || 0);
+}
+
+function setShelfAddonQuantity(id, addonId, qty) {
+  const key = String(id || "");
+  const addonKey = String(addonId || "");
+  if (!key || !addonKey) return;
+  const quantities = { ...getShelfAddonQuantities(key) };
+  const nextQty = Math.max(0, Math.floor(Number(qty || 0)));
+  if (nextQty > 0) {
+    quantities[addonKey] = nextQty;
+  } else {
+    delete quantities[addonKey];
+  }
+  state.shelfAddons[key] = quantities;
+}
+
+function setShelfAddonSelected(id, addonId, selected) {
+  const currentQty = getShelfAddonQuantity(id, addonId);
+  if (selected) {
+    setShelfAddonQuantity(id, addonId, Math.max(1, currentQty));
+    return;
+  }
+  setShelfAddonQuantity(id, addonId, 0);
+}
+
+function getSelectableSystemAddonItems() {
+  return SYSTEM_ADDON_ITEMS.filter((item) => item.id !== ADDON_CLOTHES_ROD_ID);
+}
+
+function enforceSingleSelectableAddon(id) {
+  const key = String(id || "");
+  if (!key) return {};
+  const quantities = { ...getShelfAddonQuantities(key) };
+  let selectedAddonId = "";
+  Object.entries(quantities).forEach(([addonId, qty]) => {
+    const isSelectable = addonId !== ADDON_CLOTHES_ROD_ID;
+    if (!isSelectable) return;
+    const count = Math.max(0, Math.floor(Number(qty || 0)));
+    if (count < 1) {
+      delete quantities[addonId];
+      return;
+    }
+    if (!selectedAddonId) {
+      selectedAddonId = addonId;
+      quantities[addonId] = 1;
+      return;
+    }
+    delete quantities[addonId];
+  });
+  state.shelfAddons[key] = quantities;
+  return quantities;
+}
+
 function getShelfAddonIds(id) {
-  return state.shelfAddons[id] || [];
+  const quantities = getShelfAddonQuantities(id);
+  const ids = [];
+  Object.entries(quantities).forEach(([addonId, qty]) => {
+    for (let i = 0; i < Number(qty || 0); i += 1) ids.push(addonId);
+  });
+  return ids;
+}
+
+function getShelfAddonSummary(addons = []) {
+  if (!Array.isArray(addons) || !addons.length) return "-";
+  const counts = addons.reduce((acc, addonId) => {
+    const key = String(addonId || "");
+    if (!key) return acc;
+    acc[key] = Number(acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  return Object.entries(counts)
+    .map(([addonId, qty]) => {
+      const addon = SYSTEM_ADDON_ITEMS.find((item) => item.id === addonId);
+      if (!addon) return "";
+      return `${addon.name}${qty > 1 ? ` x${qty}` : ""}`;
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
+function normalizePreviewInfoMode(mode) {
+  return String(mode || "").toLowerCase() === "module" ? "module" : "size";
+}
+
+function syncPreviewInfoModeButtons() {
+  document.querySelectorAll("[data-preview-info-mode]").forEach((btn) => {
+    const mode = normalizePreviewInfoMode(btn.dataset.previewInfoMode);
+    const active = mode === previewInfoMode;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function setPreviewInfoMode(mode, { rerender = true } = {}) {
+  const nextMode = normalizePreviewInfoMode(mode);
+  const changed = previewInfoMode !== nextMode;
+  previewInfoMode = nextMode;
+  syncPreviewInfoModeButtons();
+  if (rerender && changed) updatePreview();
+}
+
+function buildShelfAddonChipsHtml(id, emptyText = "선택된 구성품 없음") {
+  const quantities = enforceSingleSelectableAddon(id);
+  const rows = Object.entries(quantities)
+    .map(([addonId, qty]) => {
+      const addon = SYSTEM_ADDON_ITEMS.find((item) => item.id === addonId);
+      const count = Math.max(0, Math.floor(Number(qty || 0)));
+      if (!addon || count < 1) return "";
+      const name = `${addon.name}${count > 1 ? ` x${count}` : ""}`;
+      const totalPrice = (addon.price || 0) * count;
+      return `
+        <div class="addon-chip">
+          <div class="material-visual" style="background:#ddd;"></div>
+          <div class="info">
+            <div class="name">${escapeHtml(name)}</div>
+            <div class="meta">${totalPrice.toLocaleString()}원</div>
+          </div>
+        </div>
+      `;
+    })
+    .filter(Boolean)
+    .join("");
+  if (!rows) {
+    return `<div class="placeholder">${escapeHtml(emptyText)}</div>`;
+  }
+  return rows;
+}
+
+function renderShelfAddonSelectionToTarget(id, targetId, emptyText = "선택된 구성품 없음") {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  target.innerHTML = buildShelfAddonChipsHtml(id, emptyText);
 }
 
 function getCornerSizeAlongSide(sideIndex, swap) {
@@ -1924,6 +2085,8 @@ function updatePreview() {
   const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
   const canAddFromPreview = isPreviewBuilderReady(input);
   const previewDisabledReason = canAddFromPreview ? "" : getPreviewBuilderDisabledReason(input);
+  const showModuleInfo = previewInfoMode === "module";
+  const showSizeInfo = !showModuleInfo;
   updatePreviewWidthSummary(input, []);
 
   if (!hasShelfBase || !hasColumn) {
@@ -2370,9 +2533,19 @@ function updatePreview() {
 
   const rangeX = Math.max(maxX - minX, 1);
   const rangeY = Math.max(maxY - minY, 1);
-  const scale = Math.min((frameW * 0.75) / rangeX, (frameH * 0.75) / rangeY);
-  const tx = (frameW - rangeX * scale) / 2 - minX * scale;
-  const ty = (frameH - rangeY * scale) / 2 - minY * scale;
+  // Keep a dedicated safe area at the top so the preview never collides with
+  // the toggle/undo-redo controls, and reduce initial module scale slightly.
+  const sidePaddingPx = Math.max(22, Math.round(addBtnSize * 1.1));
+  const topSafeAreaPx = Math.max(78, Math.round(addBtnSize * 2.8));
+  const bottomPaddingPx = Math.max(24, Math.round(addBtnSize * 1.0));
+  const availableW = Math.max(1, frameW - sidePaddingPx * 2);
+  const availableH = Math.max(1, frameH - topSafeAreaPx - bottomPaddingPx);
+  const fitScaleX = availableW / rangeX;
+  const fitScaleY = availableH / rangeY;
+  const baseScale = Math.max(0.1, Math.min(fitScaleX, fitScaleY));
+  const scale = baseScale * 0.86;
+  const tx = sidePaddingPx + (availableW - rangeX * scale) / 2 - minX * scale;
+  const ty = topSafeAreaPx + (availableH - rangeY * scale) / 2 - minY * scale;
   setPreviewRenderTransform({ scale, tx, ty, depthMm });
   const shelfBoxesPx = shelves.map((item) => ({
     left: item.minX * scale + tx,
@@ -2491,7 +2664,17 @@ function updatePreview() {
   });
 
   const dimensionLabels = [];
+  const moduleInfoLabels = [];
+  const edgeById = new Map(
+    edges
+      .filter((edge) => edge?.id)
+      .map((edge) => [String(edge.id), edge])
+  );
   shelves.forEach((item) => {
+    const edge = edgeById.get(String(item.id || ""));
+    const shelfCount = Math.max(1, Number(edge?.count || 1));
+    const addonSummaryRaw = getShelfAddonSummary(getShelfAddonIds(item.id));
+    const addonSummary = addonSummaryRaw === "-" ? "없음" : addonSummaryRaw;
     if (item.isCorner && item.arms?.length) {
       const armLengths = item.arms
         .map((arm) => {
@@ -2501,17 +2684,35 @@ function updatePreview() {
         .sort((a, b) => b - a);
       const cornerText =
         armLengths.length >= 2 ? `${armLengths[0]} x ${armLengths[1]}` : `${armLengths[0] || 0}`;
-      const primaryArm = item.arms[0];
-      const labelXMm = primaryArm
-        ? (Number(primaryArm.minX || 0) + Number(primaryArm.maxX || 0)) / 2
+      const labelAnchorArm = item.arms.reduce((best, arm) => {
+        if (!best) return arm;
+        const bestLength = Math.max(
+          Number(best.maxX || 0) - Number(best.minX || 0),
+          Number(best.maxY || 0) - Number(best.minY || 0)
+        );
+        const nextLength = Math.max(
+          Number(arm.maxX || 0) - Number(arm.minX || 0),
+          Number(arm.maxY || 0) - Number(arm.minY || 0)
+        );
+        return nextLength > bestLength ? arm : best;
+      }, null);
+      const labelXMm = labelAnchorArm
+        ? (Number(labelAnchorArm.minX || 0) + Number(labelAnchorArm.maxX || 0)) / 2
         : (Number(item.minX || 0) + Number(item.maxX || 0)) / 2;
-      const labelYMm = primaryArm
-        ? (Number(primaryArm.minY || 0) + Number(primaryArm.maxY || 0)) / 2
+      const labelYMm = labelAnchorArm
+        ? (Number(labelAnchorArm.minY || 0) + Number(labelAnchorArm.maxY || 0)) / 2
         : (Number(item.minY || 0) + Number(item.maxY || 0)) / 2;
       dimensionLabels.push({
         x: labelXMm * scale + tx,
         y: labelYMm * scale + ty,
         text: cornerText,
+        corner: true,
+      });
+      moduleInfoLabels.push({
+        x: labelXMm * scale + tx,
+        y: labelYMm * scale + ty,
+        count: shelfCount,
+        addons: addonSummary,
         corner: true,
       });
       return;
@@ -2527,18 +2728,45 @@ function updatePreview() {
       text: `${nominalLength}`,
       corner: false,
     });
+    moduleInfoLabels.push({
+      x: ((item.minX + item.maxX) / 2) * scale + tx,
+      y: ((item.minY + item.maxY) / 2) * scale + ty,
+      count: shelfCount,
+      addons: addonSummary,
+      corner: false,
+    });
   });
 
-  dimensionLabels.forEach((labelInfo) => {
-    const labelEl = document.createElement("div");
-    labelEl.className = `system-dimension-label${
-      labelInfo.corner ? " system-dimension-label--corner" : ""
-    }`;
-    labelEl.textContent = `${labelInfo.text}mm`;
-    labelEl.style.left = `${labelInfo.x}px`;
-    labelEl.style.top = `${labelInfo.y}px`;
-    shelvesEl.appendChild(labelEl);
-  });
+  if (showSizeInfo) {
+    dimensionLabels.forEach((labelInfo) => {
+      const labelEl = document.createElement("div");
+      labelEl.className = `system-dimension-label${
+        labelInfo.corner ? " system-dimension-label--corner" : ""
+      }`;
+      labelEl.textContent = `${labelInfo.text}mm`;
+      labelEl.style.left = `${labelInfo.x}px`;
+      labelEl.style.top = `${labelInfo.y}px`;
+      shelvesEl.appendChild(labelEl);
+    });
+  } else {
+    moduleInfoLabels.forEach((labelInfo) => {
+      const labelEl = document.createElement("div");
+      labelEl.className = `system-module-label${
+        labelInfo.corner ? " system-module-label--corner" : ""
+      }`;
+      const shelfLine = document.createElement("span");
+      shelfLine.className = "system-module-label-line";
+      shelfLine.textContent = `선반 ${labelInfo.count}개`;
+      const addonLine = document.createElement("span");
+      addonLine.className = "system-module-label-line";
+      addonLine.textContent = `구성품 ${labelInfo.addons}`;
+      labelEl.appendChild(shelfLine);
+      labelEl.appendChild(addonLine);
+      labelEl.style.left = `${labelInfo.x}px`;
+      labelEl.style.top = `${labelInfo.y}px`;
+      shelvesEl.appendChild(labelEl);
+    });
+  }
 
   const outerBoundsPx = shelves.length
     ? {
@@ -2556,84 +2784,92 @@ function updatePreview() {
   const edgeOffset = 14;
   const sectionLabelOffset = 36;
 
-  sideWidthLabels.forEach((info) => {
-    const labelEl = document.createElement("div");
-    labelEl.className = `system-dimension-label system-section-width-label${
-      info.overflow ? " system-section-width-label--overflow" : ""
-    }`;
-    if (info.edgeHint === "left" || info.edgeHint === "right") {
-      labelEl.classList.add("system-section-width-label--vertical");
-    }
-    labelEl.textContent = info.text;
-    let placedX = Number.isFinite(info.x) ? info.x * scale + tx : (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
-    let placedY = Number.isFinite(info.y) ? info.y * scale + ty : (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
-    if (info.edgeHint === "top") {
-      placedY = outerBoundsPx.minY - sectionLabelOffset;
-      if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
-    } else if (info.edgeHint === "right") {
-      placedX = outerBoundsPx.maxX + sectionLabelOffset;
-      if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
-    } else if (info.edgeHint === "bottom") {
-      placedY = outerBoundsPx.maxY + sectionLabelOffset;
-      if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
-    } else if (info.edgeHint === "left") {
-      placedX = outerBoundsPx.minX - sectionLabelOffset;
-      if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
-    }
-    labelEl.style.left = `${placedX}px`;
-    labelEl.style.top = `${placedY}px`;
-    shelvesEl.appendChild(labelEl);
-  });
+  if (showSizeInfo) {
+    sideWidthLabels.forEach((info) => {
+      const labelEl = document.createElement("div");
+      labelEl.className = `system-dimension-label system-section-width-label${
+        info.overflow ? " system-section-width-label--overflow" : ""
+      }`;
+      if (info.edgeHint === "left" || info.edgeHint === "right") {
+        labelEl.classList.add("system-section-width-label--vertical");
+      }
+      labelEl.textContent = info.text;
+      let placedX = Number.isFinite(info.x)
+        ? info.x * scale + tx
+        : (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
+      let placedY = Number.isFinite(info.y)
+        ? info.y * scale + ty
+        : (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
+      if (info.edgeHint === "top") {
+        placedY = outerBoundsPx.minY - sectionLabelOffset;
+        if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
+      } else if (info.edgeHint === "right") {
+        placedX = outerBoundsPx.maxX + sectionLabelOffset;
+        if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
+      } else if (info.edgeHint === "bottom") {
+        placedY = outerBoundsPx.maxY + sectionLabelOffset;
+        if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
+      } else if (info.edgeHint === "left") {
+        placedX = outerBoundsPx.minX - sectionLabelOffset;
+        if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
+      }
+      labelEl.style.left = `${placedX}px`;
+      labelEl.style.top = `${placedY}px`;
+      shelvesEl.appendChild(labelEl);
+    });
+  }
 
-  columnLabelCenters.forEach((point) => {
-    const anchorX = Number(point.x || 0);
-    const anchorY = Number(point.y || 0);
-    const edgeRefX = Number(point.edgeRefX || anchorX);
-    const edgeRefY = Number(point.edgeRefY || anchorY);
-    const edgeVotes = point.edgeVotes || {};
-    const edgeOrder = ["top", "right", "bottom", "left"];
-    const votedEdge = edgeOrder.reduce((best, edge) => {
-      const score = Number(edgeVotes[edge] || 0);
-      if (!best) return { edge, score };
-      if (score > best.score) return { edge, score };
-      return best;
-    }, null);
+  if (showSizeInfo) {
+    columnLabelCenters.forEach((point) => {
+      const anchorX = Number(point.x || 0);
+      const anchorY = Number(point.y || 0);
+      const edgeRefX = Number(point.edgeRefX || anchorX);
+      const edgeRefY = Number(point.edgeRefY || anchorY);
+      const edgeVotes = point.edgeVotes || {};
+      const edgeOrder = ["top", "right", "bottom", "left"];
+      const votedEdge = edgeOrder.reduce((best, edge) => {
+        const score = Number(edgeVotes[edge] || 0);
+        if (!best) return { edge, score };
+        if (score > best.score) return { edge, score };
+        return best;
+      }, null);
 
-    const distTop = Math.abs(edgeRefY - outerBoundsPx.minY);
-    const distRight = Math.abs(edgeRefX - outerBoundsPx.maxX);
-    const distBottom = Math.abs(edgeRefY - outerBoundsPx.maxY);
-    const distLeft = Math.abs(edgeRefX - outerBoundsPx.minX);
-    const nearestByDistance = [
-      { edge: "top", dist: distTop },
-      { edge: "right", dist: distRight },
-      { edge: "bottom", dist: distBottom },
-      { edge: "left", dist: distLeft },
-    ].sort((a, b) => a.dist - b.dist)[0]?.edge;
-    const nearest = votedEdge && votedEdge.score > 0 ? votedEdge.edge : nearestByDistance;
+      const distTop = Math.abs(edgeRefY - outerBoundsPx.minY);
+      const distRight = Math.abs(edgeRefX - outerBoundsPx.maxX);
+      const distBottom = Math.abs(edgeRefY - outerBoundsPx.maxY);
+      const distLeft = Math.abs(edgeRefX - outerBoundsPx.minX);
+      const nearestByDistance = [
+        { edge: "top", dist: distTop },
+        { edge: "right", dist: distRight },
+        { edge: "bottom", dist: distBottom },
+        { edge: "left", dist: distLeft },
+      ].sort((a, b) => a.dist - b.dist)[0]?.edge;
+      const nearest = votedEdge && votedEdge.score > 0 ? votedEdge.edge : nearestByDistance;
 
-    let placedX = anchorX;
-    let placedY = anchorY;
+      let placedX = anchorX;
+      let placedY = anchorY;
 
-    if (nearest === "top") {
-      placedY = outerBoundsPx.minY - edgeOffset;
-    } else if (nearest === "right") {
-      placedX = outerBoundsPx.maxX + edgeOffset;
-    } else if (nearest === "bottom") {
-      placedY = outerBoundsPx.maxY + edgeOffset;
-    } else if (nearest === "left") {
-      placedX = outerBoundsPx.minX - edgeOffset;
-    }
+      if (nearest === "top") {
+        placedY = outerBoundsPx.minY - edgeOffset;
+      } else if (nearest === "right") {
+        placedX = outerBoundsPx.maxX + edgeOffset;
+      } else if (nearest === "bottom") {
+        placedY = outerBoundsPx.maxY + edgeOffset;
+      } else if (nearest === "left") {
+        placedX = outerBoundsPx.minX - edgeOffset;
+      }
 
-    const labelEl = document.createElement("div");
-    labelEl.className = "system-dimension-label system-dimension-label--column";
-    if (nearest === "left" || nearest === "right") {
-      labelEl.classList.add("system-dimension-label--vertical");
-    }
-    labelEl.textContent = `${COLUMN_WIDTH_MM}mm`;
-    labelEl.style.left = `${placedX}px`;
-    labelEl.style.top = `${placedY}px`;
-    shelvesEl.appendChild(labelEl);
-  });
+      const labelEl = document.createElement("div");
+      labelEl.className = "system-dimension-label system-dimension-label--column";
+      if (nearest === "left" || nearest === "right") {
+        labelEl.classList.add("system-dimension-label--vertical");
+      }
+      labelEl.textContent = `${COLUMN_WIDTH_MM}mm`;
+      labelEl.style.left = `${placedX}px`;
+      labelEl.style.top = `${placedY}px`;
+      shelvesEl.appendChild(labelEl);
+    });
+  }
 
   if (!shelves.length && !addButtons.length) {
     previewOpenEndpoints = new Map();
@@ -2993,6 +3229,7 @@ function renderBayInputs() {
 }
 
 function buildShelfItem(shelf) {
+  const clothesRodQty = getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID);
   const el = document.createElement("div");
   el.className = "shelf-item";
   el.innerHTML = `
@@ -3017,6 +3254,12 @@ function buildShelfItem(shelf) {
         <div class="error-msg" data-shelf-count-error="${shelf.id}"></div>
       </div>
     </div>
+    <div class="form-row">
+      <label>옷봉 수량</label>
+      <div class="field-col">
+        <input type="number" min="0" value="${clothesRodQty}" data-shelf-rod-count="${shelf.id}" />
+      </div>
+    </div>
     <div class="bay-addon-section">
       <div class="addon-picker">
         <button type="button" data-shelf-addon-btn="${shelf.id}">구성품 선택</button>
@@ -3029,6 +3272,7 @@ function buildShelfItem(shelf) {
 }
 
 function buildCornerShelfItem(corner) {
+  const clothesRodQty = getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID);
   const el = document.createElement("div");
   el.className = "shelf-item corner-item";
   el.innerHTML = `
@@ -3048,6 +3292,12 @@ function buildCornerShelfItem(corner) {
         <div class="error-msg" data-shelf-count-error="${corner.id}"></div>
       </div>
     </div>
+    <div class="form-row">
+      <label>옷봉 수량</label>
+      <div class="field-col">
+        <input type="number" min="0" value="${clothesRodQty}" data-shelf-rod-count="${corner.id}" />
+      </div>
+    </div>
     <div class="bay-addon-section">
       <div class="addon-picker">
         <button type="button" data-shelf-addon-btn="${corner.id}">구성품 선택</button>
@@ -3059,12 +3309,16 @@ function buildCornerShelfItem(corner) {
 }
 
 function renderShelfAddonSelection(id) {
-  renderSelectedAddonChips({
-    targetId: `selectedShelfAddon-${id}`,
-    emptyText: "선택된 구성품 없음",
-    addons: getShelfAddonIds(id),
-    allItems: SYSTEM_ADDON_ITEMS,
-  });
+  renderShelfAddonSelectionToTarget(id, `selectedShelfAddon-${id}`);
+}
+
+function renderActiveOptionModalAddonSelection() {
+  if (activeCornerOptionId) {
+    renderShelfAddonSelectionToTarget(activeCornerOptionId, "selectedCornerOptionAddon");
+  }
+  if (activeBayOptionId) {
+    renderShelfAddonSelectionToTarget(activeBayOptionId, "selectedBayOptionAddon");
+  }
 }
 
 function bindShelfInputEvents() {
@@ -3152,6 +3406,26 @@ function bindShelfInputEvents() {
     });
   });
 
+  container.querySelectorAll("[data-shelf-rod-count]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const id = input.dataset.shelfRodCount;
+      if (!id) return;
+      const raw = String(input.value || "").trim();
+      const parsed = raw === "" ? 0 : Number(raw);
+      if (!Number.isFinite(parsed)) return;
+      const qty = Math.max(0, Math.floor(parsed));
+      setShelfAddonQuantity(id, ADDON_CLOTHES_ROD_ID, qty);
+      renderShelfAddonSelection(id);
+      autoCalculatePrice();
+      updateAddItemState();
+    });
+    input.addEventListener("blur", () => {
+      if (String(input.value || "").trim() === "") {
+        input.value = "0";
+      }
+    });
+  });
+
   container.querySelectorAll("[data-corner-swap]").forEach((select) => {
     select.addEventListener("change", () => {
       const id = select.dataset.cornerSwap;
@@ -3178,10 +3452,17 @@ function syncCornerOptionModal() {
   const titleEl = $("#cornerOptionModalTitle");
   const swapSelect = $("#cornerSwapSelect");
   const countInput = $("#cornerCountInput");
+  const rodCountInput = $("#cornerRodCountInput");
   const addonBtn = $("#cornerAddonBtn");
   if (titleEl) titleEl.textContent = `${getCornerLabel(corner)} 옵션 설정`;
   if (swapSelect) swapSelect.value = corner.swap ? "swap" : "default";
   if (countInput) countInput.value = String(corner.count || 1);
+  if (rodCountInput) {
+    rodCountInput.value = String(
+      getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID)
+    );
+  }
+  renderShelfAddonSelectionToTarget(corner.id, "selectedCornerOptionAddon");
   if (addonBtn) addonBtn.disabled = false;
   setFieldError(countInput, $("#cornerCountError"), "");
 }
@@ -3202,6 +3483,7 @@ function syncBayOptionModal() {
   const presetSelect = $("#bayWidthPresetSelect");
   const customInput = $("#bayWidthCustomInput");
   const countInput = $("#bayCountInput");
+  const rodCountInput = $("#bayRodCountInput");
   const addonBtn = $("#bayAddonBtn");
 
   const width = Number(shelf.width || 0);
@@ -3216,6 +3498,12 @@ function syncBayOptionModal() {
     customInput.value = presetValue === "custom" ? String(width || "") : "";
   }
   if (countInput) countInput.value = String(shelf.count || 1);
+  if (rodCountInput) {
+    rodCountInput.value = String(
+      getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID)
+    );
+  }
+  renderShelfAddonSelectionToTarget(shelf.id, "selectedBayOptionAddon");
   if (addonBtn) addonBtn.disabled = false;
 
   setFieldError(customInput, $("#bayWidthError"), "");
@@ -3236,6 +3524,7 @@ function saveBayOptionModal() {
   const presetSelect = $("#bayWidthPresetSelect");
   const customInput = $("#bayWidthCustomInput");
   const countInput = $("#bayCountInput");
+  const rodCountInput = $("#bayRodCountInput");
   const widthError = $("#bayWidthError");
   const countError = $("#bayCountError");
   if (!shelf || !presetSelect || !countInput || !customInput) return;
@@ -3243,6 +3532,10 @@ function saveBayOptionModal() {
   const isCustom = presetSelect.value === "custom";
   const width = Number((isCustom ? customInput.value : presetSelect.value) || 0);
   const count = Number(countInput.value || 0);
+  const rodCountRaw = Number(rodCountInput?.value || 0);
+  const rodCount = Number.isFinite(rodCountRaw)
+    ? Math.max(0, Math.floor(rodCountRaw))
+    : 0;
 
   let hasError = false;
   if (!width || width < BAY_WIDTH_LIMITS.min || width > BAY_WIDTH_LIMITS.max) {
@@ -3266,11 +3559,13 @@ function saveBayOptionModal() {
 
   const prevWidth = Number(shelf.width || 0);
   const prevCount = Number(shelf.count || 1);
-  if (prevWidth !== width || prevCount !== count) {
+  const prevRodCount = getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID);
+  if (prevWidth !== width || prevCount !== count || prevRodCount !== rodCount) {
     pushBuilderHistory("update-normal");
   }
   shelf.width = width;
   shelf.count = count;
+  setShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID, rodCount);
   closeModal("#bayOptionModal");
   renderBayInputs();
 }
@@ -3351,10 +3646,15 @@ function saveCornerOptionModal() {
   const corner = findShelfById(activeCornerOptionId);
   const swapSelect = $("#cornerSwapSelect");
   const countInput = $("#cornerCountInput");
+  const rodCountInput = $("#cornerRodCountInput");
   const countError = $("#cornerCountError");
   if (!corner || !swapSelect || !countInput) return;
 
   const count = Number(countInput.value || 0);
+  const rodCountRaw = Number(rodCountInput?.value || 0);
+  const rodCount = Number.isFinite(rodCountRaw)
+    ? Math.max(0, Math.floor(rodCountRaw))
+    : 0;
   if (!count || count < 1) {
     setFieldError(countInput, countError, "선반 갯수는 1개 이상이어야 합니다.");
     return;
@@ -3363,11 +3663,17 @@ function saveCornerOptionModal() {
   const nextSwap = swapSelect.value === "swap";
   const prevSwap = Boolean(corner.swap);
   const prevCount = Number(corner.count || 1);
-  if (prevSwap !== nextSwap || prevCount !== count) {
+  const prevRodCount = getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID);
+  if (
+    prevSwap !== nextSwap ||
+    prevCount !== count ||
+    prevRodCount !== rodCount
+  ) {
     pushBuilderHistory("update-corner");
   }
   corner.swap = nextSwap;
   corner.count = count;
+  setShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID, rodCount);
   closeModal("#cornerOptionModal");
   renderBayInputs();
 }
@@ -3398,7 +3704,8 @@ function renderSystemAddonModalCards() {
   const container = $("#systemAddonCards");
   if (!container) return;
   container.innerHTML = "";
-  SYSTEM_ADDON_ITEMS.forEach((item) => {
+  const selectableItems = getSelectableSystemAddonItems();
+  selectableItems.forEach((item) => {
     const label = document.createElement("label");
     label.className = "card-base option-card";
     label.innerHTML = `
@@ -3414,35 +3721,54 @@ function renderSystemAddonModalCards() {
     const input = e.target.closest('input[type="checkbox"]');
     if (!input || !activeShelfAddonId) return;
     const id = input.value;
-    const selected = new Set(state.shelfAddons[activeShelfAddonId] || []);
     if (input.checked) {
-      selected.add(id);
+      selectableItems.forEach((item) => {
+        setShelfAddonQuantity(activeShelfAddonId, item.id, item.id === id ? 1 : 0);
+      });
     } else {
-      selected.delete(id);
+      setShelfAddonQuantity(activeShelfAddonId, id, 0);
     }
-    state.shelfAddons[activeShelfAddonId] = Array.from(selected);
-    input.closest(".option-card")?.classList.toggle("selected", input.checked);
+    enforceSingleSelectableAddon(activeShelfAddonId);
+    syncSystemAddonModalSelection();
     renderShelfAddonSelection(activeShelfAddonId);
+    renderActiveOptionModalAddonSelection();
     autoCalculatePrice();
     updateAddItemState();
+    closeShelfAddonModalAndReturn();
   });
 }
 
 function syncSystemAddonModalSelection() {
   const container = $("#systemAddonCards");
   if (!container || !activeShelfAddonId) return;
-  const selected = new Set(state.shelfAddons[activeShelfAddonId] || []);
+  enforceSingleSelectableAddon(activeShelfAddonId);
   container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-    const isSelected = selected.has(input.value);
+    const isSelected = getShelfAddonQuantity(activeShelfAddonId, input.value) > 0;
     input.checked = isSelected;
     input.closest(".option-card")?.classList.toggle("selected", isSelected);
   });
 }
 
-function openShelfAddonModal(id) {
+function openShelfAddonModal(id, { returnTo = "" } = {}) {
   activeShelfAddonId = id;
+  shelfAddonModalReturnTo = returnTo || "";
   syncSystemAddonModalSelection();
   openModal("#systemAddonModal", { focusTarget: "#systemAddonModalTitle" });
+}
+
+function closeShelfAddonModalAndReturn() {
+  closeModal("#systemAddonModal");
+  const returnTo = shelfAddonModalReturnTo;
+  shelfAddonModalReturnTo = "";
+  if (returnTo === "corner" && activeCornerOptionId) {
+    syncCornerOptionModal();
+    openModal("#cornerOptionModal", { focusTarget: "#cornerOptionModalTitle" });
+    return;
+  }
+  if (returnTo === "bay" && activeBayOptionId) {
+    syncBayOptionModal();
+    openModal("#bayOptionModal", { focusTarget: "#bayOptionModalTitle" });
+  }
 }
 
 function updateBayAddonAvailability() {
@@ -3536,13 +3862,10 @@ function renderTable() {
       if (item.type === "bay") {
         const shelfMat = SYSTEM_SHELF_MATERIALS[item.shelf.materialId];
         const shelfSize = `${item.shelf.thickness}T / ${item.shelf.width}×${item.shelf.length}mm`;
-        const addons = item.addons
-          .map((id) => SYSTEM_ADDON_ITEMS.find((a) => a.id === id)?.name)
-          .filter(Boolean)
-          .join(", ");
+        const addons = getShelfAddonSummary(item.addons);
         const lines = [
           `선반 ${escapeHtml(shelfMat?.name || "-")} · ${escapeHtml(shelfSize)} · ${item.shelf.count || 1}개`,
-          `구성품 ${escapeHtml(addons || "-")}`,
+          `구성품 ${escapeHtml(addons)}`,
         ];
         if (item.isCustomPrice) lines.push("비규격 상담 안내");
         if (Number.isFinite(item.materialCost)) {
@@ -3679,15 +4002,12 @@ function buildEmailContent() {
       if (item.type === "bay") {
         const shelfMat = SYSTEM_SHELF_MATERIALS[item.shelf.materialId];
         const shelfSize = `${item.shelf.thickness}T / ${item.shelf.width}×${item.shelf.length}mm`;
-        const addons = item.addons
-          .map((id) => SYSTEM_ADDON_ITEMS.find((a) => a.id === id)?.name)
-          .filter(Boolean)
-          .join(", ");
+        const addons = getShelfAddonSummary(item.addons);
         const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
         lines.push(
           `${idx + 1}. 시스템 수납장 모듈 x${item.quantity} | ` +
             `선반 ${shelfMat?.name || "-"} ${shelfSize} ${item.shelf.count || 1}개 | ` +
-            `구성품 ${addons || "-"} | 금액 ${amountText}`
+            `구성품 ${addons} | 금액 ${amountText}`
         );
       }
     });
@@ -3869,14 +4189,11 @@ function renderOrderCompleteDetails() {
               const shelfMat = SYSTEM_SHELF_MATERIALS[item.shelf.materialId];
               const shelfSize = `${item.shelf.thickness}T / ${item.shelf.width}×${item.shelf.length}mm`;
               const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-              const addons = item.addons
-                .map((id) => SYSTEM_ADDON_ITEMS.find((a) => a.id === id)?.name)
-                .filter(Boolean)
-                .join(", ");
+              const addons = getShelfAddonSummary(item.addons);
               return `<p class="item-line">${idx + 1}. 시스템 수납장 모듈 x${item.quantity} · 선반 ${escapeHtml(
                 shelfMat?.name || "-"
               )} ${escapeHtml(shelfSize)} ${item.shelf.count || 1}개 · 구성품 ${escapeHtml(
-                addons || "-"
+                addons
               )} · 금액 ${amountText}</p>`;
             }
             return "";
@@ -4026,8 +4343,8 @@ function init() {
   }
 
   $("#addEstimateBtn")?.addEventListener("click", commitBaysToEstimate);
-  $("#closeSystemAddonModal")?.addEventListener("click", () => closeModal("#systemAddonModal"));
-  $("#systemAddonModalBackdrop")?.addEventListener("click", () => closeModal("#systemAddonModal"));
+  $("#closeSystemAddonModal")?.addEventListener("click", closeShelfAddonModalAndReturn);
+  $("#systemAddonModalBackdrop")?.addEventListener("click", closeShelfAddonModalAndReturn);
   $("#closeCornerOptionModal")?.addEventListener("click", () => closeModal("#cornerOptionModal"));
   $("#cornerOptionModalBackdrop")?.addEventListener("click", () => closeModal("#cornerOptionModal"));
   $("#saveCornerOptionModal")?.addEventListener("click", saveCornerOptionModal);
@@ -4035,7 +4352,7 @@ function init() {
   $("#cornerAddonBtn")?.addEventListener("click", () => {
     if (!activeCornerOptionId) return;
     closeModal("#cornerOptionModal");
-    openShelfAddonModal(activeCornerOptionId);
+    openShelfAddonModal(activeCornerOptionId, { returnTo: "corner" });
   });
   $("#closeBayOptionModal")?.addEventListener("click", () => closeModal("#bayOptionModal"));
   $("#bayOptionModalBackdrop")?.addEventListener("click", () => closeModal("#bayOptionModal"));
@@ -4054,7 +4371,7 @@ function init() {
   $("#bayAddonBtn")?.addEventListener("click", () => {
     if (!activeBayOptionId) return;
     closeModal("#bayOptionModal");
-    openShelfAddonModal(activeBayOptionId);
+    openShelfAddonModal(activeBayOptionId, { returnTo: "bay" });
   });
   $("#closePreviewAddTypeModal")?.addEventListener("click", () => closeModal("#previewAddTypeModal"));
   $("#previewAddTypeModalBackdrop")?.addEventListener("click", () => closeModal("#previewAddTypeModal"));
@@ -4171,6 +4488,13 @@ function init() {
     if (!shelfId) return;
     openBayOptionModal(shelfId);
   });
+
+  $$("[data-preview-info-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setPreviewInfoMode(btn.dataset.previewInfoMode, { rerender: true });
+    });
+  });
+  syncPreviewInfoModeButtons();
 
   document.addEventListener("keydown", (e) => {
     const target = e.target;

@@ -393,6 +393,52 @@ section {
   backdrop-filter: blur(2px);
 }
 
+.preview-info-toggle {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(2px);
+  z-index: 7;
+}
+
+.preview-info-toggle-btn {
+  --btn-padding: 4px 10px;
+  --btn-bg: transparent;
+  --btn-color: #666;
+  --btn-border: 1px solid transparent;
+  min-width: 0;
+  font-size: 12px;
+  border-radius: 999px;
+  border: var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--btn-color);
+}
+
+.preview-info-toggle-btn.is-active {
+  --btn-bg: #111;
+  --btn-color: #fff;
+  --btn-border: 1px solid #111;
+}
+
+.preview-info-toggle-btn:hover {
+  background: rgba(17, 17, 17, 0.08);
+  color: #222;
+  border-color: rgba(0, 0, 0, 0.22);
+}
+
+.preview-info-toggle-btn.is-active:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
 .builder-edge-item {
   display: flex;
   align-items: center;
@@ -891,6 +937,43 @@ input[type="number"]::-webkit-outer-spin-button {
   transform: translate(-50%, -50%) rotate(90deg);
 }
 
+.system-module-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 96px;
+  max-width: min(200px, 45vw);
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.94);
+  color: #222;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  font-size: var(--preview-dim-font-size, 11px);
+  line-height: 1.2;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.system-module-label--corner {
+  background: rgba(255, 247, 235, 0.96);
+}
+
+.system-module-label-line {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.system-module-label-line:last-child {
+  font-size: calc(var(--preview-dim-font-size, 11px) - 1px);
+  color: #555;
+}
+
 .system-section-width-label {
   display: inline-flex;
   align-items: center;
@@ -1080,7 +1163,7 @@ input[type="number"]::-webkit-outer-spin-button {
   --btn-bg: #fff;
   --btn-color: #000;
   --btn-border: 1px solid;
-  --btn-padding: 12px 16px;
+  --btn-padding: 5px 8px;
   --btn-radius: var(--radius-btn);
   display: inline-flex;
   align-items: center;
@@ -1424,6 +1507,10 @@ th, td {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.option-addon-preview {
+  margin-top: 8px;
 }
 
 .addon-card-display .material-visual {

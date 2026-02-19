@@ -86,6 +86,26 @@
             <div class="preview-box system-preview" id="systemPreviewBox">
             <div class="preview-text" id="systemPreviewText">옵션 선택 후 모듈을 추가하면 미리보기가 표시됩니다.</div>
             <div class="preview-frame" id="systemPreviewFrame">
+              <div class="preview-info-toggle" role="group" aria-label="미리보기 정보 보기">
+                <button
+                  type="button"
+                  class="preview-info-toggle-btn is-active"
+                  id="previewInfoModeSizeBtn"
+                  data-preview-info-mode="size"
+                  aria-pressed="true"
+                >
+                  사이즈
+                </button>
+                <button
+                  type="button"
+                  class="preview-info-toggle-btn"
+                  id="previewInfoModeModuleBtn"
+                  data-preview-info-mode="module"
+                  aria-pressed="false"
+                >
+                  모듈구성
+                </button>
+              </div>
               <div class="system-column" id="systemPreviewColumnLeft"></div>
               <div class="system-column" id="systemPreviewColumnRight"></div>
               <div class="preview-history-actions">
@@ -321,9 +341,19 @@
           </div>
         </div>
         <div class="form-row">
+          <label>옷봉 수량</label>
+          <div class="field-col">
+            <input type="number" id="cornerRodCountInput" min="0" />
+          </div>
+        </div>
+        <div class="form-row">
           <label>모듈 구성품</label>
           <div class="field-col">
             <button type="button" id="cornerAddonBtn">구성품 선택</button>
+            <div
+              id="selectedCornerOptionAddon"
+              class="selected-material-card addon-card-display option-addon-preview"
+            ></div>
           </div>
         </div>
       </div>
@@ -363,9 +393,19 @@
           </div>
         </div>
         <div class="form-row">
+          <label>옷봉 수량</label>
+          <div class="field-col">
+            <input type="number" id="bayRodCountInput" min="0" />
+          </div>
+        </div>
+        <div class="form-row">
           <label>모듈 구성품</label>
           <div class="field-col">
             <button type="button" id="bayAddonBtn">구성품 선택</button>
+            <div
+              id="selectedBayOptionAddon"
+              class="selected-material-card addon-card-display option-addon-preview"
+            ></div>
           </div>
         </div>
       </div>
