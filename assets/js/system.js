@@ -362,6 +362,59 @@ function getOrderedGraphEdges() {
     .filter((edge) => edge && (edge.type === "bay" || edge.type === "corner"));
 }
 
+function getPreviewOrderedEdges(edges = []) {
+  const source = (Array.isArray(edges) ? edges : [])
+    .filter((edge) => edge && edge.id)
+    .map((edge) => edge);
+  if (source.length <= 1) return source;
+  const ids = new Set(source.map((edge) => String(edge.id)));
+  const remaining = new Set(ids);
+  const placed = new Set();
+  const ordered = [];
+
+  let progressed = true;
+  while (remaining.size && progressed) {
+    progressed = false;
+    source.forEach((edge) => {
+      const id = String(edge.id || "");
+      if (!remaining.has(id)) return;
+      const anchorId = String(edge.anchorEndpointId || "");
+      if (!anchorId || anchorId === "root-endpoint") {
+        ordered.push(edge);
+        remaining.delete(id);
+        placed.add(id);
+        progressed = true;
+        return;
+      }
+      const match = anchorId.match(/^(.+):(start|end)$/);
+      if (!match) {
+        ordered.push(edge);
+        remaining.delete(id);
+        placed.add(id);
+        progressed = true;
+        return;
+      }
+      const parentId = String(match[1] || "");
+      if (parentId === id || placed.has(parentId) || !ids.has(parentId)) {
+        ordered.push(edge);
+        remaining.delete(id);
+        placed.add(id);
+        progressed = true;
+      }
+    });
+  }
+
+  if (remaining.size) {
+    source.forEach((edge) => {
+      const id = String(edge.id || "");
+      if (!remaining.has(id)) return;
+      ordered.push(edge);
+      remaining.delete(id);
+    });
+  }
+  return ordered;
+}
+
 function normalizeDirection(dx, dy) {
   const nx = Number(dx || 0);
   const ny = Number(dy || 0);
@@ -380,11 +433,6 @@ function directionToSideIndex(dx, dy) {
     return dir.dx >= 0 ? 0 : 2;
   }
   return dir.dy >= 0 ? 1 : 3;
-}
-
-function getCornerPrimaryLength(corner, dir) {
-  const sideIndex = directionToSideIndex(dir.dx, dir.dy);
-  return getCornerSizeAlongSide(sideIndex, Boolean(corner?.swap));
 }
 
 function initShelfStateForShape(shape) {
@@ -434,22 +482,6 @@ function readSpaceConfigs(shape) {
   return spaces;
 }
 
-function getActiveSideIndices() {
-  const active = new Set();
-  getOrderedGraphEdges().forEach((edge) => {
-    const placement = edge.placement;
-    const dir = hasValidPlacement(placement)
-      ? normalizeDirection(placement.dirDx, placement.dirDy)
-      : { dx: 1, dy: 0 };
-    active.add(directionToSideIndex(dir.dx, dir.dy));
-    if (edge.type === "corner") {
-      active.add(directionToSideIndex(-dir.dy, dir.dx));
-    }
-  });
-  if (!active.size) active.add(0);
-  return Array.from(active).sort((a, b) => a - b);
-}
-
 function getRequiredSectionCount() {
   return 1;
 }
@@ -475,41 +507,6 @@ function getCornerSizeAlongSide(sideIndex, swap) {
   return swap ? 800 : 600;
 }
 
-function getCornerAtEnd(sideIndex, shape) {
-  return null;
-}
-
-function getCornerAtStart(sideIndex) {
-  return null;
-}
-
-function buildSideLengthItems(sideIndex, shape) {
-  const items = [];
-  getOrderedGraphEdges().forEach((edge) => {
-    const placement = edge.placement;
-    const dir = hasValidPlacement(placement)
-      ? normalizeDirection(placement.dirDx, placement.dirDy)
-      : { dx: 1, dy: 0 };
-    const primarySide = directionToSideIndex(dir.dx, dir.dy);
-    if (primarySide !== sideIndex) return;
-    if (edge.type === "corner") items.push({ width: getCornerSizeAlongSide(sideIndex, edge.swap) });
-    else items.push({ width: edge.width || 0 });
-  });
-  return items;
-}
-
-function buildSideShelfSequence(sideIndex) {
-  return readBayInputs().filter((item) => Number(item.sideIndex) === Number(sideIndex));
-}
-
-function normalizeSideEdges(sideIndex) {
-  ensureEdgeOrder();
-}
-
-function normalizeAllSideEdges() {
-  ensureEdgeOrder();
-}
-
 function getCornerLabel(corner) {
   const sideNumber = Number(corner?.sideIndex) + 1;
   return Number.isFinite(sideNumber) ? `코너 ${sideNumber}` : "코너";
@@ -523,7 +520,7 @@ function renderBuilderStructure() {
   const listEl = $("#builderEdgeList");
   if (!listEl) return;
   const rows = [];
-  const edges = getOrderedGraphEdges();
+  const edges = getPreviewOrderedEdges(getOrderedGraphEdges());
   edges.forEach((edge, idx) => {
     const placement = edge.placement;
     const dir = hasValidPlacement(placement)
@@ -1022,18 +1019,6 @@ function setSpaceExtraHeights(spaceIndex, values) {
     )
     .join("");
   bindSpaceExtraHeightEvents(spaceIndex);
-}
-
-function getSideRequiredLength(sideIndex, shape, additionalShelfWidth = 0) {
-  let total = COLUMN_WIDTH_MM;
-  const items = buildSideLengthItems(sideIndex, shape);
-  items.forEach((item) => {
-    total += Number(item.width || 0) + SUPPORT_VISIBLE_MM * 2 + COLUMN_WIDTH_MM;
-  });
-  if (additionalShelfWidth > 0) {
-    total += Number(additionalShelfWidth || 0) + SUPPORT_VISIBLE_MM * 2 + COLUMN_WIDTH_MM;
-  }
-  return total;
 }
 
 function isPreviewBuilderReady(input) {
@@ -1562,8 +1547,7 @@ function updatePreview() {
   });
 
   const bays = readBayInputs();
-  const edges = getOrderedGraphEdges();
-  normalizeDanglingAnchorIds();
+  const edges = getPreviewOrderedEdges(getOrderedGraphEdges());
   const hasShelfBase = Boolean(shelfMat && input.shelf.thickness);
   const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
   const canAddFromPreview = isPreviewBuilderReady(input);
@@ -1602,7 +1586,6 @@ function updatePreview() {
   const endpointCandidates = [];
   const sideTotals = [0, 0, 0, 0];
   const sideUsed = [false, false, false, false];
-  let fallbackCursorX = 0;
   const includeSideLength = (sideIndex, nominalLength) => {
     const idx = Math.max(0, Math.min(3, Number(sideIndex || 0)));
     sideUsed[idx] = true;
@@ -1669,22 +1652,31 @@ function updatePreview() {
       consumeResolvedEndpoint(anchorEndpointId);
     }
     if (!placement) {
-      const fallbackDir = { dx: 1, dy: 0 };
-      const fallbackInward = { x: 0, y: 1 };
-      placement = {
-        startX: fallbackCursorX + COLUMN_WIDTH_MM,
-        startY: 0,
-        dirDx: fallbackDir.dx,
-        dirDy: fallbackDir.dy,
-        inwardX: fallbackInward.x,
-        inwardY: fallbackInward.y,
-      };
-      if (edge.type === "corner") {
-        const primaryLen = getCornerPrimaryLength(edge, fallbackDir);
-        fallbackCursorX += primaryLen + SUPPORT_VISIBLE_MM * 2 + COLUMN_WIDTH_MM;
-      } else {
-        fallbackCursorX += Number(edge.width || 400) + SUPPORT_VISIBLE_MM * 2 + COLUMN_WIDTH_MM;
-      }
+      const hasAnchorDir =
+        Number.isFinite(Number(edge.anchorDirDx)) && Number.isFinite(Number(edge.anchorDirDy));
+      const hasAnchorInward =
+        Number.isFinite(Number(edge.anchorInwardX)) &&
+        Number.isFinite(Number(edge.anchorInwardY));
+      const rootSource = buildRootEndpoint();
+      const dir = hasAnchorDir
+        ? normalizeDirection(edge.anchorDirDx, edge.anchorDirDy)
+        : normalizeDirection(rootSource.extendDx, rootSource.extendDy);
+      let inward = hasAnchorInward
+        ? normalizeDirection(edge.anchorInwardX, edge.anchorInwardY)
+        : normalizeDirection(rootSource.inwardX, rootSource.inwardY);
+      const dot = dir.dx * inward.dx + dir.dy * inward.dy;
+      if (Math.abs(dot) > 0.9) inward = { dx: -dir.dy, dy: dir.dx };
+      placement = buildPlacementFromEndpoint({
+        ...rootSource,
+        extendDx: dir.dx,
+        extendDy: dir.dy,
+        inwardX: inward.dx,
+        inwardY: inward.dy,
+      });
+    }
+    if (!placement) {
+      // Keep endpoint model deterministic: unresolved edges are skipped rather than placed by side fallback.
+      return;
     }
 
     const drawDirNormalized = normalizeDirection(placement.dirDx, placement.dirDy);
@@ -2504,6 +2496,7 @@ function ensureShapeSizeInputRows() {
 
 function renderBayInputs() {
   ensureShapeSizeInputRows();
+  normalizeDanglingAnchorIds();
   const container = $("#bayInputs");
   if (container) {
     container.innerHTML = "";
@@ -2516,7 +2509,7 @@ function renderBayInputs() {
     container.appendChild(block);
     const list = block.querySelector(".shelf-list");
     if (list) {
-      getOrderedGraphEdges().forEach((edge) => {
+      getPreviewOrderedEdges(getOrderedGraphEdges()).forEach((edge) => {
         if (edge.type === "corner") list.appendChild(buildCornerShelfItem(edge));
         else list.appendChild(buildShelfItem(edge));
         renderShelfAddonSelection(edge.id);
