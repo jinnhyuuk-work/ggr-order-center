@@ -2789,7 +2789,7 @@ function updatePreview() {
       shelfLine.textContent = `선반 ${labelInfo.count}개`;
       const addonLine = document.createElement("span");
       addonLine.className = "system-module-label-line";
-      addonLine.textContent = `구성품 ${labelInfo.addons}`;
+      addonLine.textContent = `${labelInfo.addons}`;
       labelEl.appendChild(shelfLine);
       labelEl.appendChild(addonLine);
       labelEl.style.left = `${labelInfo.x}px`;
@@ -2814,40 +2814,38 @@ function updatePreview() {
   const edgeOffset = 14;
   const sectionLabelOffset = 36;
 
-  if (showSizeInfo) {
-    sideWidthLabels.forEach((info) => {
-      const labelEl = document.createElement("div");
-      labelEl.className = `system-dimension-label system-section-width-label${
-        info.overflow ? " system-section-width-label--overflow" : ""
-      }`;
-      if (info.edgeHint === "left" || info.edgeHint === "right") {
-        labelEl.classList.add("system-section-width-label--vertical");
-      }
-      labelEl.textContent = info.text;
-      let placedX = Number.isFinite(info.x)
-        ? info.x * scale + tx
-        : (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
-      let placedY = Number.isFinite(info.y)
-        ? info.y * scale + ty
-        : (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
-      if (info.edgeHint === "top") {
-        placedY = outerBoundsPx.minY - sectionLabelOffset;
-        if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
-      } else if (info.edgeHint === "right") {
-        placedX = outerBoundsPx.maxX + sectionLabelOffset;
-        if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
-      } else if (info.edgeHint === "bottom") {
-        placedY = outerBoundsPx.maxY + sectionLabelOffset;
-        if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
-      } else if (info.edgeHint === "left") {
-        placedX = outerBoundsPx.minX - sectionLabelOffset;
-        if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
-      }
-      labelEl.style.left = `${placedX}px`;
-      labelEl.style.top = `${placedY}px`;
-      shelvesEl.appendChild(labelEl);
-    });
-  }
+  sideWidthLabels.forEach((info) => {
+    const labelEl = document.createElement("div");
+    labelEl.className = `system-dimension-label system-section-width-label${
+      info.overflow ? " system-section-width-label--overflow" : ""
+    }`;
+    if (info.edgeHint === "left" || info.edgeHint === "right") {
+      labelEl.classList.add("system-section-width-label--vertical");
+    }
+    labelEl.textContent = info.text;
+    let placedX = Number.isFinite(info.x)
+      ? info.x * scale + tx
+      : (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
+    let placedY = Number.isFinite(info.y)
+      ? info.y * scale + ty
+      : (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
+    if (info.edgeHint === "top") {
+      placedY = outerBoundsPx.minY - sectionLabelOffset;
+      if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
+    } else if (info.edgeHint === "right") {
+      placedX = outerBoundsPx.maxX + sectionLabelOffset;
+      if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
+    } else if (info.edgeHint === "bottom") {
+      placedY = outerBoundsPx.maxY + sectionLabelOffset;
+      if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
+    } else if (info.edgeHint === "left") {
+      placedX = outerBoundsPx.minX - sectionLabelOffset;
+      if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
+    }
+    labelEl.style.left = `${placedX}px`;
+    labelEl.style.top = `${placedY}px`;
+    shelvesEl.appendChild(labelEl);
+  });
 
   if (showSizeInfo) {
     columnLabelCenters.forEach((point) => {
@@ -2927,6 +2925,8 @@ function updatePreview() {
 
   const placedAddBtnBoxes = [];
   const addBtnRadius = addBtnSize / 2;
+  const isSingleStraightBayLayout =
+    edges.length === 1 && String(edges[0]?.type || "") === "bay" && addButtons.length === 2;
   const framePad = Math.max(8, addBtnRadius + 2);
   const rectOverlapsCircle = (rect, cx, cy, r) =>
     cx + r > rect.left && cx - r < rect.right && cy + r > rect.top && cy - r < rect.bottom;
@@ -2972,15 +2972,28 @@ function updatePreview() {
     const columnCenterPxX = columnCenterX * scale + tx;
     const columnCenterPxY = columnCenterY * scale + ty;
     const offsetPx = Math.max(columnDepthPx * 0.5 + addBtnSize * 0.65, 20);
-    const candidateVectors = [
+    const extendDir = normalizeDirection(point.extendDx, point.extendDy);
+    const singleBayPreferred = isSingleStraightBayLayout
+      ? { x: Number(extendDir.dx || 0), y: Number(extendDir.dy || 0) }
+      : null;
+    const candidateVectors = [];
+    if (singleBayPreferred) {
+      candidateVectors.push(singleBayPreferred);
+      if (Math.abs(singleBayPreferred.x) >= Math.abs(singleBayPreferred.y)) {
+        candidateVectors.push({ x: singleBayPreferred.x, y: 0, mul: 1.2 });
+      } else {
+        candidateVectors.push({ x: 0, y: singleBayPreferred.y, mul: 1.2 });
+      }
+    }
+    candidateVectors.push(
       { x: outwardX, y: outwardY },
       { x: tangentX, y: tangentY },
       { x: -tangentX, y: -tangentY },
       { x: outwardX, y: outwardY, mul: 1.35 },
-      { x: inwardX / inwardLen, y: inwardY / inwardLen },
-    ];
-    let btnX = columnCenterPxX + outwardX * offsetPx;
-    let btnY = columnCenterPxY + outwardY * offsetPx;
+      { x: inwardX / inwardLen, y: inwardY / inwardLen }
+    );
+    let btnX = columnCenterPxX + (singleBayPreferred?.x ?? outwardX) * offsetPx;
+    let btnY = columnCenterPxY + (singleBayPreferred?.y ?? outwardY) * offsetPx;
     for (let i = 0; i < candidateVectors.length; i += 1) {
       const c = candidateVectors[i];
       const mul = Number(c.mul || 1);
