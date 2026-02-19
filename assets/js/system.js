@@ -601,6 +601,14 @@ function addShelfFromEndpoint(endpoint, target = {}) {
   if (edge) {
     edge.attachAtStart = Boolean(target?.attachAtStart ?? endpoint?.attachAtStart);
     edge.anchorEndpointId = String(target?.endpointId || endpoint?.endpointId || "");
+    const sourceDir = normalizeDirection(endpoint?.extendDx, endpoint?.extendDy);
+    let sourceInward = normalizeDirection(endpoint?.inwardX, endpoint?.inwardY);
+    const dot = sourceDir.dx * sourceInward.dx + sourceDir.dy * sourceInward.dy;
+    if (Math.abs(dot) > 0.9) sourceInward = { dx: -sourceDir.dy, dy: sourceDir.dx };
+    edge.anchorDirDx = sourceDir.dx;
+    edge.anchorDirDy = sourceDir.dy;
+    edge.anchorInwardX = sourceInward.dx;
+    edge.anchorInwardY = sourceInward.dy;
   }
   return shelfId;
 }
@@ -1045,6 +1053,204 @@ function buildRootEndpoint() {
   };
 }
 
+function getEdgeEndpointAliasSets(edge) {
+  const startAliases = new Set([`${String(edge?.id || "")}:start`]);
+  const endAliases = new Set([`${String(edge?.id || "")}:end`]);
+  if (!edge || !hasValidPlacement(edge.placement)) {
+    return { startAliases, endAliases };
+  }
+
+  const placement = edge.placement;
+  const depthMm = 400;
+  const drawDir = normalizeDirection(placement.dirDx, placement.dirDy);
+  let drawInwardNorm = normalizeDirection(placement.inwardX, placement.inwardY);
+  const dot = drawDir.dx * drawInwardNorm.dx + drawDir.dy * drawInwardNorm.dy;
+  if (Math.abs(dot) > 0.9) drawInwardNorm = { dx: -drawDir.dy, dy: drawDir.dx };
+  const drawInward = { x: drawInwardNorm.dx, y: drawInwardNorm.dy };
+  const px = Number(placement.startX || 0);
+  const py = Number(placement.startY || 0);
+
+  if (edge.type !== "corner") {
+    const widthMm = (Number(edge.width || 0) || 0) + SUPPORT_VISIBLE_MM * 2;
+    const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
+    const startCenterY = py + drawDir.dy * (-COLUMN_WIDTH_MM / 2);
+    const endCenterX = px + drawDir.dx * (widthMm + COLUMN_WIDTH_MM / 2);
+    const endCenterY = py + drawDir.dy * (widthMm + COLUMN_WIDTH_MM / 2);
+    startAliases.add(
+      buildEndpointStableId({
+        x: startCenterX,
+        y: startCenterY,
+        extendDx: -drawDir.dx,
+        extendDy: -drawDir.dy,
+        inwardX: drawInward.x,
+        inwardY: drawInward.y,
+      })
+    );
+    endAliases.add(
+      buildEndpointStableId({
+        x: endCenterX,
+        y: endCenterY,
+        extendDx: drawDir.dx,
+        extendDy: drawDir.dy,
+        inwardX: drawInward.x,
+        inwardY: drawInward.y,
+      })
+    );
+    return { startAliases, endAliases };
+  }
+
+  const primarySideIndex = directionToSideIndex(drawDir.dx, drawDir.dy);
+  const primaryNominal = getCornerSizeAlongSide(primarySideIndex, Boolean(edge.swap));
+  const primaryLen = primaryNominal + SUPPORT_VISIBLE_MM * 2;
+  const secondDir = { dx: drawInward.x, dy: drawInward.y };
+  const secondSideIndex = directionToSideIndex(secondDir.dx, secondDir.dy);
+  const secondaryNominal = getCornerSizeAlongSide(secondSideIndex, Boolean(edge.swap));
+  const secondLen = secondaryNominal + SUPPORT_VISIBLE_MM * 2;
+  const secondInward = { x: -drawDir.dx, y: -drawDir.dy };
+  const secondStartX = px + drawDir.dx * primaryLen;
+  const secondStartY = py + drawDir.dy * primaryLen;
+  const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
+  const startCenterY = py + drawDir.dy * (-COLUMN_WIDTH_MM / 2);
+  const secondEndCenterX = secondStartX + secondDir.dx * (secondLen + COLUMN_WIDTH_MM / 2);
+  const secondEndCenterY = secondStartY + secondDir.dy * (secondLen + COLUMN_WIDTH_MM / 2);
+
+  startAliases.add(
+    buildEndpointStableId({
+      x: startCenterX,
+      y: startCenterY,
+      extendDx: -drawDir.dx,
+      extendDy: -drawDir.dy,
+      inwardX: drawInward.x,
+      inwardY: drawInward.y,
+    })
+  );
+  endAliases.add(
+    buildEndpointStableId({
+      x: secondEndCenterX,
+      y: secondEndCenterY,
+      extendDx: secondDir.dx,
+      extendDy: secondDir.dy,
+      inwardX: secondInward.x,
+      inwardY: secondInward.y,
+    })
+  );
+  return { startAliases, endAliases };
+}
+
+function getEdgeEndpointDirections(edge) {
+  if (!edge || !hasValidPlacement(edge.placement)) {
+    return {
+      start: { dx: 1, dy: 0 },
+      end: { dx: 1, dy: 0 },
+    };
+  }
+  const placement = edge.placement;
+  const drawDir = normalizeDirection(placement.dirDx, placement.dirDy);
+  let inward = normalizeDirection(placement.inwardX, placement.inwardY);
+  const dot = drawDir.dx * inward.dx + drawDir.dy * inward.dy;
+  if (Math.abs(dot) > 0.9) inward = { dx: -drawDir.dy, dy: drawDir.dx };
+
+  if (edge.type === "corner") {
+    return {
+      start: { dx: -drawDir.dx, dy: -drawDir.dy },
+      end: { dx: inward.dx, dy: inward.dy },
+    };
+  }
+  return {
+    start: { dx: -drawDir.dx, dy: -drawDir.dy },
+    end: { dx: drawDir.dx, dy: drawDir.dy },
+  };
+}
+
+function resolveAnchorForDirection(anchorId, preferredDir = null) {
+  const raw = String(anchorId || "");
+  if (!raw || raw === "root-endpoint") return "root-endpoint";
+  const edges = getOrderedGraphEdges();
+  let parent = null;
+  let canonical = "";
+
+  const directMatch = raw.match(/^(.+):(start|end)$/);
+  if (directMatch) {
+    const edgeId = String(directMatch[1] || "");
+    const edge = edges.find((it) => String(it?.id || "") === edgeId);
+    if (edge) {
+      parent = edge;
+      canonical = `${edgeId}:${directMatch[2]}`;
+    }
+  }
+
+  if (!parent) {
+    for (let i = 0; i < edges.length; i += 1) {
+      const edge = edges[i];
+      const { startAliases, endAliases } = getEdgeEndpointAliasSets(edge);
+      if (startAliases.has(raw)) {
+        parent = edge;
+        canonical = `${String(edge.id || "")}:start`;
+        break;
+      }
+      if (endAliases.has(raw)) {
+        parent = edge;
+        canonical = `${String(edge.id || "")}:end`;
+        break;
+      }
+    }
+  }
+
+  if (!parent) return "";
+  if (!preferredDir) return canonical || raw;
+  const pref = normalizeDirection(preferredDir.dx, preferredDir.dy);
+  const dirs = getEdgeEndpointDirections(parent);
+  const scoreStart = pref.dx * dirs.start.dx + pref.dy * dirs.start.dy;
+  const scoreEnd = pref.dx * dirs.end.dx + pref.dy * dirs.end.dy;
+  return `${String(parent.id || "")}:${scoreEnd > scoreStart ? "end" : "start"}`;
+}
+
+function applyRootAnchorVector(edge, preferredDir, preferredInward = null) {
+  const dir = normalizeDirection(preferredDir?.dx, preferredDir?.dy);
+  let inward = preferredInward
+    ? normalizeDirection(preferredInward.dx, preferredInward.dy)
+    : { dx: -dir.dy, dy: dir.dx };
+  const dot = dir.dx * inward.dx + dir.dy * inward.dy;
+  if (Math.abs(dot) > 0.9) inward = { dx: -dir.dy, dy: dir.dx };
+  edge.anchorDirDx = dir.dx;
+  edge.anchorDirDy = dir.dy;
+  edge.anchorInwardX = inward.dx;
+  edge.anchorInwardY = inward.dy;
+}
+
+function clearRootAnchorVector(edge) {
+  delete edge.anchorDirDx;
+  delete edge.anchorDirDy;
+  delete edge.anchorInwardX;
+  delete edge.anchorInwardY;
+}
+
+function normalizeDanglingAnchorIds() {
+  const edges = getOrderedGraphEdges();
+  edges.forEach((edge) => {
+    const currentAnchor = String(edge.anchorEndpointId || "");
+    if (!currentAnchor || currentAnchor === "root-endpoint") return;
+    const preferredDir = hasValidPlacement(edge.placement)
+      ? normalizeDirection(edge.placement.dirDx, edge.placement.dirDy)
+      : null;
+    const normalizedAnchor = resolveAnchorForDirection(currentAnchor, preferredDir);
+    if (!normalizedAnchor) {
+      edge.anchorEndpointId = "root-endpoint";
+      edge.placement = null;
+      return;
+    }
+    if (normalizedAnchor.startsWith(`${String(edge.id || "")}:`)) {
+      edge.anchorEndpointId = "root-endpoint";
+      edge.placement = null;
+      return;
+    }
+    edge.anchorEndpointId = normalizedAnchor;
+    if (normalizedAnchor !== "root-endpoint") {
+      clearRootAnchorVector(edge);
+    }
+  });
+}
+
 function updatePreviewWidthSummary(input) {
   const widthSummaryEl = $("#previewWidthSummary");
   if (!widthSummaryEl) return;
@@ -1255,6 +1461,7 @@ function updatePreview() {
 
   const bays = readBayInputs();
   const edges = getOrderedGraphEdges();
+  normalizeDanglingAnchorIds();
   const hasShelfBase = Boolean(shelfMat && input.shelf.thickness);
   const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
   const canAddFromPreview = isPreviewBuilderReady(input);
@@ -1332,7 +1539,30 @@ function updatePreview() {
       : null;
     let placement = hasValidPlacement(edge.placement) ? edge.placement : null;
     if (anchorEndpoint) {
-      const anchoredPlacement = buildPlacementFromEndpoint(anchorEndpoint);
+      let placementSource = anchorEndpoint;
+      const hasAnchorDir =
+        Number.isFinite(Number(edge.anchorDirDx)) && Number.isFinite(Number(edge.anchorDirDy));
+      const hasAnchorInward =
+        Number.isFinite(Number(edge.anchorInwardX)) &&
+        Number.isFinite(Number(edge.anchorInwardY));
+      if ((hasAnchorDir || hasAnchorInward) && anchorEndpointId === "root-endpoint") {
+        const dir = hasAnchorDir
+          ? normalizeDirection(edge.anchorDirDx, edge.anchorDirDy)
+          : normalizeDirection(anchorEndpoint.extendDx, anchorEndpoint.extendDy);
+        let inward = hasAnchorInward
+          ? normalizeDirection(edge.anchorInwardX, edge.anchorInwardY)
+          : normalizeDirection(anchorEndpoint.inwardX, anchorEndpoint.inwardY);
+        const dot = dir.dx * inward.dx + dir.dy * inward.dy;
+        if (Math.abs(dot) > 0.9) inward = { dx: -dir.dy, dy: dir.dx };
+        placementSource = {
+          ...anchorEndpoint,
+          extendDx: dir.dx,
+          extendDy: dir.dy,
+          inwardX: inward.dx,
+          inwardY: inward.dy,
+        };
+      }
+      const anchoredPlacement = buildPlacementFromEndpoint(placementSource);
       if (anchoredPlacement) placement = anchoredPlacement;
       consumeResolvedEndpoint(anchorEndpointId);
     }
@@ -1402,24 +1632,21 @@ function updatePreview() {
       });
       const startSideIndex = directionToSideIndex(-drawDir.dx, -drawDir.dy);
       const endSideIndex = directionToSideIndex(drawDir.dx, drawDir.dy);
-      const includeStartEndpoint = !anchorEndpoint || anchorEndpointId === "root-endpoint";
-      if (includeStartEndpoint) {
-        const startCandidate = {
-          x: startCenterX,
-          y: startCenterY,
-          sideIndex: startSideIndex,
-          attachSideIndex: startSideIndex,
-          attachAtStart: true,
-          extendDx: -drawDir.dx,
-          extendDy: -drawDir.dy,
-          inwardX: drawInward.x,
-          inwardY: drawInward.y,
-          allowedTypes: ["normal", "corner"],
-        };
-        startCandidate.endpointId = `${edge.id}:start`;
-        endpointCandidates.push(startCandidate);
-        registerResolvedEndpoint(startCandidate);
-      }
+      const startCandidate = {
+        x: startCenterX,
+        y: startCenterY,
+        sideIndex: startSideIndex,
+        attachSideIndex: startSideIndex,
+        attachAtStart: true,
+        extendDx: -drawDir.dx,
+        extendDy: -drawDir.dy,
+        inwardX: drawInward.x,
+        inwardY: drawInward.y,
+        allowedTypes: ["normal", "corner"],
+      };
+      startCandidate.endpointId = `${edge.id}:start`;
+      endpointCandidates.push(startCandidate);
+      registerResolvedEndpoint(startCandidate);
       const endCandidate = {
         x: endCenterX,
         y: endCenterY,
@@ -1470,24 +1697,21 @@ function updatePreview() {
       y: secondStartY + secondDir.dy * (secondLen + COLUMN_WIDTH_MM / 2),
     };
 
-    const includeStartEndpoint = !anchorEndpoint || anchorEndpointId === "root-endpoint";
-    if (includeStartEndpoint) {
-      const startCandidate = {
-        x: startCenterX,
-        y: startCenterY,
-        sideIndex: directionToSideIndex(-drawDir.dx, -drawDir.dy),
-        attachSideIndex: directionToSideIndex(-drawDir.dx, -drawDir.dy),
-        attachAtStart: true,
-        extendDx: -drawDir.dx,
-        extendDy: -drawDir.dy,
-        inwardX: drawInward.x,
-        inwardY: drawInward.y,
-        allowedTypes: ["normal", "corner"],
-      };
-      startCandidate.endpointId = `${edge.id}:start`;
-      endpointCandidates.push(startCandidate);
-      registerResolvedEndpoint(startCandidate);
-    }
+    const startCandidate = {
+      x: startCenterX,
+      y: startCenterY,
+      sideIndex: directionToSideIndex(-drawDir.dx, -drawDir.dy),
+      attachSideIndex: directionToSideIndex(-drawDir.dx, -drawDir.dy),
+      attachAtStart: true,
+      extendDx: -drawDir.dx,
+      extendDy: -drawDir.dy,
+      inwardX: drawInward.x,
+      inwardY: drawInward.y,
+      allowedTypes: ["normal", "corner"],
+    };
+    startCandidate.endpointId = `${edge.id}:start`;
+    endpointCandidates.push(startCandidate);
+    registerResolvedEndpoint(startCandidate);
     const secondEndCandidate = {
       x: secondEndCenter.x,
       y: secondEndCenter.y,
@@ -1981,6 +2205,10 @@ function commitPreviewAddCorner() {
       attachAtStart: Boolean(source?.attachAtStart),
       attachSideIndex: sideIndex,
       anchorEndpointId: String(source?.endpointId || ""),
+      anchorDirDx: Number(normalizeDirection(source?.extendDx, source?.extendDy).dx),
+      anchorDirDy: Number(normalizeDirection(source?.extendDx, source?.extendDy).dy),
+      anchorInwardX: Number(normalizeDirection(source?.inwardX, source?.inwardY).dx),
+      anchorInwardY: Number(normalizeDirection(source?.inwardX, source?.inwardY).dy),
       extendDx: Number(source?.extendDx || 0),
       extendDy: Number(source?.extendDy || 0),
       inwardX: Number(source?.inwardX || 0),
@@ -2419,10 +2647,62 @@ function saveBayOptionModal() {
   renderBayInputs();
 }
 
+function reanchorChildrenAfterEdgeRemoval(removedEdge) {
+  if (!removedEdge?.id) return;
+  const removedId = String(removedEdge.id);
+  const { startAliases, endAliases } = getEdgeEndpointAliasSets(removedEdge);
+  const orphanEdges = getOrderedGraphEdges().filter((edge) => {
+    if (!edge || edge.id === removedId) return false;
+    const anchorId = String(edge.anchorEndpointId || "");
+    if (!anchorId) return false;
+    return (
+      startAliases.has(anchorId) ||
+      endAliases.has(anchorId) ||
+      anchorId.startsWith(`${removedId}:`)
+    );
+  });
+
+  let replacementAnchor = String(removedEdge.anchorEndpointId || "");
+  const removedDir = hasValidPlacement(removedEdge.placement)
+    ? normalizeDirection(removedEdge.placement.dirDx, removedEdge.placement.dirDy)
+    : null;
+  replacementAnchor = resolveAnchorForDirection(replacementAnchor, removedDir);
+  if (!replacementAnchor || replacementAnchor.startsWith(`${removedId}:`)) {
+    replacementAnchor = "root-endpoint";
+  }
+
+  orphanEdges.sort((a, b) => {
+    const aTime = Number(a.createdAt || 0);
+    const bTime = Number(b.createdAt || 0);
+    if (aTime !== bTime) return aTime - bTime;
+    return String(a.id || "").localeCompare(String(b.id || ""));
+  });
+
+  orphanEdges.forEach((edge) => {
+    const preferredDir = hasValidPlacement(edge.placement)
+      ? normalizeDirection(edge.placement.dirDx, edge.placement.dirDy)
+      : removedDir;
+    const preferredInward = hasValidPlacement(edge.placement)
+      ? normalizeDirection(edge.placement.inwardX, edge.placement.inwardY)
+      : null;
+    const targetAnchor = resolveAnchorForDirection(replacementAnchor, preferredDir);
+    edge.anchorEndpointId = targetAnchor || replacementAnchor || "root-endpoint";
+    if (edge.anchorEndpointId === "root-endpoint") {
+      applyRootAnchorVector(edge, preferredDir || { dx: 1, dy: 0 }, preferredInward);
+    } else {
+      clearRootAnchorVector(edge);
+    }
+    edge.placement = null;
+  });
+}
+
 function removeBayById(id) {
   if (!id) return;
   ensureGraph();
+  const removed = state.graph?.edges?.[id];
+  if (removed) reanchorChildrenAfterEdgeRemoval(removed);
   unregisterEdge(id);
+  normalizeDanglingAnchorIds();
   delete state.shelfAddons[id];
   if (activeBayOptionId === id) activeBayOptionId = null;
   renderBayInputs();
@@ -2460,7 +2740,10 @@ function removeCornerById(id) {
   if (!id) return;
   ensureGraph();
   if (!state.graph?.edges?.[id] || state.graph.edges[id].type !== "corner") return;
+  const removed = state.graph.edges[id];
+  reanchorChildrenAfterEdgeRemoval(removed);
   unregisterEdge(id);
+  normalizeDanglingAnchorIds();
   delete state.shelfAddons[id];
   if (activeCornerOptionId === id) activeCornerOptionId = null;
   renderBayInputs();
