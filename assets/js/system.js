@@ -31,11 +31,12 @@ const LIMITS = {
 };
 
 const COLUMN_WIDTH_MM = 20;
+const COLUMN_DEPTH_MM = 75;
 const COLUMN_EXTRA_LENGTH_THRESHOLD = 2400;
 const SHELF_LENGTH_MM = 600;
 const SHELF_THICKNESS_MM = 18;
 const COLUMN_THICKNESS_MM = 18;
-const BAY_WIDTH_LIMITS = { min: 400, max: 800 };
+const BAY_WIDTH_LIMITS = { min: 400, max: 1000 };
 const SUPPORT_BRACKET_WIDTH_MM = 15;
 const SUPPORT_BRACKET_INSERT_MM = 10;
 const SUPPORT_VISIBLE_MM = SUPPORT_BRACKET_WIDTH_MM - SUPPORT_BRACKET_INSERT_MM;
@@ -530,6 +531,26 @@ function pushPreviewAddButton(list, entry) {
   if (!exists) list.push(entry);
 }
 
+function pushUniquePoint(list, entry, threshold = 8) {
+  const exists = list.find((it) => {
+    const dx = Math.abs((it.x || 0) - (entry.x || 0));
+    const dy = Math.abs((it.y || 0) - (entry.y || 0));
+    return dx < threshold && dy < threshold;
+  });
+  if (exists) {
+    exists.inwardX = Number(exists.inwardX || 0) + Number(entry.inwardX || 0);
+    exists.inwardY = Number(exists.inwardY || 0) + Number(entry.inwardY || 0);
+    exists.count = Number(exists.count || 1) + 1;
+    return;
+  }
+  list.push({
+    ...entry,
+    inwardX: Number(entry.inwardX || 0),
+    inwardY: Number(entry.inwardY || 0),
+    count: 1,
+  });
+}
+
 function readBayInputs() {
   const bays = [];
   state.sides.forEach((_, sideIndex) => {
@@ -544,7 +565,7 @@ function validateInputs(input, bays) {
   const shapeSizes = input.shapeSizes || [];
   const spaces = input.spaces || [];
 
-  if (!shapeSizes.length) return "구성 형태에 맞춰 너비를 입력해주세요.";
+  if (!shapeSizes.length) return "구성 형태에 맞춰 섹션 너비를 입력해주세요.";
   for (let i = 0; i < spaces.length; i += 1) {
     const space = spaces[i];
     if (!space.min || !space.max) {
@@ -593,7 +614,7 @@ function validateInputs(input, bays) {
         0
       );
     if (sideLength && required > sideLength) {
-      return `너비 ${sideIndex + 1}의 선반 구성 길이가 너비를 초과했습니다.`;
+      return `섹션 ${sideIndex + 1}의 선반 구성 길이가 섹션 너비를 초과했습니다.`;
     }
   }
   if (SHELF_LENGTH_MM > shelfLimits.maxLength) {
@@ -985,6 +1006,7 @@ function updatePreview() {
   const toInward = (dir) => ({ x: -dir.dy, y: dir.dx });
   const shelves = [];
   const addButtons = [];
+  const columnCenters = [];
   let cursorX = 0;
   let cursorY = 0;
 
@@ -1013,6 +1035,32 @@ function updatePreview() {
       const widthMm = (item.width || 0) + SUPPORT_VISIBLE_MM * 2;
       const px = anchorX + renderDir.dx * offset;
       const py = anchorY + renderDir.dy * offset;
+      const startCenterX = anchorX + renderDir.dx * (offset - COLUMN_WIDTH_MM / 2);
+      const startCenterY = anchorY + renderDir.dy * (offset - COLUMN_WIDTH_MM / 2);
+      const endCenterX = anchorX + renderDir.dx * (offset + widthMm + COLUMN_WIDTH_MM / 2);
+      const endCenterY = anchorY + renderDir.dy * (offset + widthMm + COLUMN_WIDTH_MM / 2);
+      if (!item.isCorner) {
+        pushUniquePoint(columnCenters, {
+          x: startCenterX,
+          y: startCenterY,
+          inwardX: inward.x,
+          inwardY: inward.y,
+        });
+        pushUniquePoint(columnCenters, {
+          x: endCenterX,
+          y: endCenterY,
+          inwardX: inward.x,
+          inwardY: inward.y,
+        });
+      } else {
+        // 코너 이후 선반이 없어도 끝점 기둥은 유지한다.
+        pushUniquePoint(columnCenters, {
+          x: endCenterX,
+          y: endCenterY,
+          inwardX: inward.x,
+          inwardY: inward.y,
+        });
+      }
 
       if (item.isCorner) {
         const corner = state.corners[sideIndex];
@@ -1172,6 +1220,137 @@ function updatePreview() {
         shelf.style.background = shelfMat.swatch || "#ddd";
       }
       shelvesEl.appendChild(shelf);
+  });
+
+  const columnWidthPx = Math.max(COLUMN_WIDTH_MM * scale, 4);
+  const columnDepthPx = Math.max(COLUMN_DEPTH_MM * scale, 8);
+  const columnLabelCenters = [];
+  columnCenters.forEach((point) => {
+    const sumInwardX = Number(point.inwardX || 0);
+    const sumInwardY = Number(point.inwardY || 0);
+    const inwardLen = Math.hypot(sumInwardX, sumInwardY) || 1;
+    const normalizedInwardX = sumInwardX / inwardLen;
+    const normalizedInwardY = sumInwardY / inwardLen;
+    const insetMm = depthMm * (2 / 3);
+    const shiftedX = point.x + normalizedInwardX * insetMm;
+    const shiftedY = point.y + normalizedInwardY * insetMm;
+    const renderX = shiftedX * scale + tx;
+    const renderY = shiftedY * scale + ty;
+    const edgeRefX = point.x * scale + tx;
+    const edgeRefY = point.y * scale + ty;
+    const tangentX = -normalizedInwardY;
+    const tangentY = normalizedInwardX;
+    const angleDeg = (Math.atan2(tangentY, tangentX) * 180) / Math.PI;
+    const columnEl = document.createElement("div");
+    columnEl.className = "system-column system-preview-column-box";
+    columnEl.style.width = `${columnWidthPx}px`;
+    columnEl.style.height = `${columnDepthPx}px`;
+    columnEl.style.left = `${renderX}px`;
+    columnEl.style.top = `${renderY}px`;
+    columnEl.style.transform = `translate(-50%, -50%) rotate(${angleDeg.toFixed(2)}deg)`;
+    columnEl.style.background = columnMat?.swatch || "#d9d9d9";
+    shelvesEl.appendChild(columnEl);
+    columnLabelCenters.push({
+      x: renderX,
+      y: renderY,
+      edgeRefX,
+      edgeRefY,
+    });
+  });
+
+  const dimensionLabels = [];
+  shelves.forEach((item) => {
+    if (item.isCorner && item.arms?.length) {
+      item.arms.forEach((arm) => {
+        const lengthWithSupport = Math.max(arm.maxX - arm.minX, arm.maxY - arm.minY);
+        const nominalLength = Math.max(
+          0,
+          Math.round(lengthWithSupport - SUPPORT_VISIBLE_MM * 2)
+        );
+        dimensionLabels.push({
+          x: ((arm.minX + arm.maxX) / 2) * scale + tx,
+          y: ((arm.minY + arm.maxY) / 2) * scale + ty,
+          text: `${nominalLength} × 400`,
+          corner: true,
+        });
+      });
+      return;
+    }
+    const lengthWithSupport = Math.max(item.maxX - item.minX, item.maxY - item.minY);
+    const nominalLength = Math.max(
+      0,
+      Math.round(lengthWithSupport - SUPPORT_VISIBLE_MM * 2)
+    );
+    dimensionLabels.push({
+      x: ((item.minX + item.maxX) / 2) * scale + tx,
+      y: ((item.minY + item.maxY) / 2) * scale + ty,
+      text: `${nominalLength} × 400`,
+      corner: false,
+    });
+  });
+
+  dimensionLabels.forEach((labelInfo) => {
+    const labelEl = document.createElement("div");
+    labelEl.className = `system-dimension-label${
+      labelInfo.corner ? " system-dimension-label--corner" : ""
+    }`;
+    labelEl.textContent = `${labelInfo.text}mm`;
+    labelEl.style.left = `${labelInfo.x}px`;
+    labelEl.style.top = `${labelInfo.y}px`;
+    shelvesEl.appendChild(labelEl);
+  });
+
+  const outerBoundsPx = shelves.length
+    ? {
+        minX: Math.min(...shelves.map((item) => item.minX * scale + tx)),
+        maxX: Math.max(...shelves.map((item) => item.maxX * scale + tx)),
+        minY: Math.min(...shelves.map((item) => item.minY * scale + ty)),
+        maxY: Math.max(...shelves.map((item) => item.maxY * scale + ty)),
+      }
+    : {
+        minX: frameW * 0.2,
+        maxX: frameW * 0.8,
+        minY: frameH * 0.2,
+        maxY: frameH * 0.8,
+      };
+  const edgeOffset = 12;
+
+  columnLabelCenters.forEach((point) => {
+    const anchorX = Number(point.x || 0);
+    const anchorY = Number(point.y || 0);
+    const edgeRefX = Number(point.edgeRefX || anchorX);
+    const edgeRefY = Number(point.edgeRefY || anchorY);
+
+    const distTop = Math.abs(edgeRefY - outerBoundsPx.minY);
+    const distRight = Math.abs(edgeRefX - outerBoundsPx.maxX);
+    const distBottom = Math.abs(edgeRefY - outerBoundsPx.maxY);
+    const distLeft = Math.abs(edgeRefX - outerBoundsPx.minX);
+    const nearest = [
+      { edge: "top", dist: distTop },
+      { edge: "right", dist: distRight },
+      { edge: "bottom", dist: distBottom },
+      { edge: "left", dist: distLeft },
+    ].sort((a, b) => a.dist - b.dist)[0]?.edge;
+
+    let placedX = anchorX;
+    let placedY = anchorY;
+
+    if (nearest === "top") {
+      placedY = outerBoundsPx.minY - edgeOffset;
+    } else if (nearest === "right") {
+      placedX = outerBoundsPx.maxX + edgeOffset;
+    } else if (nearest === "bottom") {
+      placedY = outerBoundsPx.maxY + edgeOffset;
+    } else if (nearest === "left") {
+      placedX = outerBoundsPx.minX - edgeOffset;
+    }
+
+    const labelEl = document.createElement("div");
+    labelEl.className = "system-dimension-label system-dimension-label--column";
+    labelEl.textContent = `${COLUMN_WIDTH_MM}mm`;
+    labelEl.style.left = `${placedX}px`;
+    labelEl.style.top = `${placedY}px`;
+    shelvesEl.appendChild(labelEl);
   });
 
   if (!shelves.length && !addButtons.length) {
@@ -1444,7 +1623,7 @@ function buildShelfItem(shelf) {
           <option value="800">800</option>
           <option value="custom">직접 입력</option>
         </select>
-        <input type="number" class="bay-width-input" data-shelf-width="${shelf.id}" placeholder="직접 입력 (400~800mm)" value="${shelf.width || ""}" />
+        <input type="number" class="bay-width-input" data-shelf-width="${shelf.id}" min="${BAY_WIDTH_LIMITS.min}" max="${BAY_WIDTH_LIMITS.max}" placeholder="직접 입력 (${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm)" value="${shelf.width || ""}" />
         <div class="error-msg" data-shelf-width-error="${shelf.id}"></div>
       </div>
     </div>

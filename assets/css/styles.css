@@ -655,6 +655,39 @@ input[type="number"]::-webkit-outer-spin-button {
   z-index: 2;
 }
 
+.system-dimension-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--color-text-strong);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.system-dimension-label--corner {
+  background: rgba(255, 247, 235, 0.96);
+}
+
+.system-dimension-label--column {
+  font-size: 10px;
+  padding: 1px 5px;
+  background: rgba(245, 245, 245, 0.96);
+}
+
+.system-preview-column-box {
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), var(--shadow-preview);
+  z-index: 1;
+}
+
 #bayList {
   padding: 12px 14px;
 }
