@@ -523,6 +523,25 @@ function getEdgeTypeLabel(item) {
   return item.isCorner ? "코너" : "모듈";
 }
 
+function setPreviewEdgeHoverState(edgeId = "", active = false) {
+  const container = $("#systemPreviewShelves");
+  if (!container) return;
+  container.querySelectorAll(".system-shelf.is-edge-hovered").forEach((el) => {
+    el.classList.remove("is-edge-hovered");
+  });
+  if (!active) return;
+  const targetId = String(edgeId || "");
+  if (!targetId) return;
+  const target = Array.from(
+    container.querySelectorAll("[data-bay-preview], [data-corner-preview]")
+  ).find(
+    (el) =>
+      String(el?.dataset?.bayPreview || "") === targetId ||
+      String(el?.dataset?.cornerPreview || "") === targetId
+  );
+  if (target) target.classList.add("is-edge-hovered");
+}
+
 function renderBuilderStructure() {
   const listEl = $("#builderEdgeList");
   if (!listEl) return;
@@ -541,15 +560,10 @@ function renderBuilderStructure() {
           edge.swap
         )}mm`
       : `${Number(edge.width || 0)}mm`;
-    const cornerSectionText = isCorner
-      ? `섹션 ${sideIndex + 1} / 섹션 ${
-          directionToSideIndex(-dir.dy, dir.dx) + 1
-        }`
-      : `섹션 ${sideIndex + 1}`;
     rows.push({
       id: edge.id,
       isCorner,
-      title: `${cornerSectionText} · ${isCorner ? "코너" : "모듈"} ${idx + 1}`,
+      title: `${isCorner ? "코너" : "모듈"} ${idx + 1}`,
       meta: `${widthText} / ${Number(edge.count || 1)}개`,
     });
   });
@@ -562,7 +576,7 @@ function renderBuilderStructure() {
       (row) => `
       <div class="builder-edge-item" data-builder-edge-id="${row.id}" data-builder-edge-type="${
         row.isCorner ? "corner" : "bay"
-      }">
+      }" tabindex="0">
         <span>${escapeHtml(row.title)}</span>
         <span class="meta">${escapeHtml(row.meta)}</span>
       </div>
@@ -4048,7 +4062,8 @@ function init() {
   $("#previewAddCornerBtn")?.addEventListener("click", commitPreviewAddCorner);
   $("#builderUndoBtn")?.addEventListener("click", undoBuilderHistory);
   $("#builderRedoBtn")?.addEventListener("click", redoBuilderHistory);
-  $("#builderEdgeList")?.addEventListener("click", (e) => {
+  const builderEdgeListEl = $("#builderEdgeList");
+  builderEdgeListEl?.addEventListener("click", (e) => {
     const row = e.target.closest("[data-builder-edge-id]");
     if (!row) return;
     const id = row.dataset.builderEdgeId;
@@ -4059,6 +4074,32 @@ function init() {
     } else {
       openBayOptionModal(id);
     }
+  });
+  builderEdgeListEl?.addEventListener("mouseover", (e) => {
+    const row = e.target.closest("[data-builder-edge-id]");
+    if (!row) return;
+    const id = row.dataset.builderEdgeId;
+    setPreviewEdgeHoverState(id, Boolean(id));
+  });
+  builderEdgeListEl?.addEventListener("mouseout", (e) => {
+    const row = e.target.closest("[data-builder-edge-id]");
+    if (!row) return;
+    const next = e.relatedTarget;
+    if (next instanceof Element && row.contains(next)) return;
+    setPreviewEdgeHoverState("", false);
+  });
+  builderEdgeListEl?.addEventListener("focusin", (e) => {
+    const row = e.target.closest("[data-builder-edge-id]");
+    if (!row) return;
+    const id = row.dataset.builderEdgeId;
+    setPreviewEdgeHoverState(id, Boolean(id));
+  });
+  builderEdgeListEl?.addEventListener("focusout", (e) => {
+    const row = e.target.closest("[data-builder-edge-id]");
+    if (!row) return;
+    const next = e.relatedTarget;
+    if (next instanceof Element && row.contains(next)) return;
+    setPreviewEdgeHoverState("", false);
   });
   $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
   $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
