@@ -858,10 +858,25 @@ input[type="number"]::-webkit-outer-spin-button {
   background: rgba(245, 245, 245, 0.96);
 }
 
+.system-dimension-label--column.system-dimension-label--vertical {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
 .system-section-width-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: rgba(236, 247, 255, 0.95);
   border-color: rgba(41, 121, 255, 0.25);
   z-index: 3;
+}
+
+.system-section-width-label::before,
+.system-section-width-label::after {
+  content: "↔";
+  font-size: calc(var(--preview-dim-font-size, 11px) - 1px);
+  line-height: 1;
+  color: rgba(41, 121, 255, 0.8);
 }
 
 .system-section-width-label--vertical {

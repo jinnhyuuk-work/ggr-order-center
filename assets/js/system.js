@@ -30,7 +30,7 @@ const LIMITS = {
   column: { minLength: 1800, maxLength: 2700 },
 };
 
-const COLUMN_WIDTH_MM = 20;
+const COLUMN_WIDTH_MM = 30;
 const COLUMN_DEPTH_MM = 75;
 const COLUMN_EXTRA_LENGTH_THRESHOLD = 2400;
 const SHELF_LENGTH_MM = 600;
@@ -824,6 +824,15 @@ function getEdgeHintFromDir(dir) {
   return "";
 }
 
+function getEdgeHintFromInward(inwardX, inwardY) {
+  const inward = normalizeDirection(inwardX, inwardY);
+  const outward = { dx: -inward.dx, dy: -inward.dy };
+  if (Math.abs(outward.dx) >= Math.abs(outward.dy)) {
+    return outward.dx >= 0 ? "right" : "left";
+  }
+  return outward.dy >= 0 ? "bottom" : "top";
+}
+
 function toEndpointKeyNumber(value) {
   const n = Number(value || 0);
   if (!Number.isFinite(n)) return "0";
@@ -1064,6 +1073,18 @@ function getPreviewBuilderDisabledReason(input) {
     return `최대 천장 높이는 ${LIMITS.column.maxLength}mm 이하입니다.`;
   }
   return "";
+}
+
+function buildPreviewOptionText(input, shelfMat, columnMat) {
+  const space = (input?.spaces || [])[0] || { min: 0, max: 0, extraHeights: [] };
+  const min = Number(space.min || 0);
+  const max = Number(space.max || 0);
+  const heightText = min && max ? `${min}~${max}mm` : "-";
+  const extraCount = Array.isArray(space.extraHeights)
+    ? space.extraHeights.filter((value) => Number(value || 0) > 0).length
+    : 0;
+  const extraText = extraCount > 0 ? ` · 개별높이 ${extraCount}개` : "";
+  return `탑뷰 · 선반 ${shelfMat?.name || "-"} · 기둥 ${columnMat?.name || "-"} · 천장 ${heightText}${extraText}`;
 }
 
 function applyPreviewAddButtonState(btn, { enabled = true, reason = "" } = {}) {
@@ -1590,6 +1611,8 @@ function buildSectionRunsFromSegments(segments = []) {
   const lineBuckets = new Map();
   segments.forEach((seg) => {
     const orientation = seg.orientation === "vertical" ? "vertical" : "horizontal";
+    const edgeHint = String(seg.edgeHint || "");
+    if (!edgeHint) return;
     const lineCoord = Number(seg.lineCoord || 0);
     const a0 = Number(seg.axisStart || 0);
     const a1 = Number(seg.axisEnd || 0);
@@ -1605,10 +1628,11 @@ function buildSectionRunsFromSegments(segments = []) {
     const axisStart = Math.min(a0, a1);
     const axisEnd = Math.max(a0, a1);
     const lineKey = Math.round(lineCoord * 10) / 10;
-    const key = `${orientation}:${lineKey}`;
+    const key = `${orientation}:${lineKey}:${edgeHint}`;
     if (!lineBuckets.has(key)) lineBuckets.set(key, []);
     lineBuckets.get(key).push({
       orientation,
+      edgeHint,
       lineCoord: lineKey,
       axisStart,
       axisEnd,
@@ -1640,6 +1664,50 @@ function buildSectionRunsFromSegments(segments = []) {
     if (current) runs.push(current);
   });
   return runs;
+}
+
+function buildOuterSectionLabels(sectionRuns = [], columnMarksByHint = {}) {
+  if (!Array.isArray(sectionRuns) || !sectionRuns.length) return [];
+  const buckets = {
+    top: [],
+    right: [],
+    bottom: [],
+    left: [],
+  };
+
+  sectionRuns.forEach((run) => {
+    const hint = String(run.edgeHint || "");
+    if (!hint || !buckets[hint]) return;
+    buckets[hint].push(run);
+  });
+
+  const order = ["top", "right", "bottom", "left"];
+  const labels = [];
+  order.forEach((edgeHint) => {
+    const runs = buckets[edgeHint] || [];
+    if (!runs.length) return;
+    const shelfTotalMm = runs.reduce((sum, run) => sum + Math.max(0, Number(run.totalMm || 0)), 0);
+    const columnSet = columnMarksByHint?.[edgeHint];
+    const columnCount =
+      columnSet && typeof columnSet.size === "number" ? Number(columnSet.size || 0) : 0;
+    const totalMm = shelfTotalMm + columnCount * COLUMN_WIDTH_MM;
+    const axisStart = Math.min(...runs.map((run) => Number(run.axisStart || 0)));
+    const axisEnd = Math.max(...runs.map((run) => Number(run.axisEnd || 0)));
+    const lineCoord = runs.reduce((sum, run) => sum + Number(run.lineCoord || 0), 0) / runs.length;
+    const horizontal = edgeHint === "top" || edgeHint === "bottom";
+    labels.push({
+      edgeHint,
+      orientation: horizontal ? "horizontal" : "vertical",
+      axisStart,
+      axisEnd,
+      lineCoord,
+      totalMm,
+      x: horizontal ? (axisStart + axisEnd) / 2 : lineCoord,
+      y: horizontal ? lineCoord : (axisStart + axisEnd) / 2,
+      overflow: false,
+    });
+  });
+  return labels;
 }
 
 function updatePreviewWidthSummary(input, sectionRuns = null) {
@@ -1876,12 +1944,32 @@ function updatePreview() {
 
   shelvesEl.innerHTML = "";
   clearPreviewGhost();
-  textEl.textContent = `탑뷰 · 선반 깊이 400mm · 기둥 ${COLUMN_WIDTH_MM}mm`;
+  textEl.textContent = buildPreviewOptionText(input, shelfMat, columnMat);
 
   const depthMm = 400;
   const shelves = [];
   const columnCenters = [];
   const endpointCandidates = [];
+  const sectionColumnMarks = {
+    top: new Set(),
+    right: new Set(),
+    bottom: new Set(),
+    left: new Set(),
+  };
+  const toSectionAxisKey = (value) => {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n)) return "0";
+    const rounded = Math.round(n * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
+  const markSectionColumn = (edgeHint, centerX, centerY) => {
+    const hint = String(edgeHint || "");
+    const bucket = sectionColumnMarks[hint];
+    if (!bucket) return;
+    const axisValue =
+      hint === "top" || hint === "bottom" ? Number(centerX || 0) : Number(centerY || 0);
+    bucket.add(toSectionAxisKey(axisValue));
+  };
   const sectionLengthSegments = [];
   const recordSectionSegment = ({
     startX,
@@ -1889,6 +1977,8 @@ function updatePreview() {
     endX,
     endY,
     nominalLength = 0,
+    inwardX = 0,
+    inwardY = 1,
   } = {}) => {
     const sx = Number(startX || 0);
     const sy = Number(startY || 0);
@@ -1905,13 +1995,12 @@ function updatePreview() {
     const horizontal = Math.abs(ex - sx) >= Math.abs(ey - sy);
     sectionLengthSegments.push({
       orientation: horizontal ? "horizontal" : "vertical",
+      edgeHint: getEdgeHintFromInward(inwardX, inwardY),
       lineCoord: horizontal ? (sy + ey) / 2 : (sx + ex) / 2,
       axisStart: horizontal ? Math.min(sx, ex) : Math.min(sy, ey),
       axisEnd: horizontal ? Math.max(sx, ex) : Math.max(sy, ey),
-      totalMm: Math.max(
-        0,
-        Number(nominalLength || 0) + SUPPORT_VISIBLE_MM * 2 + COLUMN_WIDTH_MM
-      ),
+      // Section width is calculated as: (sum of shelf widths) + (sum of column widths).
+      totalMm: Math.max(0, Number(nominalLength || 0)),
     });
   };
   const resolvedOpenEndpoints = new Map();
@@ -2022,6 +2111,7 @@ function updatePreview() {
 
     const primarySideIndex = directionToSideIndex(drawDir.dx, drawDir.dy);
     const edgeHint = getEdgeHintFromDir(drawDir);
+    const primarySegmentHint = getEdgeHintFromInward(drawInward.x, drawInward.y);
 
     if (edge.type !== "corner") {
       const widthMm = (Number(edge.width || 0) || 0) + SUPPORT_VISIBLE_MM * 2;
@@ -2031,11 +2121,15 @@ function updatePreview() {
         endX: px + drawDir.dx * widthMm,
         endY: py + drawDir.dy * widthMm,
         nominalLength: Number(edge.width || 0),
+        inwardX: drawInward.x,
+        inwardY: drawInward.y,
       });
       const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
       const startCenterY = py + drawDir.dy * (-COLUMN_WIDTH_MM / 2);
       const endCenterX = px + drawDir.dx * (widthMm + COLUMN_WIDTH_MM / 2);
       const endCenterY = py + drawDir.dy * (widthMm + COLUMN_WIDTH_MM / 2);
+      markSectionColumn(primarySegmentHint, startCenterX, startCenterY);
+      markSectionColumn(primarySegmentHint, endCenterX, endCenterY);
       pushUniquePoint(columnCenters, {
         x: startCenterX,
         y: startCenterY,
@@ -2109,9 +2203,12 @@ function updatePreview() {
       endX: px + drawDir.dx * primaryLen,
       endY: py + drawDir.dy * primaryLen,
       nominalLength: primaryNominal,
+      inwardX: drawInward.x,
+      inwardY: drawInward.y,
     });
 
     const secondInward = { x: -drawDir.dx, y: -drawDir.dy };
+    const secondarySegmentHint = getEdgeHintFromInward(secondInward.x, secondInward.y);
     const secondStartX = px + drawDir.dx * primaryLen;
     const secondStartY = py + drawDir.dy * primaryLen;
     recordSectionSegment({
@@ -2120,6 +2217,8 @@ function updatePreview() {
       endX: secondStartX + secondDir.dx * secondLen,
       endY: secondStartY + secondDir.dy * secondLen,
       nominalLength: secondaryNominal,
+      inwardX: secondInward.x,
+      inwardY: secondInward.y,
     });
 
     const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
@@ -2128,6 +2227,8 @@ function updatePreview() {
       x: secondStartX + secondDir.dx * (secondLen + COLUMN_WIDTH_MM / 2),
       y: secondStartY + secondDir.dy * (secondLen + COLUMN_WIDTH_MM / 2),
     };
+    markSectionColumn(primarySegmentHint, startCenterX, startCenterY);
+    markSectionColumn(secondarySegmentHint, secondEndCenter.x, secondEndCenter.y);
 
     const startCandidate = {
       x: startCenterX,
@@ -2206,38 +2307,15 @@ function updatePreview() {
   });
 
   const sectionRuns = buildSectionRunsFromSegments(sectionLengthSegments);
-  const horizontalRuns = sectionRuns.filter((run) => run.orientation === "horizontal");
-  const verticalRuns = sectionRuns.filter((run) => run.orientation === "vertical");
-  const minHorizontalLine = horizontalRuns.length
-    ? Math.min(...horizontalRuns.map((run) => Number(run.lineCoord || 0)))
-    : 0;
-  const maxHorizontalLine = horizontalRuns.length
-    ? Math.max(...horizontalRuns.map((run) => Number(run.lineCoord || 0)))
-    : 0;
-  const minVerticalLine = verticalRuns.length
-    ? Math.min(...verticalRuns.map((run) => Number(run.lineCoord || 0)))
-    : 0;
-  const maxVerticalLine = verticalRuns.length
-    ? Math.max(...verticalRuns.map((run) => Number(run.lineCoord || 0)))
-    : 0;
-  const sectionRunsWithHint = sectionRuns.map((run) => {
-    if (run.orientation === "horizontal") {
-      const distTop = Math.abs(Number(run.lineCoord || 0) - minHorizontalLine);
-      const distBottom = Math.abs(Number(run.lineCoord || 0) - maxHorizontalLine);
-      return { ...run, edgeHint: distTop <= distBottom ? "top" : "bottom" };
-    }
-    const distLeft = Math.abs(Number(run.lineCoord || 0) - minVerticalLine);
-    const distRight = Math.abs(Number(run.lineCoord || 0) - maxVerticalLine);
-    return { ...run, edgeHint: distLeft <= distRight ? "left" : "right" };
-  });
-  const sideWidthLabels = sectionRunsWithHint.map((run) => ({
+  const sectionLabels = buildOuterSectionLabels(sectionRuns, sectionColumnMarks);
+  const sideWidthLabels = sectionLabels.map((run) => ({
     edgeHint: run.edgeHint,
-    x: run.orientation === "horizontal" ? (Number(run.axisStart || 0) + Number(run.axisEnd || 0)) / 2 : Number(run.lineCoord || 0),
-    y: run.orientation === "horizontal" ? Number(run.lineCoord || 0) : (Number(run.axisStart || 0) + Number(run.axisEnd || 0)) / 2,
+    x: Number(run.x || 0),
+    y: Number(run.y || 0),
     text: `${Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0)))}mm`,
     overflow: false,
   }));
-  updatePreviewWidthSummary(input, sectionRunsWithHint);
+  updatePreviewWidthSummary(input, sectionLabels);
 
   const addButtons = collectOpenEndpointsFromCandidates(endpointCandidates);
   addButtons.forEach((point) => {
@@ -2534,6 +2612,9 @@ function updatePreview() {
 
     const labelEl = document.createElement("div");
     labelEl.className = "system-dimension-label system-dimension-label--column";
+    if (nearest === "left" || nearest === "right") {
+      labelEl.classList.add("system-dimension-label--vertical");
+    }
     labelEl.textContent = `${COLUMN_WIDTH_MM}mm`;
     labelEl.style.left = `${placedX}px`;
     labelEl.style.top = `${placedY}px`;
