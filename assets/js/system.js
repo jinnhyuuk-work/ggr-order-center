@@ -1585,43 +1585,86 @@ function normalizeDanglingAnchorIds() {
   });
 }
 
-function updatePreviewWidthSummary(input) {
+function buildSectionRunsFromSegments(segments = []) {
+  if (!Array.isArray(segments) || !segments.length) return [];
+  const lineBuckets = new Map();
+  segments.forEach((seg) => {
+    const orientation = seg.orientation === "vertical" ? "vertical" : "horizontal";
+    const lineCoord = Number(seg.lineCoord || 0);
+    const a0 = Number(seg.axisStart || 0);
+    const a1 = Number(seg.axisEnd || 0);
+    const totalMm = Math.max(0, Number(seg.totalMm || 0));
+    if (
+      !Number.isFinite(lineCoord) ||
+      !Number.isFinite(a0) ||
+      !Number.isFinite(a1) ||
+      !Number.isFinite(totalMm)
+    ) {
+      return;
+    }
+    const axisStart = Math.min(a0, a1);
+    const axisEnd = Math.max(a0, a1);
+    const lineKey = Math.round(lineCoord * 10) / 10;
+    const key = `${orientation}:${lineKey}`;
+    if (!lineBuckets.has(key)) lineBuckets.set(key, []);
+    lineBuckets.get(key).push({
+      orientation,
+      lineCoord: lineKey,
+      axisStart,
+      axisEnd,
+      totalMm,
+    });
+  });
+
+  const runs = [];
+  const mergeGapMm = 2;
+  lineBuckets.forEach((items) => {
+    const sorted = items.sort((a, b) => {
+      if (a.axisStart !== b.axisStart) return a.axisStart - b.axisStart;
+      return a.axisEnd - b.axisEnd;
+    });
+    let current = null;
+    sorted.forEach((item) => {
+      if (!current) {
+        current = { ...item };
+        return;
+      }
+      if (item.axisStart <= current.axisEnd + mergeGapMm) {
+        current.axisEnd = Math.max(current.axisEnd, item.axisEnd);
+        current.totalMm += item.totalMm;
+        return;
+      }
+      runs.push(current);
+      current = { ...item };
+    });
+    if (current) runs.push(current);
+  });
+  return runs;
+}
+
+function updatePreviewWidthSummary(input, sectionRuns = null) {
   const widthSummaryEl = $("#previewWidthSummary");
   if (!widthSummaryEl) return;
-  const edges = getOrderedGraphEdges();
-  if (!edges.length) {
+  const runs = Array.isArray(sectionRuns)
+    ? sectionRuns.filter((run) => Number(run?.totalMm || 0) > 0)
+    : [];
+  if (!runs.length) {
     widthSummaryEl.textContent = "적용 너비 합계: -";
     return;
   }
-  const sideTotals = [0, 0, 0, 0];
-  const sideUsed = [false, false, false, false];
-  const includeSegment = (sideIndex, lengthMm) => {
-    const idx = Math.max(0, Math.min(3, Number(sideIndex || 0)));
-    sideUsed[idx] = true;
-    sideTotals[idx] += Math.max(0, Number(lengthMm || 0) + SUPPORT_VISIBLE_MM * 2 + COLUMN_WIDTH_MM);
-  };
-  edges.forEach((edge) => {
-    const placement = edge.placement;
-    const dir = hasValidPlacement(placement)
-      ? normalizeDirection(placement.dirDx, placement.dirDy)
-      : { dx: 1, dy: 0 };
-    const primarySide = directionToSideIndex(dir.dx, dir.dy);
-    if (edge.type === "corner") {
-      const primaryLen = getCornerSizeAlongSide(primarySide, edge.swap);
-      includeSegment(primarySide, primaryLen);
-      const secondaryDir = { dx: -dir.dy, dy: dir.dx };
-      const secondarySide = directionToSideIndex(secondaryDir.dx, secondaryDir.dy);
-      const secondaryLen = getCornerSizeAlongSide(secondarySide, edge.swap);
-      includeSegment(secondarySide, secondaryLen);
-    } else {
-      includeSegment(primarySide, edge.width || 0);
-    }
+  const hintPriority = { top: 0, right: 1, bottom: 2, left: 3 };
+  const ordered = [...runs].sort((a, b) => {
+    const ap = hintPriority[String(a?.edgeHint || "")] ?? 99;
+    const bp = hintPriority[String(b?.edgeHint || "")] ?? 99;
+    if (ap !== bp) return ap - bp;
+    const ac = (Number(a?.axisStart || 0) + Number(a?.axisEnd || 0)) / 2;
+    const bc = (Number(b?.axisStart || 0) + Number(b?.axisEnd || 0)) / 2;
+    return ac - bc;
   });
   const segments = [];
-  sideUsed.forEach((used, sideIndex) => {
-    if (!used) return;
-    const total = Math.round(Math.max(COLUMN_WIDTH_MM, sideTotals[sideIndex]));
-    segments.push(`섹션${sideIndex + 1} ${total}mm`);
+  ordered.forEach((run, idx) => {
+    const total = Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0)));
+    segments.push(`섹션${idx + 1} ${total}mm`);
   });
   if (!segments.length) {
     widthSummaryEl.textContent = "적용 너비 합계: -";
@@ -1799,7 +1842,7 @@ function updatePreview() {
   const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
   const canAddFromPreview = isPreviewBuilderReady(input);
   const previewDisabledReason = canAddFromPreview ? "" : getPreviewBuilderDisabledReason(input);
-  updatePreviewWidthSummary(input);
+  updatePreviewWidthSummary(input, []);
 
   if (!hasShelfBase || !hasColumn) {
     textEl.textContent = "옵션 선택 후 모듈을 추가하면 미리보기가 표시됩니다.";
@@ -1839,15 +1882,37 @@ function updatePreview() {
   const shelves = [];
   const columnCenters = [];
   const endpointCandidates = [];
-  const sideTotals = [0, 0, 0, 0];
-  const sideUsed = [false, false, false, false];
-  const includeSideLength = (sideIndex, nominalLength) => {
-    const idx = Math.max(0, Math.min(3, Number(sideIndex || 0)));
-    sideUsed[idx] = true;
-    sideTotals[idx] += Math.max(
-      0,
-      Number(nominalLength || 0) + SUPPORT_VISIBLE_MM * 2 + COLUMN_WIDTH_MM
-    );
+  const sectionLengthSegments = [];
+  const recordSectionSegment = ({
+    startX,
+    startY,
+    endX,
+    endY,
+    nominalLength = 0,
+  } = {}) => {
+    const sx = Number(startX || 0);
+    const sy = Number(startY || 0);
+    const ex = Number(endX || 0);
+    const ey = Number(endY || 0);
+    if (
+      !Number.isFinite(sx) ||
+      !Number.isFinite(sy) ||
+      !Number.isFinite(ex) ||
+      !Number.isFinite(ey)
+    ) {
+      return;
+    }
+    const horizontal = Math.abs(ex - sx) >= Math.abs(ey - sy);
+    sectionLengthSegments.push({
+      orientation: horizontal ? "horizontal" : "vertical",
+      lineCoord: horizontal ? (sy + ey) / 2 : (sx + ex) / 2,
+      axisStart: horizontal ? Math.min(sx, ex) : Math.min(sy, ey),
+      axisEnd: horizontal ? Math.max(sx, ex) : Math.max(sy, ey),
+      totalMm: Math.max(
+        0,
+        Number(nominalLength || 0) + SUPPORT_VISIBLE_MM * 2 + COLUMN_WIDTH_MM
+      ),
+    });
   };
   const resolvedOpenEndpoints = new Map();
   const rootEndpoint = buildRootEndpoint();
@@ -1960,7 +2025,13 @@ function updatePreview() {
 
     if (edge.type !== "corner") {
       const widthMm = (Number(edge.width || 0) || 0) + SUPPORT_VISIBLE_MM * 2;
-      includeSideLength(primarySideIndex, Number(edge.width || 0));
+      recordSectionSegment({
+        startX: px,
+        startY: py,
+        endX: px + drawDir.dx * widthMm,
+        endY: py + drawDir.dy * widthMm,
+        nominalLength: Number(edge.width || 0),
+      });
       const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
       const startCenterY = py + drawDir.dy * (-COLUMN_WIDTH_MM / 2);
       const endCenterX = px + drawDir.dx * (widthMm + COLUMN_WIDTH_MM / 2);
@@ -2032,12 +2103,24 @@ function updatePreview() {
     const secondSideIndex = directionToSideIndex(secondDir.dx, secondDir.dy);
     const secondaryNominal = getCornerSizeAlongSide(secondSideIndex, corner.swap);
     const secondLen = secondaryNominal + SUPPORT_VISIBLE_MM * 2;
-    includeSideLength(primarySideIndex, primaryNominal);
-    includeSideLength(secondSideIndex, secondaryNominal);
+    recordSectionSegment({
+      startX: px,
+      startY: py,
+      endX: px + drawDir.dx * primaryLen,
+      endY: py + drawDir.dy * primaryLen,
+      nominalLength: primaryNominal,
+    });
 
     const secondInward = { x: -drawDir.dx, y: -drawDir.dy };
     const secondStartX = px + drawDir.dx * primaryLen;
     const secondStartY = py + drawDir.dy * primaryLen;
+    recordSectionSegment({
+      startX: secondStartX,
+      startY: secondStartY,
+      endX: secondStartX + secondDir.dx * secondLen,
+      endY: secondStartY + secondDir.dy * secondLen,
+      nominalLength: secondaryNominal,
+    });
 
     const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
     const startCenterY = py + drawDir.dy * (-COLUMN_WIDTH_MM / 2);
@@ -2122,23 +2205,39 @@ function updatePreview() {
     });
   });
 
-  const sideWidthLabels = [];
-  sideUsed.forEach((used, sideIndex) => {
-    if (!used) return;
-    sideWidthLabels.push({
-      edgeHint: getEdgeHintFromDir(
-        sideIndex === 0
-          ? { dx: 1, dy: 0 }
-          : sideIndex === 1
-          ? { dx: 0, dy: 1 }
-          : sideIndex === 2
-          ? { dx: -1, dy: 0 }
-          : { dx: 0, dy: -1 }
-      ),
-      text: `${Math.round(Math.max(COLUMN_WIDTH_MM, sideTotals[sideIndex]))}mm`,
-      overflow: false,
-    });
+  const sectionRuns = buildSectionRunsFromSegments(sectionLengthSegments);
+  const horizontalRuns = sectionRuns.filter((run) => run.orientation === "horizontal");
+  const verticalRuns = sectionRuns.filter((run) => run.orientation === "vertical");
+  const minHorizontalLine = horizontalRuns.length
+    ? Math.min(...horizontalRuns.map((run) => Number(run.lineCoord || 0)))
+    : 0;
+  const maxHorizontalLine = horizontalRuns.length
+    ? Math.max(...horizontalRuns.map((run) => Number(run.lineCoord || 0)))
+    : 0;
+  const minVerticalLine = verticalRuns.length
+    ? Math.min(...verticalRuns.map((run) => Number(run.lineCoord || 0)))
+    : 0;
+  const maxVerticalLine = verticalRuns.length
+    ? Math.max(...verticalRuns.map((run) => Number(run.lineCoord || 0)))
+    : 0;
+  const sectionRunsWithHint = sectionRuns.map((run) => {
+    if (run.orientation === "horizontal") {
+      const distTop = Math.abs(Number(run.lineCoord || 0) - minHorizontalLine);
+      const distBottom = Math.abs(Number(run.lineCoord || 0) - maxHorizontalLine);
+      return { ...run, edgeHint: distTop <= distBottom ? "top" : "bottom" };
+    }
+    const distLeft = Math.abs(Number(run.lineCoord || 0) - minVerticalLine);
+    const distRight = Math.abs(Number(run.lineCoord || 0) - maxVerticalLine);
+    return { ...run, edgeHint: distLeft <= distRight ? "left" : "right" };
   });
+  const sideWidthLabels = sectionRunsWithHint.map((run) => ({
+    edgeHint: run.edgeHint,
+    x: run.orientation === "horizontal" ? (Number(run.axisStart || 0) + Number(run.axisEnd || 0)) / 2 : Number(run.lineCoord || 0),
+    y: run.orientation === "horizontal" ? Number(run.lineCoord || 0) : (Number(run.axisStart || 0) + Number(run.axisEnd || 0)) / 2,
+    text: `${Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0)))}mm`,
+    overflow: false,
+  }));
+  updatePreviewWidthSummary(input, sectionRunsWithHint);
 
   const addButtons = collectOpenEndpointsFromCandidates(endpointCandidates);
   addButtons.forEach((point) => {
@@ -2310,9 +2409,16 @@ function updatePreview() {
         .sort((a, b) => b - a);
       const cornerText =
         armLengths.length >= 2 ? `${armLengths[0]} x ${armLengths[1]}` : `${armLengths[0] || 0}`;
+      const primaryArm = item.arms[0];
+      const labelXMm = primaryArm
+        ? (Number(primaryArm.minX || 0) + Number(primaryArm.maxX || 0)) / 2
+        : (Number(item.minX || 0) + Number(item.maxX || 0)) / 2;
+      const labelYMm = primaryArm
+        ? (Number(primaryArm.minY || 0) + Number(primaryArm.maxY || 0)) / 2
+        : (Number(item.minY || 0) + Number(item.maxY || 0)) / 2;
       dimensionLabels.push({
-        x: ((item.minX + item.maxX) / 2) * scale + tx,
-        y: ((item.minY + item.maxY) / 2) * scale + ty,
+        x: labelXMm * scale + tx,
+        y: labelYMm * scale + ty,
         text: cornerText,
         corner: true,
       });
