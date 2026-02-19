@@ -8,7 +8,7 @@ const LPM_ITEMS = [
     availableThickness: [18],
     pricePerM2: 47000,
     density: 720,
-    swatch: "#f1f1f1",
+    swatch: "#d9d9d9",
   },
   {
     id: "lpm_natural_walnut",

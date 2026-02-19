@@ -665,17 +665,46 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .system-preview .system-corner-shelf {
   cursor: pointer;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.28), var(--shadow-preview);
+  box-shadow: none;
 }
 
 .system-preview .system-corner-shelf:hover {
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.48), var(--shadow-preview);
+  box-shadow: none;
 }
 
 .system-preview .system-corner-arm {
   position: absolute;
   border-radius: 4px;
   pointer-events: none;
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.28),
+    0 1px 1px rgba(0, 0, 0, 0.16);
+}
+
+.system-preview .system-corner-shelf:hover .system-corner-arm {
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.45),
+    0 1px 1px rgba(0, 0, 0, 0.22);
+}
+
+.system-preview .system-corner-shape-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.system-preview .system-corner-shape-path {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
+  transition: filter 0.16s ease, stroke 0.16s ease;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.system-preview .system-corner-shelf:hover .system-corner-shape-path {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.26));
+  stroke: rgba(0, 0, 0, 0.45);
 }
 
 .system-preview .system-bay-shelf {

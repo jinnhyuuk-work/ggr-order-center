@@ -630,6 +630,91 @@ function buildRectBounds(startX, startY, dir, inward, length, depth) {
   };
 }
 
+function projectCornerPoint(cornerGeom, u, v, scale, tx, ty, offsetX, offsetY) {
+  const gx = cornerGeom.originX + cornerGeom.u.dx * u + cornerGeom.v.dx * v;
+  const gy = cornerGeom.originY + cornerGeom.u.dy * u + cornerGeom.v.dy * v;
+  return {
+    x: gx * scale + tx - offsetX,
+    y: gy * scale + ty - offsetY,
+  };
+}
+
+function buildRoundedPolygonPathData(points, radiusPx = 0) {
+  if (!Array.isArray(points) || points.length < 3) return "";
+  const n = points.length;
+  const radius = Math.max(0, Number(radiusPx || 0));
+  const rounded = [];
+
+  for (let i = 0; i < n; i += 1) {
+    const prev = points[(i - 1 + n) % n];
+    const curr = points[i];
+    const next = points[(i + 1) % n];
+    const vx1 = Number(prev.x || 0) - Number(curr.x || 0);
+    const vy1 = Number(prev.y || 0) - Number(curr.y || 0);
+    const vx2 = Number(next.x || 0) - Number(curr.x || 0);
+    const vy2 = Number(next.y || 0) - Number(curr.y || 0);
+    const len1 = Math.hypot(vx1, vy1);
+    const len2 = Math.hypot(vx2, vy2);
+    if (!len1 || !len2 || !radius) {
+      rounded.push({
+        start: { x: curr.x, y: curr.y },
+        end: { x: curr.x, y: curr.y },
+        corner: { x: curr.x, y: curr.y },
+      });
+      continue;
+    }
+    const ux1 = vx1 / len1;
+    const uy1 = vy1 / len1;
+    const ux2 = vx2 / len2;
+    const uy2 = vy2 / len2;
+    const cross = ux1 * uy2 - uy1 * ux2;
+    if (Math.abs(cross) < 1e-6) {
+      rounded.push({
+        start: { x: curr.x, y: curr.y },
+        end: { x: curr.x, y: curr.y },
+        corner: { x: curr.x, y: curr.y },
+      });
+      continue;
+    }
+    const trim = Math.min(radius, len1 * 0.45, len2 * 0.45);
+    rounded.push({
+      start: { x: curr.x + ux1 * trim, y: curr.y + uy1 * trim },
+      end: { x: curr.x + ux2 * trim, y: curr.y + uy2 * trim },
+      corner: { x: curr.x, y: curr.y },
+    });
+  }
+
+  const fmt = (num) => Number(num || 0).toFixed(2);
+  let d = `M ${fmt(rounded[0].start.x)} ${fmt(rounded[0].start.y)}`;
+  for (let i = 0; i < n; i += 1) {
+    const seg = rounded[i];
+    d += ` Q ${fmt(seg.corner.x)} ${fmt(seg.corner.y)} ${fmt(seg.end.x)} ${fmt(seg.end.y)}`;
+    if (i < n - 1) {
+      const nextSeg = rounded[i + 1];
+      d += ` L ${fmt(nextSeg.start.x)} ${fmt(nextSeg.start.y)}`;
+    }
+  }
+  return `${d} Z`;
+}
+
+function buildCornerSvgPathData(cornerGeom, scale, tx, ty, offsetX, offsetY, cornerRadiusPx = 0) {
+  if (!cornerGeom) return "";
+  const pLen = Math.max(0, Number(cornerGeom.primaryLen || 0));
+  const sLen = Math.max(0, Number(cornerGeom.secondaryLen || 0));
+  const depth = Math.max(0, Number(cornerGeom.depth || 0));
+  const innerU = Math.max(0, pLen - depth);
+
+  const points = [
+    projectCornerPoint(cornerGeom, 0, 0, scale, tx, ty, offsetX, offsetY),
+    projectCornerPoint(cornerGeom, pLen, 0, scale, tx, ty, offsetX, offsetY),
+    projectCornerPoint(cornerGeom, pLen, sLen, scale, tx, ty, offsetX, offsetY),
+    projectCornerPoint(cornerGeom, innerU, sLen, scale, tx, ty, offsetX, offsetY),
+    projectCornerPoint(cornerGeom, innerU, depth, scale, tx, ty, offsetX, offsetY),
+    projectCornerPoint(cornerGeom, 0, depth, scale, tx, ty, offsetX, offsetY),
+  ];
+  return buildRoundedPolygonPathData(points, cornerRadiusPx);
+}
+
 function pushPreviewAddButton(list, entry) {
   const exists = list.find((it) => {
     const dx = Math.abs((it.x || 0) - (entry.x || 0));
@@ -1227,9 +1312,26 @@ function clearRootAnchorVector(edge) {
 
 function normalizeDanglingAnchorIds() {
   const edges = getOrderedGraphEdges();
+  const existingIds = new Set(edges.map((it) => String(it?.id || "")));
   edges.forEach((edge) => {
     const currentAnchor = String(edge.anchorEndpointId || "");
     if (!currentAnchor || currentAnchor === "root-endpoint") return;
+    const explicitMatch = currentAnchor.match(/^(.+):(start|end)$/);
+    if (explicitMatch) {
+      const parentId = String(explicitMatch[1] || "");
+      if (!existingIds.has(parentId)) {
+        edge.anchorEndpointId = "root-endpoint";
+        edge.placement = null;
+        return;
+      }
+      if (parentId === String(edge.id || "")) {
+        edge.anchorEndpointId = "root-endpoint";
+        edge.placement = null;
+        return;
+      }
+      // Explicit canonical anchor should be preserved as-is.
+      return;
+    }
     const preferredDir = hasValidPlacement(edge.placement)
       ? normalizeDirection(edge.placement.dirDx, edge.placement.dirDy)
       : null;
@@ -1761,6 +1863,15 @@ function updatePreview() {
       maxX: Math.max(currentArm.maxX, secondArm.maxX),
       maxY: Math.max(currentArm.maxY, secondArm.maxY),
       arms: [currentArm, secondArm],
+      cornerGeom: {
+        originX: px,
+        originY: py,
+        u: { dx: drawDir.dx, dy: drawDir.dy },
+        v: { dx: drawInward.x, dy: drawInward.y },
+        primaryLen,
+        secondaryLen: secondLen,
+        depth: depthMm,
+      },
     });
   });
 
@@ -1847,7 +1958,38 @@ function updatePreview() {
       shelf.style.height = `${(item.maxY - item.minY) * scale}px`;
       shelf.style.left = `${item.minX * scale + tx}px`;
       shelf.style.top = `${item.minY * scale + ty}px`;
-      if (item.isCorner && item.arms?.length) {
+      if (item.isCorner && item.cornerGeom) {
+        shelf.style.background = "transparent";
+        const svgNs = "http://www.w3.org/2000/svg";
+        const svgEl = document.createElementNS(svgNs, "svg");
+        svgEl.setAttribute("class", "system-corner-shape-svg");
+        const widthPx = Math.max(1, (item.maxX - item.minX) * scale);
+        const heightPx = Math.max(1, (item.maxY - item.minY) * scale);
+        const cornerRadiusPx = Math.max(4, Math.min(10, 6 * uiScale));
+        svgEl.setAttribute("viewBox", `0 0 ${widthPx.toFixed(2)} ${heightPx.toFixed(2)}`);
+        svgEl.setAttribute("width", `${widthPx.toFixed(2)}`);
+        svgEl.setAttribute("height", `${heightPx.toFixed(2)}`);
+
+        const pathEl = document.createElementNS(svgNs, "path");
+        pathEl.setAttribute("class", "system-corner-shape-path");
+        const pathD = buildCornerSvgPathData(
+          item.cornerGeom,
+          scale,
+          tx,
+          ty,
+          item.minX * scale + tx,
+          item.minY * scale + ty,
+          cornerRadiusPx
+        );
+        pathEl.setAttribute("d", pathD);
+        pathEl.setAttribute("fill", shelfMat.swatch || "#ddd");
+        pathEl.setAttribute("stroke", "rgba(0, 0, 0, 0.28)");
+        pathEl.setAttribute("stroke-width", "1.25");
+        pathEl.setAttribute("stroke-linejoin", "round");
+        pathEl.setAttribute("stroke-linecap", "round");
+        svgEl.appendChild(pathEl);
+        shelf.appendChild(svgEl);
+      } else if (item.isCorner && item.arms?.length) {
         shelf.style.background = "transparent";
         item.arms.forEach((arm) => {
           const armEl = document.createElement("div");
