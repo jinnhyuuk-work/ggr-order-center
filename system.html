@@ -109,8 +109,32 @@
               <div class="system-column" id="systemPreviewColumnLeft"></div>
               <div class="system-column" id="systemPreviewColumnRight"></div>
               <div class="preview-history-actions">
-                <button type="button" class="ghost-btn" id="builderUndoBtn" disabled>되돌리기</button>
-                <button type="button" class="ghost-btn" id="builderRedoBtn" disabled>다시실행</button>
+                <button
+                  type="button"
+                  class="ghost-btn"
+                  id="builderUndoBtn"
+                  aria-label="되돌리기"
+                  title="되돌리기"
+                  disabled
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M9 7H5V3" />
+                    <path d="M5 7c2.2-2.5 5.2-4 8.8-4C19 3 23 7 23 12s-4 9-9.2 9c-3.2 0-6-1.4-7.9-3.6" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="ghost-btn"
+                  id="builderRedoBtn"
+                  aria-label="다시실행"
+                  title="다시실행"
+                  disabled
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M15 7h4V3" />
+                    <path d="M19 7c-2.2-2.5-5.2-4-8.8-4C5 3 1 7 1 12s4 9 9.2 9c3.2 0 6-1.4 7.9-3.6" />
+                  </svg>
+                </button>
               </div>
                 <div id="systemPreviewShelves"></div>
             </div>

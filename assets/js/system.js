@@ -1250,6 +1250,36 @@ function getPreviewBuilderDisabledReason(input) {
   return "";
 }
 
+function getItemPriceDisplayValidationMessage(input, bays) {
+  if (!input?.column?.materialId) return "기둥 컬러를 선택해주세요.";
+  if (!input?.shelf?.materialId) return "선반 컬러를 선택해주세요.";
+
+  const space = (input?.spaces || [])[0] || { min: 0, max: 0, extraHeights: [] };
+  const min = Number(space.min || 0);
+  const max = Number(space.max || 0);
+  if (!min || !max) return "가장 낮은/높은 천장 높이를 입력해주세요.";
+  if (min > max) return "가장 낮은 천장 높이는 가장 높은 천장 이하로 입력해주세요.";
+  if (min < LIMITS.column.minLength || max < LIMITS.column.minLength) {
+    return `천장 높이는 ${LIMITS.column.minLength}mm 이상 입력해주세요.`;
+  }
+  if (min > LIMITS.column.maxLength || max > LIMITS.column.maxLength) {
+    return `최대 천장 높이는 ${LIMITS.column.maxLength}mm 이하입니다.`;
+  }
+
+  const extraHeights = space.extraHeights || [];
+  for (let i = 0; i < extraHeights.length; i += 1) {
+    const h = Number(extraHeights[i] || 0);
+    if (h < LIMITS.column.minLength || h > LIMITS.column.maxLength) {
+      return `개별높이는 ${LIMITS.column.minLength}~${LIMITS.column.maxLength}mm 범위여야 합니다.`;
+    }
+  }
+
+  if (!Array.isArray(bays) || !bays.length) return "미리보기에서 모듈을 추가해주세요.";
+
+  const detailedErr = validateInputs(input, bays);
+  return detailedErr || "";
+}
+
 function buildPreviewOptionText(input, shelfMat, columnMat) {
   const space = (input?.spaces || [])[0] || { min: 0, max: 0, extraHeights: [] };
   const min = Number(space.min || 0);
@@ -3082,7 +3112,7 @@ function autoCalculatePrice() {
   const bays = readBayInputs();
   updateSizeErrorsUI(input, bays);
   updateShelfAddButtonState(input);
-  const err = validateInputs(input, bays);
+  const err = getItemPriceDisplayValidationMessage(input, bays);
   if (err) {
     $("#itemPriceDisplay").textContent = err;
     updateAddItemState();
