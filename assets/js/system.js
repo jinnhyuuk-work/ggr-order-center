@@ -36,7 +36,9 @@ const SHELF_LENGTH_MM = 600;
 const SHELF_THICKNESS_MM = 18;
 const COLUMN_THICKNESS_MM = 18;
 const BAY_WIDTH_LIMITS = { min: 400, max: 800 };
-const SUPPORT_THICKNESS_MM = 20;
+const SUPPORT_BRACKET_WIDTH_MM = 15;
+const SUPPORT_BRACKET_INSERT_MM = 10;
+const SUPPORT_VISIBLE_MM = SUPPORT_BRACKET_WIDTH_MM - SUPPORT_BRACKET_INSERT_MM;
 
 const SHAPE_LABELS = {
   i_single: "ㅣ자형",
@@ -587,7 +589,7 @@ function validateInputs(input, bays) {
     const required =
       COLUMN_WIDTH_MM +
       items.reduce(
-        (sum, item) => sum + (item.width + SUPPORT_THICKNESS_MM * 2) + COLUMN_WIDTH_MM,
+        (sum, item) => sum + (item.width + SUPPORT_VISIBLE_MM * 2) + COLUMN_WIDTH_MM,
         0
       );
     if (sideLength && required > sideLength) {
@@ -738,10 +740,31 @@ function getSideRequiredLength(sideIndex, shape, additionalShelfWidth = 0) {
   return (
     COLUMN_WIDTH_MM +
     items.reduce(
-      (sum, item) => sum + (item.width + SUPPORT_THICKNESS_MM * 2) + COLUMN_WIDTH_MM,
+      (sum, item) => sum + (item.width + SUPPORT_VISIBLE_MM * 2) + COLUMN_WIDTH_MM,
       0
     )
   );
+}
+
+function updatePreviewWidthSummary(input) {
+  const widthSummaryEl = $("#previewWidthSummary");
+  if (!widthSummaryEl) return;
+  const sideCount = getBayCountForShape(input.shape);
+  if (sideCount <= 0) {
+    widthSummaryEl.textContent = "선반 합계: -";
+    return;
+  }
+  const segments = [];
+  for (let sideIndex = 0; sideIndex < sideCount; sideIndex += 1) {
+    const usedWidth = getSideRequiredLength(sideIndex, input.shape, 0);
+    const sectionWidth = Number(input.shapeSizes?.[sideIndex] || 0);
+    if (sectionWidth > 0) {
+      segments.push(`섹션${sideIndex + 1} ${usedWidth}/${sectionWidth}mm`);
+    } else {
+      segments.push(`섹션${sideIndex + 1} ${usedWidth}mm`);
+    }
+  }
+  widthSummaryEl.textContent = `선반 합계(기둥 포함): ${segments.join(" | ")}`;
 }
 
 function updateShelfAddButtonState(input) {
@@ -915,6 +938,9 @@ function updatePreview() {
   const shelvesEl = $("#systemPreviewShelves");
   const textEl = $("#systemPreviewText");
   if (!frame || !shelvesEl || !textEl) return;
+  const frameRect = frame.getBoundingClientRect();
+  const frameW = frameRect.width || 260;
+  const frameH = frameRect.height || 220;
   frame.querySelectorAll(".system-column").forEach((col) => {
     col.style.display = "none";
   });
@@ -922,10 +948,23 @@ function updatePreview() {
   const bays = readBayInputs();
   const hasShelfBase = Boolean(shelfMat && input.shelf.thickness);
   const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
+  updatePreviewWidthSummary(input);
 
   if (!hasShelfBase || !hasColumn) {
     textEl.textContent = "칸 사이즈를 입력하면 미리보기가 표시됩니다.";
     shelvesEl.innerHTML = "";
+    if (!bays.length) {
+      const startBtn = document.createElement("button");
+      startBtn.type = "button";
+      startBtn.className = "system-preview-add-btn";
+      startBtn.dataset.addShelf = "0";
+      startBtn.dataset.addRootStart = "true";
+      startBtn.title = "첫 Bay 추가";
+      startBtn.textContent = "+";
+      startBtn.style.left = `${frameW / 2}px`;
+      startBtn.style.top = `${frameH / 2}px`;
+      shelvesEl.appendChild(startBtn);
+    }
     return;
   }
 
@@ -934,9 +973,6 @@ function updatePreview() {
 
   const sideCount = getBayCountForShape(input.shape);
   const sideLengths = input.shapeSizes || [];
-  const frameRect = frame.getBoundingClientRect();
-  const frameW = frameRect.width || 260;
-  const frameH = frameRect.height || 220;
   const depthMm = 400;
 
   const directions = [
@@ -967,14 +1003,14 @@ function updatePreview() {
     const sequence = buildSideShelfSequence(sideIndex);
     const cornerAtEnd = getCornerAtEnd(sideIndex, input.shape);
     const cornerLenAtEnd = cornerAtEnd
-      ? getCornerSizeAlongSide(sideIndex, cornerAtEnd.swap) + SUPPORT_THICKNESS_MM * 2
+      ? getCornerSizeAlongSide(sideIndex, cornerAtEnd.swap) + SUPPORT_VISIBLE_MM * 2
       : 0;
     const startOffset =
       COLUMN_WIDTH_MM +
       (renderFromCornerEnd && cornerLenAtEnd > 0 ? cornerLenAtEnd + COLUMN_WIDTH_MM : 0);
     let offset = startOffset;
     sequence.forEach((item) => {
-      const widthMm = (item.width || 0) + SUPPORT_THICKNESS_MM * 2;
+      const widthMm = (item.width || 0) + SUPPORT_VISIBLE_MM * 2;
       const px = anchorX + renderDir.dx * offset;
       const py = anchorY + renderDir.dy * offset;
 
@@ -986,7 +1022,7 @@ function updatePreview() {
         const prevLegDir = { dx: -prevDir.dx, dy: -prevDir.dy };
         const prevLen =
           (corner ? getCornerSizeAlongSide(prevSideIndex, corner.swap) : item.width || 0) +
-          SUPPORT_THICKNESS_MM * 2;
+          SUPPORT_VISIBLE_MM * 2;
         const currentArm = buildRectBounds(
           anchorX + renderDir.dx * COLUMN_WIDTH_MM,
           anchorY + renderDir.dy * COLUMN_WIDTH_MM,
