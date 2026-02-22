@@ -209,11 +209,11 @@ b[lang="en"],
   background: url(../img/page/index/top-service.jpg) center/cover no-repeat;
 }
 .landing-thumb.system {
-  background: linear-gradient(140deg, #efe8db 0%, #ccbba0 55%, #b8a387 100%);
+  background: url(../img/page/index/system-product.jpg) center/cover no-repeat;
 }
 
-.landing-body h3 {
-  margin: 0 0 6px;
+.landing-body h2 {
+  margin: 0 0 8px;
 }
 
 .landing-body p {
