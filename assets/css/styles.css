@@ -455,8 +455,9 @@ section {
 
 .builder-edge-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 8px;
   border: 1px solid var(--color-border-faint);
   border-radius: var(--radius-sm);
@@ -478,6 +479,9 @@ section {
 
 .builder-edge-item .meta {
   color: var(--color-text-muted);
+  width: 100%;
+  line-height: 1.35;
+  word-break: keep-all;
 }
 
 .material-tabs {
@@ -1733,6 +1737,35 @@ th, td {
   margin-top: 10px;
   display: flex;
   justify-content: flex-end;
+}
+
+.module-option-modal-footer {
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.module-option-modal-footer > :first-child {
+  margin-right: auto;
+}
+
+.module-option-modal-footer button {
+  --btn-padding: 9px 12px;
+  margin-bottom: 0;
+  font-size: var(--font-size-xs);
+  min-height: 36px;
+}
+
+.module-option-modal-footer .modal-close {
+  padding: var(--btn-padding);
+  border-radius: var(--btn-radius);
+  background: var(--btn-bg);
+  color: var(--btn-color);
+}
+
+.module-option-modal-footer #saveCornerOptionModal,
+.module-option-modal-footer #saveBayOptionModal {
+  min-width: 76px;
 }
 
 #serviceModal .modal-footer,

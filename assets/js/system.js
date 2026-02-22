@@ -588,10 +588,21 @@ function enforceSingleSelectableAddon(id) {
   return quantities;
 }
 
+function sortAddonEntriesWithRodFirst(entries = []) {
+  return [...entries].sort((a, b) => {
+    const aId = String(a?.[0] || "");
+    const bId = String(b?.[0] || "");
+    const aIsRod = aId === ADDON_CLOTHES_ROD_ID;
+    const bIsRod = bId === ADDON_CLOTHES_ROD_ID;
+    if (aIsRod !== bIsRod) return aIsRod ? -1 : 1;
+    return aId.localeCompare(bId, "ko");
+  });
+}
+
 function getShelfAddonIds(id) {
   const quantities = getShelfAddonQuantities(id);
   const ids = [];
-  Object.entries(quantities).forEach(([addonId, qty]) => {
+  sortAddonEntriesWithRodFirst(Object.entries(quantities)).forEach(([addonId, qty]) => {
     for (let i = 0; i < Number(qty || 0); i += 1) ids.push(addonId);
   });
   return ids;
@@ -605,7 +616,7 @@ function getShelfAddonSummary(addons = []) {
     acc[key] = Number(acc[key] || 0) + 1;
     return acc;
   }, {});
-  return Object.entries(counts)
+  return sortAddonEntriesWithRodFirst(Object.entries(counts))
     .map(([addonId, qty]) => {
       const addon = SYSTEM_ADDON_ITEMS.find((item) => item.id === addonId);
       if (!addon) return "";
@@ -638,7 +649,7 @@ function setPreviewInfoMode(mode, { rerender = true } = {}) {
 
 function buildShelfAddonChipsHtml(id, emptyText = "선택된 구성품 없음") {
   const quantities = enforceSingleSelectableAddon(id);
-  const rows = Object.entries(quantities)
+  const rows = sortAddonEntriesWithRodFirst(Object.entries(quantities))
     .map(([addonId, qty]) => {
       const addon = SYSTEM_ADDON_ITEMS.find((item) => item.id === addonId);
       const count = Math.max(0, Math.floor(Number(qty || 0)));
@@ -715,6 +726,8 @@ function renderBuilderStructure() {
       : { dx: 1, dy: 0 };
     const sideIndex = directionToSideIndex(dir.dx, dir.dy);
     const isCorner = edge.type === "corner";
+    const addonSummaryRaw = getShelfAddonSummary(getShelfAddonIds(edge.id));
+    const addonText = addonSummaryRaw === "-" ? "구성품 없음" : `구성품 ${addonSummaryRaw}`;
     const widthText = isCorner
       ? `${getCornerSizeAlongSide(sideIndex, edge.swap)} × ${getCornerSizeAlongSide(
           directionToSideIndex(-dir.dy, dir.dx),
@@ -725,7 +738,7 @@ function renderBuilderStructure() {
       id: edge.id,
       isCorner,
       title: `${isCorner ? "코너" : "모듈"} ${idx + 1}`,
-      meta: `${widthText} / ${Number(edge.count || 1)}개`,
+      meta: `${widthText} / 선반 ${Number(edge.count || 1)}개 / ${addonText}`,
     });
   });
   if (!rows.length) {

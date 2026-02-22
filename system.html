@@ -86,7 +86,7 @@
           </div>
           <div class="preview-panel-grid">
             <div class="builder-panel" id="builderPanel">
-              <div class="builder-hint">끝점(+)을 눌러 모듈 또는 코너를 추가하세요.</div>
+              <div class="builder-hint">(+)버튼을 눌러 모듈을 추가하세요.</div>
               <div class="builder-edge-list" id="builderEdgeList"></div>
             </div>
             <div class="preview-box system-preview" id="systemPreviewBox">
@@ -387,10 +387,10 @@
           </div>
         </div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer module-option-modal-footer">
         <button type="button" id="removeCornerOptionModal" class="ghost-btn">코너 제거</button>
-        <button type="button" id="saveCornerOptionModal">적용</button>
-        <button type="button" id="closeCornerOptionModal" class="modal-close">닫기</button>
+        <button type="button" id="saveCornerOptionModal" class="send-btn">적용</button>
+        <button type="button" id="closeCornerOptionModal" class="modal-close ghost-btn">닫기</button>
       </div>
     </div>
   </div>
@@ -439,10 +439,10 @@
           </div>
         </div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer module-option-modal-footer">
         <button type="button" id="removeBayOptionModal" class="ghost-btn">모듈 제거</button>
-        <button type="button" id="saveBayOptionModal">적용</button>
-        <button type="button" id="closeBayOptionModal" class="modal-close">닫기</button>
+        <button type="button" id="saveBayOptionModal" class="send-btn">적용</button>
+        <button type="button" id="closeBayOptionModal" class="modal-close ghost-btn">닫기</button>
       </div>
     </div>
   </div>
@@ -457,7 +457,7 @@
         <p id="previewAddTypeDesc" class="field-note">끝점에서 연장할 모듈 유형을 선택하세요.</p>
         <div class="step-card-actions" style="justify-content:flex-start;">
           <button type="button" id="previewAddNormalBtn">일반 모듈 추가</button>
-          <button type="button" id="previewAddCornerBtn">코너 모듈 설정</button>
+          <button type="button" id="previewAddCornerBtn">코너 모듈 추가</button>
         </div>
         <div id="previewAddTypeError" class="error-msg"></div>
       </div>
