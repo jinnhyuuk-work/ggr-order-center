@@ -2706,26 +2706,46 @@ function updatePreview() {
     const addonSummaryRaw = getShelfAddonSummary(getShelfAddonIds(item.id));
     const addonSummary = addonSummaryRaw === "-" ? "없음" : addonSummaryRaw;
     if (item.isCorner && item.arms?.length) {
-      const armLengths = item.arms
-        .map((arm) => {
-          const lengthWithSupport = Math.max(arm.maxX - arm.minX, arm.maxY - arm.minY);
-          return Math.max(0, Math.round(lengthWithSupport - SUPPORT_VISIBLE_MM * 2));
-        })
-        .sort((a, b) => b - a);
-      const cornerText =
-        armLengths.length >= 2 ? `${armLengths[0]} x ${armLengths[1]}` : `${armLengths[0] || 0}`;
-      const labelAnchorArm = item.arms.reduce((best, arm) => {
-        if (!best) return arm;
-        const bestLength = Math.max(
-          Number(best.maxX || 0) - Number(best.minX || 0),
-          Number(best.maxY || 0) - Number(best.minY || 0)
-        );
-        const nextLength = Math.max(
+      const primaryArm = item.arms[0] || null;
+      const secondaryArm = item.arms[1] || null;
+      const getArmOrientation = (arm) => {
+        if (!arm) return "";
+        const spanX = Math.abs(Number(arm.maxX || 0) - Number(arm.minX || 0));
+        const spanY = Math.abs(Number(arm.maxY || 0) - Number(arm.minY || 0));
+        return spanX >= spanY ? "horizontal" : "vertical";
+      };
+      const armNominalLength = (arm) => {
+        if (!arm) return 0;
+        const lengthWithSupport = Math.max(
           Number(arm.maxX || 0) - Number(arm.minX || 0),
           Number(arm.maxY || 0) - Number(arm.minY || 0)
         );
-        return nextLength > bestLength ? arm : best;
-      }, null);
+        return Math.max(0, Math.round(lengthWithSupport - SUPPORT_VISIBLE_MM * 2));
+      };
+      const primaryLength =
+        item.cornerGeom && Number.isFinite(Number(item.cornerGeom.primaryLen))
+          ? Math.max(0, Math.round(Number(item.cornerGeom.primaryLen) - SUPPORT_VISIBLE_MM * 2))
+          : armNominalLength(primaryArm);
+      const secondaryLength =
+        item.cornerGeom && Number.isFinite(Number(item.cornerGeom.secondaryLen))
+          ? Math.max(0, Math.round(Number(item.cornerGeom.secondaryLen) - SUPPORT_VISIBLE_MM * 2))
+          : armNominalLength(secondaryArm);
+      // Corner option text should follow the option order (800x600 / 600x800),
+      // not the absolute placed orientation (horizontal/vertical side).
+      const optionPrimaryLength = edge?.swap ? 600 : 800;
+      const optionSecondaryLength = edge?.swap ? 800 : 600;
+      const cornerText =
+        secondaryLength > 0
+          ? `${optionPrimaryLength} x ${optionSecondaryLength}`
+          : `${primaryLength}`;
+      // Prefer the horizontal arm so corner labels sit on the same line as straight-module labels.
+      const horizontalArm =
+        getArmOrientation(primaryArm) === "horizontal"
+          ? primaryArm
+          : getArmOrientation(secondaryArm) === "horizontal"
+            ? secondaryArm
+            : null;
+      const labelAnchorArm = horizontalArm || primaryArm || secondaryArm;
       const labelXMm = labelAnchorArm
         ? (Number(labelAnchorArm.minX || 0) + Number(labelAnchorArm.maxX || 0)) / 2
         : (Number(item.minX || 0) + Number(item.maxX || 0)) / 2;
