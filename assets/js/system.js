@@ -67,6 +67,11 @@ const SYSTEM_SHAPE_CORNER_LIMITS = Object.freeze({
   u_shape: 2,
   box_shape: 4,
 });
+const SYSTEM_SHAPE_CORNER_ATTACH_SIDE_RULES = Object.freeze({
+  // directionToSideIndex mapping: right=0, bottom=1, left=2, top=3
+  l_shape: { allowedAttachSideIndices: [0], label: "우측" },
+  rl_shape: { allowedAttachSideIndices: [2], label: "좌측" },
+});
 const FREE_LAYOUT_MODE = true;
 const BUILDER_HISTORY_LIMIT = 80;
 
@@ -495,6 +500,8 @@ let activeShelfAddonId = null;
 let activeCornerOptionId = null;
 let activeBayOptionId = null;
 let shelfAddonModalReturnTo = "";
+let bayOptionModalDraft = null;
+let cornerOptionModalDraft = null;
 let activePreviewAddTarget = null;
 let previewOpenEndpoints = new Map();
 let previewRenderTransform = { scale: 1, tx: 0, ty: 0, depthMm: 400 };
@@ -831,6 +838,47 @@ function getCornerLimitBlockedMessage(limitState = getShapeCornerLimitState()) {
     return `${shapeLabel} 타입은 코너를 최대 ${limit}개까지 추가할 수 있습니다.`;
   }
   return "현재 레이아웃에서는 코너를 추가할 수 없습니다.";
+}
+
+function getShapeCornerAttachSideRule(shape = getSelectedShape()) {
+  const normalizedShape = normalizeSystemShape(shape);
+  const rule = SYSTEM_SHAPE_CORNER_ATTACH_SIDE_RULES[normalizedShape];
+  if (!rule) return null;
+  const allowedAttachSideIndices = Array.isArray(rule.allowedAttachSideIndices)
+    ? rule.allowedAttachSideIndices
+        .map((idx) => Number(idx))
+        .filter((idx) => Number.isFinite(idx))
+    : [];
+  if (!allowedAttachSideIndices.length) return null;
+  return {
+    shape: normalizedShape,
+    shapeLabel: getLayoutTypeLabel(normalizedShape),
+    allowedAttachSideIndices,
+    label: String(rule.label || ""),
+  };
+}
+
+function getCornerAttachSideBlockedMessage(target, shape = getSelectedShape()) {
+  const rule = getShapeCornerAttachSideRule(shape);
+  if (!rule) return "";
+  const attachSideIndex = Number(target?.attachSideIndex ?? target?.sideIndex);
+  if (!Number.isFinite(attachSideIndex)) {
+    return `${rule.shapeLabel} 타입은 ${rule.label || "지정된 위치"}에서만 코너를 추가할 수 있습니다.`;
+  }
+  if (rule.allowedAttachSideIndices.includes(attachSideIndex)) return "";
+  return `${rule.shapeLabel} 타입은 ${rule.label || "지정된 위치"}에서만 코너를 추가할 수 있습니다.`;
+}
+
+function canAddCornerAtTarget(target, shape = getSelectedShape()) {
+  return !getCornerAttachSideBlockedMessage(target, shape);
+}
+
+function isRootPreviewEndpointTarget(target) {
+  return String(target?.endpointId || "") === "root-endpoint";
+}
+
+function getRootCornerBlockedMessage() {
+  return "첫 모듈은 일반 모듈로 추가해주세요. 코너 모듈은 첫 모듈 추가 후 연결해서 추가할 수 있습니다.";
 }
 
 function setPreviewAddTypeErrorMessage(message = "", { isError = false } = {}) {
@@ -2086,7 +2134,7 @@ function buildRootEndpoint() {
     extendDy: 0,
     inwardX: 0,
     inwardY: 1,
-    allowedTypes: ["normal", "corner"],
+    allowedTypes: ["normal"],
   };
 }
 
@@ -3609,6 +3657,11 @@ function openPreviewAddTypeModal(
   const hasCornerSlot = normalizedAllowedTypes.includes("corner");
   const cornerLimitState = getShapeCornerLimitState();
   const canAddNewCorner = cornerLimitState.canAdd;
+  const rootCornerBlocked = !cornerId && endpointId === "root-endpoint";
+  const cornerDirectionBlockedMessage = !cornerId
+    ? getCornerAttachSideBlockedMessage({ sideIndex, attachSideIndex }, getSelectedShape())
+    : "";
+  const canUseCornerDirection = !cornerDirectionBlockedMessage;
   activePreviewAddTarget = {
     endpointId: endpointId || "",
     sideIndex,
@@ -3619,17 +3672,27 @@ function openPreviewAddTypeModal(
     allowedTypes: normalizedAllowedTypes,
   };
   const cornerBtn = $("#previewAddCornerBtn");
-  const canUseCornerAction = Boolean(cornerId || (hasCornerSlot && canAddNewCorner));
+  const canUseCornerAction = Boolean(
+    cornerId || (hasCornerSlot && canAddNewCorner && canUseCornerDirection && !rootCornerBlocked)
+  );
   if (cornerBtn) {
     cornerBtn.disabled = !canUseCornerAction;
-    if (!canUseCornerAction && hasCornerSlot && !cornerId && !canAddNewCorner) {
+    if (!canUseCornerAction && rootCornerBlocked) {
+      cornerBtn.title = getRootCornerBlockedMessage();
+    } else if (!canUseCornerAction && hasCornerSlot && !cornerId && !canAddNewCorner) {
       cornerBtn.title = getCornerLimitBlockedMessage(cornerLimitState);
+    } else if (!canUseCornerAction && hasCornerSlot && !cornerId && !canUseCornerDirection) {
+      cornerBtn.title = cornerDirectionBlockedMessage;
     } else {
       cornerBtn.removeAttribute("title");
     }
   }
   if (!cornerId && hasCornerSlot && !canAddNewCorner) {
     setPreviewAddTypeErrorMessage(getCornerLimitBlockedMessage(cornerLimitState), { isError: true });
+  } else if (rootCornerBlocked) {
+    setPreviewAddTypeErrorMessage(getRootCornerBlockedMessage(), { isError: true });
+  } else if (!cornerId && hasCornerSlot && !canUseCornerDirection) {
+    setPreviewAddTypeErrorMessage(cornerDirectionBlockedMessage, { isError: true });
   } else if (!cornerId && !hasCornerSlot) {
     setPreviewAddTypeErrorMessage("이 끝점에서는 코너 추가가 불가합니다. 일반 모듈을 추가해주세요.", {
       isError: true,
@@ -3659,9 +3722,19 @@ function commitPreviewAddCorner() {
   const endpointId = activePreviewAddTarget?.endpointId || "";
   const endpoint = endpointId ? previewOpenEndpoints.get(endpointId) : null;
   const source = endpoint || activePreviewAddTarget;
+  if (source && isRootPreviewEndpointTarget(source)) {
+    setPreviewAddTypeErrorMessage(getRootCornerBlockedMessage(), { isError: true });
+    return;
+  }
   const cornerLimitState = getShapeCornerLimitState();
   if (!cornerLimitState.canAdd) {
     setPreviewAddTypeErrorMessage(getCornerLimitBlockedMessage(cornerLimitState), { isError: true });
+    return;
+  }
+  if (source && !canAddCornerAtTarget(source, getSelectedShape())) {
+    setPreviewAddTypeErrorMessage(getCornerAttachSideBlockedMessage(source, getSelectedShape()), {
+      isError: true,
+    });
     return;
   }
   if (source) {
@@ -4066,6 +4139,36 @@ function renderShelfAddonSelection(id) {
   renderShelfAddonSelectionToTarget(id, `selectedShelfAddon-${id}`);
 }
 
+function captureBayOptionModalDraft() {
+  if (!activeBayOptionId) return null;
+  const presetSelect = $("#bayWidthPresetSelect");
+  const customInput = $("#bayWidthCustomInput");
+  const countInput = $("#bayCountInput");
+  const rodCountInput = $("#bayRodCountInput");
+  bayOptionModalDraft = {
+    edgeId: String(activeBayOptionId),
+    presetValue: String(presetSelect?.value || ""),
+    customWidthValue: String(customInput?.value || ""),
+    countValue: String(countInput?.value || ""),
+    rodCountValue: String(rodCountInput?.value || ""),
+  };
+  return bayOptionModalDraft;
+}
+
+function captureCornerOptionModalDraft() {
+  if (!activeCornerOptionId) return null;
+  const swapSelect = $("#cornerSwapSelect");
+  const countInput = $("#cornerCountInput");
+  const rodCountInput = $("#cornerRodCountInput");
+  cornerOptionModalDraft = {
+    edgeId: String(activeCornerOptionId),
+    swapValue: String(swapSelect?.value || ""),
+    countValue: String(countInput?.value || ""),
+    rodCountValue: String(rodCountInput?.value || ""),
+  };
+  return cornerOptionModalDraft;
+}
+
 function renderActiveOptionModalAddonSelection() {
   if (activeCornerOptionId) {
     renderShelfAddonSelectionToTarget(activeCornerOptionId, "selectedCornerOptionAddon");
@@ -4210,13 +4313,16 @@ function syncCornerOptionModal() {
   const countInput = $("#cornerCountInput");
   const rodCountInput = $("#cornerRodCountInput");
   const addonBtn = $("#cornerAddonBtn");
+  const draft =
+    cornerOptionModalDraft && String(cornerOptionModalDraft.edgeId || "") === String(corner.id)
+      ? cornerOptionModalDraft
+      : null;
   if (titleEl) titleEl.textContent = `${getCornerLabel(corner)} 옵션 설정`;
-  if (swapSelect) swapSelect.value = corner.swap ? "swap" : "default";
-  if (countInput) countInput.value = String(corner.count || 1);
+  if (swapSelect) swapSelect.value = draft?.swapValue || (corner.swap ? "swap" : "default");
+  if (countInput) countInput.value = draft?.countValue || String(corner.count || 1);
   if (rodCountInput) {
-    rodCountInput.value = String(
-      getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID)
-    );
+    rodCountInput.value =
+      draft?.rodCountValue || String(getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID));
   }
   renderShelfAddonSelectionToTarget(corner.id, "selectedCornerOptionAddon");
   if (addonBtn) addonBtn.disabled = false;
@@ -4224,9 +4330,16 @@ function syncCornerOptionModal() {
   renderCornerOptionFrontPreview();
 }
 
-function openCornerOptionModal(cornerId) {
+function openCornerOptionModal(cornerId, { preserveDraft = false } = {}) {
   const corner = findShelfById(cornerId);
   if (!corner) return;
+  if (
+    !preserveDraft ||
+    !cornerOptionModalDraft ||
+    String(cornerOptionModalDraft.edgeId || "") !== String(cornerId)
+  ) {
+    cornerOptionModalDraft = null;
+  }
   activeCornerOptionId = cornerId;
   syncCornerOptionModal();
   openModal("#cornerOptionModal", { focusTarget: "#cornerOptionModalTitle" });
@@ -4242,23 +4355,26 @@ function syncBayOptionModal() {
   const countInput = $("#bayCountInput");
   const rodCountInput = $("#bayRodCountInput");
   const addonBtn = $("#bayAddonBtn");
+  const draft =
+    bayOptionModalDraft && String(bayOptionModalDraft.edgeId || "") === String(shelf.id)
+      ? bayOptionModalDraft
+      : null;
 
   const width = Number(shelf.width || 0);
-  const presetValue =
-    width === 400 || width === 600 || width === 800 ? String(width) : "custom";
+  const presetValue = draft?.presetValue || (width === 400 || width === 600 || width === 800 ? String(width) : "custom");
 
   if (titleEl) titleEl.textContent = "모듈 옵션 설정";
   if (presetSelect) presetSelect.value = presetValue;
   if (customInput) {
     customInput.classList.toggle("hidden", presetValue !== "custom");
     customInput.disabled = presetValue !== "custom";
-    customInput.value = presetValue === "custom" ? String(width || "") : "";
+    customInput.value =
+      presetValue === "custom" ? String(draft?.customWidthValue ?? String(width || "")) : "";
   }
-  if (countInput) countInput.value = String(shelf.count || 1);
+  if (countInput) countInput.value = draft?.countValue || String(shelf.count || 1);
   if (rodCountInput) {
-    rodCountInput.value = String(
-      getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID)
-    );
+    rodCountInput.value =
+      draft?.rodCountValue || String(getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID));
   }
   renderShelfAddonSelectionToTarget(shelf.id, "selectedBayOptionAddon");
   if (addonBtn) addonBtn.disabled = false;
@@ -4268,9 +4384,16 @@ function syncBayOptionModal() {
   renderBayOptionFrontPreview();
 }
 
-function openBayOptionModal(shelfId) {
+function openBayOptionModal(shelfId, { preserveDraft = false } = {}) {
   const shelf = findShelfById(shelfId);
   if (!shelf) return;
+  if (
+    !preserveDraft ||
+    !bayOptionModalDraft ||
+    String(bayOptionModalDraft.edgeId || "") !== String(shelfId)
+  ) {
+    bayOptionModalDraft = null;
+  }
   activeBayOptionId = shelfId;
   syncBayOptionModal();
   openModal("#bayOptionModal", { focusTarget: "#bayOptionModalTitle" });
@@ -4562,6 +4685,7 @@ function saveBayOptionModal() {
   shelf.width = width;
   shelf.count = count;
   setShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID, rodCount);
+  bayOptionModalDraft = null;
   closeModal("#bayOptionModal");
   renderBayInputs();
 }
@@ -4670,6 +4794,7 @@ function saveCornerOptionModal() {
   corner.swap = nextSwap;
   corner.count = count;
   setShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID, rodCount);
+  cornerOptionModalDraft = null;
   closeModal("#cornerOptionModal");
   renderBayInputs();
 }
@@ -4746,6 +4871,8 @@ function syncSystemAddonModalSelection() {
 }
 
 function openShelfAddonModal(id, { returnTo = "" } = {}) {
+  if (returnTo === "bay") captureBayOptionModalDraft();
+  if (returnTo === "corner") captureCornerOptionModalDraft();
   activeShelfAddonId = id;
   shelfAddonModalReturnTo = returnTo || "";
   syncSystemAddonModalSelection();
@@ -4757,13 +4884,11 @@ function closeShelfAddonModalAndReturn() {
   const returnTo = shelfAddonModalReturnTo;
   shelfAddonModalReturnTo = "";
   if (returnTo === "corner" && activeCornerOptionId) {
-    syncCornerOptionModal();
-    openModal("#cornerOptionModal", { focusTarget: "#cornerOptionModalTitle" });
+    openCornerOptionModal(activeCornerOptionId, { preserveDraft: true });
     return;
   }
   if (returnTo === "bay" && activeBayOptionId) {
-    syncBayOptionModal();
-    openModal("#bayOptionModal", { focusTarget: "#bayOptionModalTitle" });
+    openBayOptionModal(activeBayOptionId, { preserveDraft: true });
   }
 }
 
