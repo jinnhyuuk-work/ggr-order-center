@@ -40,11 +40,12 @@ const SUPPORT_BRACKET_WIDTH_MM = 15;
 const SUPPORT_BRACKET_INSERT_MM = 10;
 const SUPPORT_VISIBLE_MM = SUPPORT_BRACKET_WIDTH_MM - SUPPORT_BRACKET_INSERT_MM;
 const ADDON_CLOTHES_ROD_ID = "clothes_rod";
-const SYSTEM_SHAPE_DEFAULT = "box_shape";
-const SYSTEM_SHAPE_KEYS = Object.freeze(["i_single", "l_shape", "u_shape", "box_shape"]);
+const SYSTEM_SHAPE_DEFAULT = "i_single";
+const SYSTEM_SHAPE_KEYS = Object.freeze(["i_single", "l_shape", "rl_shape", "u_shape", "box_shape"]);
 const SYSTEM_LAYOUT_TYPE_LABELS = Object.freeze({
   i_single: "ㅣ자",
   l_shape: "ㄱ자",
+  rl_shape: "역ㄱ자",
   u_shape: "ㄷ자",
   box_shape: "ㅁ자",
 });
@@ -55,9 +56,17 @@ const SYSTEM_LOWEST_HEIGHT_CONSULT_AT_MM = 2700;
 const SHAPE_BAY_COUNTS = {
   i_single: 1,
   l_shape: 2,
+  rl_shape: 2,
   u_shape: 3,
   box_shape: 4,
 };
+const SYSTEM_SHAPE_CORNER_LIMITS = Object.freeze({
+  i_single: 0,
+  l_shape: 1,
+  rl_shape: 1,
+  u_shape: 2,
+  box_shape: 4,
+});
 const FREE_LAYOUT_MODE = true;
 const BUILDER_HISTORY_LIMIT = 80;
 
@@ -67,6 +76,12 @@ function normalizeSystemShape(shape) {
 
 function getSectionCountForShape(shape) {
   return SHAPE_BAY_COUNTS[normalizeSystemShape(shape)] || 1;
+}
+
+function getShapeCornerLimit(shape = getSelectedShape()) {
+  const normalizedShape = normalizeSystemShape(shape);
+  const limit = SYSTEM_SHAPE_CORNER_LIMITS[normalizedShape];
+  return Number.isFinite(Number(limit)) ? Math.max(0, Number(limit)) : Infinity;
 }
 
 function createDefaultLayoutConfig(shape = SYSTEM_SHAPE_DEFAULT) {
@@ -81,6 +96,8 @@ function createDefaultLayoutConfig(shape = SYSTEM_SHAPE_DEFAULT) {
       label: `섹션${idx + 1}`,
     })),
     lowestHeightMm: 0,
+    highestHeightMm: 0,
+    sectionUsage: [],
     status: "ok", // ok | consult | invalid (S-04에서 판정 연결)
     consultReasons: [],
     constraints: {
@@ -94,7 +111,9 @@ function createDefaultLayoutConfig(shape = SYSTEM_SHAPE_DEFAULT) {
 function syncLayoutConfigShape(nextShape) {
   const normalizedShape = normalizeSystemShape(nextShape);
   const prev = state.layoutConfig || createDefaultLayoutConfig(normalizedShape);
+  const prevShapeType = normalizeSystemShape(prev.shapeType || SYSTEM_SHAPE_DEFAULT);
   const nextSectionCount = getSectionCountForShape(normalizedShape);
+  const shapeChanged = prevShapeType !== normalizedShape;
   const nextSections = Array.from({ length: nextSectionCount }, (_, idx) => {
     const prevSection = prev.sections?.[idx];
     return {
@@ -103,10 +122,25 @@ function syncLayoutConfigShape(nextShape) {
       label: prevSection?.label || `섹션${idx + 1}`,
     };
   });
+  const nextSectionUsage =
+    !shapeChanged && Array.isArray(prev.sectionUsage)
+      ? prev.sectionUsage
+          .slice(0, nextSectionCount)
+          .map((usage, idx) => ({
+            sectionIndex: Number.isFinite(Number(usage?.sectionIndex))
+              ? Number(usage.sectionIndex)
+              : idx,
+            edgeHint: String(usage?.edgeHint || ""),
+            usedMm: Math.max(0, Number(usage?.usedMm || 0)),
+            targetMm: Math.max(0, Number(usage?.targetMm || 0)),
+            overflow: Boolean(usage?.overflow),
+          }))
+      : [];
   state.layoutConfig = {
     ...prev,
     shapeType: normalizedShape,
     sections: nextSections,
+    sectionUsage: nextSectionUsage,
     constraints: {
       sectionLengthMinMm: SYSTEM_SECTION_LENGTH_MIN_MM,
       consultSectionLengthAtMm: SYSTEM_SECTION_LENGTH_CONSULT_AT_MM,
@@ -122,6 +156,336 @@ const state = {
   graph: null,
   layoutConfig: createDefaultLayoutConfig(),
 };
+
+function getLayoutTypeLabel(shape) {
+  return SYSTEM_LAYOUT_TYPE_LABELS[normalizeSystemShape(shape)] || SYSTEM_LAYOUT_TYPE_LABELS[SYSTEM_SHAPE_DEFAULT];
+}
+
+function getRenderedSpaceInputCount() {
+  return Math.max(1, document.querySelectorAll('[id^="spaceMin-"]').length);
+}
+
+function syncLayoutConfigRuntimeFields(input) {
+  const layout = syncLayoutConfigShape(input?.shape || getSelectedShape());
+  const lowestHeightMm = Number(input?.spaces?.[0]?.min || 0);
+  const highestHeightCandidate = Number(input?.column?.maxLength || input?.spaces?.[0]?.max || 0);
+  layout.lowestHeightMm = Number.isFinite(lowestHeightMm) && lowestHeightMm > 0 ? lowestHeightMm : 0;
+  layout.highestHeightMm =
+    Number.isFinite(highestHeightCandidate) && highestHeightCandidate > 0 ? highestHeightCandidate : 0;
+  return layout;
+}
+
+function syncLayoutSectionLengthsFromDOM() {
+  const layout = syncLayoutConfigShape(getSelectedShape());
+  if (!layout || !Array.isArray(layout.sections)) return layout;
+  document.querySelectorAll("[data-layout-section-length]").forEach((inputEl) => {
+    const index = Number(inputEl?.dataset?.layoutSectionLength ?? -1);
+    if (!Number.isFinite(index) || index < 0 || !layout.sections[index]) return;
+    const value = Number(inputEl.value || 0);
+    layout.sections[index].lengthMm = Number.isFinite(value) && value > 0 ? value : 0;
+  });
+  return layout;
+}
+
+function getLayoutConfigSnapshot(input = null) {
+  const base = syncLayoutConfigShape(input?.shape || state.layoutConfig?.shapeType || SYSTEM_SHAPE_DEFAULT);
+  const lowestHeightCandidate = Number(input?.spaces?.[0]?.min || base.lowestHeightMm || 0);
+  const highestHeightCandidate = Number(
+    input?.column?.maxLength || input?.spaces?.[0]?.max || base.highestHeightMm || 0
+  );
+  return {
+    shapeType: normalizeSystemShape(base.shapeType),
+    shapeLabel: getLayoutTypeLabel(base.shapeType),
+    lowestHeightMm:
+      Number.isFinite(lowestHeightCandidate) && lowestHeightCandidate > 0 ? lowestHeightCandidate : 0,
+    highestHeightMm:
+      Number.isFinite(highestHeightCandidate) && highestHeightCandidate > 0 ? highestHeightCandidate : 0,
+    sections: (base.sections || []).map((section, idx) => ({
+      id: String(section?.id || `section-${idx + 1}`),
+      label: String(section?.label || `섹션${idx + 1}`),
+      lengthMm: Math.max(0, Number(section?.lengthMm || 0)),
+    })),
+    sectionUsage: Array.isArray(base.sectionUsage)
+      ? base.sectionUsage.map((usage, idx) => ({
+          sectionIndex: Number.isFinite(Number(usage?.sectionIndex)) ? Number(usage.sectionIndex) : idx,
+          edgeHint: String(usage?.edgeHint || ""),
+          usedMm: Math.max(0, Number(usage?.usedMm || 0)),
+          targetMm: Math.max(0, Number(usage?.targetMm || 0)),
+          overflow: Boolean(usage?.overflow),
+        }))
+      : [],
+  };
+}
+
+function syncLayoutSectionUsageSnapshot(sideWidthLabels = [], input = null) {
+  const layoutSnapshot = getLayoutConfigSnapshot(input);
+  const normalizedShape = normalizeSystemShape(layoutSnapshot.shapeType || SYSTEM_SHAPE_DEFAULT);
+  const sectionCount = getSectionCountForShape(normalizedShape);
+  const labels = Array.isArray(sideWidthLabels) ? sideWidthLabels : [];
+  const nextUsage = Array.from({ length: sectionCount }, (_, idx) => {
+    const label = labels.find((entry) => Number(entry?.sectionIndex) === idx) || null;
+    const usedMm = Math.round(Math.max(0, Number(label?.totalMm || 0)));
+    const targetMm = Math.round(
+      Math.max(0, Number(label?.targetMm || layoutSnapshot.sections?.[idx]?.lengthMm || 0))
+    );
+    return {
+      sectionIndex: idx,
+      edgeHint: String(label?.edgeHint || ""),
+      usedMm,
+      targetMm,
+      overflow: targetMm > 0 && usedMm > targetMm,
+    };
+  });
+
+  syncLayoutConfigShape(normalizedShape);
+  if (state.layoutConfig) {
+    state.layoutConfig.sectionUsage = nextUsage;
+  }
+  return nextUsage;
+}
+
+function evaluateLayoutConsultState(layout = getLayoutConfigSnapshot()) {
+  const reasons = [];
+  if (Number(layout?.lowestHeightMm || 0) >= SYSTEM_LOWEST_HEIGHT_CONSULT_AT_MM) {
+    reasons.push(`가장 낮은 높이 ${SYSTEM_LOWEST_HEIGHT_CONSULT_AT_MM}mm 이상`);
+  }
+  if (Number(layout?.highestHeightMm || 0) > LIMITS.column.maxLength) {
+    reasons.push(`가장 높은 높이 ${LIMITS.column.maxLength}mm 초과`);
+  }
+  const longSections = (layout?.sections || []).filter(
+    (section) => Number(section?.lengthMm || 0) >= SYSTEM_SECTION_LENGTH_CONSULT_AT_MM
+  );
+  if (longSections.length) {
+    reasons.push(`섹션 길이 ${SYSTEM_SECTION_LENGTH_CONSULT_AT_MM}mm 이상`);
+  }
+  return {
+    status: reasons.length ? "consult" : "ok",
+    reasons,
+  };
+}
+
+function buildLayoutSpecLines(input = null, { includeStatus = false, onlyWhenConfigured = true } = {}) {
+  const layout = getLayoutConfigSnapshot(input);
+  const sectionParts = (layout.sections || [])
+    .map((section) => {
+      const lengthMm = Number(section.lengthMm || 0);
+      if (!lengthMm) return "";
+      return `${section.label} ${lengthMm}mm`;
+    })
+    .filter(Boolean);
+  const hasConfiguredValues = Boolean(sectionParts.length || Number(layout.lowestHeightMm || 0) > 0);
+  if (onlyWhenConfigured && !hasConfiguredValues) return [];
+
+  const lines = [`레이아웃 타입: ${layout.shapeLabel}`];
+  if (sectionParts.length) {
+    lines.push(`섹션 길이: ${sectionParts.join(" | ")}`);
+  }
+  if (Number(layout.lowestHeightMm || 0) > 0) {
+    lines.push(`가장 낮은 높이: ${layout.lowestHeightMm}mm`);
+  }
+  if (Number(layout.highestHeightMm || 0) > 0 && Number(layout.highestHeightMm) !== Number(layout.lowestHeightMm)) {
+    lines.push(`가장 높은 높이: ${layout.highestHeightMm}mm`);
+  }
+  if (includeStatus) {
+    const consult = evaluateLayoutConsultState(layout);
+    if (consult.status === "consult") {
+      lines.push(`레이아웃 상태: 상담 안내 (${consult.reasons.join(", ")})`);
+    } else {
+      lines.push("레이아웃 상태: 정상 견적 가능");
+    }
+  }
+  return lines;
+}
+
+function buildLayoutPreviewSummaryText(input = null) {
+  const layout = getLayoutConfigSnapshot(input);
+  const sectionParts = (layout.sections || [])
+    .map((section) => {
+      const lengthMm = Number(section.lengthMm || 0);
+      if (!lengthMm) return "";
+      return `${section.label} ${lengthMm}mm`;
+    })
+    .filter(Boolean);
+  const head = `레이아웃 ${layout.shapeLabel}`;
+  if (!sectionParts.length) return head;
+  return `${head} · ${sectionParts.join(" | ")}`;
+}
+
+function isLayoutConsultStatus(layoutConsult) {
+  return String(layoutConsult?.status || "") === "consult";
+}
+
+function applyConsultPriceToDetail(detail = {}) {
+  return {
+    ...detail,
+    materialCost: 0,
+    processingCost: 0,
+    subtotal: 0,
+    vat: 0,
+    total: 0,
+    isCustomPrice: true,
+  };
+}
+
+function buildLayoutSpecLinesFromSnapshot(layoutSpec, layoutConsult = null, { includeStatus = false } = {}) {
+  if (!layoutSpec || typeof layoutSpec !== "object") return [];
+  const shapeLabel = String(layoutSpec.shapeLabel || getLayoutTypeLabel(layoutSpec.shapeType || SYSTEM_SHAPE_DEFAULT));
+  const sections = Array.isArray(layoutSpec.sections) ? layoutSpec.sections : [];
+  const sectionParts = sections
+    .map((section, idx) => {
+      const lengthMm = Number(section?.lengthMm || 0);
+      if (!lengthMm) return "";
+      const label = String(section?.label || `섹션${idx + 1}`);
+      return `${label} ${lengthMm}mm`;
+    })
+    .filter(Boolean);
+  const lines = [];
+  if (shapeLabel) lines.push(`레이아웃 타입 ${shapeLabel}`);
+  if (sectionParts.length) lines.push(sectionParts.join(" | "));
+  const lowestHeightMm = Number(layoutSpec.lowestHeightMm || 0);
+  if (lowestHeightMm > 0) lines.push(`가장 낮은 높이 ${lowestHeightMm}mm`);
+  const highestHeightMm = Number(layoutSpec.highestHeightMm || 0);
+  if (highestHeightMm > 0 && highestHeightMm !== lowestHeightMm) {
+    lines.push(`가장 높은 높이 ${highestHeightMm}mm`);
+  }
+  if (includeStatus) {
+    if (isLayoutConsultStatus(layoutConsult)) {
+      const reasons = Array.isArray(layoutConsult?.reasons) ? layoutConsult.reasons.filter(Boolean) : [];
+      lines.push(
+        reasons.length
+          ? `레이아웃 상태 상담 안내 (${reasons.join(", ")})`
+          : "레이아웃 상태 상담 안내"
+      );
+    } else {
+      lines.push("레이아웃 상태 정상 견적 가능");
+    }
+  }
+  return lines;
+}
+
+function evaluateLayoutValidationState(layout = getLayoutConfigSnapshot()) {
+  const sectionErrors = [];
+  const messages = [];
+  const missingSections = [];
+  const tooShortSections = [];
+  const overflowSections = [];
+
+  (layout?.sections || []).forEach((section, idx) => {
+    const lengthMm = Number(section?.lengthMm || 0);
+    if (!lengthMm) {
+      missingSections.push(idx);
+      return;
+    }
+    if (lengthMm < SYSTEM_SECTION_LENGTH_MIN_MM) {
+      tooShortSections.push(idx);
+      sectionErrors[idx] = `섹션 길이는 최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm 이상 입력해주세요.`;
+    }
+  });
+
+  (layout?.sectionUsage || []).forEach((usage, idx) => {
+    const sectionIndex = Number.isFinite(Number(usage?.sectionIndex)) ? Number(usage.sectionIndex) : idx;
+    const usedMm = Math.max(0, Number(usage?.usedMm || 0));
+    const targetMm = Math.max(0, Number(usage?.targetMm || 0));
+    if (!targetMm || usedMm <= targetMm) return;
+    overflowSections.push({ sectionIndex, usedMm, targetMm });
+    sectionErrors[sectionIndex] = `가용범위를 초과했습니다. 사용 ${usedMm}mm / 전체 ${targetMm}mm`;
+  });
+
+  let status = "ok";
+  const consult = evaluateLayoutConsultState(layout);
+
+  if (missingSections.length) {
+    status = "invalid";
+    messages.push("섹션 길이를 모두 입력해주세요.");
+  }
+
+  if (tooShortSections.length) {
+    status = "invalid";
+    messages.push(`섹션 길이는 최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm 이상이어야 합니다.`);
+  }
+
+  if (overflowSections.length) {
+    status = "invalid";
+    const overflowNames = overflowSections
+      .map((entry) => `섹션${Number(entry.sectionIndex) + 1}`)
+      .join(", ");
+    messages.push(`가용범위를 초과한 구간이 있습니다 (${overflowNames}). 폭을 조정해주세요.`);
+  }
+
+  if (status !== "invalid" && consult.status === "consult") {
+    status = "consult";
+    messages.push(...consult.reasons.map((reason) => `${reason} · 상담 안내로 처리됩니다.`));
+  }
+
+  if (!messages.length) {
+    messages.push("정상 견적 가능");
+  }
+
+  return {
+    status,
+    messages,
+    sectionErrors,
+    consultReasons: consult.reasons || [],
+    overflowSections,
+  };
+}
+
+function syncLayoutConstraintIndicators() {
+  const layout = getLayoutConfigSnapshot();
+  const result = evaluateLayoutValidationState(layout);
+
+  if (state.layoutConfig) {
+    state.layoutConfig.status = result.status;
+    state.layoutConfig.consultReasons = [...(result.consultReasons || [])];
+    state.layoutConfig.lowestHeightMm = Number(layout.lowestHeightMm || 0);
+    state.layoutConfig.highestHeightMm = Number(layout.highestHeightMm || 0);
+  }
+
+  (layout.sections || []).forEach((section, idx) => {
+    const inputEl = document.querySelector(`[data-layout-section-length="${idx}"]`);
+    const errorEl = document.getElementById(`layoutSectionError-${idx}`);
+    const message = result.sectionErrors?.[idx] || "";
+    setFieldError(inputEl, errorEl, message);
+  });
+
+  const statusEl = document.getElementById("layoutConstraintStatus");
+  if (statusEl) {
+    const badgeLabel =
+      result.status === "consult"
+        ? "상담 안내"
+        : result.status === "invalid"
+          ? "구성 불가"
+          : "정상 견적 가능";
+    statusEl.dataset.status = result.status;
+    statusEl.innerHTML = `
+      <span class="layout-constraint-badge">${escapeHtml(badgeLabel)}</span>
+      <span class="layout-constraint-text">${escapeHtml(result.messages.join(" "))}</span>
+    `;
+  }
+
+  const previewCustomSummaryEl = document.getElementById("previewCustomSummary");
+  if (previewCustomSummaryEl) {
+    if (result.status === "consult") {
+      previewCustomSummaryEl.textContent = "레이아웃 상담 안내";
+    } else if (result.status === "invalid") {
+      previewCustomSummaryEl.textContent = "레이아웃 입력 확인 필요";
+    } else {
+      previewCustomSummaryEl.textContent = "비규격 없음";
+    }
+  }
+
+  return result;
+}
+
+function refreshBuilderDerivedUI({ preview = true, price = true, addItemState = true } = {}) {
+  if (preview) updatePreview();
+  if (price) {
+    autoCalculatePrice();
+  } else if (addItemState) {
+    updateAddItemState();
+  }
+  syncLayoutConstraintIndicators();
+}
 
 let currentPhase = 1;
 let sendingEmail = false;
@@ -356,7 +720,7 @@ function getCornerFlags(shape) {
   const sideCount = getBayCountForShape(shape);
   if (shape === "box_shape") return new Array(sideCount).fill(true);
   if (shape === "u_shape") return [false, true, true];
-  if (shape === "l_shape") return [false, true];
+  if (shape === "l_shape" || shape === "rl_shape") return [false, true];
   return new Array(sideCount).fill(false);
 }
 
@@ -435,6 +799,45 @@ function getOrderedGraphEdges() {
   return order
     .map((id) => state.graph.edges[id])
     .filter((edge) => edge && (edge.type === "bay" || edge.type === "corner"));
+}
+
+function countCurrentCornerModules() {
+  return getOrderedGraphEdges().filter((edge) => edge?.type === "corner").length;
+}
+
+function getShapeCornerLimitState(shape = getSelectedShape()) {
+  const normalizedShape = normalizeSystemShape(shape);
+  const limit = getShapeCornerLimit(normalizedShape);
+  const currentCount = countCurrentCornerModules();
+  const canAdd = Number.isFinite(limit) ? currentCount < limit : true;
+  const remaining = Number.isFinite(limit) ? Math.max(0, limit - currentCount) : Infinity;
+  return {
+    shape: normalizedShape,
+    shapeLabel: getLayoutTypeLabel(normalizedShape),
+    limit,
+    currentCount,
+    remaining,
+    canAdd,
+  };
+}
+
+function getCornerLimitBlockedMessage(limitState = getShapeCornerLimitState()) {
+  const shapeLabel = String(limitState?.shapeLabel || getLayoutTypeLabel(getSelectedShape()));
+  const limit = Number(limitState?.limit);
+  if (Number.isFinite(limit) && limit <= 0) {
+    return `${shapeLabel} 타입은 코너 추가가 불가합니다.`;
+  }
+  if (Number.isFinite(limit)) {
+    return `${shapeLabel} 타입은 코너를 최대 ${limit}개까지 추가할 수 있습니다.`;
+  }
+  return "현재 레이아웃에서는 코너를 추가할 수 없습니다.";
+}
+
+function setPreviewAddTypeErrorMessage(message = "", { isError = false } = {}) {
+  const errorEl = $("#previewAddTypeError");
+  if (!errorEl) return;
+  errorEl.textContent = String(message || "");
+  errorEl.classList.toggle("error", Boolean(isError && message));
 }
 
 function getPreviewOrderedEdges(edges = []) {
@@ -540,11 +943,17 @@ function readCurrentInputs() {
     spaceMaxs: spaces.map((space) => Number(space.max || 0)),
     spaceExtraHeights: spaces.map((space) => [...(space.extraHeights || [])]),
   };
-  return { shelf, column, shape, spaces };
+  const input = { shelf, column, shape, spaces };
+  syncLayoutConfigRuntimeFields(input);
+  return input;
 }
 
 function readSpaceConfigs(shape) {
-  const count = 1;
+  const normalizedShape = normalizeSystemShape(shape);
+  const count = Math.max(
+    1,
+    Math.min(getSectionCountForShape(normalizedShape), getRenderedSpaceInputCount())
+  );
   const spaces = [];
   for (let i = 0; i < count; i += 1) {
     const min = Number($(`#spaceMin-${i}`)?.value || 0);
@@ -560,7 +969,7 @@ function readSpaceConfigs(shape) {
 }
 
 function getRequiredSectionCount() {
-  return 1;
+  return getRenderedSpaceInputCount();
 }
 
 function setErrorMessage(errorEl, message) {
@@ -1133,6 +1542,11 @@ function validateInputs(input, bays) {
   const shelfMat = SYSTEM_SHELF_MATERIALS[input.shelf.materialId];
   const columnMat = SYSTEM_COLUMN_MATERIALS[input.column.materialId];
   const spaces = input.spaces || [];
+  const layoutValidation = evaluateLayoutValidationState(getLayoutConfigSnapshot(input));
+
+  if (layoutValidation.status === "invalid") {
+    return layoutValidation.messages[0] || "레이아웃 입력값을 확인해주세요.";
+  }
 
   const space = spaces[0] || { min: 0, max: 0, extraHeights: [] };
   if (!space.min || !space.max) {
@@ -1144,14 +1558,11 @@ function validateInputs(input, bays) {
   if (space.min < LIMITS.column.minLength || space.max < LIMITS.column.minLength) {
     return `천장 높이는 ${LIMITS.column.minLength}mm 이상 입력해주세요.`;
   }
-  if (space.min > LIMITS.column.maxLength || space.max > LIMITS.column.maxLength) {
-    return `최대 천장 높이는 ${LIMITS.column.maxLength}mm 이하입니다.`;
-  }
   const extraHeights = space.extraHeights || [];
   for (let j = 0; j < extraHeights.length; j += 1) {
     const h = Number(extraHeights[j] || 0);
-    if (h < LIMITS.column.minLength || h > LIMITS.column.maxLength) {
-      return `개별높이는 ${LIMITS.column.minLength}~${LIMITS.column.maxLength}mm 범위여야 합니다.`;
+    if (h < LIMITS.column.minLength) {
+      return `개별높이는 ${LIMITS.column.minLength}mm 이상 입력해주세요.`;
     }
   }
 
@@ -1214,8 +1625,6 @@ function updateSizeErrorsUI(input, bays) {
     heightMsg = "가장 낮은 천장 높이는 가장 높은 천장 이하로 입력해주세요.";
   } else if (space.min < LIMITS.column.minLength || space.max < LIMITS.column.minLength) {
     heightMsg = `천장 높이는 ${LIMITS.column.minLength}mm 이상 입력해주세요.`;
-  } else if (space.min > LIMITS.column.maxLength || space.max > LIMITS.column.maxLength) {
-    heightMsg = `최대 천장 높이는 ${LIMITS.column.maxLength}mm 이하입니다.`;
   }
   setFieldError(minEl, heightError, heightMsg);
   setFieldError(maxEl, heightError, heightMsg);
@@ -1224,14 +1633,14 @@ function updateSizeErrorsUI(input, bays) {
   let extraMsg = "";
   extraInputs.forEach((inputEl) => {
     const value = Number(inputEl.value || 0);
-    const invalid = value && (value < LIMITS.column.minLength || value > LIMITS.column.maxLength);
+    const invalid = value && value < LIMITS.column.minLength;
     inputEl.classList.toggle("input-error", Boolean(invalid));
     if (!extraMsg && invalid) {
-      extraMsg = `개별높이는 ${LIMITS.column.minLength}~${LIMITS.column.maxLength}mm 범위여야 합니다.`;
+      extraMsg = `개별높이는 ${LIMITS.column.minLength}mm 이상 입력해주세요.`;
     }
   });
   if (!extraMsg && (space.extraHeights || []).length > 1) {
-    extraMsg = "개별높이 2개 이상 입력 시 추가 비용이 발생합니다.";
+    extraMsg = "창문, 커튼박스 등으로 동일 높이 설치가 어려운 경우에는 구간별 개별 높이 기둥을 추가해 주세요.";
   }
   if (extraError) {
     extraError.textContent = extraMsg;
@@ -1261,9 +1670,7 @@ function bindSpaceExtraHeightEvents(spaceIndex) {
       if (inputEl.dataset.bound === "true") return;
       inputEl.dataset.bound = "true";
       inputEl.addEventListener("input", () => {
-        updatePreview();
-        autoCalculatePrice();
-        updateAddItemState();
+        refreshBuilderDerivedUI();
       });
     });
   document
@@ -1273,9 +1680,7 @@ function bindSpaceExtraHeightEvents(spaceIndex) {
       btn.dataset.bound = "true";
       btn.addEventListener("click", () => {
         btn.closest(".space-extra-row")?.remove();
-        updatePreview();
-        autoCalculatePrice();
-        updateAddItemState();
+        refreshBuilderDerivedUI();
       });
     });
 }
@@ -1288,7 +1693,7 @@ function setSpaceExtraHeights(spaceIndex, values) {
     .map(
       (value) => `
         <div class="space-extra-row">
-          <input type="number" data-space-extra-height="${spaceIndex}" placeholder="개별높이 (1800~2700mm)" value="${Number(value)}" />
+          <input type="number" data-space-extra-height="${spaceIndex}" placeholder="개별높이 (1800mm 이상)" value="${Number(value)}" />
           <button type="button" class="ghost-btn" data-space-extra-remove="${spaceIndex}">삭제</button>
         </div>
       `
@@ -1300,6 +1705,8 @@ function setSpaceExtraHeights(spaceIndex, values) {
 function isPreviewBuilderReady(input) {
   if (!input?.shelf?.materialId) return false;
   if (!input?.column?.materialId) return false;
+  const layoutValidation = evaluateLayoutValidationState(getLayoutConfigSnapshot(input));
+  if (layoutValidation.status === "invalid") return false;
   const spaces = input.spaces || [];
   const requiredCount = getRequiredSectionCount();
   for (let i = 0; i < requiredCount; i += 1) {
@@ -1309,7 +1716,6 @@ function isPreviewBuilderReady(input) {
     if (!min || !max) return false;
     if (min > max) return false;
     if (min < LIMITS.column.minLength || max < LIMITS.column.minLength) return false;
-    if (min > LIMITS.column.maxLength || max > LIMITS.column.maxLength) return false;
   }
   return true;
 }
@@ -1317,6 +1723,10 @@ function isPreviewBuilderReady(input) {
 function getPreviewBuilderDisabledReason(input) {
   if (!input?.column?.materialId) return "기둥 컬러를 먼저 선택해주세요.";
   if (!input?.shelf?.materialId) return "선반 컬러를 먼저 선택해주세요.";
+  const layoutValidation = evaluateLayoutValidationState(getLayoutConfigSnapshot(input));
+  if (layoutValidation.status === "invalid") {
+    return layoutValidation.messages[0] || "레이아웃 섹션 입력값을 확인해주세요.";
+  }
   const space = (input?.spaces || [])[0] || { min: 0, max: 0 };
   const min = Number(space.min || 0);
   const max = Number(space.max || 0);
@@ -1324,9 +1734,6 @@ function getPreviewBuilderDisabledReason(input) {
   if (min > max) return "천장 높이 입력값을 확인해주세요.";
   if (min < LIMITS.column.minLength || max < LIMITS.column.minLength) {
     return `천장 높이는 ${LIMITS.column.minLength}mm 이상이어야 합니다.`;
-  }
-  if (min > LIMITS.column.maxLength || max > LIMITS.column.maxLength) {
-    return `최대 천장 높이는 ${LIMITS.column.maxLength}mm 이하입니다.`;
   }
   return "";
 }
@@ -1343,15 +1750,12 @@ function getItemPriceDisplayValidationMessage(input, bays) {
   if (min < LIMITS.column.minLength || max < LIMITS.column.minLength) {
     return `천장 높이는 ${LIMITS.column.minLength}mm 이상 입력해주세요.`;
   }
-  if (min > LIMITS.column.maxLength || max > LIMITS.column.maxLength) {
-    return `최대 천장 높이는 ${LIMITS.column.maxLength}mm 이하입니다.`;
-  }
 
   const extraHeights = space.extraHeights || [];
   for (let i = 0; i < extraHeights.length; i += 1) {
     const h = Number(extraHeights[i] || 0);
-    if (h < LIMITS.column.minLength || h > LIMITS.column.maxLength) {
-      return `개별높이는 ${LIMITS.column.minLength}~${LIMITS.column.maxLength}mm 범위여야 합니다.`;
+    if (h < LIMITS.column.minLength) {
+      return `개별높이는 ${LIMITS.column.minLength}mm 이상 입력해주세요.`;
     }
   }
 
@@ -1370,7 +1774,8 @@ function buildPreviewOptionText(input, shelfMat, columnMat) {
     ? space.extraHeights.filter((value) => Number(value || 0) > 0).length
     : 0;
   const extraText = extraCount > 0 ? ` · 개별높이 ${extraCount}개` : "";
-  return `탑뷰 · 선반 ${shelfMat?.name || "-"} · 기둥 ${columnMat?.name || "-"} · 천장 ${heightText}${extraText}`;
+  const layoutText = buildLayoutPreviewSummaryText(input);
+  return `탑뷰 · ${layoutText} · 선반 ${shelfMat?.name || "-"} · 기둥 ${columnMat?.name || "-"} · 천장 ${heightText}${extraText}`;
 }
 
 function applyPreviewAddButtonState(btn, { enabled = true, reason = "" } = {}) {
@@ -1379,12 +1784,14 @@ function applyPreviewAddButtonState(btn, { enabled = true, reason = "" } = {}) {
     btn.disabled = false;
     btn.removeAttribute("disabled");
     btn.classList.remove("is-disabled");
+    btn.classList.remove("btn-disabled");
     delete btn.dataset.disabledReason;
     btn.removeAttribute("aria-disabled");
     return;
   }
   btn.disabled = true;
   btn.classList.add("is-disabled");
+  btn.classList.add("btn-disabled");
   if (!reason) {
     delete btn.dataset.disabledReason;
     btn.removeAttribute("aria-disabled");
@@ -1537,6 +1944,12 @@ function updateBuilderHistoryButtons() {
   const redoBtn = $("#builderRedoBtn");
   if (undoBtn) undoBtn.disabled = builderHistory.undo.length === 0;
   if (redoBtn) redoBtn.disabled = builderHistory.redo.length === 0;
+}
+
+function resetBuilderHistoryState() {
+  builderHistory.undo = [];
+  builderHistory.redo = [];
+  updateBuilderHistoryButtons();
 }
 
 function pushBuilderHistory(label = "") {
@@ -1999,10 +2412,24 @@ function buildOuterSectionLabels(sectionRuns = [], columnMarksByHint = {}) {
 function updatePreviewWidthSummary(input, sectionRuns = null) {
   const widthSummaryEl = $("#previewWidthSummary");
   if (!widthSummaryEl) return;
+  const layout = getLayoutConfigSnapshot(input);
+  const targetSections = (layout.sections || [])
+    .map((section, idx) => ({
+      idx,
+      label: section.label || `섹션${idx + 1}`,
+      lengthMm: Math.max(0, Number(section.lengthMm || 0)),
+    }))
+    .filter((section) => section.lengthMm > 0);
   const runs = Array.isArray(sectionRuns)
     ? sectionRuns.filter((run) => Number(run?.totalMm || 0) > 0)
     : [];
   if (!runs.length) {
+    if (targetSections.length) {
+      widthSummaryEl.textContent = `레이아웃 목표: ${targetSections
+        .map((section) => `${section.label} ${section.lengthMm}mm`)
+        .join(" | ")}`;
+      return;
+    }
     widthSummaryEl.textContent = "적용 너비 합계: -";
     return;
   }
@@ -2017,19 +2444,29 @@ function updatePreviewWidthSummary(input, sectionRuns = null) {
   });
   const segments = [];
   ordered.forEach((run, idx) => {
-    const total = Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0)));
-    segments.push(`섹션${idx + 1} ${total}mm`);
+    const used = Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0)));
+    const targetLength = Number(targetSections[idx]?.lengthMm || 0);
+    if (targetLength > 0) {
+      segments.push(`섹션${idx + 1} ${used}/${targetLength}mm`);
+      return;
+    }
+    segments.push(`섹션${idx + 1} ${used}mm`);
   });
   if (!segments.length) {
     widthSummaryEl.textContent = "적용 너비 합계: -";
     return;
   }
-  widthSummaryEl.textContent = `적용 너비 합계(기둥 포함): ${segments.join(" | ")}`;
+  widthSummaryEl.textContent = `사용/전체(기둥 포함): ${segments.join(" | ")}`;
 }
 
 function updateShelfAddButtonState(input) {
+  const canAddFromPreview = isPreviewBuilderReady(input);
+  const previewDisabledReason = canAddFromPreview ? "" : getPreviewBuilderDisabledReason(input);
   document.querySelectorAll("[data-add-shelf]").forEach((btn) => {
-    btn.disabled = false;
+    applyPreviewAddButtonState(btn, {
+      enabled: canAddFromPreview,
+      reason: previewDisabledReason,
+    });
   });
 }
 
@@ -2194,14 +2631,17 @@ function updatePreview() {
   const edges = getPreviewOrderedEdges(getOrderedGraphEdges());
   const hasShelfBase = Boolean(shelfMat && input.shelf.thickness);
   const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
-  const canAddFromPreview = isPreviewBuilderReady(input);
-  const previewDisabledReason = canAddFromPreview ? "" : getPreviewBuilderDisabledReason(input);
+  let canAddFromPreview = false;
+  let previewDisabledReason = "";
   const showModuleInfo = previewInfoMode === "module";
   const showSizeInfo = !showModuleInfo;
   updatePreviewWidthSummary(input, []);
+  syncLayoutSectionUsageSnapshot([], input);
+  canAddFromPreview = isPreviewBuilderReady(input);
+  previewDisabledReason = canAddFromPreview ? "" : getPreviewBuilderDisabledReason(input);
 
   if (!hasShelfBase || !hasColumn) {
-    textEl.textContent = "옵션 선택 후 모듈을 추가하면 미리보기가 표시됩니다.";
+    textEl.textContent = `${buildLayoutPreviewSummaryText(input)} · 옵션 선택 후 모듈을 추가하면 미리보기가 표시됩니다.`;
     shelvesEl.innerHTML = "";
     clearPreviewGhost();
     if (!bays.length) {
@@ -2596,14 +3036,32 @@ function updatePreview() {
 
   const sectionRuns = buildSectionRunsFromSegments(sectionLengthSegments);
   const sectionLabels = buildOuterSectionLabels(sectionRuns, sectionColumnMarks);
+  const layoutForPreview = getLayoutConfigSnapshot(input);
   const sideWidthLabels = sectionLabels.map((run) => ({
+    sectionIndex: 0,
     edgeHint: run.edgeHint,
     x: Number(run.x || 0),
     y: Number(run.y || 0),
+    totalMm: Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0))),
+    targetMm: 0,
     text: `${Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0)))}mm`,
     overflow: false,
   }));
+  sideWidthLabels.forEach((label, idx) => {
+    label.sectionIndex = idx;
+    const targetMm = Number(layoutForPreview.sections?.[idx]?.lengthMm || 0);
+    label.targetMm = targetMm > 0 ? targetMm : 0;
+    label.overflow = label.targetMm > 0 && Number(label.totalMm || 0) > label.targetMm;
+    if (label.targetMm > 0) {
+      label.text = `${Math.round(Number(label.totalMm || 0))}/${Math.round(label.targetMm)}`;
+    } else {
+      label.text = `${Math.round(Number(label.totalMm || 0))}mm`;
+    }
+  });
   updatePreviewWidthSummary(input, sectionLabels);
+  syncLayoutSectionUsageSnapshot(sideWidthLabels, input);
+  canAddFromPreview = isPreviewBuilderReady(input);
+  previewDisabledReason = canAddFromPreview ? "" : getPreviewBuilderDisabledReason(input);
 
   const addButtons = collectOpenEndpointsFromCandidates(endpointCandidates);
   addButtons.forEach((point) => {
@@ -2923,7 +3381,25 @@ function updatePreview() {
     if (info.edgeHint === "left" || info.edgeHint === "right") {
       labelEl.classList.add("system-section-width-label--vertical");
     }
-    labelEl.textContent = info.text;
+    const sectionPrefix =
+      Number.isFinite(Number(info.sectionIndex)) && Number(info.sectionIndex) >= 0
+        ? `S${Number(info.sectionIndex) + 1} `
+        : "";
+    labelEl.textContent = `${sectionPrefix}${info.text}`;
+    if (info.overflow) {
+      labelEl.setAttribute("aria-label", `${sectionPrefix.trim()} 사용 너비가 전체를 초과했습니다`);
+    }
+    const isVerticalSectionLabel = info.edgeHint === "left" || info.edgeHint === "right";
+    const labelTextLength = String(labelEl.textContent || "").length;
+    if (labelTextLength >= 11) labelEl.classList.add("system-section-width-label--compact");
+    if (Number(info.targetMm || 0) > 0) {
+      labelEl.title = `섹션${Number(info.sectionIndex) + 1}: 사용 ${Number(info.totalMm || 0)}mm / 전체 ${Number(info.targetMm)}mm`;
+    }
+    const dynamicSectionLabelOffset =
+      sectionLabelOffset +
+      (labelTextLength >= 11 ? 10 : labelTextLength >= 9 ? 6 : 0) +
+      (isVerticalSectionLabel ? 6 : 0) +
+      (info.overflow ? 4 : 0);
     let placedX = Number.isFinite(info.x)
       ? info.x * scale + tx
       : (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
@@ -2931,16 +3407,16 @@ function updatePreview() {
       ? info.y * scale + ty
       : (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
     if (info.edgeHint === "top") {
-      placedY = outerBoundsPx.minY - sectionLabelOffset;
+      placedY = outerBoundsPx.minY - dynamicSectionLabelOffset;
       if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
     } else if (info.edgeHint === "right") {
-      placedX = outerBoundsPx.maxX + sectionLabelOffset;
+      placedX = outerBoundsPx.maxX + dynamicSectionLabelOffset;
       if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
     } else if (info.edgeHint === "bottom") {
-      placedY = outerBoundsPx.maxY + sectionLabelOffset;
+      placedY = outerBoundsPx.maxY + dynamicSectionLabelOffset;
       if (!Number.isFinite(info.x)) placedX = (outerBoundsPx.minX + outerBoundsPx.maxX) / 2;
     } else if (info.edgeHint === "left") {
-      placedX = outerBoundsPx.minX - sectionLabelOffset;
+      placedX = outerBoundsPx.minX - dynamicSectionLabelOffset;
       if (!Number.isFinite(info.y)) placedY = (outerBoundsPx.minY + outerBoundsPx.maxY) / 2;
     }
     labelEl.style.left = `${placedX}px`;
@@ -3131,6 +3607,8 @@ function openPreviewAddTypeModal(
   if (Number.isNaN(sideIndex) || Number.isNaN(attachSideIndex)) return;
   const normalizedAllowedTypes = Array.isArray(allowedTypes) ? allowedTypes : ["normal"];
   const hasCornerSlot = normalizedAllowedTypes.includes("corner");
+  const cornerLimitState = getShapeCornerLimitState();
+  const canAddNewCorner = cornerLimitState.canAdd;
   activePreviewAddTarget = {
     endpointId: endpointId || "",
     sideIndex,
@@ -3141,14 +3619,23 @@ function openPreviewAddTypeModal(
     allowedTypes: normalizedAllowedTypes,
   };
   const cornerBtn = $("#previewAddCornerBtn");
-  const errorEl = $("#previewAddTypeError");
-  if (cornerBtn) cornerBtn.disabled = !(cornerId || hasCornerSlot);
-  if (errorEl) {
-    const hasCornerAction = Boolean(cornerId || hasCornerSlot);
-    errorEl.textContent = hasCornerAction
-      ? ""
-      : "이 끝점에서는 코너 추가가 불가합니다. 일반 모듈을 추가해주세요.";
-    errorEl.classList.toggle("error", !hasCornerAction);
+  const canUseCornerAction = Boolean(cornerId || (hasCornerSlot && canAddNewCorner));
+  if (cornerBtn) {
+    cornerBtn.disabled = !canUseCornerAction;
+    if (!canUseCornerAction && hasCornerSlot && !cornerId && !canAddNewCorner) {
+      cornerBtn.title = getCornerLimitBlockedMessage(cornerLimitState);
+    } else {
+      cornerBtn.removeAttribute("title");
+    }
+  }
+  if (!cornerId && hasCornerSlot && !canAddNewCorner) {
+    setPreviewAddTypeErrorMessage(getCornerLimitBlockedMessage(cornerLimitState), { isError: true });
+  } else if (!cornerId && !hasCornerSlot) {
+    setPreviewAddTypeErrorMessage("이 끝점에서는 코너 추가가 불가합니다. 일반 모듈을 추가해주세요.", {
+      isError: true,
+    });
+  } else {
+    setPreviewAddTypeErrorMessage("", { isError: false });
   }
   openModal("#previewAddTypeModal", { focusTarget: "#previewAddTypeModalTitle" });
 }
@@ -3172,6 +3659,11 @@ function commitPreviewAddCorner() {
   const endpointId = activePreviewAddTarget?.endpointId || "";
   const endpoint = endpointId ? previewOpenEndpoints.get(endpointId) : null;
   const source = endpoint || activePreviewAddTarget;
+  const cornerLimitState = getShapeCornerLimitState();
+  if (!cornerLimitState.canAdd) {
+    setPreviewAddTypeErrorMessage(getCornerLimitBlockedMessage(cornerLimitState), { isError: true });
+    return;
+  }
   if (source) {
     const placement = buildPlacementFromEndpoint(source);
     const dir = placement ? normalizeDirection(placement.dirDx, placement.dirDy) : { dx: 1, dy: 0 };
@@ -3205,11 +3697,7 @@ function commitPreviewAddCorner() {
     openCornerOptionModal(edge.id);
     return;
   }
-  const errorEl = $("#previewAddTypeError");
-  if (errorEl) {
-    errorEl.textContent = "이 끝점에는 코너 모듈을 추가할 수 없습니다.";
-    errorEl.classList.add("error");
-  }
+  setPreviewAddTypeErrorMessage("이 끝점에는 코너 모듈을 추가할 수 없습니다.", { isError: true });
 }
 
 function updateAddItemState() {
@@ -3259,8 +3747,9 @@ function autoCalculatePrice() {
     count: bays.length + 1,
     quantity: 1,
   });
+  const layoutConsult = evaluateLayoutConsultState(getLayoutConfigSnapshot(input));
   const totalPrice = bayTotals.total + columnDetail.total;
-  const isCustom = bayTotals.isCustomPrice || columnDetail.isCustomPrice;
+  const isCustom = bayTotals.isCustomPrice || columnDetail.isCustomPrice || isLayoutConsultStatus(layoutConsult);
   if (isCustom) {
     $("#itemPriceDisplay").textContent = "금액: 상담 안내";
   } else {
@@ -3271,11 +3760,121 @@ function autoCalculatePrice() {
   updateAddItemState();
 }
 
+function applyLayoutShapeTypeChange(nextShape) {
+  const normalizedNextShape = normalizeSystemShape(nextShape);
+  const currentShape = getSelectedShape();
+  if (normalizedNextShape === currentShape) return;
+
+  const hasExistingModules = getOrderedGraphEdges().length > 0;
+  if (hasExistingModules) {
+    const confirmed = window.confirm(
+      "레이아웃 타입을 변경하면 현재 모듈 구성이 초기화됩니다. 계속할까요?"
+    );
+    if (!confirmed) return;
+  }
+
+  // Preserve current section-length inputs before rerendering the layout UI.
+  syncLayoutSectionLengthsFromDOM();
+  syncLayoutConfigShape(normalizedNextShape);
+  initShelfStateForShape(normalizedNextShape);
+  state.shelfAddons = {};
+  activePreviewAddTarget = null;
+  previewOpenEndpoints = new Map();
+  clearPreviewGhost();
+  resetBuilderHistoryState();
+  renderShapeSizeInputs();
+  renderBayInputs();
+
+  if (hasExistingModules) {
+    showInfoModal("레이아웃 타입이 변경되어 현재 모듈 구성이 초기화되었습니다.");
+  }
+}
+
+function bindLayoutTypeShapeEvents(container) {
+  if (!container) return;
+  container.querySelectorAll("[data-layout-shape]").forEach((btn) => {
+    if (btn.dataset.bound === "true") return;
+    btn.dataset.bound = "true";
+    btn.addEventListener("click", () => {
+      applyLayoutShapeTypeChange(btn.dataset.layoutShape || "");
+    });
+  });
+}
+
+function bindLayoutSectionLengthEvents(container) {
+  if (!container) return;
+  container.querySelectorAll("[data-layout-section-length]").forEach((inputEl) => {
+    if (inputEl.dataset.bound === "true") return;
+    inputEl.dataset.bound = "true";
+    inputEl.addEventListener("input", () => {
+      const index = Number(inputEl.dataset.layoutSectionLength || 0);
+      const layout = syncLayoutConfigShape(getSelectedShape());
+      if (!layout.sections[index]) return;
+      const value = Number(inputEl.value || 0);
+      layout.sections[index].lengthMm = Number.isFinite(value) && value > 0 ? value : 0;
+      refreshBuilderDerivedUI();
+    });
+  });
+}
+
 function renderShapeSizeInputs() {
   const container = $("#shapeSizeInputs");
   if (!container) return;
+  const previousSpaces = readSpaceConfigs(getSelectedShape());
+  const previousSpace = previousSpaces[0] || { min: 0, max: 0, extraHeights: [] };
+  const layout = syncLayoutConfigShape(getSelectedShape());
+  const selectedShape = normalizeSystemShape(layout.shapeType);
   container.innerHTML = "";
   const i = 0;
+
+  const layoutCard = document.createElement("div");
+  layoutCard.className = "bay-input system-layout-config-card";
+  layoutCard.innerHTML = `
+    <div class="bay-input-title">레이아웃 타입 및 섹션 설정</div>
+    <div class="layout-type-grid" role="group" aria-label="레이아웃 타입 선택">
+      ${SYSTEM_SHAPE_KEYS.map((shapeKey) => {
+        const sectionCount = getSectionCountForShape(shapeKey);
+        const selected = shapeKey === selectedShape;
+        return `
+          <button
+            type="button"
+            class="layout-type-btn${selected ? " is-active" : ""}"
+            data-layout-shape="${shapeKey}"
+            aria-pressed="${selected ? "true" : "false"}"
+          >
+            <span class="layout-type-btn-label">${escapeHtml(getLayoutTypeLabel(shapeKey))}</span>
+            <span class="layout-type-btn-meta">${sectionCount}섹션</span>
+          </button>
+        `;
+      }).join("")}
+    </div>
+    <div class="layout-section-inputs">
+      ${layout.sections
+        .map((section, index) => {
+          const value = Number(section.lengthMm || 0);
+          return `
+            <div class="form-row">
+              <label for="layoutSectionLength-${index}">${escapeHtml(section.label)} 길이 (mm)</label>
+              <div class="field-col">
+                <input
+                  type="number"
+                  id="layoutSectionLength-${index}"
+                  data-layout-section-length="${index}"
+                  min="${SYSTEM_SECTION_LENGTH_MIN_MM}"
+                  placeholder="최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm"
+                  value="${value > 0 ? value : ""}"
+                />
+                <div class="error-msg" id="layoutSectionError-${index}"></div>
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+    <div class="field-note">섹션 길이는 최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm 이상 입력해주세요.</div>
+  `;
+  container.appendChild(layoutCard);
+
   const row = document.createElement("div");
   row.className = "bay-input";
   row.innerHTML = `
@@ -3283,13 +3882,13 @@ function renderShapeSizeInputs() {
     <div class="form-row">
       <label>가장 낮은 천장 높이 (mm)</label>
       <div class="field-col">
-        <input type="number" id="spaceMin-${i}" placeholder="1800~2700mm" />
+        <input type="number" id="spaceMin-${i}" placeholder="1800mm 이상" value="${Number(previousSpace.min || 0) > 0 ? Number(previousSpace.min) : ""}" />
       </div>
     </div>
     <div class="form-row">
       <label>가장 높은 천장 높이 (mm)</label>
       <div class="field-col">
-        <input type="number" id="spaceMax-${i}" placeholder="1800~2700mm" />
+        <input type="number" id="spaceMax-${i}" placeholder="1800mm 이상" value="${Number(previousSpace.max || 0) > 0 ? Number(previousSpace.max) : ""}" />
         <div class="error-msg" id="spaceHeightError-${i}"></div>
       </div>
     </div>
@@ -3298,18 +3897,29 @@ function renderShapeSizeInputs() {
       <div class="field-col">
         <button type="button" class="ghost-btn space-extra-add-btn" id="addSpaceExtra-${i}">개별높이 추가</button>
         <div id="spaceExtraList-${i}" class="field-stack"></div>
-        <div class="field-note">개별높이 2개 이상 입력 시 추가 비용이 발생합니다.</div>
+        <div class="field-note">창문, 커튼박스 등으로 동일 높이 설치가 어려운 경우에는 구간별 개별 높이 기둥을 추가해 주세요.</div>
         <div class="error-msg" id="spaceExtraError-${i}"></div>
       </div>
     </div>
   `;
   container.appendChild(row);
 
+  const layoutStatusCard = document.createElement("div");
+  layoutStatusCard.className = "bay-input";
+  layoutStatusCard.innerHTML = `
+    <div class="bay-input-title">레이아웃 상태 및 상담 안내</div>
+    <div id="layoutConstraintStatus" class="layout-constraint-status" aria-live="polite"></div>
+    <div class="field-note">섹션 길이 ${SYSTEM_SECTION_LENGTH_CONSULT_AT_MM}mm 이상 또는 가장 낮은 높이 ${SYSTEM_LOWEST_HEIGHT_CONSULT_AT_MM}mm 이상이면 상담 안내로 처리됩니다.</div>
+  `;
+  container.appendChild(layoutStatusCard);
+
+  setSpaceExtraHeights(i, previousSpace.extraHeights || []);
+  bindLayoutTypeShapeEvents(layoutCard);
+  bindLayoutSectionLengthEvents(layoutCard);
+
   ["#spaceMin-0", "#spaceMax-0"].forEach((sel) => {
     $(sel)?.addEventListener("input", () => {
-      updatePreview();
-      autoCalculatePrice();
-      updateAddItemState();
+      refreshBuilderDerivedUI();
     });
   });
   $("#addSpaceExtra-0")?.addEventListener("click", () => {
@@ -3318,15 +3928,15 @@ function renderShapeSizeInputs() {
     const extraRow = document.createElement("div");
     extraRow.className = "space-extra-row";
     extraRow.innerHTML = `
-      <input type="number" data-space-extra-height="0" placeholder="개별높이 (1800~2700mm)" />
+      <input type="number" data-space-extra-height="0" placeholder="개별높이 (1800mm 이상)" />
       <button type="button" class="ghost-btn" data-space-extra-remove="0">삭제</button>
     `;
     list.appendChild(extraRow);
     bindSpaceExtraHeightEvents(0);
-    updatePreview();
-    autoCalculatePrice();
-    updateAddItemState();
+    refreshBuilderDerivedUI();
   });
+
+  syncLayoutConstraintIndicators();
 }
 
 function ensureShapeSizeInputRows() {
@@ -3459,9 +4069,11 @@ function renderShelfAddonSelection(id) {
 function renderActiveOptionModalAddonSelection() {
   if (activeCornerOptionId) {
     renderShelfAddonSelectionToTarget(activeCornerOptionId, "selectedCornerOptionAddon");
+    renderCornerOptionFrontPreview();
   }
   if (activeBayOptionId) {
     renderShelfAddonSelectionToTarget(activeBayOptionId, "selectedBayOptionAddon");
+    renderBayOptionFrontPreview();
   }
 }
 
@@ -3609,6 +4221,7 @@ function syncCornerOptionModal() {
   renderShelfAddonSelectionToTarget(corner.id, "selectedCornerOptionAddon");
   if (addonBtn) addonBtn.disabled = false;
   setFieldError(countInput, $("#cornerCountError"), "");
+  renderCornerOptionFrontPreview();
 }
 
 function openCornerOptionModal(cornerId) {
@@ -3652,6 +4265,7 @@ function syncBayOptionModal() {
 
   setFieldError(customInput, $("#bayWidthError"), "");
   setFieldError(countInput, $("#bayCountError"), "");
+  renderBayOptionFrontPreview();
 }
 
 function openBayOptionModal(shelfId) {
@@ -3660,6 +4274,244 @@ function openBayOptionModal(shelfId) {
   activeBayOptionId = shelfId;
   syncBayOptionModal();
   openModal("#bayOptionModal", { focusTarget: "#bayOptionModalTitle" });
+}
+
+function buildModalDraftAddonSummary(edgeId, rodCount) {
+  if (!edgeId) return "-";
+  const baseAddonIds = getShelfAddonIds(edgeId).filter((addonId) => addonId !== ADDON_CLOTHES_ROD_ID);
+  const normalizedRodCount = Number.isFinite(Number(rodCount))
+    ? Math.max(0, Math.floor(Number(rodCount)))
+    : 0;
+  for (let i = 0; i < normalizedRodCount; i += 1) {
+    baseAddonIds.push(ADDON_CLOTHES_ROD_ID);
+  }
+  return getShelfAddonSummary(baseAddonIds);
+}
+
+function getModuleOptionAverageHeightMm() {
+  const input = readCurrentInputs();
+  const layout = getLayoutConfigSnapshot(input);
+  const lowest = Number(layout.lowestHeightMm || 0);
+  const highest = Number(layout.highestHeightMm || 0);
+  if (lowest > 0 && highest > 0) return Math.round((lowest + highest) / 2);
+  if (highest > 0) return Math.round(highest);
+  if (lowest > 0) return Math.round(lowest);
+  return 0;
+}
+
+function buildModuleFrontPreviewGeometry({ shelfWidthMm, averageHeightMm } = {}) {
+  const columnThicknessMm = 20;
+  const shelfThicknessMm = 20;
+  const widthMm = Math.max(200, Math.round(Number(shelfWidthMm || 0) || 600));
+  const minHeightMm = Number(LIMITS.column.minLength || 1800);
+  const heightMm = Math.max(minHeightMm, Math.round(Number(averageHeightMm || 0) || minHeightMm));
+  const totalWidthMm = widthMm + columnThicknessMm * 2;
+  const widthMinRef = 400;
+  const widthMaxRef = 1000;
+  const heightMaxRef = Math.max(Number(LIMITS.column.maxLength || 2700) + 600, minHeightMm + 600);
+  const baselineShelfWidthMm = 400;
+  const baselineTotalWidthMm = baselineShelfWidthMm + columnThicknessMm * 2;
+  const clamp01 = (value) => Math.min(1, Math.max(0, Number(value || 0)));
+  const widthRatio = clamp01((widthMm - widthMinRef) / Math.max(1, widthMaxRef - widthMinRef));
+  const heightRatio = clamp01((heightMm - minHeightMm) / Math.max(1, heightMaxRef - minHeightMm));
+  const easedWidth = Math.pow(widthRatio, 0.82);
+  const easedHeight = Math.pow(heightRatio, 0.72);
+
+  // Schematic mode: horizontal size responds to shelf width, but vertical size is anchored to the 400mm baseline.
+  const totalWidthPx = Math.round(160 + easedWidth * 96); // 160 ~ 256
+  const baseHeightPx = Math.round(220 + easedHeight * 188); // 220 ~ 408
+  const baselineWidthRatio = clamp01((baselineShelfWidthMm - widthMinRef) / Math.max(1, widthMaxRef - widthMinRef));
+  const baselineEasedWidth = Math.pow(baselineWidthRatio, 0.82);
+  const baselineTotalWidthPx = Math.round(160 + baselineEasedWidth * 96); // 400mm 기준 폭 px
+  const actualAspectRatio = heightMm / Math.max(1, baselineTotalWidthMm);
+  const aspectRatioNorm = clamp01((actualAspectRatio - 2.0) / 2.8);
+  const visualAspectRatio = 1.65 + aspectRatioNorm * 0.95; // 1.65 ~ 2.60
+  const aspectDrivenHeightPx = Math.round(baselineTotalWidthPx * visualAspectRatio);
+  const heightPx = Math.min(460, Math.max(baseHeightPx, aspectDrivenHeightPx));
+  const exactScale = Math.max(0.02, Math.min(totalWidthPx / totalWidthMm, heightPx / heightMm));
+
+  // Thickness is shown as a schematic exaggeration while still based on the 20mm real thickness.
+  const exaggeratedThicknessPx = Math.round(columnThicknessMm * exactScale * 3.2);
+  const columnThicknessPx = Math.min(18, Math.max(7, exaggeratedThicknessPx));
+  const shelfThicknessPx = Math.min(14, Math.max(6, Math.round(shelfThicknessMm * exactScale * 3.0)));
+  const shelfWidthPx = Math.max(44, totalWidthPx - columnThicknessPx * 2);
+  const scale = exactScale;
+
+  return {
+    scale,
+    widthMm,
+    heightMm,
+    totalWidthMm,
+    totalWidthPx,
+    heightPx,
+    columnThicknessMm,
+    columnThicknessPx,
+    shelfThicknessMm,
+    shelfThicknessPx,
+    shelfWidthPx,
+  };
+}
+
+function buildModuleFrontPreviewHtml({
+  moduleLabel = "모듈",
+  sizeLabel = "",
+  shelfCount = 1,
+  addonSummary = "-",
+  type = "bay",
+  averageHeightMm = 0,
+  shelfWidthMm = 0,
+} = {}) {
+  const normalizedShelfCount = Math.max(1, Math.floor(Number(shelfCount || 1)));
+  const visibleShelfLineCount = Math.max(1, Math.min(8, normalizedShelfCount));
+  const overflowCount = normalizedShelfCount - visibleShelfLineCount;
+  const overflowBadge =
+    overflowCount > 0
+      ? `<span class="module-front-preview-chip">+${overflowCount}단 추가</span>`
+      : "";
+  const safeAddonSummary = addonSummary && addonSummary !== "-" ? addonSummary : "구성품 없음";
+  const avgHeight = Math.max(0, Math.round(Number(averageHeightMm || 0)));
+  const geometry = buildModuleFrontPreviewGeometry({ shelfWidthMm, averageHeightMm: avgHeight });
+  const shelfLinesHtml = Array.from({ length: visibleShelfLineCount }, (_, idx) => {
+    const ratio = visibleShelfLineCount === 1 ? 0.55 : (idx + 1) / (visibleShelfLineCount + 1);
+    return `
+      <div
+        class="module-front-preview-shelf-line"
+        style="
+          top:${Math.round(ratio * 100)}%;
+          left:${geometry.columnThicknessPx}px;
+          width:${geometry.shelfWidthPx}px;
+          height:${geometry.shelfThicknessPx}px;
+        "
+      ></div>
+    `;
+  }).join("");
+
+  return `
+    <div class="module-front-preview-card module-front-preview-card--${escapeHtml(type)}">
+      <div class="module-front-preview-head">
+        <div class="module-front-preview-title">${escapeHtml(moduleLabel)} 정면 미리보기</div>
+        ${sizeLabel ? `<span class="module-front-preview-chip">${escapeHtml(sizeLabel)}</span>` : ""}
+      </div>
+      <div class="module-front-preview-canvas" aria-hidden="true">
+        <div
+          class="module-front-preview-box module-front-preview-box--${escapeHtml(type)}"
+          style="width:${geometry.totalWidthPx}px; height:${geometry.heightPx}px;"
+        >
+          <div class="module-front-preview-side module-front-preview-side--left" style="width:${geometry.columnThicknessPx}px;"></div>
+          <div class="module-front-preview-side module-front-preview-side--right" style="width:${geometry.columnThicknessPx}px;"></div>
+          ${shelfLinesHtml}
+        </div>
+        ${overflowBadge}
+      </div>
+      <div class="module-front-preview-meta">
+        <div class="module-front-preview-row">
+          <span class="label">선반 갯수</span>
+          <strong>${normalizedShelfCount}개</strong>
+        </div>
+        <div class="module-front-preview-row">
+          <span class="label">평균 높이</span>
+          <span class="value">${avgHeight > 0 ? `${avgHeight}mm` : "-"}</span>
+        </div>
+        <div class="module-front-preview-row">
+          <span class="label">두께 기준</span>
+          <span class="value">기둥 ${geometry.columnThicknessMm}mm / 선반 ${geometry.shelfThicknessMm}mm</span>
+        </div>
+        <div class="module-front-preview-row">
+          <span class="label">구성품</span>
+          <span class="value">${escapeHtml(safeAddonSummary)}</span>
+        </div>
+      </div>
+      <div class="module-front-preview-note">도식화 미리보기 (가독성 우선, 실제 치수는 라벨 기준)</div>
+    </div>
+  `;
+}
+
+function renderBayOptionFrontPreview() {
+  const container = $("#bayOptionFrontPreview");
+  if (!container) return;
+  if (!activeBayOptionId) {
+    container.innerHTML = "";
+    return;
+  }
+  const shelf = findShelfById(activeBayOptionId);
+  if (!shelf) {
+    container.innerHTML = "";
+    return;
+  }
+  const presetSelect = $("#bayWidthPresetSelect");
+  const customInput = $("#bayWidthCustomInput");
+  const countInput = $("#bayCountInput");
+  const rodCountInput = $("#bayRodCountInput");
+  const isCustom = presetSelect?.value === "custom";
+  const widthValue = Number(
+    (isCustom ? customInput?.value : presetSelect?.value) || Number(shelf.width || 0) || 0
+  );
+  const shelfCount = Number(countInput?.value || shelf.count || 1);
+  const rodCount = Number(rodCountInput?.value || getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID) || 0);
+  const addonSummary = buildModalDraftAddonSummary(shelf.id, rodCount);
+  const averageHeightMm = getModuleOptionAverageHeightMm();
+  const sizeLabel = widthValue > 0 ? `폭 ${Math.round(widthValue)}mm` : "";
+  container.innerHTML = buildModuleFrontPreviewHtml({
+    moduleLabel: "모듈",
+    sizeLabel,
+    shelfCount,
+    addonSummary,
+    type: "bay",
+    averageHeightMm,
+    shelfWidthMm: widthValue,
+  });
+}
+
+function renderCornerOptionFrontPreview() {
+  const container = $("#cornerOptionFrontPreview");
+  if (!container) return;
+  if (!activeCornerOptionId) {
+    container.innerHTML = "";
+    return;
+  }
+  const corner = findShelfById(activeCornerOptionId);
+  if (!corner) {
+    container.innerHTML = "";
+    return;
+  }
+  const swapSelect = $("#cornerSwapSelect");
+  const countInput = $("#cornerCountInput");
+  const rodCountInput = $("#cornerRodCountInput");
+  const isSwap = swapSelect ? swapSelect.value === "swap" : Boolean(corner.swap);
+  const frontShelfWidthMm = isSwap ? 600 : 800;
+  const sizeLabel = isSwap ? "600 × 800mm" : "800 × 600mm";
+  const shelfCount = Number(countInput?.value || corner.count || 1);
+  const rodCount = Number(
+    rodCountInput?.value || getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID) || 0
+  );
+  const addonSummary = buildModalDraftAddonSummary(corner.id, rodCount);
+  const averageHeightMm = getModuleOptionAverageHeightMm();
+  container.innerHTML = buildModuleFrontPreviewHtml({
+    moduleLabel: getCornerLabel(corner),
+    sizeLabel,
+    shelfCount,
+    addonSummary,
+    type: "corner",
+    averageHeightMm,
+    shelfWidthMm: frontShelfWidthMm,
+  });
+}
+
+function bindOptionModalFrontPreviewEvents() {
+  [
+    ["#cornerSwapSelect", "change", renderCornerOptionFrontPreview],
+    ["#cornerCountInput", "input", renderCornerOptionFrontPreview],
+    ["#cornerRodCountInput", "input", renderCornerOptionFrontPreview],
+    ["#bayWidthPresetSelect", "change", renderBayOptionFrontPreview],
+    ["#bayWidthCustomInput", "input", renderBayOptionFrontPreview],
+    ["#bayCountInput", "input", renderBayOptionFrontPreview],
+    ["#bayRodCountInput", "input", renderBayOptionFrontPreview],
+  ].forEach(([selector, eventName, handler]) => {
+    const el = $(selector);
+    if (!el || el.dataset.frontPreviewBound === "true") return;
+    el.dataset.frontPreviewBound = "true";
+    el.addEventListener(eventName, handler);
+  });
 }
 
 function saveBayOptionModal() {
@@ -3929,19 +4781,26 @@ function commitBaysToEstimate() {
     showInfoModal(err);
     return;
   }
+  const layoutSpec = getLayoutConfigSnapshot(input);
+  const layoutConsult = evaluateLayoutConsultState(layoutSpec);
   const groupId = crypto.randomUUID();
   const columnCount = bays.length + 1;
-  const columnDetail = calcColumnsDetail({
+  let columnDetail = calcColumnsDetail({
     column: input.column,
     count: columnCount,
     quantity: 1,
   });
+  if (isLayoutConsultStatus(layoutConsult)) {
+    columnDetail = applyConsultPriceToDetail(columnDetail);
+  }
   state.items.push({
     id: `columns-${groupId}`,
     type: "columns",
     groupId,
     count: columnCount,
     column: { ...input.column },
+    layoutSpec,
+    layoutConsult,
     quantity: 1,
     ...columnDetail,
   });
@@ -3953,23 +4812,28 @@ function commitBaysToEstimate() {
       count: bay.count,
       customProcessing: bay.customProcessing,
     };
-    const detail = calcBayDetail({
+    let detail = calcBayDetail({
       shelf,
       addons: bay.addons,
       quantity: 1,
     });
+    if (isLayoutConsultStatus(layoutConsult)) {
+      detail = applyConsultPriceToDetail(detail);
+    }
     state.items.push({
       id: crypto.randomUUID(),
       type: "bay",
       groupId,
       shelf,
       addons: bay.addons,
+      layoutSpec,
+      layoutConsult,
       quantity: 1,
       ...detail,
     });
   });
 
-  updatePreview();
+  refreshBuilderDerivedUI({ preview: true, price: false, addItemState: false });
   renderTable();
   renderSummary();
 }
@@ -3994,6 +4858,10 @@ function renderTable() {
         const lines = [
           `기둥 ${escapeHtml(columnMat?.name || "-")} · ${escapeHtml(columnSize)} · ${item.count}개`,
         ];
+        const layoutLines = buildLayoutSpecLinesFromSnapshot(item.layoutSpec, item.layoutConsult, {
+          includeStatus: true,
+        });
+        layoutLines.forEach((line) => lines.push(escapeHtml(line)));
         if (item.isCustomPrice) lines.push("비규격 상담 안내");
         if (Number.isFinite(item.materialCost)) {
           lines.push(`자재비 ${item.materialCost.toLocaleString()}원`);
@@ -4043,11 +4911,14 @@ function renderTable() {
             );
             if (columnItem) {
               const columnCount = remainingBays.length + 1;
-              const detail = calcColumnsDetail({
+              let detail = calcColumnsDetail({
                 column: columnItem.column,
                 count: columnCount,
                 quantity: columnItem.quantity,
               });
+              if (isLayoutConsultStatus(columnItem.layoutConsult)) {
+                detail = applyConsultPriceToDetail(detail);
+              }
               Object.assign(columnItem, { count: columnCount, ...detail });
             }
           }
@@ -4076,22 +4947,28 @@ function updateItemQuantity(id, quantity) {
   if (idx === -1) return;
   const item = state.items[idx];
   if (item.type === "columns") {
-    const detail = calcColumnsDetail({
+    let detail = calcColumnsDetail({
       column: item.column,
       count: item.count,
       quantity,
     });
+    if (isLayoutConsultStatus(item.layoutConsult)) {
+      detail = applyConsultPriceToDetail(detail);
+    }
     state.items[idx] = { ...item, quantity, ...detail };
     renderTable();
     renderSummary();
     return;
   }
   if (item.type === "bay") {
-    const detail = calcBayDetail({
+    let detail = calcBayDetail({
       shelf: item.shelf,
       addons: item.addons,
       quantity,
     });
+    if (isLayoutConsultStatus(item.layoutConsult)) {
+      detail = applyConsultPriceToDetail(detail);
+    }
     state.items[idx] = { ...item, quantity, ...detail };
     renderTable();
     renderSummary();
@@ -4138,8 +5015,13 @@ function buildEmailContent() {
         const columnMat = SYSTEM_COLUMN_MATERIALS[item.column.materialId];
         const columnSize = formatColumnSize(item.column);
         const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
+        const layoutInline = buildLayoutSpecLinesFromSnapshot(item.layoutSpec, item.layoutConsult, {
+          includeStatus: true,
+        }).join(" / ");
         lines.push(
-          `${idx + 1}. 기둥 세트 x${item.quantity} | ${columnMat?.name || "-"} ${columnSize} ${item.count}개 | 금액 ${amountText}`
+          `${idx + 1}. 기둥 세트 x${item.quantity} | ${columnMat?.name || "-"} ${columnSize} ${item.count}개${
+            layoutInline ? ` | ${layoutInline}` : ""
+          } | 금액 ${amountText}`
         );
         return;
       }
@@ -4325,9 +5207,14 @@ function renderOrderCompleteDetails() {
               const columnMat = SYSTEM_COLUMN_MATERIALS[item.column.materialId];
               const columnSize = formatColumnSize(item.column);
               const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
+              const layoutInline = buildLayoutSpecLinesFromSnapshot(item.layoutSpec, item.layoutConsult, {
+                includeStatus: true,
+              }).join(" / ");
               return `<p class="item-line">${idx + 1}. 기둥 세트 x${item.quantity} · ${escapeHtml(
                 columnMat?.name || "-"
-              )} ${escapeHtml(columnSize)} ${item.count}개 · 금액 ${amountText}</p>`;
+              )} ${escapeHtml(columnSize)} ${item.count}개${
+                layoutInline ? ` · ${escapeHtml(layoutInline)}` : ""
+              } · 금액 ${amountText}</p>`;
             }
             if (item.type === "bay") {
               const shelfMat = SYSTEM_SHELF_MATERIALS[item.shelf.materialId];
@@ -4452,6 +5339,7 @@ function init() {
     resetOrderCompleteUI();
     initCollapsibleSections();
     renderSystemAddonModalCards();
+    bindOptionModalFrontPreviewEvents();
   } catch (err) {
     console.error("init base setup failed", err);
   }
@@ -4475,10 +5363,8 @@ function init() {
     renderBayInputs();
     renderTable();
     renderSummary();
-    updatePreview();
-    autoCalculatePrice();
+    refreshBuilderDerivedUI();
     updateBayAddonAvailability();
-    updateAddItemState();
     updateStepVisibility();
     updateBuilderHistoryButtons();
     requestStickyOffsetUpdate();
@@ -4511,6 +5397,7 @@ function init() {
     customInput.disabled = !isCustom;
     if (isCustom) customInput.focus();
     setFieldError(customInput, $("#bayWidthError"), "");
+    renderBayOptionFrontPreview();
   });
   $("#bayAddonBtn")?.addEventListener("click", () => {
     if (!activeBayOptionId) return;
@@ -4589,8 +5476,7 @@ function init() {
     $(picker.closeBtn)?.addEventListener("click", () => closeModal(picker.modalId));
     $(picker.backdrop)?.addEventListener("click", () => closeModal(picker.modalId));
     $(picker.thicknessSelectId)?.addEventListener("change", () => {
-      updatePreview();
-      autoCalculatePrice();
+      refreshBuilderDerivedUI({ preview: true, price: true });
     });
   });
 
