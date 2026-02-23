@@ -797,7 +797,7 @@ function validateInputs(input) {
   return null;
 }
 
-// 버튼: 도어담기
+// 버튼: 도어 담기
 const addItemBtn = $("#addItemBtn");
 if (addItemBtn) {
   addItemBtn.addEventListener("click", () => {
@@ -968,7 +968,7 @@ function goToNextStep() {
     const hasMaterial = state.items.some((it) => it.type !== "addon");
     const hasAddon = state.items.some((it) => it.type === "addon");
     if (!hasMaterial && !hasAddon) {
-      showInfoModal("도어이나 부자재 중 하나 이상 담아주세요.");
+      showInfoModal("도어나 부자재 중 하나 이상 담아주세요.");
       return;
     }
     currentPhase = 3;

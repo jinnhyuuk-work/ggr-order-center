@@ -4,6 +4,19 @@ export const EMAILJS_CONFIG = {
   publicKey: "dUvt2iF9ciN8bvf6r",
 };
 
+const MODAL_FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(", ");
+
+let activeModalState = null;
+let modalKeyHandlerBound = false;
+let autoModalTitleIdSeq = 0;
+
 export function formatPrice(value) {
   return Number(value || 0).toLocaleString();
 }
@@ -31,6 +44,99 @@ function resolveElement(target) {
   return typeof target === "string" ? document.querySelector(target) : target;
 }
 
+function getModalContent(modalEl) {
+  return modalEl?.querySelector(".modal-content") || modalEl;
+}
+
+function ensureModalA11y(modalEl) {
+  if (!modalEl) return;
+  modalEl.setAttribute("role", "dialog");
+  modalEl.setAttribute("aria-modal", "true");
+  modalEl.setAttribute("aria-hidden", modalEl.classList.contains("hidden") ? "true" : "false");
+
+  const contentEl = getModalContent(modalEl);
+  if (contentEl && !contentEl.hasAttribute("tabindex")) {
+    contentEl.setAttribute("tabindex", "-1");
+  }
+
+  const labelledBy = modalEl.getAttribute("aria-labelledby");
+  if (labelledBy) return;
+
+  const titleEl =
+    modalEl.querySelector(".modal-header h1, .modal-header h2, .modal-header h3, .modal-header h4, .modal-header h5, .modal-header h6") ||
+    modalEl.querySelector("h1, h2, h3, h4, h5, h6");
+  if (!titleEl) return;
+
+  if (!titleEl.id) {
+    autoModalTitleIdSeq += 1;
+    titleEl.id = `modalTitleAuto${autoModalTitleIdSeq}`;
+  }
+  modalEl.setAttribute("aria-labelledby", titleEl.id);
+}
+
+function getFocusableElements(modalEl) {
+  const contentEl = getModalContent(modalEl);
+  if (!contentEl) return [];
+  return Array.from(contentEl.querySelectorAll(MODAL_FOCUSABLE_SELECTOR)).filter((el) => {
+    if (!(el instanceof HTMLElement)) return false;
+    if (el.hidden) return false;
+    if (el.getAttribute("aria-hidden") === "true") return false;
+    if (el.tabIndex < 0) return false;
+    return el.offsetParent !== null || el === document.activeElement;
+  });
+}
+
+function trapFocusInActiveModal(event) {
+  const modalEl = activeModalState?.modalEl;
+  if (!modalEl || event.key !== "Tab") return;
+  const focusables = getFocusableElements(modalEl);
+  if (focusables.length === 0) {
+    event.preventDefault();
+    getModalContent(modalEl)?.focus();
+    return;
+  }
+
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement;
+
+  if (event.shiftKey) {
+    if (active === first || !modalEl.contains(active)) {
+      event.preventDefault();
+      last.focus();
+    }
+    return;
+  }
+
+  if (active === last || !modalEl.contains(active)) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function handleGlobalModalKeydown(event) {
+  const modalEl = activeModalState?.modalEl;
+  if (!modalEl) return;
+  if (modalEl.classList.contains("hidden")) {
+    activeModalState = null;
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeModal(modalEl);
+    return;
+  }
+
+  trapFocusInActiveModal(event);
+}
+
+function ensureModalKeyHandler() {
+  if (typeof document === "undefined" || modalKeyHandlerBound) return;
+  document.addEventListener("keydown", handleGlobalModalKeydown, true);
+  modalKeyHandlerBound = true;
+}
+
 function resetModalScroll(modal, bodySelector) {
   const body = bodySelector ? modal?.querySelector(bodySelector) : null;
   if (!body) return;
@@ -48,20 +154,44 @@ function resetModalScroll(modal, bodySelector) {
 
 export function openModal(modal, { focusTarget = null, bodySelector = ".modal-body", resetScroll = true } = {}) {
   if (typeof document === "undefined") return;
-  document.activeElement?.blur();
+  const previousActive = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const modalEl = resolveElement(modal);
+  if (!modalEl) return;
+  ensureModalKeyHandler();
+  ensureModalA11y(modalEl);
+  previousActive?.blur?.();
   modalEl?.classList.remove("hidden");
+  modalEl?.setAttribute("aria-hidden", "false");
+  activeModalState = {
+    modalEl,
+    returnFocusEl: previousActive && document.contains(previousActive) ? previousActive : null,
+  };
   const focusEl = resolveElement(focusTarget);
-  focusEl?.focus();
+  const fallbackFocus =
+    focusEl ||
+    getFocusableElements(modalEl)[0] ||
+    modalEl.querySelector(".modal-header [tabindex], .modal-header h1, .modal-header h2, .modal-header h3") ||
+    getModalContent(modalEl);
+  fallbackFocus?.focus?.();
   if (resetScroll) resetModalScroll(modalEl, bodySelector);
 }
 
 export function closeModal(modal, { bodySelector = ".modal-body", resetScroll = true } = {}) {
   if (typeof document === "undefined") return;
-  document.activeElement?.blur();
   const modalEl = resolveElement(modal);
+  if (!modalEl) return;
+  const shouldRestoreFocus = activeModalState?.modalEl === modalEl;
+  const returnFocusEl = shouldRestoreFocus ? activeModalState?.returnFocusEl : null;
+  document.activeElement?.blur?.();
   if (resetScroll) resetModalScroll(modalEl, bodySelector);
   modalEl?.classList.add("hidden");
+  modalEl?.setAttribute("aria-hidden", "true");
+  if (shouldRestoreFocus) {
+    activeModalState = null;
+    if (returnFocusEl && document.contains(returnFocusEl) && typeof returnFocusEl.focus === "function") {
+      returnFocusEl.focus();
+    }
+  }
 }
 
 export function getCustomerInfo({

@@ -40,10 +40,20 @@ const SUPPORT_BRACKET_WIDTH_MM = 15;
 const SUPPORT_BRACKET_INSERT_MM = 10;
 const SUPPORT_VISIBLE_MM = SUPPORT_BRACKET_WIDTH_MM - SUPPORT_BRACKET_INSERT_MM;
 const ADDON_CLOTHES_ROD_ID = "clothes_rod";
+const SYSTEM_SHAPE_DEFAULT = "box_shape";
+const SYSTEM_SHAPE_KEYS = Object.freeze(["i_single", "l_shape", "u_shape", "box_shape"]);
+const SYSTEM_LAYOUT_TYPE_LABELS = Object.freeze({
+  i_single: "ㅣ자",
+  l_shape: "ㄱ자",
+  u_shape: "ㄷ자",
+  box_shape: "ㅁ자",
+});
+const SYSTEM_SECTION_LENGTH_MIN_MM = 460;
+const SYSTEM_SECTION_LENGTH_CONSULT_AT_MM = 8000;
+const SYSTEM_LOWEST_HEIGHT_CONSULT_AT_MM = 2700;
 
 const SHAPE_BAY_COUNTS = {
   i_single: 1,
-  i_double: 2,
   l_shape: 2,
   u_shape: 3,
   box_shape: 4,
@@ -51,10 +61,66 @@ const SHAPE_BAY_COUNTS = {
 const FREE_LAYOUT_MODE = true;
 const BUILDER_HISTORY_LIMIT = 80;
 
+function normalizeSystemShape(shape) {
+  return SYSTEM_SHAPE_KEYS.includes(shape) ? shape : SYSTEM_SHAPE_DEFAULT;
+}
+
+function getSectionCountForShape(shape) {
+  return SHAPE_BAY_COUNTS[normalizeSystemShape(shape)] || 1;
+}
+
+function createDefaultLayoutConfig(shape = SYSTEM_SHAPE_DEFAULT) {
+  const normalizedShape = normalizeSystemShape(shape);
+  const sectionCount = getSectionCountForShape(normalizedShape);
+  return {
+    shapeType: normalizedShape,
+    // S-01: 신규 타입/섹션 기능을 위한 상태 모델만 먼저 준비한다.
+    sections: Array.from({ length: sectionCount }, (_, idx) => ({
+      id: `section-${idx + 1}`,
+      lengthMm: 0,
+      label: `섹션${idx + 1}`,
+    })),
+    lowestHeightMm: 0,
+    status: "ok", // ok | consult | invalid (S-04에서 판정 연결)
+    consultReasons: [],
+    constraints: {
+      sectionLengthMinMm: SYSTEM_SECTION_LENGTH_MIN_MM,
+      consultSectionLengthAtMm: SYSTEM_SECTION_LENGTH_CONSULT_AT_MM,
+      consultLowestHeightAtMm: SYSTEM_LOWEST_HEIGHT_CONSULT_AT_MM,
+    },
+  };
+}
+
+function syncLayoutConfigShape(nextShape) {
+  const normalizedShape = normalizeSystemShape(nextShape);
+  const prev = state.layoutConfig || createDefaultLayoutConfig(normalizedShape);
+  const nextSectionCount = getSectionCountForShape(normalizedShape);
+  const nextSections = Array.from({ length: nextSectionCount }, (_, idx) => {
+    const prevSection = prev.sections?.[idx];
+    return {
+      id: prevSection?.id || `section-${idx + 1}`,
+      lengthMm: Number(prevSection?.lengthMm || 0),
+      label: prevSection?.label || `섹션${idx + 1}`,
+    };
+  });
+  state.layoutConfig = {
+    ...prev,
+    shapeType: normalizedShape,
+    sections: nextSections,
+    constraints: {
+      sectionLengthMinMm: SYSTEM_SECTION_LENGTH_MIN_MM,
+      consultSectionLengthAtMm: SYSTEM_SECTION_LENGTH_CONSULT_AT_MM,
+      consultLowestHeightAtMm: SYSTEM_LOWEST_HEIGHT_CONSULT_AT_MM,
+    },
+  };
+  return state.layoutConfig;
+}
+
 const state = {
   items: [],
   shelfAddons: {},
   graph: null,
+  layoutConfig: createDefaultLayoutConfig(),
 };
 
 let currentPhase = 1;
@@ -279,11 +345,11 @@ function updateThicknessOptions(picker) {
 }
 
 function getSelectedShape() {
-  return "box_shape";
+  return normalizeSystemShape(state.layoutConfig?.shapeType);
 }
 
 function getBayCountForShape(shape) {
-  return SHAPE_BAY_COUNTS[shape] || 1;
+  return SHAPE_BAY_COUNTS[normalizeSystemShape(shape)] || 1;
 }
 
 function getCornerFlags(shape) {
@@ -445,7 +511,9 @@ function directionToSideIndex(dx, dy) {
 }
 
 function initShelfStateForShape(shape) {
-  state.graph = createGraphForShape(shape);
+  const normalizedShape = normalizeSystemShape(shape);
+  syncLayoutConfigShape(normalizedShape);
+  state.graph = createGraphForShape(normalizedShape);
 }
 
 function readCurrentInputs() {
