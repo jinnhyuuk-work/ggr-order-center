@@ -182,10 +182,21 @@ export function closeModal(modal, { bodySelector = ".modal-body", resetScroll = 
   if (!modalEl) return;
   const shouldRestoreFocus = activeModalState?.modalEl === modalEl;
   const returnFocusEl = shouldRestoreFocus ? activeModalState?.returnFocusEl : null;
+  const modalCloseDetail = { modalId: modalEl.id || "", modalEl };
+  try {
+    modalEl.dispatchEvent(new CustomEvent("app:modal-before-close", { bubbles: true, detail: modalCloseDetail }));
+  } catch (_err) {
+    // Ignore CustomEvent dispatch issues in constrained environments.
+  }
   document.activeElement?.blur?.();
   if (resetScroll) resetModalScroll(modalEl, bodySelector);
   modalEl?.classList.add("hidden");
   modalEl?.setAttribute("aria-hidden", "true");
+  try {
+    modalEl.dispatchEvent(new CustomEvent("app:modal-closed", { bubbles: true, detail: modalCloseDetail }));
+  } catch (_err) {
+    // Ignore CustomEvent dispatch issues in constrained environments.
+  }
   if (shouldRestoreFocus) {
     activeModalState = null;
     if (returnFocusEl && document.contains(returnFocusEl) && typeof returnFocusEl.focus === "function") {
