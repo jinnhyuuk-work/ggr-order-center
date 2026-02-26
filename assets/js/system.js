@@ -25,62 +25,79 @@ import {
 import {
   setPreviewAddFlowStep,
   setPreviewAddFlowTarget,
-  buildPreviewAddClosePlan,
+  buildPreviewAddCloseUiDispatchPlan,
   buildPreviewAddTypeModalOpenViewModel,
+  buildPreviewAddTypeModalOpenUiExecutionPlan,
   buildPreviewAddTypeModalStepViewState,
-  buildPreviewAddTypeSelectionOutcome,
+  buildPreviewAddTypeSelectionUiExecutionPlan,
+  buildPreviewAddTypeSelectionUiDispatchPlan,
   buildRootCornerStartTargetVariant,
   hasSelectedRootCornerStartDirection,
   buildPreviewAddRootCornerDirectionBlockedMessages,
-  buildPreviewAddRootCornerDirectionSelectionOutcome,
-  getPreviewAddTypeStepInitialFocusKey,
-  getPreviewAddRootCornerStepInitialFocusKey,
-  buildPreviewModuleActionModalOpenViewModel,
+  buildPreviewAddRootCornerDirectionSelectionUiExecutionPlan,
+  buildPreviewAddRootCornerDirectionSelectionUiDispatchPlan,
+  buildPreviewAddTypeBackUiExecutionPlan,
+  buildPreviewModuleActionModalOpenUiExecutionPlan,
+  buildPreviewModuleActionModalOpenUiDispatchPlan,
   buildPreviewModuleActionRemoveTransition,
   setPreviewModuleActionFlowTarget,
-  buildPreviewModuleActionClosePlan,
+  buildPreviewModuleActionCloseUiDispatchPlan,
   getClosedModalIdFromEvent,
   buildPendingDirectComposeCleanupPlan,
-  buildPresetModuleOptionClosePlan,
+  buildPendingDirectComposeCleanupRuntimePlan,
+  buildPresetModuleOptionCloseUiDispatchPlan,
   setPreviewPresetPickerOpenState,
   clonePreviewAddTargetSnapshot,
   clonePresetModuleOptionBackContext,
-  buildPresetModuleOptionOpenTransition,
+  buildPresetModuleOptionOpenUiDispatchPlan,
   buildPresetModuleOptionCustomComposeSessionBootstrap,
+  buildPresetModuleOptionCustomComposeBootstrapUiExecutionPlan,
   buildPendingCornerComposeEdge,
   buildPendingCornerComposeEdgeCreatePlan,
+  buildPreviewPresetCornerEdge,
   buildPresetModuleOptionCustomCornerComposeValidation,
-  buildDirectComposePendingCreationResult,
+  buildPresetModuleOptionCustomCornerCreationUiExecutionPlan,
+  buildPresetModuleOptionCustomComposeCreationUiExecutionPlan,
   buildPendingBayComposeAddOptions,
   buildPreviewAddSourceResolutionResult,
+  buildPreviewAddNormalCommitUiExecutionPlan,
+  buildPreviewAddCornerCommitUiExecutionPlan,
+  buildPreviewPresetNormalAddUiExecutionPlan,
+  buildPreviewPresetCornerAddUiExecutionPlan,
+  buildPresetModuleOptionCustomComposeSourceUiExecutionPlan,
   buildPresetModuleOptionDraftAfterFilterChange,
   buildPresetModuleOptionDraftAfterTabChange,
   buildPresetModuleOptionDraftForReopenAfterPresetPicker,
   buildPresetModuleOptionDraftAfterPresetPickerSelection,
-  buildPreviewPresetPickerSelectionTransition,
   normalizePresetModuleOptionDraftForSync,
-  buildPresetModuleOptionTextViewState,
-  buildPresetModuleOptionBackButtonViewState,
-  buildPresetModuleOptionSaveButtonStateForSync,
-  buildPresetModuleOptionCustomSyncRunPlan,
-  buildPresetModuleOptionCustomPostSyncPlan,
-  buildPresetModuleOptionSaveExecutionPlan,
-  buildPresetModuleOptionPresetSaveRuntimePlan,
+  buildPresetModuleOptionSyncPreViewModel,
+  buildPresetModuleOptionCustomSyncResolvedViewModel,
+  buildPresetModuleOptionSyncDomUiViewModel,
+  buildPresetModuleOptionCustomSyncPreUiDispatchPlan,
+  buildPresetModuleOptionCustomSyncPostUiDispatchPlan,
+  buildPresetModuleOptionSaveUiDispatchPlan,
+  buildPresetModuleOptionSaveRuntimeUiDispatchPlan,
   isPresetModuleOptionCustomTabActive,
-  buildPreviewPresetPickerModalOpenTransition,
-  buildPreviewPresetPickerVisibleSelectionState,
-  buildPreviewPresetPickerCardSelectionTransition,
+  buildPreviewPresetPickerOpenUiExecutionPlan,
+  buildPreviewPresetPickerOpenUiDispatchPlan,
+  resolvePreviewPresetPickerTargetEdgeForOpenContext,
+  buildPreviewPresetPickerVisibleSelectionPatch,
+  buildPreviewPresetPickerCardClickUiExecutionPlan,
+  buildPreviewPresetPickerApplyRuntimeUiDispatchPlan,
   buildPreviewPresetPickerDefaultOpenState,
   resolvePreviewPresetDefaultFilterKeyForTargetEdge,
-  buildPreviewPresetApplyDispatchPlan,
+  buildPreviewPresetApplyRuntimeUiDispatchPlan,
   resolvePreviewPresetMatchedIdForTargetEdge,
   buildPreviewPresetPickerOpenFromPresetModuleOption,
-  buildPreviewPresetPickerClosePlan,
+  buildPreviewPresetPickerCloseUiDispatchPlan,
   buildPreviewModuleActionBackContext,
   buildPreviewAddPresetModuleOptionOpenPlan,
+  buildPresetModuleOptionOpenFromPreviewAddUiDispatchPlan,
+  buildPresetModuleOptionOpenFromPreviewAddExceptionUiDispatchPlan,
   buildPreviewAddOpenArgsFromBackContext,
-  buildPresetModuleOptionBackNavigation,
+  buildPresetModuleOptionBackUiDispatchPlan,
   buildPresetModuleOptionOpenFromPreviewModuleActionFlow,
+  buildPresetModuleOptionOpenFromPreviewModuleActionUiDispatchPlan,
   buildPresetModuleOptionOpenFromDirectComposeEdge,
   normalizePreviewModuleType,
   normalizePreviewEdgeType,
@@ -1021,6 +1038,85 @@ function getPreviewAddTypeModalElements() {
   };
 }
 
+function applyPreviewAddTypeModalOpenUiView(openUiPlan) {
+  const {
+    modal,
+    cornerBtn: modalCornerBtn,
+    normalBtn: modalNormalBtn,
+    titleEl: modalTitleEl,
+  } = getPreviewAddTypeModalElements();
+  const openViewState = openUiPlan?.openViewState;
+  if (!openViewState) {
+    return {
+      modal,
+      modalCornerBtn,
+      modalNormalBtn,
+      modalTitleEl,
+    };
+  }
+  [modalNormalBtn].filter(Boolean).forEach((btn) => {
+    btn.disabled = Boolean(openViewState.normalButton?.disabled);
+    if (openViewState.normalButton?.title) btn.title = openViewState.normalButton.title;
+    else btn.removeAttribute("title");
+  });
+  [modalCornerBtn].filter(Boolean).forEach((btn) => {
+    btn.disabled = Boolean(openViewState.cornerButton?.disabled);
+    if (openViewState.cornerButton?.title) btn.title = openViewState.cornerButton.title;
+    else btn.removeAttribute("title");
+  });
+  setPreviewAddTypeErrorMessage(openViewState.error?.message || "", {
+    isError: Boolean(openViewState.error?.isError),
+  });
+  return {
+    modal,
+    modalCornerBtn,
+    modalNormalBtn,
+    modalTitleEl,
+  };
+}
+
+function focusPreviewAddTypeModalInitialTarget(openUiPlan, elements = {}) {
+  const { modalNormalBtn, modalCornerBtn, modalTitleEl } = elements || {};
+  const focusKey = String(openUiPlan?.initialFocusKey || "title");
+  if (focusKey === "normal" && modalNormalBtn) {
+    modalNormalBtn.focus();
+    return;
+  }
+  if (focusKey === "corner" && modalCornerBtn) {
+    modalCornerBtn.focus();
+    return;
+  }
+  modalTitleEl?.focus();
+}
+
+function focusPreviewAddTypeModalStepTarget(focusKey, elements = {}) {
+  const {
+    rootCornerRightBtn,
+    rootCornerLeftBtn,
+    normalBtn,
+    cornerBtn,
+    titleEl,
+  } = elements || {};
+  const key = String(focusKey || "title");
+  if (key === "right" && rootCornerRightBtn) {
+    rootCornerRightBtn.focus();
+    return;
+  }
+  if (key === "left" && rootCornerLeftBtn) {
+    rootCornerLeftBtn.focus();
+    return;
+  }
+  if (key === "normal" && normalBtn) {
+    normalBtn.focus();
+    return;
+  }
+  if (key === "corner" && cornerBtn) {
+    cornerBtn.focus();
+    return;
+  }
+  titleEl?.focus();
+}
+
 function setPreviewAddTypeModalStep(step = "type", selectedModuleType = "") {
   setPreviewAddFlowStep(previewAddFlowState, step, selectedModuleType);
 
@@ -1088,101 +1184,94 @@ function handlePreviewAddModalTypeSelect(moduleType) {
   const sourceBtn = normalizedType === "corner" ? cornerBtn : normalBtn;
   if (!sourceBtn || sourceBtn.disabled) return;
   setPreviewAddTypeErrorMessage("", { isError: false });
-  const selectionOutcome = buildPreviewAddTypeSelectionOutcome({
+  const uiPlan = buildPreviewAddTypeSelectionUiExecutionPlan({
     moduleType: normalizedType,
     previewAddFlowState,
+    rootCornerRightDisabled: Boolean(rootCornerRightBtn?.disabled),
+    rootCornerLeftDisabled: Boolean(rootCornerLeftBtn?.disabled),
   });
-  if (selectionOutcome.route === "root-corner-direction") {
-    setPreviewAddTypeModalStep("root-corner-direction", "corner");
+  const dispatchPlan = buildPreviewAddTypeSelectionUiDispatchPlan(uiPlan);
+  if (dispatchPlan.route === "root-corner-direction") {
+    setPreviewAddTypeModalStep(dispatchPlan.nextStep, dispatchPlan.selectedModuleType);
     requestAnimationFrame(() => {
-      const focusKey = getPreviewAddRootCornerStepInitialFocusKey({
-        rightDisabled: Boolean(rootCornerRightBtn?.disabled),
-        leftDisabled: Boolean(rootCornerLeftBtn?.disabled),
+      focusPreviewAddTypeModalStepTarget(dispatchPlan.focusKey, {
+        rootCornerRightBtn,
+        rootCornerLeftBtn,
+        titleEl,
       });
-      if (focusKey === "right" && rootCornerRightBtn) {
-        rootCornerRightBtn.focus();
-        return;
-      }
-      if (focusKey === "left" && rootCornerLeftBtn) {
-        rootCornerLeftBtn.focus();
-        return;
-      }
-      titleEl?.focus();
     });
     return;
   }
-  if (selectionOutcome.route === "error") {
-    setPreviewAddTypeErrorMessage(String(selectionOutcome.errorMessage || ""), { isError: true });
+  if (dispatchPlan.route === "error") {
+    setPreviewAddTypeErrorMessage(String(dispatchPlan.errorMessage || ""), { isError: true });
     return;
   }
-  openPresetModuleOptionFromPreviewAdd(normalizedType, selectionOutcome.nextOpen);
+  if (dispatchPlan.clearErrorMessage) setPreviewAddTypeErrorMessage("", { isError: false });
+  openPresetModuleOptionFromPreviewAdd(dispatchPlan.normalizedType, dispatchPlan.nextOpen);
 }
 
 function handlePreviewAddModalRootCornerDirectionSelect(direction = "right") {
   const normalizedDirection = direction === "left" ? "left" : "right";
-  const { rootCornerRightBtn, rootCornerLeftBtn, titleEl } = getPreviewAddTypeModalElements();
+  const { rootCornerRightBtn, rootCornerLeftBtn } = getPreviewAddTypeModalElements();
   const sourceBtn = normalizedDirection === "left" ? rootCornerLeftBtn : rootCornerRightBtn;
   if (!sourceBtn || sourceBtn.disabled) return;
-  const selectionOutcome = buildPreviewAddRootCornerDirectionSelectionOutcome({
+  const uiPlan = buildPreviewAddRootCornerDirectionSelectionUiExecutionPlan({
     direction: normalizedDirection,
     previewAddFlowState,
     getBlockedMessageForTarget: (previewTarget) =>
       getCornerAttachSideBlockedMessage(previewTarget, getSelectedShape()),
     requiredMessage: getRootCornerDirectionRequiredMessage(),
   });
-  if (selectionOutcome.route === "error") {
-    setPreviewAddTypeErrorMessage(selectionOutcome.errorMessage, { isError: true });
+  const dispatchPlan = buildPreviewAddRootCornerDirectionSelectionUiDispatchPlan(uiPlan);
+  if (dispatchPlan.route === "error") {
+    setPreviewAddTypeErrorMessage(dispatchPlan.errorMessage, { isError: true });
     return;
   }
-  setPreviewAddTypeErrorMessage("", { isError: false });
-  openPresetModuleOptionFromPreviewAdd("corner", selectionOutcome.nextOpen);
+  if (dispatchPlan.clearErrorMessage) setPreviewAddTypeErrorMessage("", { isError: false });
+  openPresetModuleOptionFromPreviewAdd(dispatchPlan.normalizedType, dispatchPlan.nextOpen);
 }
 
 function openPresetModuleOptionFromPreviewAdd(moduleType = "normal", prebuiltNextOpen = null) {
   const openPlan = prebuiltNextOpen
     ? { ok: true, nextOpen: prebuiltNextOpen }
     : buildPreviewAddPresetModuleOptionOpenPlan(previewAddFlowState, moduleType);
-  if (!openPlan.ok || !openPlan.nextOpen) {
-    setPreviewAddTypeErrorMessage(String(openPlan.errorMessage || ""), { isError: true });
+  const dispatchPlan = buildPresetModuleOptionOpenFromPreviewAddUiDispatchPlan({
+    prebuiltNextOpen,
+    openPlan,
+  });
+  if (dispatchPlan.route !== "open" || !dispatchPlan.nextOpen) {
+    setPreviewAddTypeErrorMessage(String(dispatchPlan.errorMessage || ""), { isError: true });
     return false;
   }
   try {
-    openPresetModuleOptionModal(openPlan.nextOpen.moduleType, openPlan.nextOpen.options);
+    openPresetModuleOptionModal(dispatchPlan.nextOpen.moduleType, dispatchPlan.nextOpen.options);
     closePreviewAddTypePicker({ clearTarget: false });
     return true;
   } catch (err) {
     console.error("[system] Failed to open preset module option modal from preview add", err);
-    const errorDetail =
-      err instanceof Error && err.message
-        ? ` (${err.message})`
-        : "";
-    setPreviewAddTypeErrorMessage(
-      `다음 모듈 구성 화면을 여는 중 오류가 발생했습니다.${errorDetail}`,
-      { isError: true }
-    );
+    const exceptionUiPlan = buildPresetModuleOptionOpenFromPreviewAddExceptionUiDispatchPlan(err);
+    setPreviewAddTypeErrorMessage(exceptionUiPlan.errorMessage, { isError: true });
     return false;
   }
 }
 
 function handlePreviewAddModalBack() {
-  setPreviewAddTypeErrorMessage("", { isError: false });
   const { normalBtn, cornerBtn, titleEl } =
     getPreviewAddTypeModalElements();
-  setPreviewAddTypeModalStep("type", "");
+  const backUiPlan = buildPreviewAddTypeBackUiExecutionPlan({
+    normalDisabled: Boolean(normalBtn?.disabled),
+    cornerDisabled: Boolean(cornerBtn?.disabled),
+  });
+  if (backUiPlan.shouldClearError) {
+    setPreviewAddTypeErrorMessage("", { isError: false });
+  }
+  setPreviewAddTypeModalStep(backUiPlan.nextStep, backUiPlan.selectedModuleType);
   requestAnimationFrame(() => {
-    const focusKey = getPreviewAddTypeStepInitialFocusKey({
-      normalDisabled: Boolean(normalBtn?.disabled),
-      cornerDisabled: Boolean(cornerBtn?.disabled),
+    focusPreviewAddTypeModalStepTarget(backUiPlan.focusKey, {
+      normalBtn,
+      cornerBtn,
+      titleEl,
     });
-    if (focusKey === "normal" && normalBtn) {
-      normalBtn.focus();
-      return;
-    }
-    if (focusKey === "corner" && cornerBtn) {
-      cornerBtn.focus();
-      return;
-    }
-    titleEl?.focus();
   });
 }
 
@@ -1194,23 +1283,13 @@ function setPreviewPresetModuleError(message = "") {
 }
 
 function closePreviewPresetModuleModal({ returnFocus = true, clearTarget = true } = {}) {
-  const closePlan = buildPreviewPresetPickerClosePlan(previewPresetPickerFlowState, {
+  const closeUiPlan = buildPreviewPresetPickerCloseUiDispatchPlan(previewPresetPickerFlowState, {
     fallbackFocusEl: previewAddFlowState.anchorEl,
     returnFocus,
     clearTarget,
   });
   closeModal("#previewPresetModuleModal");
-  setPreviewPresetModuleError("");
-  resetPreviewPresetPickerFlowState(previewPresetPickerFlowState);
-  if (closePlan.shouldRestoreFocus && closePlan.focusTarget?.isConnected) {
-    closePlan.focusTarget.focus();
-  }
-  if (closePlan.shouldClearPreviewAddTarget) {
-    clearPreviewAddFlowTarget(previewAddFlowState);
-  }
-  if (closePlan.returnsToPresetModuleOption) {
-    reopenPresetModuleOptionModalAfterPresetPicker();
-  }
+  applyPreviewPresetPickerCloseUiDispatchPlanToRuntime(closeUiPlan);
 }
 
 function setPresetModuleOptionError(message = "") {
@@ -1385,6 +1464,225 @@ function renderPresetModuleOptionFrontPreview() {
   });
 }
 
+function applyPresetModuleOptionSyncDomUiViewModel({
+  domUiViewModel,
+  filterOptions,
+  elements,
+} = {}) {
+  const viewModel = domUiViewModel && typeof domUiViewModel === "object" ? domUiViewModel : null;
+  if (!viewModel) return;
+  const {
+    titleEl,
+    pickerBtn,
+    filterLabelEl,
+    filterNoteEl,
+    filterSelectEl,
+    backBtn,
+    presetTabBtn,
+    customTabBtn,
+    presetPanelEl,
+    customPanelEl,
+    customBayPanelEl,
+    customCornerPanelEl,
+    unifiedPreviewEl,
+    saveBtn,
+  } = elements || {};
+
+  if (titleEl) titleEl.textContent = viewModel.title;
+  if (presetTabBtn) {
+    presetTabBtn.classList.toggle("active", viewModel.tab.presetActive);
+    presetTabBtn.setAttribute("aria-selected", viewModel.tab.presetActive ? "true" : "false");
+  }
+  if (customTabBtn) {
+    customTabBtn.classList.toggle("active", viewModel.tab.customActive);
+    customTabBtn.setAttribute("aria-selected", viewModel.tab.customActive ? "true" : "false");
+  }
+  if (presetPanelEl) presetPanelEl.classList.toggle("hidden", !viewModel.panel.showPresetPanel);
+  if (customPanelEl) customPanelEl.classList.toggle("hidden", !viewModel.panel.showCustomPanel);
+  if (unifiedPreviewEl) {
+    unifiedPreviewEl.classList.toggle("hidden", !viewModel.panel.showUnifiedPreview);
+  }
+  if (customBayPanelEl) {
+    customBayPanelEl.classList.toggle("hidden", !viewModel.panel.showCustomBayPanel);
+  }
+  if (customCornerPanelEl) {
+    customCornerPanelEl.classList.toggle("hidden", !viewModel.panel.showCustomCornerPanel);
+  }
+  if (filterLabelEl) filterLabelEl.textContent = viewModel.filterLabel;
+  if (filterNoteEl) filterNoteEl.textContent = viewModel.filterNote;
+  if (filterSelectEl) {
+    filterSelectEl.innerHTML = (Array.isArray(filterOptions) ? filterOptions : [])
+      .map((option) => `<option value="${escapeHtml(option.key)}">${escapeHtml(option.label)}</option>`)
+      .join("");
+    filterSelectEl.value = viewModel.filterSelectValue;
+  }
+  if (pickerBtn) pickerBtn.textContent = viewModel.pickerButtonText;
+  if (backBtn) {
+    const backBtnState = viewModel.backBtnState;
+    backBtn.classList.toggle("hidden", backBtnState.hidden);
+    backBtn.disabled = backBtnState.disabled;
+    backBtn.classList.toggle("btn-disabled", backBtnState.disabledClass);
+  }
+  if (saveBtn) {
+    const saveBtnState = viewModel.saveBtnState;
+    saveBtn.disabled = saveBtnState.disabled;
+    saveBtn.classList.toggle("btn-disabled", saveBtnState.disabledClass);
+    saveBtn.classList.toggle("hidden", saveBtnState.hidden);
+    if (saveBtnState.title) saveBtn.title = saveBtnState.title;
+    else saveBtn.removeAttribute("title");
+  }
+}
+
+function applyPresetModuleOptionCustomSyncPreRuntimePlan(customSyncPreUiPlan) {
+  if (!customSyncPreUiPlan?.enabled) return;
+  const customSyncActivePatch = customSyncPreUiPlan.activeTargetsPatch;
+  if (customSyncActivePatch?.hasBayPatch) {
+    activeBayOptionId = customSyncActivePatch.nextActiveBayOptionId;
+  }
+  if (customSyncActivePatch?.hasCornerPatch) {
+    activeCornerOptionId = customSyncActivePatch.nextActiveCornerOptionId;
+  }
+  if (customSyncPreUiPlan.shouldEnsureSession) {
+    ensurePresetModuleOptionCustomComposeSession();
+  }
+}
+
+function applyPresetModuleOptionCustomSyncPostRuntimePlan(customSyncExecutionPlan) {
+  if (!customSyncExecutionPlan) return;
+  if (customSyncExecutionPlan.shouldSyncCorner) syncCornerOptionModal();
+  if (customSyncExecutionPlan.shouldSyncBay) syncBayOptionModal();
+}
+
+function applyPresetModuleOptionPresetSaveRuntimePlan(runtimeUiPlan) {
+  if (!runtimeUiPlan || runtimeUiPlan.route !== "preset") return;
+  const preset = runtimeUiPlan.preset;
+  setPresetModuleOptionError("");
+
+  if (runtimeUiPlan.shouldPatchPreviewAddTarget) {
+    setPreviewAddFlowTarget(
+      previewAddFlowState,
+      runtimeUiPlan.previewAddTargetPatchTarget,
+      runtimeUiPlan.previewAddTargetPatchAnchorEl
+    );
+  }
+
+  closePresetModuleOptionModal({ returnFocus: false, clearState: true });
+  setPreviewPresetPickerOpenState(
+    previewPresetPickerFlowState,
+    runtimeUiPlan.pickerOpenModuleType,
+    runtimeUiPlan.pickerOpenOptions
+  );
+  applyPreviewPresetByContext(
+    preset,
+    runtimeUiPlan.presetApplyContext,
+    runtimeUiPlan.presetApplyType,
+    runtimeUiPlan.presetApplyFilterKey
+  );
+}
+
+function applyPresetModuleOptionOpenUiDispatchPlanToRuntime(
+  openUiPlan,
+  debugMeta = {}
+) {
+  if (!openUiPlan?.openTransition) {
+    throw new Error("통합 모듈구성 모달 전환 상태를 만들지 못했습니다.");
+  }
+  const openTransition = openUiPlan.openTransition;
+  patchPresetModuleOptionFlowState(presetModuleOptionFlowState, openUiPlan.flowStatePatch);
+  if (openUiPlan.shouldResetActiveComposeTargets) {
+    activeBayOptionId = "";
+    activeCornerOptionId = "";
+  }
+  try {
+    syncPresetModuleOptionModal();
+  } catch (err) {
+    console.error("[system] Failed while syncing preset module option modal", {
+      ...debugMeta,
+      openTransition,
+    }, err);
+    throw err;
+  }
+  openModal("#presetModuleOptionModal", { focusTarget: "#presetModuleOptionModalTitle" });
+  const modalEl = $("#presetModuleOptionModal");
+  if (!modalEl || modalEl.classList.contains("hidden")) {
+    throw new Error("통합 모듈구성 모달이 열리지 않았습니다.");
+  }
+}
+
+function applyPreviewAddCloseUiDispatchPlanToRuntime(closeUiPlan) {
+  if (!closeUiPlan) return;
+  setPreviewAddTypeModalStep(closeUiPlan.resetStep, closeUiPlan.resetSelectedModuleType);
+  if (closeUiPlan.clearErrorMessage) {
+    setPreviewAddTypeErrorMessage("", { isError: false });
+  }
+  if (closeUiPlan.shouldRestoreFocus && closeUiPlan.focusTarget?.isConnected) {
+    closeUiPlan.focusTarget.focus();
+  }
+  if (closeUiPlan.shouldClearFlowTarget) {
+    clearPreviewAddFlowTarget(previewAddFlowState);
+  }
+}
+
+function applyPreviewPresetPickerCloseUiDispatchPlanToRuntime(closeUiPlan) {
+  if (!closeUiPlan) return;
+  if (closeUiPlan.clearErrorMessage) setPreviewPresetModuleError("");
+  if (closeUiPlan.shouldResetPreviewPresetPickerFlowState) {
+    resetPreviewPresetPickerFlowState(previewPresetPickerFlowState);
+  }
+  if (closeUiPlan.shouldRestoreFocus && closeUiPlan.focusTarget?.isConnected) {
+    closeUiPlan.focusTarget.focus();
+  }
+  if (closeUiPlan.shouldClearPreviewAddTarget) {
+    clearPreviewAddFlowTarget(previewAddFlowState);
+  }
+  if (closeUiPlan.shouldReopenPresetModuleOption) {
+    reopenPresetModuleOptionModalAfterPresetPicker();
+  }
+}
+
+function applyPresetModuleOptionCloseUiDispatchPlanToRuntime(closeUiPlan) {
+  if (!closeUiPlan) return;
+  if (closeUiPlan.clearErrorMessage) setPresetModuleOptionError("");
+  if (closeUiPlan.shouldRestoreFocus && closeUiPlan.focusTarget?.isConnected) {
+    closeUiPlan.focusTarget.focus();
+  }
+  if (closeUiPlan.shouldResetActiveComposeTargets) {
+    activeBayOptionId = "";
+    activeCornerOptionId = "";
+  }
+  if (closeUiPlan.shouldResetFlowState) {
+    resetPresetModuleOptionFlowState(presetModuleOptionFlowState);
+  }
+}
+
+function applyPreviewModuleActionCloseUiDispatchPlanToRuntime(closeUiPlan) {
+  if (!closeUiPlan) return;
+  if (closeUiPlan.clearErrorMessage) setPreviewModuleActionModalError("", { isError: false });
+  if (closeUiPlan.shouldRestoreFocus && closeUiPlan.focusTarget?.isConnected) {
+    closeUiPlan.focusTarget.focus();
+  }
+  if (closeUiPlan.shouldResetFlowState) {
+    resetPreviewModuleActionFlowState(previewModuleActionFlowState);
+  }
+}
+
+function applyPreviewPresetPickerOpenUiDispatchPlanToRuntime(openDispatchPlan) {
+  if (!openDispatchPlan || openDispatchPlan.route !== "open") return;
+  setPreviewPresetPickerOpenState(
+    previewPresetPickerFlowState,
+    openDispatchPlan.openState.moduleType,
+    openDispatchPlan.openState.options
+  );
+  patchPreviewPresetPickerFlowState(previewPresetPickerFlowState, openDispatchPlan.pickerStatePatch);
+  const titleEl = $("#previewPresetModuleModalTitle");
+  if (titleEl) {
+    titleEl.textContent = openDispatchPlan.title;
+  }
+  if (openDispatchPlan.clearErrorMessage) setPreviewPresetModuleError("");
+  if (openDispatchPlan.shouldRenderModalUi) renderPreviewPresetModuleModalUI();
+  openModal("#previewPresetModuleModal", { focusTarget: "#previewPresetModuleModalTitle" });
+}
+
 function syncPresetModuleOptionModal() {
   const modalState = presetModuleOptionFlowState.modalState;
   if (!modalState) return;
@@ -1404,129 +1702,81 @@ function syncPresetModuleOptionModal() {
   const moduleLabel = modalState.moduleType === "corner" ? "코너 모듈" : "일반 모듈";
   const filterOptions = getPresetModuleOptionFilterOptions(modalState.moduleType);
   const selectedPreset = getPresetModuleOptionSelectedPreset();
-  const { draft: normalizedDraft, activeTab } = normalizePresetModuleOptionDraftForSync({
+  const syncPreViewModel = buildPresetModuleOptionSyncPreViewModel({
     modalState,
     currentDraft: presetModuleOptionFlowState.draft,
     filterOptions,
     selectedPreset,
     getDefaultFilterKey: getDefaultPresetModuleOptionFilterKey,
     isPresetAvailableForFilter: isPreviewPresetAvailableForFilter,
+    moduleLabel,
+    activeBayOptionId,
+    activeCornerOptionId,
   });
+  if (!syncPreViewModel) return;
+  const {
+    normalizedDraft,
+    activeTab,
+    textViewState,
+    customSyncRunPlan,
+  } = syncPreViewModel;
   patchPresetModuleOptionFlowState(presetModuleOptionFlowState, { draft: normalizedDraft });
-  const textViewState = buildPresetModuleOptionTextViewState(modalState, { moduleLabel });
-  if (titleEl) {
-    titleEl.textContent = textViewState.title;
+  const customPanelsViewState = customSyncRunPlan.customPanelsViewState;
+  const customSyncPreUiPlan = buildPresetModuleOptionCustomSyncPreUiDispatchPlan(customSyncRunPlan);
+  const customSyncPlan = customSyncPreUiPlan.customSyncPlan;
+  if (customSyncPreUiPlan.enabled) {
+    applyPresetModuleOptionCustomSyncPreRuntimePlan(customSyncPreUiPlan);
+    const customSyncExecutionPlan = buildPresetModuleOptionCustomSyncPostUiDispatchPlan({
+      customSyncPlan,
+      activeBayOptionId,
+      activeCornerOptionId,
+    });
+    applyPresetModuleOptionCustomSyncPostRuntimePlan(customSyncExecutionPlan);
   }
-  if (presetTabBtn) {
-    const isActive = activeTab === "preset";
-    presetTabBtn.classList.toggle("active", isActive);
-    presetTabBtn.setAttribute("aria-selected", isActive ? "true" : "false");
-  }
-  if (customTabBtn) {
-    const isActive = activeTab === "custom";
-    customTabBtn.classList.toggle("active", isActive);
-    customTabBtn.setAttribute("aria-selected", isActive ? "true" : "false");
-  }
-  if (presetPanelEl) presetPanelEl.classList.toggle("hidden", activeTab !== "preset");
-  if (customPanelEl) customPanelEl.classList.toggle("hidden", activeTab !== "custom");
-  const customSyncRunPlan = buildPresetModuleOptionCustomSyncRunPlan({
+  const customResolvedViewModel = buildPresetModuleOptionCustomSyncResolvedViewModel({
     modalState,
     activeTab,
     activeBayOptionId,
     activeCornerOptionId,
+    customSyncPlan,
+    hasPreset: Boolean(getPresetModuleOptionSelectedPreset()),
+    bayValidation: activeTab === "custom" ? getBayOptionApplyValidationState() : null,
+    cornerValidation: activeTab === "custom" ? getCornerOptionApplyValidationState() : null,
   });
-  const customPanelsViewState = customSyncRunPlan.customPanelsViewState;
-  if (unifiedPreviewEl) {
-    unifiedPreviewEl.classList.toggle("hidden", customPanelsViewState.hideUnifiedPreview);
-  }
-  const customSyncPlan = customSyncRunPlan.customSyncPlan;
-  let customPostSyncPlan = null;
-  if (customSyncPlan.enabled) {
-    const customSyncActivePatch = customSyncRunPlan.activeTargetsPatch;
-    if (customSyncActivePatch.hasBayPatch) {
-      activeBayOptionId = customSyncActivePatch.nextActiveBayOptionId;
-    }
-    if (customSyncActivePatch.hasCornerPatch) {
-      activeCornerOptionId = customSyncActivePatch.nextActiveCornerOptionId;
-    }
-    if (customSyncPlan.requiresEnsureSession) {
-      ensurePresetModuleOptionCustomComposeSession();
-    }
-    customPostSyncPlan = buildPresetModuleOptionCustomPostSyncPlan({
-      modalState,
-      activeTab,
-      activeBayOptionId,
-      activeCornerOptionId,
-      customSyncPlan,
-    });
-    const customSyncExecutionPlan = customPostSyncPlan.customSyncExecutionPlan;
-    if (customSyncExecutionPlan.shouldSyncCorner) syncCornerOptionModal();
-    if (customSyncExecutionPlan.shouldSyncBay) syncBayOptionModal();
-  }
-  if (!customPostSyncPlan) {
-    customPostSyncPlan = buildPresetModuleOptionCustomPostSyncPlan({
-      modalState,
-      activeTab,
-      activeBayOptionId,
-      activeCornerOptionId,
-      customSyncPlan,
-    });
-  }
+  const customPostSyncPlan = customResolvedViewModel.customPostSyncPlan;
   const refreshedCustomPanelsViewState = customPostSyncPlan.customPanelsViewState;
-  const hasActiveCustomEdge = customPostSyncPlan.hasActiveCustomEdge;
-  if (customBayPanelEl) {
-    customBayPanelEl.classList.toggle(
-      "hidden",
-      !refreshedCustomPanelsViewState.showCustomBayPanel
-    );
-  }
-  if (customCornerPanelEl) {
-    customCornerPanelEl.classList.toggle(
-      "hidden",
-      !refreshedCustomPanelsViewState.showCustomCornerPanel
-    );
-  }
-  if (filterLabelEl) {
-    filterLabelEl.textContent = textViewState.filterLabel;
-  }
-  if (filterNoteEl) {
-    filterNoteEl.textContent = textViewState.filterNote;
-  }
-  if (filterSelectEl) {
-    filterSelectEl.innerHTML = filterOptions
-      .map((option) => `<option value="${escapeHtml(option.key)}">${escapeHtml(option.label)}</option>`)
-      .join("");
-    filterSelectEl.value = String(presetModuleOptionFlowState.draft.filterKey || "");
-  }
-  if (pickerBtn) {
-    pickerBtn.textContent = "모듈 선택";
-  }
-  if (backBtn) {
-    const backBtnState = buildPresetModuleOptionBackButtonViewState(modalState);
-    backBtn.classList.toggle("hidden", backBtnState.hidden);
-    backBtn.disabled = backBtnState.disabled;
-    backBtn.classList.toggle("btn-disabled", backBtnState.disabledClass);
-  }
+  const syncPostViewModel = customResolvedViewModel.syncPostViewModel;
+  const domUiViewModel = buildPresetModuleOptionSyncDomUiViewModel({
+    activeTab,
+    textViewState,
+    customPanelsViewState: refreshedCustomPanelsViewState,
+    syncPostViewModel,
+    currentDraft: presetModuleOptionFlowState.draft,
+  });
+  const saveBtn = $("#savePresetModuleOptionModal");
+  applyPresetModuleOptionSyncDomUiViewModel({
+    domUiViewModel,
+    filterOptions,
+    elements: {
+      titleEl,
+      pickerBtn,
+      filterLabelEl,
+      filterNoteEl,
+      filterSelectEl,
+      backBtn,
+      presetTabBtn,
+      customTabBtn,
+      presetPanelEl,
+      customPanelEl,
+      customBayPanelEl,
+      customCornerPanelEl,
+      unifiedPreviewEl,
+      saveBtn,
+    },
+  });
   renderPresetModuleOptionSelectionSummary();
   renderPresetModuleOptionFrontPreview();
   setPresetModuleOptionError("");
-  const saveBtn = $("#savePresetModuleOptionModal");
-  if (saveBtn) {
-    const hasPreset = Boolean(getPresetModuleOptionSelectedPreset());
-    const saveBtnState = buildPresetModuleOptionSaveButtonStateForSync({
-      modalState,
-      activeTab,
-      hasPreset,
-      hasActiveCustomEdge,
-      bayValidation: activeTab === "custom" ? getBayOptionApplyValidationState() : null,
-      cornerValidation: activeTab === "custom" ? getCornerOptionApplyValidationState() : null,
-    });
-    saveBtn.disabled = saveBtnState.disabled;
-    saveBtn.classList.toggle("btn-disabled", saveBtnState.disabledClass);
-    saveBtn.classList.toggle("hidden", saveBtnState.hidden);
-    if (saveBtnState.title) saveBtn.title = saveBtnState.title;
-    else saveBtn.removeAttribute("title");
-  }
 }
 
 function setPresetModuleOptionModalTab(nextTab = "preset") {
@@ -1564,25 +1814,30 @@ function ensurePresetModuleOptionCustomComposeSession() {
     previewAddTarget: previewAddFlowState.target,
     cloneTargetSnapshot: clonePreviewAddTargetSnapshot,
   });
-  if (sessionBootstrap.kind === "abort") return false;
-  if (sessionBootstrap.kind === "ready") return true;
-  if (sessionBootstrap.kind === "error") {
-    setPresetModuleOptionError(sessionBootstrap.errorMessage);
+  const bootstrapUiPlan =
+    buildPresetModuleOptionCustomComposeBootstrapUiExecutionPlan(sessionBootstrap);
+  if (bootstrapUiPlan.route === "abort") return false;
+  if (bootstrapUiPlan.route === "ready") return true;
+  if (bootstrapUiPlan.route === "error") {
+    setPresetModuleOptionError(bootstrapUiPlan.errorMessage);
     return false;
   }
-
-  const normalizedModuleType = sessionBootstrap.moduleType;
-  const addTarget = sessionBootstrap.addTarget;
+  const normalizedModuleType = bootstrapUiPlan.moduleType;
+  const addTarget = bootstrapUiPlan.addTarget;
 
   const sourceResolution = buildPreviewAddSourceResolutionResult({
     source: resolveActivePreviewAddSourceTarget(addTarget),
     errorMessage: composeSourceErrorMessage,
   });
-  if (!sourceResolution.ok) {
-    setPresetModuleOptionError(sourceResolution.errorMessage);
+  const sourceUiPlan = buildPresetModuleOptionCustomComposeSourceUiExecutionPlan({
+    bootstrapUiPlan,
+    sourceResolution,
+  });
+  if (sourceUiPlan.route !== "create") {
+    setPresetModuleOptionError(sourceUiPlan.errorMessage);
     return false;
   }
-  const source = sourceResolution.source;
+  const source = sourceUiPlan.source;
 
   if (normalizedModuleType === "corner") {
     const cornerLimitState = getShapeCornerLimitState();
@@ -1595,10 +1850,6 @@ function ensurePresetModuleOptionCustomComposeSession() {
       canAddCornerAtTarget: canAddCornerAtTarget(source, getSelectedShape()),
       cornerAttachSideBlockedMessage: getCornerAttachSideBlockedMessage(source, getSelectedShape()),
     });
-    if (!cornerComposeValidation.valid) {
-      setPresetModuleOptionError(cornerComposeValidation.errorMessage);
-      return false;
-    }
     const placement = buildPlacementFromEndpoint(source);
     const edgeCreatePlan = buildPendingCornerComposeEdgeCreatePlan({
       source,
@@ -1607,36 +1858,41 @@ function ensurePresetModuleOptionCustomComposeSession() {
       directionToSideIndex,
       createdAt: Date.now(),
     });
-    if (!edgeCreatePlan) {
-      setPresetModuleOptionError(composeSourceErrorMessage);
+    const cornerCreationUiPlan = buildPresetModuleOptionCustomCornerCreationUiExecutionPlan({
+      cornerComposeValidation,
+      edgeCreatePlan,
+      fallbackErrorMessage: composeSourceErrorMessage,
+    });
+    if (cornerCreationUiPlan.route !== "create-corner-edge") {
+      setPresetModuleOptionError(cornerCreationUiPlan.errorMessage);
       return false;
     }
-    const edge = buildPendingCornerComposeEdge(edgeCreatePlan);
+    const edge = buildPendingCornerComposeEdge(cornerCreationUiPlan.edgeCreatePlan);
     registerEdge(edge);
-    const creationResult = buildDirectComposePendingCreationResult({
+    const creationUiPlan = buildPresetModuleOptionCustomComposeCreationUiExecutionPlan({
       moduleType: "corner",
       edgeId: edge.id,
-      errorMessage: composeSourceErrorMessage,
+      fallbackErrorMessage: composeSourceErrorMessage,
     });
-    if (!creationResult.ok) {
-      setPresetModuleOptionError(creationResult.errorMessage);
+    if (creationUiPlan.route === "error") {
+      setPresetModuleOptionError(creationUiPlan.errorMessage);
       return false;
     }
-    applyDirectComposePendingActivationStateToRuntime(creationResult.activationState);
+    applyDirectComposePendingActivationStateToRuntime(creationUiPlan.activationState);
     return true;
   }
 
   const shelfId = addShelfFromEndpoint(source, addTarget, buildPendingBayComposeAddOptions());
-  const creationResult = buildDirectComposePendingCreationResult({
+  const creationUiPlan = buildPresetModuleOptionCustomComposeCreationUiExecutionPlan({
     moduleType: "normal",
     edgeId: shelfId,
-    errorMessage: composeSourceErrorMessage,
+    fallbackErrorMessage: composeSourceErrorMessage,
   });
-  if (!creationResult.ok) {
-    setPresetModuleOptionError(creationResult.errorMessage);
+  if (creationUiPlan.route === "error") {
+    setPresetModuleOptionError(creationUiPlan.errorMessage);
     return false;
   }
-  applyDirectComposePendingActivationStateToRuntime(creationResult.activationState);
+  applyDirectComposePendingActivationStateToRuntime(creationUiPlan.activationState);
   return true;
 }
 
@@ -1652,7 +1908,7 @@ function openPresetModuleOptionModal(
     backContext = null,
   } = {}
 ) {
-  const openTransition = buildPresetModuleOptionOpenTransition({
+  const openUiPlan = buildPresetModuleOptionOpenUiDispatchPlan({
     moduleType,
     options: {
       mode,
@@ -1667,79 +1923,39 @@ function openPresetModuleOptionModal(
     fallbackAddTarget: previewAddFlowState.target,
     getDefaultFilterKey: getDefaultPresetModuleOptionFilterKey,
   });
-  if (!openTransition || !openTransition.draft || !openTransition.modalState) {
-    throw new Error("통합 모듈구성 모달 전환 상태를 만들지 못했습니다.");
+  if (openUiPlan.route === "error" || !openUiPlan.openTransition) {
+    throw new Error(openUiPlan.errorMessage || "통합 모듈구성 모달 전환 상태를 만들지 못했습니다.");
   }
-  patchPresetModuleOptionFlowState(presetModuleOptionFlowState, {
-    draft: openTransition.draft,
-    modalState: openTransition.modalState,
+  applyPresetModuleOptionOpenUiDispatchPlanToRuntime(openUiPlan, {
+    moduleType,
+    mode,
+    edgeId,
+    initialTab,
   });
-  if (openTransition.shouldResetActiveComposeTargets) {
-    activeBayOptionId = "";
-    activeCornerOptionId = "";
-  }
-  try {
-    syncPresetModuleOptionModal();
-  } catch (err) {
-    console.error("[system] Failed while syncing preset module option modal", {
-      moduleType,
-      mode,
-      edgeId,
-      initialTab,
-      openTransition,
-    }, err);
-    throw err;
-  }
-  openModal("#presetModuleOptionModal", { focusTarget: "#presetModuleOptionModalTitle" });
-  const modalEl = $("#presetModuleOptionModal");
-  if (!modalEl || modalEl.classList.contains("hidden")) {
-    throw new Error("통합 모듈구성 모달이 열리지 않았습니다.");
-  }
 }
 
 function closePresetModuleOptionModal({ returnFocus = true, clearState = true } = {}) {
-  const closePlan = buildPresetModuleOptionClosePlan(presetModuleOptionFlowState.modalState, {
+  const closeUiPlan = buildPresetModuleOptionCloseUiDispatchPlan(presetModuleOptionFlowState.modalState, {
     returnFocus,
     clearState,
   });
   closeModal("#presetModuleOptionModal");
-  setPresetModuleOptionError("");
-  if (closePlan.shouldRestoreFocus && closePlan.focusTarget?.isConnected) {
-    closePlan.focusTarget.focus();
-  }
-  if (closePlan.shouldResetFlowState) {
-    activeBayOptionId = "";
-    activeCornerOptionId = "";
-    resetPresetModuleOptionFlowState(presetModuleOptionFlowState);
-  }
+  applyPresetModuleOptionCloseUiDispatchPlanToRuntime(closeUiPlan);
 }
 
 function handlePresetModuleOptionModalBack() {
   const modalState = presetModuleOptionFlowState.modalState;
-  const navigation = buildPresetModuleOptionBackNavigation(
+  const dispatchPlan = buildPresetModuleOptionBackUiDispatchPlan(
     modalState,
     clonePreviewAddTargetSnapshot
   );
-  if (!navigation) return;
+  if (!dispatchPlan) return;
   closePresetModuleOptionModal({ returnFocus: false, clearState: true });
-  if (navigation.route === "preview-module-action") {
-    openPreviewModuleActionModal(
-      navigation.edgeId,
-      navigation.edgeType,
-      navigation.anchorEl
-    );
+  if (dispatchPlan.route === "preview-module-action") {
+    openPreviewModuleActionModal(...dispatchPlan.previewModuleActionArgs);
     return;
   }
-  openPreviewAddTypeModal(
-    navigation.sideIndex,
-    navigation.cornerId,
-    navigation.prepend,
-    navigation.attachSideIndex,
-    navigation.attachAtStart,
-    navigation.endpointId,
-    navigation.allowedTypes,
-    navigation.anchorEl
-  );
+  openPreviewAddTypeModal(...dispatchPlan.previewAddArgs);
 }
 
 function reopenPresetModuleOptionModalAfterPresetPicker() {
@@ -1924,45 +2140,15 @@ function renderPreviewPresetModuleCards() {
     .join("");
 }
 
-function chooseDefaultPreviewPresetFilterAndSelection() {
-  const type = previewPresetPickerFlowState.moduleType;
-  const options = getPreviewPresetFilterOptions(type);
-  const allItems = getPreviewPresetItemsForType(type);
-  const targetEdge = getPreviewPresetTargetEdge();
-  const defaultPickerState = buildPreviewPresetPickerDefaultOpenState({
-    moduleType: type,
-    context: previewPresetPickerFlowState.context,
-    filterOptions: options,
-    allItems,
-    targetEdge,
-    resolveTargetFilterKey: resolvePreviewPresetDefaultFilterKeyForTargetEdge,
-    isItemAvailableForFilter: isPreviewPresetAvailableForFilter,
-    resolveMatchedPresetId: ({ moduleType, targetEdge: nextTargetEdge, filteredItems }) => {
-      return resolvePreviewPresetMatchedIdForTargetEdge({
-        moduleType,
-        targetEdge: nextTargetEdge,
-        filteredItems,
-        getRodCountForEdge: (edge) => getShelfAddonQuantity(edge.id, ADDON_CLOTHES_ROD_ID),
-        getFurnitureIdForEdge: (edge) => getSelectedFurnitureAddonId(edge.id),
-        getPresetFurnitureIdForItem: (item) => getPresetFurnitureAddonIds(item)[0] || "",
-      });
-    },
-  });
-  patchPreviewPresetPickerFlowState(previewPresetPickerFlowState, {
-    filterKey: defaultPickerState.filterKey,
-    selectedPresetId: defaultPickerState.selectedPresetId,
-  });
-}
-
 function syncPreviewPresetSelectionForCurrentFilter() {
   const filteredItems = getFilteredPreviewPresetItems();
-  const nextSelection = buildPreviewPresetPickerVisibleSelectionState(
-    previewPresetPickerFlowState.selectedPresetId,
-    filteredItems
+  patchPreviewPresetPickerFlowState(
+    previewPresetPickerFlowState,
+    buildPreviewPresetPickerVisibleSelectionPatch(
+      previewPresetPickerFlowState.selectedPresetId,
+      filteredItems
+    )
   );
-  patchPreviewPresetPickerFlowState(previewPresetPickerFlowState, {
-    selectedPresetId: nextSelection.selectedPresetId,
-  });
 }
 
 function renderPreviewPresetModuleModalUI() {
@@ -1971,23 +2157,27 @@ function renderPreviewPresetModuleModalUI() {
 }
 
 function openPreviewPresetModuleModal(moduleType, { context = null } = {}) {
-  const openTransition = buildPreviewPresetPickerModalOpenTransition(moduleType, {
+  const openUiPlan = buildPreviewPresetPickerOpenUiExecutionPlan({
+    moduleType,
     context,
     fallbackFocusEl: previewAddFlowState.anchorEl,
+    filterOptions: getPreviewPresetFilterOptions(moduleType),
+    allItems: getPreviewPresetItemsForType(moduleType),
+    targetEdge: resolvePreviewPresetPickerTargetEdgeForOpenContext(context, findShelfById),
+    resolveTargetFilterKey: resolvePreviewPresetDefaultFilterKeyForTargetEdge,
+    isItemAvailableForFilter: isPreviewPresetAvailableForFilter,
+    resolveMatchedPresetId: ({ moduleType: nextModuleType, targetEdge, filteredItems }) =>
+      resolvePreviewPresetMatchedIdForTargetEdge({
+        moduleType: nextModuleType,
+        targetEdge,
+        filteredItems,
+        getRodCountForEdge: (edge) => getShelfAddonQuantity(edge.id, ADDON_CLOTHES_ROD_ID),
+        getFurnitureIdForEdge: (edge) => getSelectedFurnitureAddonId(edge.id),
+        getPresetFurnitureIdForItem: (item) => getPresetFurnitureAddonIds(item)[0] || "",
+      }),
   });
-  setPreviewPresetPickerOpenState(
-    previewPresetPickerFlowState,
-    openTransition.moduleType,
-    openTransition.openStateOptions
-  );
-  const titleEl = $("#previewPresetModuleModalTitle");
-  if (titleEl) {
-    titleEl.textContent = openTransition.title;
-  }
-  setPreviewPresetModuleError("");
-  chooseDefaultPreviewPresetFilterAndSelection();
-  renderPreviewPresetModuleModalUI();
-  openModal("#previewPresetModuleModal", { focusTarget: "#previewPresetModuleModalTitle" });
+  const openDispatchPlan = buildPreviewPresetPickerOpenUiDispatchPlan(openUiPlan);
+  applyPreviewPresetPickerOpenUiDispatchPlanToRuntime(openDispatchPlan);
 }
 
 function applyPreviewPresetToExistingBay(edgeId, preset, selectedFilterKey = "") {
@@ -2047,17 +2237,18 @@ function applyPreviewPresetNormalModule(preset, selectedFilterKey = "") {
     source: resolveActivePreviewAddSourceTarget(previewAddFlowState.target),
     errorMessage: "추가 대상 끝점을 찾을 수 없습니다. 다시 시도해주세요.",
   });
-  if (!sourceResolution.ok) {
-    setPreviewPresetModuleError(sourceResolution.errorMessage);
-    return;
-  }
   const source = sourceResolution.source;
-  const shelfId = addShelfFromEndpoint(source, previewAddFlowState.target);
-  if (!shelfId) {
-    setPreviewPresetModuleError("모듈을 추가하지 못했습니다. 다시 시도해주세요.");
+  const shelfId = sourceResolution.ok ? addShelfFromEndpoint(source, previewAddFlowState.target) : "";
+  const normalAddUiPlan = buildPreviewPresetNormalAddUiExecutionPlan({
+    sourceResolution,
+    shelfId,
+    fallbackErrorMessage: "모듈을 추가하지 못했습니다. 다시 시도해주세요.",
+  });
+  if (normalAddUiPlan.route !== "apply-normal-preset") {
+    setPreviewPresetModuleError(normalAddUiPlan.errorMessage);
     return;
   }
-  const shelf = findShelfById(shelfId);
+  const shelf = findShelfById(normalAddUiPlan.shelfId);
   if (shelf) {
     shelf.width = Math.max(
       1,
@@ -2071,52 +2262,47 @@ function applyPreviewPresetNormalModule(preset, selectedFilterKey = "") {
 }
 
 function applyPreviewPresetCornerModule(preset) {
-  const source = resolveActivePreviewAddSourceTarget(previewAddFlowState.target);
-  if (!source) {
-    setPreviewPresetModuleError("추가 대상 끝점을 찾을 수 없습니다. 다시 시도해주세요.");
-    return;
-  }
-  if (isRootPreviewEndpointTarget(source) && !hasSelectedRootCornerStartDirection(previewAddFlowState.target)) {
-    setPreviewPresetModuleError(getRootCornerDirectionRequiredMessage());
-    return;
-  }
+  const sourceResolution = buildPreviewAddSourceResolutionResult({
+    source: resolveActivePreviewAddSourceTarget(previewAddFlowState.target),
+    errorMessage: "추가 대상 끝점을 찾을 수 없습니다. 다시 시도해주세요.",
+  });
+  const source = sourceResolution.source;
   const cornerLimitState = getShapeCornerLimitState();
-  if (!cornerLimitState.canAdd) {
-    setPreviewPresetModuleError(getCornerLimitBlockedMessage(cornerLimitState));
+  const cornerComposeValidation = buildPresetModuleOptionCustomCornerComposeValidation({
+    isRootSource: Boolean(source && isRootPreviewEndpointTarget(source)),
+    hasRootCornerStartDirection: hasSelectedRootCornerStartDirection(previewAddFlowState.target),
+    rootCornerDirectionRequiredMessage: getRootCornerDirectionRequiredMessage(),
+    canAddCornerByLimit: Boolean(cornerLimitState?.canAdd),
+    cornerLimitBlockedMessage: getCornerLimitBlockedMessage(cornerLimitState),
+    canAddCornerAtTarget: Boolean(source && canAddCornerAtTarget(source, getSelectedShape())),
+    cornerAttachSideBlockedMessage: source
+      ? getCornerAttachSideBlockedMessage(source, getSelectedShape())
+      : sourceResolution.errorMessage,
+  });
+  const placement = source ? buildPlacementFromEndpoint(source) : null;
+  const edge = source
+    ? buildPreviewPresetCornerEdge({
+        source,
+        preset,
+        placement,
+        normalizeDirection,
+        directionToSideIndex,
+        createdAt: Date.now(),
+      })
+    : null;
+  const cornerAddUiPlan = buildPreviewPresetCornerAddUiExecutionPlan({
+    sourceResolution,
+    cornerComposeValidation,
+    edge,
+    fallbackErrorMessage: "모듈을 추가하지 못했습니다. 다시 시도해주세요.",
+  });
+  if (cornerAddUiPlan.route !== "apply-corner-preset") {
+    setPreviewPresetModuleError(cornerAddUiPlan.errorMessage);
     return;
   }
-  if (!canAddCornerAtTarget(source, getSelectedShape())) {
-    setPreviewPresetModuleError(getCornerAttachSideBlockedMessage(source, getSelectedShape()));
-    return;
-  }
-  const placement = buildPlacementFromEndpoint(source);
-  const dir = placement ? normalizeDirection(placement.dirDx, placement.dirDy) : { dx: 1, dy: 0 };
-  const sideIndex = Number(
-    source?.attachSideIndex ?? source?.sideIndex ?? directionToSideIndex(dir.dx, dir.dy)
-  );
-  const edge = {
-    id: `corner-${sideIndex}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    type: "corner",
-    sideIndex,
-    attachAtStart: Boolean(source?.attachAtStart),
-    attachSideIndex: sideIndex,
-    anchorEndpointId: String(source?.endpointId || ""),
-    anchorDirDx: Number(normalizeDirection(source?.extendDx, source?.extendDy).dx),
-    anchorDirDy: Number(normalizeDirection(source?.extendDx, source?.extendDy).dy),
-    anchorInwardX: Number(normalizeDirection(source?.inwardX, source?.inwardY).dx),
-    anchorInwardY: Number(normalizeDirection(source?.inwardX, source?.inwardY).dy),
-    extendDx: Number(source?.extendDx || 0),
-    extendDy: Number(source?.extendDy || 0),
-    inwardX: Number(source?.inwardX || 0),
-    inwardY: Number(source?.inwardY || 0),
-    placement: placement || null,
-    swap: Boolean(preset?.swap),
-    count: Math.max(1, Math.floor(Number(preset?.count || 1))),
-    createdAt: Date.now(),
-  };
   pushBuilderHistory("add-corner-preset");
-  registerEdge(edge);
-  applyPresetAddonsToEdge(edge.id, preset);
+  registerEdge(cornerAddUiPlan.edge);
+  applyPresetAddonsToEdge(cornerAddUiPlan.edge.id, preset);
   closePreviewPresetModuleModal({ returnFocus: false, clearTarget: true });
   renderBayInputs();
 }
@@ -2126,27 +2312,20 @@ function handlePreviewPresetModuleCardClick(buttonEl) {
   const presetId = String(buttonEl.dataset.previewPresetId || "");
   const type = String(buttonEl.dataset.previewPresetType || previewPresetPickerFlowState.moduleType || "normal");
   const items = getFilteredPreviewPresetItems();
-  const cardSelection = buildPreviewPresetPickerCardSelectionTransition({
+  const uiPlan = buildPreviewPresetPickerCardClickUiExecutionPlan({
     pickerFlowState: previewPresetPickerFlowState,
     clickedPresetId: presetId,
     clickedType: type,
     filteredItems: items,
   });
-  if (!cardSelection.ok) {
-    setPreviewPresetModuleError(String(cardSelection.errorMessage || ""));
+  if (uiPlan.route === "error") {
+    setPreviewPresetModuleError(String(uiPlan.errorMessage || ""));
     return;
   }
-  if (cardSelection.normalizedType !== previewPresetPickerFlowState.moduleType) {
-    patchPreviewPresetPickerFlowState(previewPresetPickerFlowState, {
-      moduleType: cardSelection.normalizedType,
-    });
-  }
   setPreviewPresetModuleError("");
-  patchPreviewPresetPickerFlowState(previewPresetPickerFlowState, {
-    selectedPresetId: cardSelection.selectedPresetId,
-  });
-  renderPreviewPresetModuleCards();
-  applySelectedPreviewPresetModule();
+  patchPreviewPresetPickerFlowState(previewPresetPickerFlowState, uiPlan.pickerStatePatch || {});
+  if (uiPlan.shouldRenderCards) renderPreviewPresetModuleCards();
+  if (uiPlan.shouldApplySelectedPreset) applySelectedPreviewPresetModule();
 }
 
 function applyPreviewPresetByContext(
@@ -2155,19 +2334,19 @@ function applyPreviewPresetByContext(
   type = previewPresetPickerFlowState.moduleType,
   selectedFilterKey = previewPresetPickerFlowState.filterKey
 ) {
-  const dispatchPlan = buildPreviewPresetApplyDispatchPlan({
+  const runtimeUiPlan = buildPreviewPresetApplyRuntimeUiDispatchPlan({
     presetContext,
     moduleType: type,
   });
-  if (dispatchPlan.route === "edit-corner") {
-    applyPreviewPresetToExistingCorner(dispatchPlan.edgeId, preset);
+  if (runtimeUiPlan.route === "edit-corner") {
+    applyPreviewPresetToExistingCorner(runtimeUiPlan.edgeId, preset);
     return;
   }
-  if (dispatchPlan.route === "edit-bay") {
-    applyPreviewPresetToExistingBay(dispatchPlan.edgeId, preset, selectedFilterKey);
+  if (runtimeUiPlan.route === "edit-bay") {
+    applyPreviewPresetToExistingBay(runtimeUiPlan.edgeId, preset, selectedFilterKey);
     return;
   }
-  if (dispatchPlan.route === "add-corner") {
+  if (runtimeUiPlan.route === "add-corner") {
     applyPreviewPresetCornerModule(preset);
     return;
   }
@@ -2176,83 +2355,51 @@ function applyPreviewPresetByContext(
 
 function applySelectedPreviewPresetModule() {
   const preset = getPreviewPresetSelectedPreset();
-  const selectionTransition = buildPreviewPresetPickerSelectionTransition({
+  const runtimeUiPlan = buildPreviewPresetPickerApplyRuntimeUiDispatchPlan({
     pickerFlowState: previewPresetPickerFlowState,
     preset,
   });
-  if (selectionTransition.kind === "error") {
-    setPreviewPresetModuleError(String(selectionTransition.errorMessage || ""));
+  if (runtimeUiPlan.route === "error") {
+    setPreviewPresetModuleError(String(runtimeUiPlan.errorMessage || ""));
     return;
   }
   setPreviewPresetModuleError("");
-  if (selectionTransition.kind === "return-to-preset-module-option") {
+  if (runtimeUiPlan.route === "return-to-preset-module-option") {
     patchPresetModuleOptionFlowState(presetModuleOptionFlowState, {
-      draft: selectionTransition.nextDraft,
+      draft: runtimeUiPlan.nextDraft,
     });
-    closePreviewPresetModuleModal({ returnFocus: false, clearTarget: false });
+    closePreviewPresetModuleModal(runtimeUiPlan.closePickerOptions);
     return;
   }
   applyPreviewPresetByContext(
     preset,
-    selectionTransition.applyContext,
-    selectionTransition.applyType,
-    selectionTransition.applyFilterKey
+    runtimeUiPlan.applyContext,
+    runtimeUiPlan.applyType,
+    runtimeUiPlan.applyFilterKey
   );
 }
 
 function savePresetModuleOptionModal() {
   const modalState = presetModuleOptionFlowState.modalState;
-  const savePlan = buildPresetModuleOptionSaveExecutionPlan({
+  const saveUiPlan = buildPresetModuleOptionSaveUiDispatchPlan({
     modalState,
     draft: presetModuleOptionFlowState.draft,
     selectedPreset: getPresetModuleOptionSelectedPreset(),
   });
-  if (savePlan.route === "abort") return;
-  if (savePlan.route === "error") {
-    setPresetModuleOptionError(String(savePlan.errorMessage || ""));
+  const runtimeUiPlan = buildPresetModuleOptionSaveRuntimeUiDispatchPlan(saveUiPlan);
+  if (runtimeUiPlan.route === "abort") return;
+  if (runtimeUiPlan.route === "error") {
+    setPresetModuleOptionError(String(runtimeUiPlan.errorMessage || ""));
     return;
   }
-  if (savePlan.route === "custom") {
+  if (runtimeUiPlan.route === "custom") {
     const ready = ensurePresetModuleOptionCustomComposeSession();
     if (!ready) return;
-    if (savePlan.moduleType === "corner") saveCornerOptionModal();
+    if (runtimeUiPlan.moduleType === "corner") saveCornerOptionModal();
     else saveBayOptionModal();
     return;
   }
-
-  const preset = savePlan.selectedPreset;
-  setPresetModuleOptionError("");
-  const { saveTransition } = savePlan;
-  const runtimePlan = buildPresetModuleOptionPresetSaveRuntimePlan({
-    modalState,
-    saveTransition,
-  });
-  if (!runtimePlan) return;
-
-  if (runtimePlan.needsPreviewAddTargetPatch) {
-    setPreviewAddFlowTarget(
-      previewAddFlowState,
-      runtimePlan.previewAddTargetPatch?.target || null,
-      runtimePlan.previewAddTargetPatch?.anchorEl || null
-    );
-    if (!previewAddFlowState.target) {
-      setPresetModuleOptionError("추가 대상 끝점을 찾을 수 없습니다. 다시 시도해주세요.");
-      return;
-    }
-  }
-
-  closePresetModuleOptionModal({ returnFocus: false, clearState: true });
-  setPreviewPresetPickerOpenState(
-    previewPresetPickerFlowState,
-    runtimePlan.pickerOpen.moduleType,
-    runtimePlan.pickerOpen.options
-  );
-  applyPreviewPresetByContext(
-    preset,
-    runtimePlan.presetApply.applyContext,
-    runtimePlan.presetApply.applyType,
-    runtimePlan.presetApply.applyFilterKey
-  );
+  applyPresetModuleOptionPresetSaveRuntimePlan(runtimeUiPlan);
 }
 
 function closePreviewAddTypePicker({ returnFocus = false, clearTarget = true } = {}) {
@@ -2267,18 +2414,11 @@ function closePreviewAddTypePicker({ returnFocus = false, clearTarget = true } =
     modal.style.left = "";
     modal.style.top = "";
   }
-  setPreviewAddTypeModalStep("type", "");
-  setPreviewAddTypeErrorMessage("", { isError: false });
-  const closePlan = buildPreviewAddClosePlan(previewAddFlowState, {
+  const closeUiPlan = buildPreviewAddCloseUiDispatchPlan(previewAddFlowState, {
     returnFocus,
     clearTarget,
   });
-  if (closePlan.shouldRestoreFocus && closePlan.focusTarget?.isConnected) {
-    closePlan.focusTarget.focus();
-  }
-  if (closePlan.shouldClearFlowTarget) {
-    clearPreviewAddFlowTarget(previewAddFlowState);
-  }
+  applyPreviewAddCloseUiDispatchPlanToRuntime(closeUiPlan);
 }
 
 function bindPendingOptionModalCleanupOnClose() {
@@ -2297,16 +2437,17 @@ function bindPendingOptionModalCleanupOnClose() {
       discardedEdgeId: String(edge?.id || ""),
       discarded,
     });
-    if (!cleanupPlan.shouldHandle || !discarded) return;
-    if (cleanupPlan.clearCorner) {
+    const cleanupRuntimePlan = buildPendingDirectComposeCleanupRuntimePlan(cleanupPlan);
+    if (!cleanupRuntimePlan.shouldApply) return;
+    if (cleanupRuntimePlan.clearCorner) {
       cornerDirectComposeDraft = null;
       activeCornerOptionId = null;
     }
-    if (cleanupPlan.clearBay) {
+    if (cleanupRuntimePlan.clearBay) {
       bayDirectComposeDraft = null;
       activeBayOptionId = null;
     }
-    if (cleanupPlan.shouldRender) renderBayInputs();
+    if (cleanupRuntimePlan.shouldRender) renderBayInputs();
   });
 }
 
@@ -2329,6 +2470,36 @@ function getPreviewModuleActionModalElements() {
   };
 }
 
+function applyPreviewModuleActionModalOpenUiView(openDispatchPlan, elements = {}) {
+  const viewState = openDispatchPlan?.modalViewState;
+  if (!viewState) return;
+  const { titleEl, descEl, selectedTypeEl, presetBtn, customBtn, removeBtn } = elements || {};
+  if (titleEl) titleEl.textContent = viewState.title;
+  if (descEl) descEl.textContent = viewState.description;
+  if (selectedTypeEl) selectedTypeEl.textContent = viewState.selectedTypeText;
+  const buttonResetState = viewState.buttonState || {};
+  [presetBtn, customBtn, removeBtn].forEach((btn) => {
+    if (!btn) return;
+    if (btn === presetBtn) btn.disabled = Boolean(buttonResetState.presetDisabled);
+    else if (btn === customBtn) btn.disabled = Boolean(buttonResetState.customDisabled);
+    else btn.disabled = Boolean(buttonResetState.removeDisabled);
+  });
+}
+
+function focusPreviewModuleActionModalInitialTarget(openDispatchPlan, elements = {}) {
+  const focusKey = String(openDispatchPlan?.modalViewState?.initialFocusKey || "title");
+  const { presetBtn, customBtn, titleEl } = elements || {};
+  if (focusKey === "preset" && presetBtn) {
+    presetBtn.focus();
+    return;
+  }
+  if (focusKey === "custom" && customBtn) {
+    customBtn.focus();
+    return;
+  }
+  titleEl?.focus();
+}
+
 function closePreviewModuleActionModal({ returnFocus = false, clearTarget = true } = {}) {
   const { modal } = getPreviewModuleActionModalElements();
   if (modal) {
@@ -2341,60 +2512,58 @@ function closePreviewModuleActionModal({ returnFocus = false, clearTarget = true
     modal.style.left = "";
     modal.style.top = "";
   }
-  setPreviewModuleActionModalError("", { isError: false });
-  const closePlan = buildPreviewModuleActionClosePlan(previewModuleActionFlowState, {
+  const closeUiPlan = buildPreviewModuleActionCloseUiDispatchPlan(previewModuleActionFlowState, {
     returnFocus,
     clearTarget,
   });
-  if (closePlan.shouldRestoreFocus && closePlan.focusTarget?.isConnected) {
-    closePlan.focusTarget.focus();
-  }
-  if (closePlan.shouldResetFlowState) {
-    resetPreviewModuleActionFlowState(previewModuleActionFlowState);
-  }
+  applyPreviewModuleActionCloseUiDispatchPlanToRuntime(closeUiPlan);
 }
 
 function openPreviewModuleActionModal(edgeId, edgeType = "bay", anchorEl = null) {
   const targetId = String(edgeId || "");
   const edge = targetId ? findShelfById(targetId) : null;
-  const openViewModel = buildPreviewModuleActionModalOpenViewModel(edge, edgeType);
-  if (!openViewModel) return;
-  const { viewState, normalizedEdgeType, fallbackDirectComposeType } = openViewModel;
-  setPreviewModuleActionFlowTarget(previewModuleActionFlowState, targetId, normalizedEdgeType, anchorEl);
-
   const { modal, titleEl, descEl, selectedTypeEl, presetBtn, customBtn, removeBtn } =
     getPreviewModuleActionModalElements();
-  if (!modal) {
-    if (fallbackDirectComposeType === "corner") openCornerOptionModal(targetId);
+  const openUiPlan = buildPreviewModuleActionModalOpenUiExecutionPlan({
+    edge,
+    edgeId: targetId,
+    requestedEdgeType: edgeType,
+    anchorEl,
+    hasModal: Boolean(modal),
+  });
+  if (openUiPlan.route === "abort") return;
+  const openDispatchPlan = buildPreviewModuleActionModalOpenUiDispatchPlan({ openUiPlan });
+  if (openDispatchPlan.route === "abort") return;
+  setPreviewModuleActionFlowTarget(
+    previewModuleActionFlowState,
+    openUiPlan.targetPatch.edgeId,
+    openUiPlan.targetPatch.edgeType,
+    openUiPlan.targetPatch.anchorEl
+  );
+
+  if (openDispatchPlan.route === "fallback-direct-compose") {
+    if (openDispatchPlan.fallbackDirectComposeType === "corner") openCornerOptionModal(targetId);
     else openBayOptionModal(targetId);
     return;
   }
-
-  if (titleEl) titleEl.textContent = viewState.title;
-  if (descEl) descEl.textContent = viewState.description;
-  if (selectedTypeEl) selectedTypeEl.textContent = viewState.selectedTypeText;
-  const buttonResetState = openViewModel.buttonState;
-  [presetBtn, customBtn, removeBtn].forEach((btn) => {
-    if (!btn) return;
-    if (btn === presetBtn) btn.disabled = Boolean(buttonResetState.presetDisabled);
-    else if (btn === customBtn) btn.disabled = Boolean(buttonResetState.customDisabled);
-    else btn.disabled = Boolean(buttonResetState.removeDisabled);
+  applyPreviewModuleActionModalOpenUiView(openDispatchPlan, {
+    titleEl,
+    descEl,
+    selectedTypeEl,
+    presetBtn,
+    customBtn,
+    removeBtn,
   });
-  setPreviewModuleActionModalError("", { isError: false });
+  if (openDispatchPlan.clearErrorMessage) setPreviewModuleActionModalError("", { isError: false });
 
-  closePreviewAddTypePicker();
+  if (openDispatchPlan.shouldClosePreviewAddTypePicker) closePreviewAddTypePicker();
   openModal(modal, { focusTarget: "#previewModuleActionModalTitle", bodySelector: null });
   requestAnimationFrame(() => {
-    const focusKey = openViewModel.initialFocusKey;
-    if (focusKey === "preset" && presetBtn) {
-      presetBtn.focus();
-      return;
-    }
-    if (focusKey === "custom" && customBtn) {
-      customBtn.focus();
-      return;
-    }
-    titleEl?.focus();
+    focusPreviewModuleActionModalInitialTarget(openDispatchPlan, {
+      presetBtn,
+      customBtn,
+      titleEl,
+    });
   });
 }
 
@@ -2403,9 +2572,10 @@ function openPresetModuleOptionFromPreviewModuleAction(initialTab = "preset") {
     previewModuleActionFlowState,
     { initialTab }
   );
-  if (!nextOpen) return;
+  const dispatchPlan = buildPresetModuleOptionOpenFromPreviewModuleActionUiDispatchPlan(nextOpen);
+  if (dispatchPlan.route !== "open" || !dispatchPlan.nextOpen) return;
   closePreviewModuleActionModal();
-  openPresetModuleOptionModal(nextOpen.moduleType, nextOpen.options);
+  openPresetModuleOptionModal(dispatchPlan.nextOpen.moduleType, dispatchPlan.nextOpen.options);
 }
 
 function handlePreviewModuleActionPresetSelect() {
@@ -5241,46 +5411,28 @@ function openPreviewAddTypeModal(
       getCornerAttachSideBlockedMessage({ sideIndex, attachSideIndex }, getSelectedShape()),
     getCornerLimitBlockedMessage,
   });
-  if (!openViewModel) return;
-  const { openViewState, flowTarget } = openViewModel;
+  const openUiPlan = buildPreviewAddTypeModalOpenUiExecutionPlan({
+    openViewModel,
+    anchorEl,
+  });
+  if (openUiPlan.route !== "open" || !openUiPlan.flowTargetPatch || !openUiPlan.openViewState) return;
+  const { openViewState } = openUiPlan;
   setPreviewAddFlowTarget(
     previewAddFlowState,
-    flowTarget,
-    anchorEl
+    openUiPlan.flowTargetPatch.target,
+    openUiPlan.flowTargetPatch.anchorEl
   );
-  const {
-    modal,
-    cornerBtn: modalCornerBtn,
-    normalBtn: modalNormalBtn,
-    titleEl: modalTitleEl,
-  } = getPreviewAddTypeModalElements();
-  const normalBtnTargets = [modalNormalBtn].filter(Boolean);
-  const cornerBtnTargets = [modalCornerBtn].filter(Boolean);
-  normalBtnTargets.forEach((btn) => {
-    btn.disabled = openViewState.normalButton.disabled;
-    if (openViewState.normalButton.title) btn.title = openViewState.normalButton.title;
-    else btn.removeAttribute("title");
-  });
-  cornerBtnTargets.forEach((btn) => {
-    btn.disabled = openViewState.cornerButton.disabled;
-    if (openViewState.cornerButton.title) btn.title = openViewState.cornerButton.title;
-    else btn.removeAttribute("title");
-  });
-  setPreviewAddTypeErrorMessage(openViewState.error.message, { isError: openViewState.error.isError });
+  const { modal, modalCornerBtn, modalNormalBtn, modalTitleEl } =
+    applyPreviewAddTypeModalOpenUiView(openUiPlan);
   if (modal) {
     setPreviewAddTypeModalStep("type", "");
     openModal(modal, { focusTarget: "#previewAddTypeModalTitle", bodySelector: null });
     requestAnimationFrame(() => {
-      const focusKey = openViewModel.initialFocusKey;
-      if (focusKey === "normal" && modalNormalBtn) {
-        modalNormalBtn.focus();
-        return;
-      }
-      if (focusKey === "corner" && modalCornerBtn) {
-        modalCornerBtn.focus();
-        return;
-      }
-      modalTitleEl?.focus();
+      focusPreviewAddTypeModalInitialTarget(openUiPlan, {
+        modalNormalBtn,
+        modalCornerBtn,
+        modalTitleEl,
+      });
     });
     return;
   }
@@ -5291,25 +5443,42 @@ function commitPreviewAddNormal() {
     source: resolveActivePreviewAddSourceTarget(previewAddFlowState.target),
     errorMessage: "이 끝점에서는 일반 모듈을 추가할 수 없습니다.",
   });
-  if (!sourceResolution.ok) {
-    setPreviewAddTypeErrorMessage(sourceResolution.errorMessage, { isError: true });
+  const source = sourceResolution.source;
+  const shelfId = sourceResolution.ok
+    ? addShelfFromEndpoint(
+        source,
+        previewAddFlowState.target,
+        buildPendingBayComposeAddOptions()
+      )
+    : "";
+  const normalCommitUiPlan = buildPreviewAddNormalCommitUiExecutionPlan({
+    sourceResolution,
+    shelfId,
+  });
+  if (normalCommitUiPlan.route !== "open-bay-option") {
+    setPreviewAddTypeErrorMessage(normalCommitUiPlan.errorMessage, { isError: true });
     return;
   }
-  const source = sourceResolution.source;
-  const shelfId = addShelfFromEndpoint(
-    source,
-    previewAddFlowState.target,
-    buildPendingBayComposeAddOptions()
-  );
   closePreviewAddTypePicker();
-  if (shelfId) openBayOptionModal(shelfId);
+  if (normalCommitUiPlan.shelfId) openBayOptionModal(normalCommitUiPlan.shelfId);
 }
 
 function commitPreviewAddCorner() {
   const cornerId = previewAddFlowState.target?.cornerId || "";
   if (cornerId) {
+    const existingCornerUiPlan = buildPreviewAddCornerCommitUiExecutionPlan({
+      existingCornerId: cornerId,
+      sourceResolution: null,
+      cornerComposeValidation: null,
+      edgeCreatePlan: null,
+      fallbackErrorMessage: "코너 모듈을 찾을 수 없습니다.",
+    });
+    if (existingCornerUiPlan.route !== "open-existing-corner") {
+      setPreviewAddTypeErrorMessage(existingCornerUiPlan.errorMessage, { isError: true });
+      return;
+    }
     closePreviewAddTypePicker();
-    openCornerOptionModal(cornerId);
+    openCornerOptionModal(existingCornerUiPlan.cornerId);
     return;
   }
   const sourceResolution = buildPreviewAddSourceResolutionResult({
@@ -5329,30 +5498,32 @@ function commitPreviewAddCorner() {
       ? getCornerAttachSideBlockedMessage(source, getSelectedShape())
       : sourceResolution.errorMessage,
   });
-  if (!cornerComposeValidation.valid) {
-    setPreviewAddTypeErrorMessage(cornerComposeValidation.errorMessage, { isError: true });
-    return;
-  }
+  let edgeCreatePlan = null;
   if (source) {
     const placement = buildPlacementFromEndpoint(source);
-    const edgeCreatePlan = buildPendingCornerComposeEdgeCreatePlan({
+    edgeCreatePlan = buildPendingCornerComposeEdgeCreatePlan({
       source,
       placement,
       normalizeDirection,
       directionToSideIndex,
       createdAt: Date.now(),
     });
-    if (!edgeCreatePlan) {
-      setPreviewAddTypeErrorMessage(sourceResolution.errorMessage, { isError: true });
-      return;
-    }
-    const edge = buildPendingCornerComposeEdge(edgeCreatePlan);
-    registerEdge(edge);
-    closePreviewAddTypePicker();
-    openCornerOptionModal(edge.id);
+  }
+  const cornerCommitUiPlan = buildPreviewAddCornerCommitUiExecutionPlan({
+    existingCornerId: "",
+    sourceResolution,
+    cornerComposeValidation,
+    edgeCreatePlan,
+    fallbackErrorMessage: sourceResolution.errorMessage,
+  });
+  if (cornerCommitUiPlan.route !== "create-corner") {
+    setPreviewAddTypeErrorMessage(cornerCommitUiPlan.errorMessage, { isError: true });
     return;
   }
-  setPreviewAddTypeErrorMessage(sourceResolution.errorMessage, { isError: true });
+  const edge = buildPendingCornerComposeEdge(cornerCommitUiPlan.edgeCreatePlan);
+  registerEdge(edge);
+  closePreviewAddTypePicker();
+  openCornerOptionModal(edge.id);
 }
 
 function updateAddItemState() {
