@@ -103,12 +103,6 @@ export const SYSTEM_CUSTOM_PROCESSING = {
     price: 0,
     description: "규격 외 사이즈는 상담 후 견적입니다.",
   },
-  column_over_2400: {
-    id: "column_over_2400",
-    label: "기둥 2400 이상 추가비",
-    price: 0,
-    description: "기둥 높이가 2400mm 이상이면 추가 비용이 발생합니다.",
-  },
 };
 
 export const SYSTEM_POST_BAR_PRICING = Object.freeze({
@@ -116,16 +110,18 @@ export const SYSTEM_POST_BAR_PRICING = Object.freeze({
     id: "basic_post_bar",
     label: "기본 포스트바",
     tiers: Object.freeze([
+      Object.freeze({ key: "lte_2100", label: "2100 이하", maxHeightMm: 2100, unitPrice: 0 }),
       Object.freeze({ key: "lte_2300", label: "2300 이하", maxHeightMm: 2300, unitPrice: 0 }),
-      Object.freeze({ key: "lte_2700", label: "2700 이하", maxHeightMm: 2700, unitPrice: 0 }),
+      Object.freeze({ key: "lte_2500", label: "2500 이하", maxHeightMm: 2500, unitPrice: 0 }),
     ]),
   }),
   corner: Object.freeze({
     id: "corner_post_bar",
     label: "코너 포스트바",
     tiers: Object.freeze([
+      Object.freeze({ key: "lte_2100", label: "2100 이하", maxHeightMm: 2100, unitPrice: 0 }),
       Object.freeze({ key: "lte_2300", label: "2300 이하", maxHeightMm: 2300, unitPrice: 0 }),
-      Object.freeze({ key: "lte_2700", label: "2700 이하", maxHeightMm: 2700, unitPrice: 0 }),
+      Object.freeze({ key: "lte_2500", label: "2500 이하", maxHeightMm: 2500, unitPrice: 0 }),
     ]),
   }),
 });
