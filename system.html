@@ -447,86 +447,76 @@
     </div>
   </div>
 
-  <div id="previewAddTypeModal" class="modal hidden">
+  <div
+    id="previewAddTypeModal"
+    class="preview-action-modal modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="previewAddTypeModalTitle"
+    aria-hidden="true"
+  >
     <div class="modal-backdrop" id="previewAddTypeModalBackdrop"></div>
-    <div class="modal-content" id="previewAddTypeModalContent">
+    <div class="modal-content preview-action-modal-content">
       <div class="modal-header">
         <h3 id="previewAddTypeModalTitle" tabindex="-1">추가 방식 선택</h3>
       </div>
-      <div class="modal-body">
-        <p id="previewAddTypeDesc" class="field-note">끝점에서 연장할 모듈 유형을 선택하세요.</p>
-        <div class="step-card-actions" style="justify-content:flex-start;">
-          <button type="button" id="previewAddNormalBtn">일반 모듈 추가</button>
-          <button type="button" id="previewAddCornerBtn">코너 모듈 추가</button>
+      <div class="modal-body preview-action-modal-body">
+        <p id="previewAddTypeModalDesc" class="field-note">끝점에서 연장할 모듈 유형을 선택하세요.</p>
+        <div id="previewAddTypeModalTypeStep" class="preview-action-modal-step">
+          <div class="step-card-actions preview-action-modal-actions">
+            <button type="button" id="previewAddModalNormalBtn">일반 모듈 추가</button>
+            <button type="button" id="previewAddModalCornerBtn">코너 모듈 추가</button>
+          </div>
         </div>
-        <div id="previewAddTypeError" class="error-msg"></div>
+        <div id="previewAddTypeModalModeStep" class="preview-action-modal-step hidden">
+          <div class="preview-action-modal-selected" id="previewAddTypeModalSelectedType"></div>
+          <div class="step-card-actions preview-action-modal-actions">
+            <button type="button" id="previewAddModalPresetBtn">모듈선택</button>
+            <button type="button" id="previewAddModalCustomBtn">직접구성</button>
+            <button type="button" id="previewAddModalBackBtn" class="ghost-btn">이전</button>
+          </div>
+        </div>
+        <div id="previewAddTypeModalRootCornerStep" class="preview-action-modal-step hidden">
+          <div class="step-card-actions preview-action-modal-actions">
+            <button type="button" id="previewAddModalRootCornerRightBtn">우측 방향</button>
+            <button type="button" id="previewAddModalRootCornerLeftBtn">좌측 방향</button>
+            <button type="button" id="previewAddModalRootCornerBackBtn" class="ghost-btn">이전</button>
+          </div>
+        </div>
+        <div id="previewAddTypeModalError" class="error-msg"></div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer preview-action-modal-footer">
         <button type="button" id="closePreviewAddTypeModal" class="modal-close">닫기</button>
       </div>
     </div>
   </div>
 
   <div
-    id="previewAddTypePopover"
-    class="preview-add-type-popover hidden"
+    id="previewModuleActionModal"
+    class="preview-action-modal modal hidden"
     role="dialog"
-    aria-modal="false"
-    aria-labelledby="previewAddTypePopoverTitle"
+    aria-modal="true"
+    aria-labelledby="previewModuleActionModalTitle"
     aria-hidden="true"
   >
-    <div class="preview-add-type-popover-card">
-      <div class="preview-add-type-popover-head">
-        <strong id="previewAddTypePopoverTitle" tabindex="-1">추가 방식 선택</strong>
-        <button type="button" id="closePreviewAddTypePopover" class="ghost-btn">닫기</button>
+    <div class="modal-backdrop" id="previewModuleActionModalBackdrop"></div>
+    <div class="modal-content preview-action-modal-content">
+      <div class="modal-header">
+        <h3 id="previewModuleActionModalTitle" tabindex="-1">모듈 작업</h3>
       </div>
-      <p id="previewAddTypePopoverDesc" class="field-note">끝점에서 연장할 모듈 유형을 선택하세요.</p>
-      <div id="previewAddTypePopoverTypeStep" class="preview-add-type-popover-step">
-        <div class="step-card-actions preview-add-type-popover-actions">
-          <button type="button" id="previewAddPopoverNormalBtn">일반 모듈 추가</button>
-          <button type="button" id="previewAddPopoverCornerBtn">코너 모듈 추가</button>
+      <div class="modal-body preview-action-modal-body">
+        <p id="previewModuleActionModalDesc" class="field-note">선택한 모듈의 작업을 선택하세요.</p>
+        <div class="preview-action-modal-selected" id="previewModuleActionModalSelectedType"></div>
+        <div class="step-card-actions preview-action-modal-actions">
+          <button type="button" id="previewModuleActionPresetBtn">모듈선택</button>
+          <button type="button" id="previewModuleActionCustomBtn">직접구성</button>
+          <button type="button" id="previewModuleActionRemoveBtn" class="ghost-btn">모듈삭제</button>
         </div>
+        <div id="previewModuleActionModalError" class="error-msg"></div>
       </div>
-      <div id="previewAddTypePopoverModeStep" class="preview-add-type-popover-step hidden">
-        <div class="preview-add-type-popover-selected" id="previewAddTypePopoverSelectedType"></div>
-        <div class="step-card-actions preview-add-type-popover-actions">
-          <button type="button" id="previewAddPopoverPresetBtn">모듈선택</button>
-          <button type="button" id="previewAddPopoverCustomBtn">직접구성</button>
-          <button type="button" id="previewAddPopoverBackBtn" class="ghost-btn">이전</button>
-        </div>
+      <div class="modal-footer preview-action-modal-footer">
+        <button type="button" id="closePreviewModuleActionModal" class="modal-close">닫기</button>
       </div>
-      <div id="previewAddTypePopoverRootCornerStep" class="preview-add-type-popover-step hidden">
-        <div class="step-card-actions preview-add-type-popover-actions">
-          <button type="button" id="previewAddPopoverRootCornerRightBtn">우측 방향</button>
-          <button type="button" id="previewAddPopoverRootCornerLeftBtn">좌측 방향</button>
-          <button type="button" id="previewAddPopoverRootCornerBackBtn" class="ghost-btn">이전</button>
-        </div>
-      </div>
-      <div id="previewAddTypePopoverError" class="error-msg"></div>
-    </div>
-  </div>
-
-  <div
-    id="previewModuleActionPopover"
-    class="preview-add-type-popover hidden"
-    role="dialog"
-    aria-modal="false"
-    aria-labelledby="previewModuleActionPopoverTitle"
-    aria-hidden="true"
-  >
-    <div class="preview-add-type-popover-card">
-      <div class="preview-add-type-popover-head">
-        <strong id="previewModuleActionPopoverTitle" tabindex="-1">모듈 작업</strong>
-        <button type="button" id="closePreviewModuleActionPopover" class="ghost-btn">닫기</button>
-      </div>
-      <p id="previewModuleActionPopoverDesc" class="field-note">선택한 모듈의 작업을 선택하세요.</p>
-      <div class="preview-add-type-popover-selected" id="previewModuleActionPopoverSelectedType"></div>
-      <div class="step-card-actions preview-add-type-popover-actions">
-        <button type="button" id="previewModuleActionPresetBtn">모듈선택</button>
-        <button type="button" id="previewModuleActionCustomBtn">직접구성</button>
-        <button type="button" id="previewModuleActionRemoveBtn" class="ghost-btn">모듈삭제</button>
-      </div>
-      <div id="previewModuleActionPopoverError" class="error-msg"></div>
     </div>
   </div>
 

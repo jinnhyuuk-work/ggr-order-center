@@ -924,44 +924,43 @@ input[type="number"]::-webkit-outer-spin-button {
   z-index: 5;
 }
 
-.preview-add-type-popover {
-  position: fixed;
-  left: 0;
-  top: 0;
+.preview-action-modal {
   z-index: 1200;
-  width: min(320px, calc(100vw - 24px));
 }
 
-.preview-add-type-popover-card {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
-  padding: 12px;
+.preview-action-modal.modal {
+  z-index: 1200;
 }
 
-.preview-add-type-popover-head {
+.preview-action-modal-content {
+  max-width: 420px;
+  width: min(420px, calc(100vw - 32px));
+  min-height: auto;
+  max-height: min(80vh, 560px);
+}
+
+.preview-action-modal-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 4px;
-}
-
-.preview-add-type-popover-head > strong {
-  font-size: var(--font-size-sm);
-}
-
-.preview-add-type-popover-actions {
   justify-content: flex-start;
-  margin-top: 8px;
 }
 
-.preview-add-type-popover-step {
+.preview-action-modal-step {
   display: block;
 }
 
-.preview-add-type-popover-selected {
+.preview-action-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-action-modal-body > .field-note {
+  margin-top: 0;
+}
+
+.preview-action-modal-selected {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -974,8 +973,8 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--color-text);
 }
 
-.preview-add-type-popover .error-msg {
-  margin-top: 8px;
+.preview-action-modal .error-msg {
+  margin-top: 0;
 }
 
 .preview-preset-card {
@@ -1017,8 +1016,8 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 @media (max-width: 768px) {
-  .preview-add-type-popover {
-    width: min(360px, calc(100vw - 16px));
+  .preview-action-modal-content {
+    width: min(420px, calc(100vw - 16px));
   }
 }
 
@@ -1972,10 +1971,10 @@ th, td {
 }
 
 .modal-close {
-  background: #eee;
-  color: var(--color-text);
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: var(--btn-padding);
+  border-radius: var(--btn-radius);
+  background: var(--btn-bg);
+  color: var(--btn-color);
 }
 
 #infoModal .modal-content {
@@ -2004,13 +2003,6 @@ th, td {
   margin-bottom: 0;
   font-size: var(--font-size-xs);
   min-height: 36px;
-}
-
-.module-option-modal-footer .modal-close {
-  padding: var(--btn-padding);
-  border-radius: var(--btn-radius);
-  background: var(--btn-bg);
-  color: var(--btn-color);
 }
 
 .module-option-modal-footer #saveCornerOptionModal,

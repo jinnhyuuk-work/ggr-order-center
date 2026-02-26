@@ -516,8 +516,8 @@ let bayOptionModalDraft = null;
 let cornerOptionModalDraft = null;
 let activePreviewAddTarget = null;
 let activePreviewAddAnchorEl = null;
-let previewAddPopoverStep = "type";
-let previewAddPopoverSelectedModuleType = "";
+let previewAddModalStep = "type";
+let previewAddModalSelectedModuleType = "";
 let previewPresetModuleType = "";
 let previewPresetModuleContext = null;
 let previewPresetModuleFilterKey = "";
@@ -960,7 +960,7 @@ function resolveActivePreviewAddSourceTarget(target = activePreviewAddTarget) {
 }
 
 function setPreviewAddTypeErrorMessage(message = "", { isError = false } = {}) {
-  ["#previewAddTypeError", "#previewAddTypePopoverError"].forEach((selector) => {
+  ["#previewAddTypeModalError"].forEach((selector) => {
     const errorEl = $(selector);
     if (!errorEl) return;
     errorEl.textContent = String(message || "");
@@ -968,44 +968,44 @@ function setPreviewAddTypeErrorMessage(message = "", { isError = false } = {}) {
   });
 }
 
-function getPreviewAddTypePopoverElements() {
+function getPreviewAddTypeModalElements() {
   return {
-    popover: $("#previewAddTypePopover"),
-    normalBtn: $("#previewAddPopoverNormalBtn"),
-    cornerBtn: $("#previewAddPopoverCornerBtn"),
-    rootCornerRightBtn: $("#previewAddPopoverRootCornerRightBtn"),
-    rootCornerLeftBtn: $("#previewAddPopoverRootCornerLeftBtn"),
-    rootCornerBackBtn: $("#previewAddPopoverRootCornerBackBtn"),
-    presetBtn: $("#previewAddPopoverPresetBtn"),
-    customBtn: $("#previewAddPopoverCustomBtn"),
-    backBtn: $("#previewAddPopoverBackBtn"),
-    descEl: $("#previewAddTypePopoverDesc"),
-    typeStepEl: $("#previewAddTypePopoverTypeStep"),
-    rootCornerStepEl: $("#previewAddTypePopoverRootCornerStep"),
-    modeStepEl: $("#previewAddTypePopoverModeStep"),
-    selectedTypeEl: $("#previewAddTypePopoverSelectedType"),
-    titleEl: $("#previewAddTypePopoverTitle"),
+    modal: $("#previewAddTypeModal"),
+    normalBtn: $("#previewAddModalNormalBtn"),
+    cornerBtn: $("#previewAddModalCornerBtn"),
+    rootCornerRightBtn: $("#previewAddModalRootCornerRightBtn"),
+    rootCornerLeftBtn: $("#previewAddModalRootCornerLeftBtn"),
+    rootCornerBackBtn: $("#previewAddModalRootCornerBackBtn"),
+    presetBtn: $("#previewAddModalPresetBtn"),
+    customBtn: $("#previewAddModalCustomBtn"),
+    backBtn: $("#previewAddModalBackBtn"),
+    descEl: $("#previewAddTypeModalDesc"),
+    typeStepEl: $("#previewAddTypeModalTypeStep"),
+    rootCornerStepEl: $("#previewAddTypeModalRootCornerStep"),
+    modeStepEl: $("#previewAddTypeModalModeStep"),
+    selectedTypeEl: $("#previewAddTypeModalSelectedType"),
+    titleEl: $("#previewAddTypeModalTitle"),
   };
 }
 
-function getPreviewAddPopoverModuleTypeLabel(type) {
+function getPreviewAddModalModuleTypeLabel(type) {
   if (type === "corner") return "코너 모듈";
   return "일반 모듈";
 }
 
-function setPreviewAddTypePopoverStep(step = "type", selectedModuleType = "") {
+function setPreviewAddTypeModalStep(step = "type", selectedModuleType = "") {
   const normalizedStep =
     step === "mode" || step === "root-corner-direction" ? step : "type";
   const normalizedType =
     selectedModuleType === "corner" || selectedModuleType === "normal"
       ? selectedModuleType
       : "";
-  previewAddPopoverStep = normalizedStep;
-  previewAddPopoverSelectedModuleType =
+  previewAddModalStep = normalizedStep;
+  previewAddModalSelectedModuleType =
     normalizedStep === "mode" || normalizedStep === "root-corner-direction" ? normalizedType : "";
 
   const {
-    popover,
+    modal,
     titleEl,
     descEl,
     typeStepEl,
@@ -1018,16 +1018,16 @@ function setPreviewAddTypePopoverStep(step = "type", selectedModuleType = "") {
     presetBtn,
     customBtn,
     backBtn,
-  } = getPreviewAddTypePopoverElements();
-  if (!popover) return;
+  } = getPreviewAddTypeModalElements();
+  if (!modal) return;
 
-  popover.dataset.step = previewAddPopoverStep;
-  popover.dataset.moduleType = previewAddPopoverSelectedModuleType;
-  typeStepEl?.classList.toggle("hidden", previewAddPopoverStep !== "type");
-  rootCornerStepEl?.classList.toggle("hidden", previewAddPopoverStep !== "root-corner-direction");
-  modeStepEl?.classList.toggle("hidden", previewAddPopoverStep !== "mode");
+  modal.dataset.step = previewAddModalStep;
+  modal.dataset.moduleType = previewAddModalSelectedModuleType;
+  typeStepEl?.classList.toggle("hidden", previewAddModalStep !== "type");
+  rootCornerStepEl?.classList.toggle("hidden", previewAddModalStep !== "root-corner-direction");
+  modeStepEl?.classList.toggle("hidden", previewAddModalStep !== "mode");
 
-  if (previewAddPopoverStep === "root-corner-direction") {
+  if (previewAddModalStep === "root-corner-direction") {
     if (titleEl) titleEl.textContent = "코너 시작 방향 선택";
     if (descEl) {
       descEl.textContent = "첫 모듈을 코너로 시작할 방향을 선택하세요.";
@@ -1059,8 +1059,8 @@ function setPreviewAddTypePopoverStep(step = "type", selectedModuleType = "") {
     return;
   }
 
-  if (previewAddPopoverStep === "mode") {
-    const typeLabel = getPreviewAddPopoverModuleTypeLabel(previewAddPopoverSelectedModuleType);
+  if (previewAddModalStep === "mode") {
+    const typeLabel = getPreviewAddModalModuleTypeLabel(previewAddModalSelectedModuleType);
     if (titleEl) titleEl.textContent = `${typeLabel} 추가`;
     if (descEl) {
       descEl.textContent = `${typeLabel} 추가 방식을 선택하세요.`;
@@ -1083,10 +1083,10 @@ function setPreviewAddTypePopoverStep(step = "type", selectedModuleType = "") {
   }
 }
 
-function handlePreviewAddPopoverTypeSelect(moduleType) {
+function handlePreviewAddModalTypeSelect(moduleType) {
   const normalizedType = moduleType === "corner" ? "corner" : "normal";
   const { normalBtn, cornerBtn, customBtn, rootCornerRightBtn, rootCornerLeftBtn, titleEl } =
-    getPreviewAddTypePopoverElements();
+    getPreviewAddTypeModalElements();
   const sourceBtn = normalizedType === "corner" ? cornerBtn : normalBtn;
   if (!sourceBtn || sourceBtn.disabled) return;
   setPreviewAddTypeErrorMessage("", { isError: false });
@@ -1095,35 +1095,35 @@ function handlePreviewAddPopoverTypeSelect(moduleType) {
     isRootPreviewEndpointTarget(activePreviewAddTarget) &&
     !String(activePreviewAddTarget?.cornerId || "")
   ) {
-    setPreviewAddTypePopoverStep("root-corner-direction", "corner");
-    positionPreviewAddTypePopover();
+    setPreviewAddTypeModalStep("root-corner-direction", "corner");
+    positionPreviewAddTypeModal();
     requestAnimationFrame(() => {
       if (rootCornerRightBtn && !rootCornerRightBtn.disabled) {
         rootCornerRightBtn.focus();
-        positionPreviewAddTypePopover();
+        positionPreviewAddTypeModal();
         return;
       }
       if (rootCornerLeftBtn && !rootCornerLeftBtn.disabled) {
         rootCornerLeftBtn.focus();
-        positionPreviewAddTypePopover();
+        positionPreviewAddTypeModal();
         return;
       }
       titleEl?.focus();
-      positionPreviewAddTypePopover();
+      positionPreviewAddTypeModal();
     });
     return;
   }
-  setPreviewAddTypePopoverStep("mode", normalizedType);
-  positionPreviewAddTypePopover();
+  setPreviewAddTypeModalStep("mode", normalizedType);
+  positionPreviewAddTypeModal();
   requestAnimationFrame(() => {
     customBtn?.focus();
-    positionPreviewAddTypePopover();
+    positionPreviewAddTypeModal();
   });
 }
 
-function handlePreviewAddPopoverRootCornerDirectionSelect(direction = "right") {
+function handlePreviewAddModalRootCornerDirectionSelect(direction = "right") {
   const normalizedDirection = direction === "left" ? "left" : "right";
-  const { rootCornerRightBtn, rootCornerLeftBtn, customBtn, titleEl } = getPreviewAddTypePopoverElements();
+  const { rootCornerRightBtn, rootCornerLeftBtn, customBtn, titleEl } = getPreviewAddTypeModalElements();
   const sourceBtn = normalizedDirection === "left" ? rootCornerLeftBtn : rootCornerRightBtn;
   if (!sourceBtn || sourceBtn.disabled) return;
   const previewTarget = buildRootCornerStartTargetVariant(activePreviewAddTarget, normalizedDirection);
@@ -1141,30 +1141,30 @@ function handlePreviewAddPopoverRootCornerDirectionSelect(direction = "right") {
     return;
   }
   setPreviewAddTypeErrorMessage("", { isError: false });
-  setPreviewAddTypePopoverStep("mode", "corner");
-  positionPreviewAddTypePopover();
+  setPreviewAddTypeModalStep("mode", "corner");
+  positionPreviewAddTypeModal();
   requestAnimationFrame(() => {
     if (customBtn && !customBtn.disabled) {
       customBtn.focus();
     } else {
       titleEl?.focus();
     }
-    positionPreviewAddTypePopover();
+    positionPreviewAddTypeModal();
   });
 }
 
-function handlePreviewAddPopoverBack() {
+function handlePreviewAddModalBack() {
   setPreviewAddTypeErrorMessage("", { isError: false });
   const { normalBtn, cornerBtn, rootCornerRightBtn, rootCornerLeftBtn, titleEl } =
-    getPreviewAddTypePopoverElements();
+    getPreviewAddTypeModalElements();
   if (
-    previewAddPopoverStep === "mode" &&
-    previewAddPopoverSelectedModuleType === "corner" &&
+    previewAddModalStep === "mode" &&
+    previewAddModalSelectedModuleType === "corner" &&
     isRootPreviewEndpointTarget(activePreviewAddTarget) &&
     !String(activePreviewAddTarget?.cornerId || "")
   ) {
-    setPreviewAddTypePopoverStep("root-corner-direction", "corner");
-    positionPreviewAddTypePopover();
+    setPreviewAddTypeModalStep("root-corner-direction", "corner");
+    positionPreviewAddTypeModal();
     requestAnimationFrame(() => {
       if (rootCornerRightBtn && !rootCornerRightBtn.disabled) {
         rootCornerRightBtn.focus();
@@ -1179,8 +1179,8 @@ function handlePreviewAddPopoverBack() {
     return;
   }
 
-  setPreviewAddTypePopoverStep("type", "");
-  positionPreviewAddTypePopover();
+  setPreviewAddTypeModalStep("type", "");
+  positionPreviewAddTypeModal();
   requestAnimationFrame(() => {
     if (normalBtn && !normalBtn.disabled) {
       normalBtn.focus();
@@ -1194,20 +1194,20 @@ function handlePreviewAddPopoverBack() {
   });
 }
 
-function handlePreviewAddPopoverCustomCompose() {
-  if (previewAddPopoverSelectedModuleType === "corner") {
+function handlePreviewAddModalCustomCompose() {
+  if (previewAddModalSelectedModuleType === "corner") {
     commitPreviewAddCorner();
     return;
   }
   commitPreviewAddNormal();
 }
 
-function handlePreviewAddPopoverPresetSelect() {
-  if (previewAddPopoverSelectedModuleType !== "normal" && previewAddPopoverSelectedModuleType !== "corner") {
+function handlePreviewAddModalPresetSelect() {
+  if (previewAddModalSelectedModuleType !== "normal" && previewAddModalSelectedModuleType !== "corner") {
     return;
   }
   closePreviewAddTypePicker({ clearTarget: false });
-  openPresetModuleOptionModal(previewAddPopoverSelectedModuleType, {
+  openPresetModuleOptionModal(previewAddModalSelectedModuleType, {
     mode: "add",
     addTarget: activePreviewAddTarget,
     returnFocusEl: activePreviewAddAnchorEl instanceof Element ? activePreviewAddAnchorEl : null,
@@ -1905,7 +1905,7 @@ function openPreviewPresetModuleModal(moduleType, { context = null } = {}) {
           initialFilterKey: "",
         };
   const isEditMode = previewPresetModuleContext.mode === "edit";
-  const moduleLabel = getPreviewAddPopoverModuleTypeLabel(normalizedType);
+  const moduleLabel = getPreviewAddModalModuleTypeLabel(normalizedType);
   const titleEl = $("#previewPresetModuleModalTitle");
   const descEl = $("#previewPresetModuleModalDesc");
   if (titleEl) {
@@ -2180,39 +2180,40 @@ function savePresetModuleOptionModal() {
   );
 }
 
-function isPreviewAddTypePopoverOpen() {
-  const { popover } = getPreviewAddTypePopoverElements();
-  return Boolean(popover && !popover.classList.contains("hidden"));
-}
-
-function positionPreviewAddTypePopover(anchorEl = activePreviewAddAnchorEl) {
-  const { popover } = getPreviewAddTypePopoverElements();
-  if (!popover || popover.classList.contains("hidden")) return;
+function positionPreviewAddTypeModal(anchorEl = activePreviewAddAnchorEl) {
+  const { modal } = getPreviewAddTypeModalElements();
+  if (!modal || modal.classList.contains("hidden")) return;
+  if (modal.classList.contains("modal")) return;
   if (!(anchorEl instanceof Element) || !anchorEl.isConnected) return;
 
   const rect = anchorEl.getBoundingClientRect();
   const margin = 8;
   const viewportPadding = 8;
-  const popoverWidth = popover.offsetWidth || 300;
-  const popoverHeight = popover.offsetHeight || 180;
-  let left = rect.left + rect.width / 2 - popoverWidth / 2;
-  left = Math.max(viewportPadding, Math.min(left, window.innerWidth - popoverWidth - viewportPadding));
+  const modalWidth = modal.offsetWidth || 300;
+  const modalHeight = modal.offsetHeight || 180;
+  let left = rect.left + rect.width / 2 - modalWidth / 2;
+  left = Math.max(viewportPadding, Math.min(left, window.innerWidth - modalWidth - viewportPadding));
   let top = rect.bottom + margin;
-  if (top + popoverHeight > window.innerHeight - viewportPadding) {
-    top = Math.max(viewportPadding, rect.top - popoverHeight - margin);
+  if (top + modalHeight > window.innerHeight - viewportPadding) {
+    top = Math.max(viewportPadding, rect.top - modalHeight - margin);
   }
-  popover.style.left = `${Math.round(left)}px`;
-  popover.style.top = `${Math.round(top)}px`;
+  modal.style.left = `${Math.round(left)}px`;
+  modal.style.top = `${Math.round(top)}px`;
 }
 
 function closePreviewAddTypePicker({ returnFocus = false, clearTarget = true } = {}) {
-  const { popover } = getPreviewAddTypePopoverElements();
-  if (popover) {
-    popover.classList.add("hidden");
-    popover.setAttribute("aria-hidden", "true");
+  const { modal } = getPreviewAddTypeModalElements();
+  if (modal) {
+    if (!modal.classList.contains("hidden")) {
+      closeModal(modal, { bodySelector: null });
+    } else {
+      modal.classList.add("hidden");
+      modal.setAttribute("aria-hidden", "true");
+    }
+    modal.style.left = "";
+    modal.style.top = "";
   }
-  setPreviewAddTypePopoverStep("type", "");
-  closeModal("#previewAddTypeModal");
+  setPreviewAddTypeModalStep("type", "");
   setPreviewAddTypeErrorMessage("", { isError: false });
   if (returnFocus && activePreviewAddAnchorEl instanceof Element && activePreviewAddAnchorEl.isConnected) {
     activePreviewAddAnchorEl.focus();
@@ -2221,38 +2222,6 @@ function closePreviewAddTypePicker({ returnFocus = false, clearTarget = true } =
     activePreviewAddTarget = null;
     activePreviewAddAnchorEl = null;
   }
-}
-
-function bindPreviewAddTypePopoverDismissEvents() {
-  if (document.body.dataset.previewAddPopoverBound === "true") return;
-  document.body.dataset.previewAddPopoverBound = "true";
-
-  document.addEventListener("pointerdown", (e) => {
-    if (!isPreviewAddTypePopoverOpen()) return;
-    const { popover } = getPreviewAddTypePopoverElements();
-    const target = e.target;
-    if (!(target instanceof Element)) return;
-    if (popover?.contains(target)) return;
-    if (activePreviewAddAnchorEl instanceof Element && activePreviewAddAnchorEl.contains(target)) return;
-    closePreviewAddTypePicker();
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    if (!isPreviewAddTypePopoverOpen()) return;
-    e.preventDefault();
-    closePreviewAddTypePicker({ returnFocus: true });
-  });
-
-  window.addEventListener("resize", () => positionPreviewAddTypePopover());
-  window.addEventListener(
-    "scroll",
-    () => {
-      if (!isPreviewAddTypePopoverOpen()) return;
-      positionPreviewAddTypePopover();
-    },
-    true
-  );
 }
 
 function bindPendingOptionModalCleanupOnClose() {
@@ -2281,57 +2250,59 @@ function bindPendingOptionModalCleanupOnClose() {
   });
 }
 
-function setPreviewModuleActionPopoverError(message = "", { isError = false } = {}) {
-  const errorEl = $("#previewModuleActionPopoverError");
+function setPreviewModuleActionModalError(message = "", { isError = false } = {}) {
+  const errorEl = $("#previewModuleActionModalError");
   if (!errorEl) return;
   errorEl.textContent = String(message || "");
   errorEl.classList.toggle("error", Boolean(isError && message));
 }
 
-function getPreviewModuleActionPopoverElements() {
+function getPreviewModuleActionModalElements() {
   return {
-    popover: $("#previewModuleActionPopover"),
-    titleEl: $("#previewModuleActionPopoverTitle"),
-    descEl: $("#previewModuleActionPopoverDesc"),
-    selectedTypeEl: $("#previewModuleActionPopoverSelectedType"),
+    modal: $("#previewModuleActionModal"),
+    titleEl: $("#previewModuleActionModalTitle"),
+    descEl: $("#previewModuleActionModalDesc"),
+    selectedTypeEl: $("#previewModuleActionModalSelectedType"),
     presetBtn: $("#previewModuleActionPresetBtn"),
     customBtn: $("#previewModuleActionCustomBtn"),
     removeBtn: $("#previewModuleActionRemoveBtn"),
   };
 }
 
-function isPreviewModuleActionPopoverOpen() {
-  const { popover } = getPreviewModuleActionPopoverElements();
-  return Boolean(popover && !popover.classList.contains("hidden"));
-}
-
-function positionPreviewModuleActionPopover(anchorEl = activePreviewModuleActionAnchorEl) {
-  const { popover } = getPreviewModuleActionPopoverElements();
-  if (!popover || popover.classList.contains("hidden")) return;
+function positionPreviewModuleActionModal(anchorEl = activePreviewModuleActionAnchorEl) {
+  const { modal } = getPreviewModuleActionModalElements();
+  if (!modal || modal.classList.contains("hidden")) return;
+  if (modal.classList.contains("modal")) return;
   if (!(anchorEl instanceof Element) || !anchorEl.isConnected) return;
 
   const rect = anchorEl.getBoundingClientRect();
   const margin = 8;
   const viewportPadding = 8;
-  const popoverWidth = popover.offsetWidth || 300;
-  const popoverHeight = popover.offsetHeight || 180;
-  let left = rect.left + rect.width / 2 - popoverWidth / 2;
-  left = Math.max(viewportPadding, Math.min(left, window.innerWidth - popoverWidth - viewportPadding));
+  const modalWidth = modal.offsetWidth || 300;
+  const modalHeight = modal.offsetHeight || 180;
+  let left = rect.left + rect.width / 2 - modalWidth / 2;
+  left = Math.max(viewportPadding, Math.min(left, window.innerWidth - modalWidth - viewportPadding));
   let top = rect.bottom + margin;
-  if (top + popoverHeight > window.innerHeight - viewportPadding) {
-    top = Math.max(viewportPadding, rect.top - popoverHeight - margin);
+  if (top + modalHeight > window.innerHeight - viewportPadding) {
+    top = Math.max(viewportPadding, rect.top - modalHeight - margin);
   }
-  popover.style.left = `${Math.round(left)}px`;
-  popover.style.top = `${Math.round(top)}px`;
+  modal.style.left = `${Math.round(left)}px`;
+  modal.style.top = `${Math.round(top)}px`;
 }
 
-function closePreviewModuleActionPopover({ returnFocus = false, clearTarget = true } = {}) {
-  const { popover } = getPreviewModuleActionPopoverElements();
-  if (popover) {
-    popover.classList.add("hidden");
-    popover.setAttribute("aria-hidden", "true");
+function closePreviewModuleActionModal({ returnFocus = false, clearTarget = true } = {}) {
+  const { modal } = getPreviewModuleActionModalElements();
+  if (modal) {
+    if (!modal.classList.contains("hidden")) {
+      closeModal(modal, { bodySelector: null });
+    } else {
+      modal.classList.add("hidden");
+      modal.setAttribute("aria-hidden", "true");
+    }
+    modal.style.left = "";
+    modal.style.top = "";
   }
-  setPreviewModuleActionPopoverError("", { isError: false });
+  setPreviewModuleActionModalError("", { isError: false });
   if (
     returnFocus &&
     activePreviewModuleActionAnchorEl instanceof Element &&
@@ -2345,41 +2316,7 @@ function closePreviewModuleActionPopover({ returnFocus = false, clearTarget = tr
   }
 }
 
-function bindPreviewModuleActionPopoverDismissEvents() {
-  if (document.body.dataset.previewModuleActionPopoverBound === "true") return;
-  document.body.dataset.previewModuleActionPopoverBound = "true";
-
-  document.addEventListener("pointerdown", (e) => {
-    if (!isPreviewModuleActionPopoverOpen()) return;
-    const { popover } = getPreviewModuleActionPopoverElements();
-    const target = e.target;
-    if (!(target instanceof Element)) return;
-    if (popover?.contains(target)) return;
-    if (activePreviewModuleActionAnchorEl instanceof Element && activePreviewModuleActionAnchorEl.contains(target)) {
-      return;
-    }
-    closePreviewModuleActionPopover();
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    if (!isPreviewModuleActionPopoverOpen()) return;
-    e.preventDefault();
-    closePreviewModuleActionPopover({ returnFocus: true });
-  });
-
-  window.addEventListener("resize", () => positionPreviewModuleActionPopover());
-  window.addEventListener(
-    "scroll",
-    () => {
-      if (!isPreviewModuleActionPopoverOpen()) return;
-      positionPreviewModuleActionPopover();
-    },
-    true
-  );
-}
-
-function openPreviewModuleActionPopover(edgeId, edgeType = "bay", anchorEl = null) {
+function openPreviewModuleActionModal(edgeId, edgeType = "bay", anchorEl = null) {
   const targetId = String(edgeId || "");
   const edge = targetId ? findShelfById(targetId) : null;
   if (!edge) return;
@@ -2390,9 +2327,9 @@ function openPreviewModuleActionPopover(edgeId, edgeType = "bay", anchorEl = nul
   };
   activePreviewModuleActionAnchorEl = anchorEl instanceof Element ? anchorEl : null;
 
-  const { popover, titleEl, descEl, selectedTypeEl, presetBtn, customBtn, removeBtn } =
-    getPreviewModuleActionPopoverElements();
-  if (!popover) {
+  const { modal, titleEl, descEl, selectedTypeEl, presetBtn, customBtn, removeBtn } =
+    getPreviewModuleActionModalElements();
+  if (!modal) {
     if (normalizedEdgeType === "corner") openCornerOptionModal(targetId);
     else openBayOptionModal(targetId);
     return;
@@ -2406,13 +2343,10 @@ function openPreviewModuleActionPopover(edgeId, edgeType = "bay", anchorEl = nul
     if (!btn) return;
     btn.disabled = false;
   });
-  setPreviewModuleActionPopoverError("", { isError: false });
+  setPreviewModuleActionModalError("", { isError: false });
 
   closePreviewAddTypePicker();
-  popover.classList.remove("hidden");
-  popover.setAttribute("aria-hidden", "false");
-  positionPreviewModuleActionPopover(activePreviewModuleActionAnchorEl);
-  requestAnimationFrame(() => positionPreviewModuleActionPopover(activePreviewModuleActionAnchorEl));
+  openModal(modal, { focusTarget: "#previewModuleActionModalTitle", bodySelector: null });
   requestAnimationFrame(() => {
     if (presetBtn && !presetBtn.disabled) {
       presetBtn.focus();
@@ -2431,7 +2365,7 @@ function handlePreviewModuleActionPresetSelect() {
   if (!target?.edgeId) return;
   const moduleType = target.edgeType === "corner" ? "corner" : "normal";
   const focusEl = activePreviewModuleActionAnchorEl instanceof Element ? activePreviewModuleActionAnchorEl : null;
-  closePreviewModuleActionPopover();
+  closePreviewModuleActionModal();
   openPresetModuleOptionModal(moduleType, {
     mode: "edit",
     edgeId: target.edgeId,
@@ -2444,7 +2378,7 @@ function handlePreviewModuleActionCustomCompose() {
   if (!target?.edgeId) return;
   const edgeId = String(target.edgeId);
   const edgeType = target.edgeType === "corner" ? "corner" : "bay";
-  closePreviewModuleActionPopover();
+  closePreviewModuleActionModal();
   if (edgeType === "corner") {
     openCornerOptionModal(edgeId);
     return;
@@ -2457,7 +2391,7 @@ function handlePreviewModuleActionRemove() {
   if (!target?.edgeId) return;
   const edgeId = String(target.edgeId);
   const edgeType = target.edgeType === "corner" ? "corner" : "bay";
-  closePreviewModuleActionPopover();
+  closePreviewModuleActionModal();
   if (edgeType === "corner") {
     removeCornerById(edgeId);
     return;
@@ -3717,7 +3651,7 @@ function restoreBuilderSnapshot(snapshot) {
     closeModal("#cornerOptionModal");
     closeModal("#presetModuleOptionModal");
     closePreviewAddTypePicker();
-    closePreviewModuleActionPopover();
+    closePreviewModuleActionModal();
     closePreviewPresetModuleModal({ returnFocus: false, clearTarget: true });
     activePreviewAddTarget = null;
     activePreviewAddAnchorEl = null;
@@ -5492,15 +5426,13 @@ function openPreviewAddTypeModal(
   };
   activePreviewAddAnchorEl = anchorEl instanceof Element ? anchorEl : null;
   const {
-    popover,
-    cornerBtn: popoverCornerBtn,
-    normalBtn: popoverNormalBtn,
-    titleEl: popoverTitleEl,
-  } = getPreviewAddTypePopoverElements();
-  const modalNormalBtn = $("#previewAddNormalBtn");
-  const modalCornerBtn = $("#previewAddCornerBtn");
-  const normalBtnTargets = [popoverNormalBtn, modalNormalBtn].filter(Boolean);
-  const cornerBtnTargets = [popoverCornerBtn, modalCornerBtn].filter(Boolean);
+    modal,
+    cornerBtn: modalCornerBtn,
+    normalBtn: modalNormalBtn,
+    titleEl: modalTitleEl,
+  } = getPreviewAddTypeModalElements();
+  const normalBtnTargets = [modalNormalBtn].filter(Boolean);
+  const cornerBtnTargets = [modalCornerBtn].filter(Boolean);
   normalBtnTargets.forEach((btn) => {
     btn.disabled = !hasNormalSlot;
     if (!hasNormalSlot) {
@@ -5535,27 +5467,22 @@ function openPreviewAddTypeModal(
   } else {
     setPreviewAddTypeErrorMessage("", { isError: false });
   }
-  if (popover) {
-    setPreviewAddTypePopoverStep("type", "");
-    closeModal("#previewAddTypeModal");
-    popover.classList.remove("hidden");
-    popover.setAttribute("aria-hidden", "false");
-    positionPreviewAddTypePopover(activePreviewAddAnchorEl);
-    requestAnimationFrame(() => positionPreviewAddTypePopover(activePreviewAddAnchorEl));
+  if (modal) {
+    setPreviewAddTypeModalStep("type", "");
+    openModal(modal, { focusTarget: "#previewAddTypeModalTitle", bodySelector: null });
     requestAnimationFrame(() => {
-      if (popoverNormalBtn && !popoverNormalBtn.disabled) {
-        popoverNormalBtn.focus();
+      if (modalNormalBtn && !modalNormalBtn.disabled) {
+        modalNormalBtn.focus();
         return;
       }
-      if (popoverCornerBtn && !popoverCornerBtn.disabled) {
-        popoverCornerBtn.focus();
+      if (modalCornerBtn && !modalCornerBtn.disabled) {
+        modalCornerBtn.focus();
         return;
       }
-      popoverTitleEl?.focus();
+      modalTitleEl?.focus();
     });
     return;
   }
-  openModal("#previewAddTypeModal", { focusTarget: "#previewAddTypeModalTitle" });
 }
 
 function commitPreviewAddNormal() {
@@ -7495,8 +7422,6 @@ function init() {
     initCollapsibleSections();
     renderSystemAddonModalCards();
     bindOptionModalFrontPreviewEvents();
-    bindPreviewAddTypePopoverDismissEvents();
-    bindPreviewModuleActionPopoverDismissEvents();
     bindPendingOptionModalCleanupOnClose();
   } catch (err) {
     console.error("init base setup failed", err);
@@ -7564,24 +7489,22 @@ function init() {
   });
   $("#closePreviewAddTypeModal")?.addEventListener("click", () => closePreviewAddTypePicker({ returnFocus: true }));
   $("#previewAddTypeModalBackdrop")?.addEventListener("click", () => closePreviewAddTypePicker());
-  $("#previewAddNormalBtn")?.addEventListener("click", commitPreviewAddNormal);
-  $("#previewAddCornerBtn")?.addEventListener("click", commitPreviewAddCorner);
-  $("#closePreviewAddTypePopover")?.addEventListener("click", () => closePreviewAddTypePicker({ returnFocus: true }));
-  $("#previewAddPopoverNormalBtn")?.addEventListener("click", () => handlePreviewAddPopoverTypeSelect("normal"));
-  $("#previewAddPopoverCornerBtn")?.addEventListener("click", () => handlePreviewAddPopoverTypeSelect("corner"));
-  $("#previewAddPopoverRootCornerRightBtn")?.addEventListener("click", () =>
-    handlePreviewAddPopoverRootCornerDirectionSelect("right")
+  $("#previewAddModalNormalBtn")?.addEventListener("click", () => handlePreviewAddModalTypeSelect("normal"));
+  $("#previewAddModalCornerBtn")?.addEventListener("click", () => handlePreviewAddModalTypeSelect("corner"));
+  $("#previewAddModalRootCornerRightBtn")?.addEventListener("click", () =>
+    handlePreviewAddModalRootCornerDirectionSelect("right")
   );
-  $("#previewAddPopoverRootCornerLeftBtn")?.addEventListener("click", () =>
-    handlePreviewAddPopoverRootCornerDirectionSelect("left")
+  $("#previewAddModalRootCornerLeftBtn")?.addEventListener("click", () =>
+    handlePreviewAddModalRootCornerDirectionSelect("left")
   );
-  $("#previewAddPopoverPresetBtn")?.addEventListener("click", handlePreviewAddPopoverPresetSelect);
-  $("#previewAddPopoverCustomBtn")?.addEventListener("click", handlePreviewAddPopoverCustomCompose);
-  $("#previewAddPopoverBackBtn")?.addEventListener("click", handlePreviewAddPopoverBack);
-  $("#previewAddPopoverRootCornerBackBtn")?.addEventListener("click", handlePreviewAddPopoverBack);
-  $("#closePreviewModuleActionPopover")?.addEventListener("click", () =>
-    closePreviewModuleActionPopover({ returnFocus: true })
+  $("#previewAddModalPresetBtn")?.addEventListener("click", handlePreviewAddModalPresetSelect);
+  $("#previewAddModalCustomBtn")?.addEventListener("click", handlePreviewAddModalCustomCompose);
+  $("#previewAddModalBackBtn")?.addEventListener("click", handlePreviewAddModalBack);
+  $("#previewAddModalRootCornerBackBtn")?.addEventListener("click", handlePreviewAddModalBack);
+  $("#closePreviewModuleActionModal")?.addEventListener("click", () =>
+    closePreviewModuleActionModal({ returnFocus: true })
   );
+  $("#previewModuleActionModalBackdrop")?.addEventListener("click", () => closePreviewModuleActionModal());
   $("#previewModuleActionPresetBtn")?.addEventListener("click", handlePreviewModuleActionPresetSelect);
   $("#previewModuleActionCustomBtn")?.addEventListener("click", handlePreviewModuleActionCustomCompose);
   $("#previewModuleActionRemoveBtn")?.addEventListener("click", handlePreviewModuleActionRemove);
@@ -7682,11 +7605,11 @@ function init() {
   $("#systemPreviewShelves")?.addEventListener("click", (e) => {
     clearPreviewGhost();
     const eventTarget = e.target instanceof Element ? e.target : null;
-    if (!eventTarget?.closest("#previewAddTypePopover")) {
+    if (!eventTarget?.closest("#previewAddTypeModal")) {
       closePreviewAddTypePicker();
     }
-    if (!eventTarget?.closest("#previewModuleActionPopover")) {
-      closePreviewModuleActionPopover();
+    if (!eventTarget?.closest("#previewModuleActionModal")) {
+      closePreviewModuleActionModal();
     }
     const addTarget = eventTarget?.closest("[data-add-shelf]");
     if (addTarget) {
@@ -7700,7 +7623,7 @@ function init() {
       const prepend = endpoint.prepend === true;
       const attachAtStart = Boolean(endpoint.attachAtStart);
       const allowedTypes = endpoint?.allowedTypes || ["normal"];
-      closePreviewModuleActionPopover();
+      closePreviewModuleActionModal();
       openPreviewAddTypeModal(
         sideIndex,
         cornerId,
@@ -7717,14 +7640,14 @@ function init() {
     if (cornerTarget) {
       const cornerId = cornerTarget.dataset.cornerPreview;
       if (!cornerId) return;
-      openPreviewModuleActionPopover(cornerId, "corner", cornerTarget);
+      openPreviewModuleActionModal(cornerId, "corner", cornerTarget);
       return;
     }
     const bayTarget = eventTarget?.closest("[data-bay-preview]");
     if (!bayTarget) return;
     const shelfId = bayTarget.dataset.bayPreview;
     if (!shelfId) return;
-    openPreviewModuleActionPopover(shelfId, "bay", bayTarget);
+    openPreviewModuleActionModal(shelfId, "bay", bayTarget);
   });
 
   $$("[data-preview-info-mode]").forEach((btn) => {
