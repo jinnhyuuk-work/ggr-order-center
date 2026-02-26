@@ -524,6 +524,7 @@ let previewPresetModuleFilterKey = "";
 let previewPresetSelectedPresetId = "";
 let presetModuleOptionModalState = null;
 let presetModuleOptionDraft = null;
+let presetModuleOptionPendingBackContext = null;
 let activePreviewModuleActionTarget = null;
 let activePreviewModuleActionAnchorEl = null;
 let previewOpenEndpoints = new Map();
@@ -976,14 +977,9 @@ function getPreviewAddTypeModalElements() {
     rootCornerRightBtn: $("#previewAddModalRootCornerRightBtn"),
     rootCornerLeftBtn: $("#previewAddModalRootCornerLeftBtn"),
     rootCornerBackBtn: $("#previewAddModalRootCornerBackBtn"),
-    presetBtn: $("#previewAddModalPresetBtn"),
-    customBtn: $("#previewAddModalCustomBtn"),
-    backBtn: $("#previewAddModalBackBtn"),
     descEl: $("#previewAddTypeModalDesc"),
     typeStepEl: $("#previewAddTypeModalTypeStep"),
     rootCornerStepEl: $("#previewAddTypeModalRootCornerStep"),
-    modeStepEl: $("#previewAddTypeModalModeStep"),
-    selectedTypeEl: $("#previewAddTypeModalSelectedType"),
     titleEl: $("#previewAddTypeModalTitle"),
   };
 }
@@ -994,15 +990,13 @@ function getPreviewAddModalModuleTypeLabel(type) {
 }
 
 function setPreviewAddTypeModalStep(step = "type", selectedModuleType = "") {
-  const normalizedStep =
-    step === "mode" || step === "root-corner-direction" ? step : "type";
+  const normalizedStep = step === "root-corner-direction" ? step : "type";
   const normalizedType =
     selectedModuleType === "corner" || selectedModuleType === "normal"
       ? selectedModuleType
       : "";
   previewAddModalStep = normalizedStep;
-  previewAddModalSelectedModuleType =
-    normalizedStep === "mode" || normalizedStep === "root-corner-direction" ? normalizedType : "";
+  previewAddModalSelectedModuleType = normalizedStep === "root-corner-direction" ? normalizedType : "";
 
   const {
     modal,
@@ -1010,14 +1004,9 @@ function setPreviewAddTypeModalStep(step = "type", selectedModuleType = "") {
     descEl,
     typeStepEl,
     rootCornerStepEl,
-    modeStepEl,
-    selectedTypeEl,
     rootCornerRightBtn,
     rootCornerLeftBtn,
     rootCornerBackBtn,
-    presetBtn,
-    customBtn,
-    backBtn,
   } = getPreviewAddTypeModalElements();
   if (!modal) return;
 
@@ -1025,15 +1014,11 @@ function setPreviewAddTypeModalStep(step = "type", selectedModuleType = "") {
   modal.dataset.moduleType = previewAddModalSelectedModuleType;
   typeStepEl?.classList.toggle("hidden", previewAddModalStep !== "type");
   rootCornerStepEl?.classList.toggle("hidden", previewAddModalStep !== "root-corner-direction");
-  modeStepEl?.classList.toggle("hidden", previewAddModalStep !== "mode");
 
   if (previewAddModalStep === "root-corner-direction") {
     if (titleEl) titleEl.textContent = "코너 시작 방향 선택";
     if (descEl) {
       descEl.textContent = "첫 모듈을 코너로 시작할 방향을 선택하세요.";
-    }
-    if (selectedTypeEl) {
-      selectedTypeEl.textContent = "";
     }
     const rightTarget = buildRootCornerStartTargetVariant(activePreviewAddTarget, "right");
     const leftTarget = buildRootCornerStartTargetVariant(activePreviewAddTarget, "left");
@@ -1059,33 +1044,15 @@ function setPreviewAddTypeModalStep(step = "type", selectedModuleType = "") {
     return;
   }
 
-  if (previewAddModalStep === "mode") {
-    const typeLabel = getPreviewAddModalModuleTypeLabel(previewAddModalSelectedModuleType);
-    if (titleEl) titleEl.textContent = `${typeLabel} 추가`;
-    if (descEl) {
-      descEl.textContent = `${typeLabel} 추가 방식을 선택하세요.`;
-    }
-    if (selectedTypeEl) {
-      selectedTypeEl.textContent = `선택 유형: ${typeLabel}`;
-    }
-    if (presetBtn) presetBtn.disabled = false;
-    if (customBtn) customBtn.disabled = false;
-    if (backBtn) backBtn.disabled = false;
-    return;
-  }
-
   if (titleEl) titleEl.textContent = "추가 방식 선택";
   if (descEl) {
     descEl.textContent = "끝점에서 연장할 모듈 유형을 선택하세요.";
-  }
-  if (selectedTypeEl) {
-    selectedTypeEl.textContent = "";
   }
 }
 
 function handlePreviewAddModalTypeSelect(moduleType) {
   const normalizedType = moduleType === "corner" ? "corner" : "normal";
-  const { normalBtn, cornerBtn, customBtn, rootCornerRightBtn, rootCornerLeftBtn, titleEl } =
+  const { normalBtn, cornerBtn, rootCornerRightBtn, rootCornerLeftBtn, titleEl } =
     getPreviewAddTypeModalElements();
   const sourceBtn = normalizedType === "corner" ? cornerBtn : normalBtn;
   if (!sourceBtn || sourceBtn.disabled) return;
@@ -1113,17 +1080,22 @@ function handlePreviewAddModalTypeSelect(moduleType) {
     });
     return;
   }
-  setPreviewAddTypeModalStep("mode", normalizedType);
-  positionPreviewAddTypeModal();
-  requestAnimationFrame(() => {
-    customBtn?.focus();
-    positionPreviewAddTypeModal();
+  closePreviewAddTypePicker({ clearTarget: false });
+  openPresetModuleOptionModal(normalizedType, {
+    mode: "add",
+    addTarget: activePreviewAddTarget,
+    backContext: {
+      kind: "preview-add-type",
+      addTarget: activePreviewAddTarget,
+      anchorEl: activePreviewAddAnchorEl instanceof Element ? activePreviewAddAnchorEl : null,
+    },
+    returnFocusEl: activePreviewAddAnchorEl instanceof Element ? activePreviewAddAnchorEl : null,
   });
 }
 
 function handlePreviewAddModalRootCornerDirectionSelect(direction = "right") {
   const normalizedDirection = direction === "left" ? "left" : "right";
-  const { rootCornerRightBtn, rootCornerLeftBtn, customBtn, titleEl } = getPreviewAddTypeModalElements();
+  const { rootCornerRightBtn, rootCornerLeftBtn, titleEl } = getPreviewAddTypeModalElements();
   const sourceBtn = normalizedDirection === "left" ? rootCornerLeftBtn : rootCornerRightBtn;
   if (!sourceBtn || sourceBtn.disabled) return;
   const previewTarget = buildRootCornerStartTargetVariant(activePreviewAddTarget, normalizedDirection);
@@ -1141,15 +1113,16 @@ function handlePreviewAddModalRootCornerDirectionSelect(direction = "right") {
     return;
   }
   setPreviewAddTypeErrorMessage("", { isError: false });
-  setPreviewAddTypeModalStep("mode", "corner");
-  positionPreviewAddTypeModal();
-  requestAnimationFrame(() => {
-    if (customBtn && !customBtn.disabled) {
-      customBtn.focus();
-    } else {
-      titleEl?.focus();
-    }
-    positionPreviewAddTypeModal();
+  closePreviewAddTypePicker({ clearTarget: false });
+  openPresetModuleOptionModal("corner", {
+    mode: "add",
+    addTarget: activePreviewAddTarget,
+    backContext: {
+      kind: "preview-add-type",
+      addTarget: activePreviewAddTarget,
+      anchorEl: activePreviewAddAnchorEl instanceof Element ? activePreviewAddAnchorEl : null,
+    },
+    returnFocusEl: activePreviewAddAnchorEl instanceof Element ? activePreviewAddAnchorEl : null,
   });
 }
 
@@ -1157,28 +1130,6 @@ function handlePreviewAddModalBack() {
   setPreviewAddTypeErrorMessage("", { isError: false });
   const { normalBtn, cornerBtn, rootCornerRightBtn, rootCornerLeftBtn, titleEl } =
     getPreviewAddTypeModalElements();
-  if (
-    previewAddModalStep === "mode" &&
-    previewAddModalSelectedModuleType === "corner" &&
-    isRootPreviewEndpointTarget(activePreviewAddTarget) &&
-    !String(activePreviewAddTarget?.cornerId || "")
-  ) {
-    setPreviewAddTypeModalStep("root-corner-direction", "corner");
-    positionPreviewAddTypeModal();
-    requestAnimationFrame(() => {
-      if (rootCornerRightBtn && !rootCornerRightBtn.disabled) {
-        rootCornerRightBtn.focus();
-        return;
-      }
-      if (rootCornerLeftBtn && !rootCornerLeftBtn.disabled) {
-        rootCornerLeftBtn.focus();
-        return;
-      }
-      titleEl?.focus();
-    });
-    return;
-  }
-
   setPreviewAddTypeModalStep("type", "");
   positionPreviewAddTypeModal();
   requestAnimationFrame(() => {
@@ -1191,26 +1142,6 @@ function handlePreviewAddModalBack() {
       return;
     }
     titleEl?.focus();
-  });
-}
-
-function handlePreviewAddModalCustomCompose() {
-  if (previewAddModalSelectedModuleType === "corner") {
-    commitPreviewAddCorner();
-    return;
-  }
-  commitPreviewAddNormal();
-}
-
-function handlePreviewAddModalPresetSelect() {
-  if (previewAddModalSelectedModuleType !== "normal" && previewAddModalSelectedModuleType !== "corner") {
-    return;
-  }
-  closePreviewAddTypePicker({ clearTarget: false });
-  openPresetModuleOptionModal(previewAddModalSelectedModuleType, {
-    mode: "add",
-    addTarget: activePreviewAddTarget,
-    returnFocusEl: activePreviewAddAnchorEl instanceof Element ? activePreviewAddAnchorEl : null,
   });
 }
 
@@ -1286,6 +1217,32 @@ function getPresetModuleOptionSelectedPreset() {
   if (!presetId) return null;
   const items = getPreviewPresetItemsForType(presetModuleOptionDraft?.moduleType || "");
   return items.find((item) => String(item.id) === presetId) || null;
+}
+
+function clonePresetModuleOptionBackContext(backContext) {
+  if (!backContext || typeof backContext !== "object") return null;
+  const kind = backContext.kind === "preview-module-action" ? "preview-module-action" : "preview-add-type";
+  if (kind === "preview-module-action") {
+    return {
+      kind,
+      edgeId: String(backContext.edgeId || ""),
+      edgeType: backContext.edgeType === "corner" ? "corner" : "bay",
+      anchorEl: backContext.anchorEl instanceof Element ? backContext.anchorEl : null,
+    };
+  }
+  return {
+    kind: "preview-add-type",
+    addTarget: clonePreviewAddTargetSnapshot(backContext.addTarget),
+    anchorEl: backContext.anchorEl instanceof Element ? backContext.anchorEl : null,
+  };
+}
+
+function hasPresetModuleOptionBackContext(state = presetModuleOptionModalState) {
+  if (!state || !state.backContext || typeof state.backContext !== "object") return false;
+  const kind = String(state.backContext.kind || "");
+  if (kind === "preview-module-action") return Boolean(state.backContext.edgeId);
+  if (kind === "preview-add-type") return Boolean(state.backContext.addTarget);
+  return false;
 }
 
 function getPresetModuleOptionFilterOptions(moduleType = "normal") {
@@ -1366,8 +1323,29 @@ function renderPresetModuleOptionFrontPreview() {
   if (!container) return;
   const modalState = presetModuleOptionModalState;
   const preset = getPresetModuleOptionSelectedPreset();
+  const activeTab = presetModuleOptionDraft?.activeTab === "custom" ? "custom" : "preset";
   if (!modalState) {
     container.innerHTML = "";
+    return;
+  }
+  if (activeTab === "custom") {
+    container.innerHTML = `
+      <div class="module-front-preview-card">
+        <div class="module-front-preview-head">
+          <div class="module-front-preview-title">모듈 미리보기</div>
+        </div>
+        <div class="module-front-preview-canvas" aria-hidden="true">
+          <div class="module-front-preview-empty-guide">맞춤구성에서 선반/행거/가구를 직접 설정할 수 있습니다.</div>
+        </div>
+        <div class="module-front-preview-meta">
+          <div class="module-front-preview-row">
+            <span class="label">구성 방식</span>
+            <span class="value">맞춤구성</span>
+          </div>
+        </div>
+        <div class="module-front-preview-note">맞춤구성 탭에서 바로 편집할 수 있습니다.</div>
+      </div>
+    `;
     return;
   }
   if (!preset) {
@@ -1433,14 +1411,27 @@ function syncPresetModuleOptionModal() {
   const filterLabelEl = $("#presetModuleOptionFilterLabel");
   const filterNoteEl = $("#presetModuleOptionFilterNote");
   const filterSelectEl = $("#presetModuleOptionFilterSelect");
+  const backBtn = $("#backPresetModuleOptionModal");
+  const presetTabBtn = $("#presetModuleOptionPresetTabBtn");
+  const customTabBtn = $("#presetModuleOptionCustomTabBtn");
+  const presetPanelEl = $("#presetModuleOptionPresetTabPanel");
+  const customPanelEl = $("#presetModuleOptionCustomTabPanel");
+  const customBayPanelEl = $("#presetModuleOptionCustomBayPanel");
+  const customCornerPanelEl = $("#presetModuleOptionCustomCornerPanel");
+  const unifiedPreviewEl = $("#presetModuleOptionFrontPreview");
   const moduleLabel = modalState.moduleType === "corner" ? "코너 모듈" : "일반 모듈";
   if (!presetModuleOptionDraft) {
     presetModuleOptionDraft = {
       moduleType: modalState.moduleType,
       presetId: "",
       filterKey: getDefaultPresetModuleOptionFilterKey(modalState.moduleType, modalState.edgeId),
+      activeTab: "preset",
     };
   }
+  if (presetModuleOptionDraft.activeTab !== "custom" && presetModuleOptionDraft.activeTab !== "preset") {
+    presetModuleOptionDraft.activeTab = "preset";
+  }
+  const activeTab = presetModuleOptionDraft.activeTab === "custom" ? "custom" : "preset";
   const filterOptions = getPresetModuleOptionFilterOptions(modalState.moduleType);
   if (!filterOptions.some((option) => String(option.key) === String(presetModuleOptionDraft.filterKey || ""))) {
     presetModuleOptionDraft.filterKey = String(
@@ -1460,7 +1451,53 @@ function syncPresetModuleOptionModal() {
   }
   if (titleEl) {
     titleEl.textContent =
-      modalState.mode === "edit" ? `${moduleLabel} 모듈선택 설정` : `${moduleLabel} 모듈선택`;
+      modalState.mode === "edit" ? `${moduleLabel} 구성 설정` : `${moduleLabel} 구성`;
+  }
+  if (presetTabBtn) {
+    const isActive = activeTab === "preset";
+    presetTabBtn.classList.toggle("active", isActive);
+    presetTabBtn.setAttribute("aria-selected", isActive ? "true" : "false");
+  }
+  if (customTabBtn) {
+    const isActive = activeTab === "custom";
+    customTabBtn.classList.toggle("active", isActive);
+    customTabBtn.setAttribute("aria-selected", isActive ? "true" : "false");
+  }
+  if (presetPanelEl) presetPanelEl.classList.toggle("hidden", activeTab !== "preset");
+  if (customPanelEl) customPanelEl.classList.toggle("hidden", activeTab !== "custom");
+  if (unifiedPreviewEl) unifiedPreviewEl.classList.toggle("hidden", activeTab === "custom");
+  if (activeTab === "custom") {
+    if (modalState.mode === "edit" && modalState.edgeId) {
+      if (modalState.moduleType === "corner") {
+        activeBayOptionId = "";
+        activeCornerOptionId = String(modalState.edgeId || "");
+        syncCornerOptionModal();
+      } else {
+        activeCornerOptionId = "";
+        activeBayOptionId = String(modalState.edgeId || "");
+        syncBayOptionModal();
+      }
+    } else {
+      activeBayOptionId = "";
+      activeCornerOptionId = "";
+    }
+  }
+  const hasActiveCustomEdge =
+    activeTab === "custom" &&
+    ((modalState.moduleType === "corner" && Boolean(activeCornerOptionId)) ||
+      (modalState.moduleType !== "corner" && Boolean(activeBayOptionId)) ||
+      (modalState.mode === "edit" && Boolean(modalState.edgeId)));
+  if (customBayPanelEl) {
+    customBayPanelEl.classList.toggle(
+      "hidden",
+      !(activeTab === "custom" && modalState.moduleType !== "corner")
+    );
+  }
+  if (customCornerPanelEl) {
+    customCornerPanelEl.classList.toggle(
+      "hidden",
+      !(activeTab === "custom" && modalState.moduleType === "corner")
+    );
   }
   if (filterLabelEl) {
     filterLabelEl.textContent = modalState.moduleType === "corner" ? "코너 방향" : "선반 폭 (mm)";
@@ -1480,26 +1517,116 @@ function syncPresetModuleOptionModal() {
   if (pickerBtn) {
     pickerBtn.textContent = "모듈 선택";
   }
+  if (backBtn) {
+    const canGoBack = hasPresetModuleOptionBackContext(modalState);
+    backBtn.classList.toggle("hidden", !canGoBack);
+    backBtn.disabled = !canGoBack;
+    backBtn.classList.toggle("btn-disabled", !canGoBack);
+  }
   renderPresetModuleOptionSelectionSummary();
   renderPresetModuleOptionFrontPreview();
   setPresetModuleOptionError("");
   const saveBtn = $("#savePresetModuleOptionModal");
   if (saveBtn) {
     const hasPreset = Boolean(getPresetModuleOptionSelectedPreset());
-    saveBtn.disabled = !hasPreset;
-    saveBtn.classList.toggle("btn-disabled", !hasPreset);
+    if (activeTab === "preset") {
+      const canSavePreset = hasPreset;
+      saveBtn.disabled = !canSavePreset;
+      saveBtn.classList.toggle("btn-disabled", !canSavePreset);
+      saveBtn.classList.remove("hidden");
+      saveBtn.removeAttribute("title");
+    } else {
+      const customValidation =
+        modalState.moduleType === "corner"
+          ? getCornerOptionApplyValidationState()
+          : getBayOptionApplyValidationState();
+      const canSaveCustom = hasActiveCustomEdge && customValidation.canApply;
+      saveBtn.disabled = !canSaveCustom;
+      saveBtn.classList.toggle("btn-disabled", !canSaveCustom);
+      saveBtn.classList.toggle("hidden", !hasActiveCustomEdge);
+      if (!canSaveCustom && hasActiveCustomEdge) {
+        saveBtn.title = customValidation.message || "입력값을 확인해주세요.";
+      } else {
+        saveBtn.removeAttribute("title");
+      }
+    }
   }
 }
 
-function openPresetModuleOptionModal(moduleType, { mode = "add", edgeId = "", returnFocusEl = null, addTarget = null, preserveDraft = false } = {}) {
+function shouldAutoStartPresetModuleOptionCustomCompose() {
+  const modalState = presetModuleOptionModalState;
+  if (!modalState) return false;
+  if (presetModuleOptionDraft?.activeTab !== "custom") return false;
+  if (modalState.mode !== "add") return false;
+  const hasActiveCustomEdge =
+    modalState.moduleType === "corner" ? Boolean(activeCornerOptionId) : Boolean(activeBayOptionId);
+  return !hasActiveCustomEdge;
+}
+
+function setPresetModuleOptionModalTab(nextTab = "preset") {
+  if (!presetModuleOptionDraft) return;
+  presetModuleOptionDraft.activeTab = nextTab === "custom" ? "custom" : "preset";
+  if (shouldAutoStartPresetModuleOptionCustomCompose()) {
+    openDirectComposeFromPresetModuleOptionModal();
+    return;
+  }
+  syncPresetModuleOptionModal();
+}
+
+function handlePresetModuleOptionModalTabClick(nextTab = "preset") {
+  if (!presetModuleOptionModalState) return;
+  setPresetModuleOptionModalTab(nextTab);
+}
+
+function openDirectComposeFromPresetModuleOptionModal() {
+  const modalState = presetModuleOptionModalState;
+  if (!modalState) return;
+  const normalizedModuleType = modalState.moduleType === "corner" ? "corner" : "normal";
+  const edgeId = String(modalState.edgeId || "");
+  const addTarget = clonePreviewAddTargetSnapshot(modalState.addTarget);
+  const focusEl = modalState.returnFocusEl instanceof Element ? modalState.returnFocusEl : null;
+  const backContext = clonePresetModuleOptionBackContext(modalState.backContext);
+  closePresetModuleOptionModal({ returnFocus: false, clearState: true });
+  if (modalState.mode === "edit") {
+    if (normalizedModuleType === "corner") openCornerOptionModal(edgeId, { backContext });
+    else openBayOptionModal(edgeId, { backContext });
+    return;
+  }
+  presetModuleOptionPendingBackContext = clonePresetModuleOptionBackContext(backContext);
+  activePreviewAddTarget = addTarget;
+  activePreviewAddAnchorEl = focusEl;
+  if (!activePreviewAddTarget) return;
+  if (normalizedModuleType === "corner") {
+    commitPreviewAddCorner();
+    return;
+  }
+  commitPreviewAddNormal();
+}
+
+function openPresetModuleOptionModal(
+  moduleType,
+  {
+    mode = "add",
+    edgeId = "",
+    returnFocusEl = null,
+    addTarget = null,
+    preserveDraft = false,
+    initialTab = "preset",
+    backContext = null,
+  } = {}
+) {
   const normalizedModuleType = moduleType === "corner" ? "corner" : "normal";
   const normalizedMode = mode === "edit" ? "edit" : "add";
+  const normalizedTab = initialTab === "custom" ? "custom" : "preset";
   if (!preserveDraft || !presetModuleOptionDraft || presetModuleOptionDraft.moduleType !== normalizedModuleType) {
     presetModuleOptionDraft = {
       moduleType: normalizedModuleType,
       presetId: "",
       filterKey: getDefaultPresetModuleOptionFilterKey(normalizedModuleType, edgeId),
+      activeTab: normalizedTab,
     };
+  } else {
+    presetModuleOptionDraft.activeTab = normalizedTab;
   }
   presetModuleOptionModalState = {
     mode: normalizedMode,
@@ -1507,8 +1634,17 @@ function openPresetModuleOptionModal(moduleType, { mode = "add", edgeId = "", re
     edgeId: String(edgeId || ""),
     edgeType: normalizedModuleType === "corner" ? "corner" : "bay",
     addTarget: normalizedMode === "add" ? clonePreviewAddTargetSnapshot(addTarget || activePreviewAddTarget) : null,
+    backContext: clonePresetModuleOptionBackContext(backContext),
     returnFocusEl: returnFocusEl instanceof Element ? returnFocusEl : null,
   };
+  if (normalizedMode === "add") {
+    activeBayOptionId = "";
+    activeCornerOptionId = "";
+  }
+  if (shouldAutoStartPresetModuleOptionCustomCompose()) {
+    openDirectComposeFromPresetModuleOptionModal();
+    return;
+  }
   syncPresetModuleOptionModal();
   openModal("#presetModuleOptionModal", { focusTarget: "#presetModuleOptionModalTitle" });
 }
@@ -1521,13 +1657,53 @@ function closePresetModuleOptionModal({ returnFocus = true, clearState = true } 
     focusEl.focus();
   }
   if (clearState) {
+    activeBayOptionId = "";
+    activeCornerOptionId = "";
     presetModuleOptionModalState = null;
     presetModuleOptionDraft = null;
+    presetModuleOptionPendingBackContext = null;
   }
+}
+
+function handlePresetModuleOptionModalBack() {
+  const modalState = presetModuleOptionModalState;
+  if (!hasPresetModuleOptionBackContext(modalState)) return;
+  const backContext = clonePresetModuleOptionBackContext(modalState.backContext);
+  closePresetModuleOptionModal({ returnFocus: false, clearState: true });
+  if (!backContext) return;
+
+  if (backContext.kind === "preview-module-action") {
+    openPreviewModuleActionModal(
+      String(backContext.edgeId || ""),
+      backContext.edgeType === "corner" ? "corner" : "bay",
+      backContext.anchorEl instanceof Element ? backContext.anchorEl : null
+    );
+    return;
+  }
+
+  const target = clonePreviewAddTargetSnapshot(backContext.addTarget);
+  if (!target) return;
+  const sideIndex = Number(target.sideIndex);
+  const attachSideIndex = Number.isFinite(Number(target.attachSideIndex))
+    ? Number(target.attachSideIndex)
+    : sideIndex;
+  openPreviewAddTypeModal(
+    sideIndex,
+    String(target.cornerId || ""),
+    Boolean(target.prepend),
+    attachSideIndex,
+    Boolean(target.attachAtStart ?? target.prepend),
+    String(target.endpointId || ""),
+    Array.isArray(target.allowedTypes) ? target.allowedTypes : ["normal"],
+    backContext.anchorEl instanceof Element ? backContext.anchorEl : null
+  );
 }
 
 function reopenPresetModuleOptionModalAfterPresetPicker() {
   if (!presetModuleOptionModalState) return;
+  if (presetModuleOptionDraft) {
+    presetModuleOptionDraft.activeTab = "preset";
+  }
   syncPresetModuleOptionModal();
   openModal("#presetModuleOptionModal", { focusTarget: "#presetModuleOptionModalTitle" });
 }
@@ -1541,6 +1717,7 @@ function handlePresetModuleOptionFilterChange() {
       moduleType: modalState.moduleType,
       presetId: "",
       filterKey: "",
+      activeTab: "preset",
     };
   }
   presetModuleOptionDraft.moduleType = modalState.moduleType;
@@ -2132,6 +2309,16 @@ function applySelectedPreviewPresetModule() {
 
 function savePresetModuleOptionModal() {
   const modalState = presetModuleOptionModalState;
+  if (presetModuleOptionDraft?.activeTab === "custom") {
+    if (!modalState) return;
+    if (modalState.mode === "edit" && modalState.edgeId) {
+      if (modalState.moduleType === "corner") saveCornerOptionModal();
+      else saveBayOptionModal();
+      return;
+    }
+    openDirectComposeFromPresetModuleOptionModal();
+    return;
+  }
   const preset = getPresetModuleOptionSelectedPreset();
   if (!modalState) return;
   if (!preset) {
@@ -2246,6 +2433,22 @@ function bindPendingOptionModalCleanupOnClose() {
         activeCornerOptionId = null;
         renderBayInputs();
       }
+      return;
+    }
+    if (modalId === "presetModuleOptionModal") {
+      if (presetModuleOptionDraft?.activeTab !== "custom") return;
+      const activeEdgeId = activeCornerOptionId || activeBayOptionId || "";
+      const edge = activeEdgeId ? findShelfById(activeEdgeId) : null;
+      if (!discardPendingEdge(edge)) return;
+      if (activeCornerOptionId && edge && String(edge.id || "") === String(activeCornerOptionId)) {
+        cornerOptionModalDraft = null;
+        activeCornerOptionId = null;
+      }
+      if (activeBayOptionId && edge && String(edge.id || "") === String(activeBayOptionId)) {
+        bayOptionModalDraft = null;
+        activeBayOptionId = null;
+      }
+      renderBayInputs();
     }
   });
 }
@@ -2369,6 +2572,12 @@ function handlePreviewModuleActionPresetSelect() {
   openPresetModuleOptionModal(moduleType, {
     mode: "edit",
     edgeId: target.edgeId,
+    backContext: {
+      kind: "preview-module-action",
+      edgeId: target.edgeId,
+      edgeType: target.edgeType === "corner" ? "corner" : "bay",
+      anchorEl: focusEl,
+    },
     returnFocusEl: focusEl,
   });
 }
@@ -2377,13 +2586,21 @@ function handlePreviewModuleActionCustomCompose() {
   const target = activePreviewModuleActionTarget;
   if (!target?.edgeId) return;
   const edgeId = String(target.edgeId);
-  const edgeType = target.edgeType === "corner" ? "corner" : "bay";
+  const moduleType = target.edgeType === "corner" ? "corner" : "normal";
+  const focusEl = activePreviewModuleActionAnchorEl instanceof Element ? activePreviewModuleActionAnchorEl : null;
   closePreviewModuleActionModal();
-  if (edgeType === "corner") {
-    openCornerOptionModal(edgeId);
-    return;
-  }
-  openBayOptionModal(edgeId);
+  openPresetModuleOptionModal(moduleType, {
+    mode: "edit",
+    edgeId,
+    backContext: {
+      kind: "preview-module-action",
+      edgeId,
+      edgeType: target.edgeType === "corner" ? "corner" : "bay",
+      anchorEl: focusEl,
+    },
+    returnFocusEl: focusEl,
+    initialTab: "custom",
+  });
 }
 
 function handlePreviewModuleActionRemove() {
@@ -3647,8 +3864,6 @@ function restoreBuilderSnapshot(snapshot) {
     state.shelfAddons = snapshot.shelfAddons
       ? JSON.parse(JSON.stringify(snapshot.shelfAddons))
       : {};
-    closeModal("#bayOptionModal");
-    closeModal("#cornerOptionModal");
     closeModal("#presetModuleOptionModal");
     closePreviewAddTypePicker();
     closePreviewModuleActionModal();
@@ -3657,6 +3872,7 @@ function restoreBuilderSnapshot(snapshot) {
     activePreviewAddAnchorEl = null;
     presetModuleOptionModalState = null;
     presetModuleOptionDraft = null;
+    presetModuleOptionPendingBackContext = null;
     activePreviewModuleActionTarget = null;
     activePreviewModuleActionAnchorEl = null;
     activeCornerOptionId = null;
@@ -6115,67 +6331,89 @@ function discardPendingEdge(edgeOrId) {
   return true;
 }
 
-function closeBayOptionModalWithCleanup({ returnFocus = false } = {}) {
-  const edge = activeBayOptionId ? findShelfById(activeBayOptionId) : null;
-  const removedPending = discardPendingEdge(edge);
-  if (removedPending) {
-    bayOptionModalDraft = null;
-    activeBayOptionId = null;
-  }
-  closeModal("#bayOptionModal");
-  if (removedPending) {
-    renderBayInputs();
-  }
-  if (returnFocus && activePreviewAddAnchorEl instanceof Element && activePreviewAddAnchorEl.isConnected) {
-    activePreviewAddAnchorEl.focus();
-  }
-}
-
-function closeCornerOptionModalWithCleanup({ returnFocus = false } = {}) {
-  const edge = activeCornerOptionId ? findShelfById(activeCornerOptionId) : null;
-  const removedPending = discardPendingEdge(edge);
-  if (removedPending) {
-    cornerOptionModalDraft = null;
-    activeCornerOptionId = null;
-  }
-  closeModal("#cornerOptionModal");
-  if (removedPending) {
-    renderBayInputs();
-  }
-  if (returnFocus && activePreviewAddAnchorEl instanceof Element && activePreviewAddAnchorEl.isConnected) {
-    activePreviewAddAnchorEl.focus();
-  }
-}
-
-function setDirectComposeApplyButtonState(buttonId, countInputId, activeEdgeId) {
-  const btn = $(buttonId);
+function applyDirectComposeButtonState(buttonOrSelector, { canApply = false, message = "" } = {}) {
+  const btn =
+    typeof buttonOrSelector === "string" ? $(buttonOrSelector) : buttonOrSelector instanceof Element ? buttonOrSelector : null;
   if (!btn) return;
-  const countInput = $(countInputId);
-  const countValue = Number(countInput?.value ?? 0);
-  const canApply = Boolean(activeEdgeId) && Number.isFinite(countValue) && countValue >= 1;
   btn.disabled = !canApply;
   btn.classList.toggle("btn-disabled", !canApply);
   btn.setAttribute("aria-disabled", canApply ? "false" : "true");
-  if (!canApply) {
-    btn.title = "선반 갯수를 1개 이상 입력해주세요.";
-  } else {
-    btn.removeAttribute("title");
+  if (!canApply && message) btn.title = String(message);
+  else btn.removeAttribute("title");
+}
+
+function getBayOptionApplyValidationState() {
+  if (!activeBayOptionId) {
+    return { canApply: false, message: "맞춤구성 시작 후 적용할 수 있습니다." };
   }
+  const countValue = Number($("#bayCountInput")?.value ?? 0);
+  if (!Number.isFinite(countValue) || countValue < 1) {
+    return { canApply: false, message: "선반 갯수를 1개 이상 입력해주세요." };
+  }
+
+  const presetSelect = $("#bayWidthPresetSelect");
+  const customInput = $("#bayWidthCustomInput");
+  const isCustom = presetSelect?.value === "custom";
+  const widthValue = Number((isCustom ? customInput?.value : presetSelect?.value) || 0);
+  if (
+    !Number.isFinite(widthValue) ||
+    widthValue < BAY_WIDTH_LIMITS.min ||
+    widthValue > BAY_WIDTH_LIMITS.max
+  ) {
+    return {
+      canApply: false,
+      message: `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`,
+    };
+  }
+
+  return { canApply: true, message: "" };
+}
+
+function getCornerOptionApplyValidationState() {
+  if (!activeCornerOptionId) {
+    return { canApply: false, message: "맞춤구성 시작 후 적용할 수 있습니다." };
+  }
+  const countValue = Number($("#cornerCountInput")?.value ?? 0);
+  if (!Number.isFinite(countValue) || countValue < 1) {
+    return { canApply: false, message: "선반 갯수를 1개 이상 입력해주세요." };
+  }
+  return { canApply: true, message: "" };
 }
 
 function updateBayOptionModalApplyButtonState() {
-  setDirectComposeApplyButtonState("#saveBayOptionModal", "#bayCountInput", activeBayOptionId);
+  const validation = getBayOptionApplyValidationState();
+  if (
+    presetModuleOptionModalState &&
+    presetModuleOptionDraft?.activeTab === "custom" &&
+    presetModuleOptionModalState.moduleType !== "corner"
+  ) {
+    const saveBtn = $("#savePresetModuleOptionModal");
+    if (saveBtn) {
+      applyDirectComposeButtonState(saveBtn, validation);
+      saveBtn.classList.toggle("hidden", false);
+    }
+  }
 }
 
 function updateCornerOptionModalApplyButtonState() {
-  setDirectComposeApplyButtonState("#saveCornerOptionModal", "#cornerCountInput", activeCornerOptionId);
+  const validation = getCornerOptionApplyValidationState();
+  if (
+    presetModuleOptionModalState &&
+    presetModuleOptionDraft?.activeTab === "custom" &&
+    presetModuleOptionModalState.moduleType === "corner"
+  ) {
+    const saveBtn = $("#savePresetModuleOptionModal");
+    if (saveBtn) {
+      applyDirectComposeButtonState(saveBtn, validation);
+      saveBtn.classList.toggle("hidden", false);
+    }
+  }
 }
 
 function syncCornerOptionModal() {
   if (!activeCornerOptionId) return;
   const corner = findShelfById(activeCornerOptionId);
   if (!corner) return;
-  const titleEl = $("#cornerOptionModalTitle");
   const swapSelect = $("#cornerSwapSelect");
   const countInput = $("#cornerCountInput");
   const rodCountInput = $("#cornerRodCountInput");
@@ -6184,7 +6422,6 @@ function syncCornerOptionModal() {
     cornerOptionModalDraft && String(cornerOptionModalDraft.edgeId || "") === String(corner.id)
       ? cornerOptionModalDraft
       : null;
-  if (titleEl) titleEl.textContent = `${getCornerLabel(corner)} 옵션 설정`;
   if (swapSelect) swapSelect.value = draft?.swapValue || (corner.swap ? "swap" : "default");
   if (countInput) countInput.value = draft?.countValue ?? String(corner.count ?? 0);
   if (rodCountInput) {
@@ -6198,7 +6435,7 @@ function syncCornerOptionModal() {
   renderCornerOptionFrontPreview();
 }
 
-function openCornerOptionModal(cornerId, { preserveDraft = false } = {}) {
+function openCornerOptionModal(cornerId, { preserveDraft = false, backContext = null } = {}) {
   const corner = findShelfById(cornerId);
   if (!corner) return;
   if (
@@ -6209,15 +6446,22 @@ function openCornerOptionModal(cornerId, { preserveDraft = false } = {}) {
     cornerOptionModalDraft = null;
   }
   activeCornerOptionId = cornerId;
-  syncCornerOptionModal();
-  openModal("#cornerOptionModal", { focusTarget: "#cornerOptionModalTitle" });
+  const resolvedBackContext = clonePresetModuleOptionBackContext(backContext || presetModuleOptionPendingBackContext);
+  presetModuleOptionPendingBackContext = null;
+  openPresetModuleOptionModal("corner", {
+    mode: "edit",
+    edgeId: String(cornerId || ""),
+    preserveDraft,
+    initialTab: "custom",
+    backContext: resolvedBackContext,
+    returnFocusEl: activePreviewAddAnchorEl instanceof Element ? activePreviewAddAnchorEl : null,
+  });
 }
 
 function syncBayOptionModal() {
   if (!activeBayOptionId) return;
   const shelf = findShelfById(activeBayOptionId);
   if (!shelf) return;
-  const titleEl = $("#bayOptionModalTitle");
   const presetSelect = $("#bayWidthPresetSelect");
   const customInput = $("#bayWidthCustomInput");
   const countInput = $("#bayCountInput");
@@ -6231,7 +6475,6 @@ function syncBayOptionModal() {
   const width = Number(shelf.width || 0);
   const presetValue = draft?.presetValue || (width === 400 || width === 600 || width === 800 ? String(width) : "custom");
 
-  if (titleEl) titleEl.textContent = "모듈 옵션 설정";
   if (presetSelect) presetSelect.value = presetValue;
   if (customInput) {
     customInput.classList.toggle("hidden", presetValue !== "custom");
@@ -6253,7 +6496,7 @@ function syncBayOptionModal() {
   renderBayOptionFrontPreview();
 }
 
-function openBayOptionModal(shelfId, { preserveDraft = false } = {}) {
+function openBayOptionModal(shelfId, { preserveDraft = false, backContext = null } = {}) {
   const shelf = findShelfById(shelfId);
   if (!shelf) return;
   if (
@@ -6264,8 +6507,16 @@ function openBayOptionModal(shelfId, { preserveDraft = false } = {}) {
     bayOptionModalDraft = null;
   }
   activeBayOptionId = shelfId;
-  syncBayOptionModal();
-  openModal("#bayOptionModal", { focusTarget: "#bayOptionModalTitle" });
+  const resolvedBackContext = clonePresetModuleOptionBackContext(backContext || presetModuleOptionPendingBackContext);
+  presetModuleOptionPendingBackContext = null;
+  openPresetModuleOptionModal("normal", {
+    mode: "edit",
+    edgeId: String(shelfId || ""),
+    preserveDraft,
+    initialTab: "custom",
+    backContext: resolvedBackContext,
+    returnFocusEl: activePreviewAddAnchorEl instanceof Element ? activePreviewAddAnchorEl : null,
+  });
 }
 
 function buildModalDraftAddonBreakdown(edgeId, rodCount) {
@@ -6404,14 +6655,6 @@ function buildModuleFrontPreviewHtml({
           <strong>${normalizedShelfCount}개</strong>
         </div>
         <div class="module-front-preview-row">
-          <span class="label">평균 높이</span>
-          <span class="value">${avgHeight > 0 ? `${avgHeight}mm` : "-"}</span>
-        </div>
-        <div class="module-front-preview-row">
-          <span class="label">두께 기준</span>
-          <span class="value">기둥 ${geometry.columnThicknessMm}mm / 선반 ${geometry.shelfThicknessMm}mm</span>
-        </div>
-        <div class="module-front-preview-row">
           <span class="label">구성품</span>
           <span class="value">${escapeHtml(safeComponentSummary)}</span>
         </div>
@@ -6420,7 +6663,7 @@ function buildModuleFrontPreviewHtml({
           <span class="value">${escapeHtml(safeFurnitureSummary)}</span>
         </div>
       </div>
-      <div class="module-front-preview-note">도식화 미리보기 (가독성 우선, 실제 치수는 라벨 기준)</div>
+      <div class="module-front-preview-note">미리보기는 참고용으로 차이가 있을 수 있습니다.</div>
     </div>
   `;
 }
@@ -6572,7 +6815,7 @@ function saveBayOptionModal() {
   shelf.count = count;
   setShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID, rodCount);
   bayOptionModalDraft = null;
-  closeModal("#bayOptionModal");
+  closePresetModuleOptionModal({ returnFocus: false, clearState: true });
   renderBayInputs();
 }
 
@@ -6639,19 +6882,6 @@ function removeBayById(id) {
   renderBayInputs();
 }
 
-function removeBayFromModal() {
-  if (!activeBayOptionId) return;
-  const id = activeBayOptionId;
-  const edge = findShelfById(id);
-  activeBayOptionId = null;
-  closeModal("#bayOptionModal");
-  if (discardPendingEdge(edge)) {
-    renderBayInputs();
-    return;
-  }
-  removeBayById(id);
-}
-
 function saveCornerOptionModal() {
   if (!activeCornerOptionId) return;
   const corner = findShelfById(activeCornerOptionId);
@@ -6690,7 +6920,7 @@ function saveCornerOptionModal() {
   corner.count = count;
   setShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID, rodCount);
   cornerOptionModalDraft = null;
-  closeModal("#cornerOptionModal");
+  closePresetModuleOptionModal({ returnFocus: false, clearState: true });
   renderBayInputs();
 }
 
@@ -6706,19 +6936,6 @@ function removeCornerById(id) {
   delete state.shelfAddons[id];
   if (activeCornerOptionId === id) activeCornerOptionId = null;
   renderBayInputs();
-}
-
-function removeCornerFromModal() {
-  if (!activeCornerOptionId) return;
-  const id = activeCornerOptionId;
-  const edge = findShelfById(id);
-  activeCornerOptionId = null;
-  closeModal("#cornerOptionModal");
-  if (discardPendingEdge(edge)) {
-    renderBayInputs();
-    return;
-  }
-  removeCornerById(id);
 }
 
 function renderSystemAddonModalCards() {
@@ -7458,19 +7675,13 @@ function init() {
   $("#addEstimateBtn")?.addEventListener("click", commitBaysToEstimate);
   $("#closeSystemAddonModal")?.addEventListener("click", closeShelfAddonModalAndReturn);
   $("#systemAddonModalBackdrop")?.addEventListener("click", closeShelfAddonModalAndReturn);
-  $("#closeCornerOptionModal")?.addEventListener("click", () => closeCornerOptionModalWithCleanup({ returnFocus: true }));
-  $("#cornerOptionModalBackdrop")?.addEventListener("click", () => closeCornerOptionModalWithCleanup());
-  $("#saveCornerOptionModal")?.addEventListener("click", saveCornerOptionModal);
-  $("#removeCornerOptionModal")?.addEventListener("click", removeCornerFromModal);
   $("#cornerAddonBtn")?.addEventListener("click", () => {
     if (!activeCornerOptionId) return;
-    closeModal("#cornerOptionModal");
+    if (presetModuleOptionModalState && presetModuleOptionDraft?.activeTab === "custom") {
+      closePresetModuleOptionModal({ returnFocus: false, clearState: false });
+    }
     openShelfAddonModal(activeCornerOptionId, { returnTo: "corner" });
   });
-  $("#closeBayOptionModal")?.addEventListener("click", () => closeBayOptionModalWithCleanup({ returnFocus: true }));
-  $("#bayOptionModalBackdrop")?.addEventListener("click", () => closeBayOptionModalWithCleanup());
-  $("#saveBayOptionModal")?.addEventListener("click", saveBayOptionModal);
-  $("#removeBayOptionModal")?.addEventListener("click", removeBayFromModal);
   $("#bayWidthPresetSelect")?.addEventListener("change", () => {
     const presetSelect = $("#bayWidthPresetSelect");
     const customInput = $("#bayWidthCustomInput");
@@ -7484,7 +7695,9 @@ function init() {
   });
   $("#bayAddonBtn")?.addEventListener("click", () => {
     if (!activeBayOptionId) return;
-    closeModal("#bayOptionModal");
+    if (presetModuleOptionModalState && presetModuleOptionDraft?.activeTab === "custom") {
+      closePresetModuleOptionModal({ returnFocus: false, clearState: false });
+    }
     openShelfAddonModal(activeBayOptionId, { returnTo: "bay" });
   });
   $("#closePreviewAddTypeModal")?.addEventListener("click", () => closePreviewAddTypePicker({ returnFocus: true }));
@@ -7497,9 +7710,6 @@ function init() {
   $("#previewAddModalRootCornerLeftBtn")?.addEventListener("click", () =>
     handlePreviewAddModalRootCornerDirectionSelect("left")
   );
-  $("#previewAddModalPresetBtn")?.addEventListener("click", handlePreviewAddModalPresetSelect);
-  $("#previewAddModalCustomBtn")?.addEventListener("click", handlePreviewAddModalCustomCompose);
-  $("#previewAddModalBackBtn")?.addEventListener("click", handlePreviewAddModalBack);
   $("#previewAddModalRootCornerBackBtn")?.addEventListener("click", handlePreviewAddModalBack);
   $("#closePreviewModuleActionModal")?.addEventListener("click", () =>
     closePreviewModuleActionModal({ returnFocus: true })
@@ -7522,8 +7732,15 @@ function init() {
     handlePreviewPresetModuleCardClick(btn);
   });
   $("#openPresetModulePickerBtn")?.addEventListener("click", openPresetPickerFromPresetModuleOptionModal);
+  $("#presetModuleOptionPresetTabBtn")?.addEventListener("click", () =>
+    handlePresetModuleOptionModalTabClick("preset")
+  );
+  $("#presetModuleOptionCustomTabBtn")?.addEventListener("click", () =>
+    handlePresetModuleOptionModalTabClick("custom")
+  );
   $("#presetModuleOptionFilterSelect")?.addEventListener("change", handlePresetModuleOptionFilterChange);
   $("#savePresetModuleOptionModal")?.addEventListener("click", savePresetModuleOptionModal);
+  $("#backPresetModuleOptionModal")?.addEventListener("click", handlePresetModuleOptionModalBack);
   $("#closePresetModuleOptionModal")?.addEventListener("click", () =>
     closePresetModuleOptionModal({ returnFocus: true, clearState: true })
   );

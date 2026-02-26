@@ -346,107 +346,6 @@
     </div>
   </div>
 
-  <div id="cornerOptionModal" class="modal hidden">
-    <div class="modal-backdrop" id="cornerOptionModalBackdrop"></div>
-    <div class="modal-content corner-option-modal">
-      <div class="modal-header">
-        <h3 id="cornerOptionModalTitle" tabindex="-1">코너 옵션 설정</h3>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label>코너 방향</label>
-          <div class="field-col">
-            <select id="cornerSwapSelect" class="select-caret">
-              <option value="default">800 × 600</option>
-              <option value="swap">600 × 800</option>
-            </select>
-            <div class="field-note">깊이 400mm 고정</div>
-          </div>
-        </div>
-        <div class="form-row">
-          <label>선반 갯수</label>
-          <div class="field-col">
-            <input type="number" id="cornerCountInput" min="0" />
-            <div class="error-msg" id="cornerCountError"></div>
-          </div>
-        </div>
-        <div class="form-row">
-          <label>구성품 (행거)</label>
-          <div class="field-col">
-            <input type="number" id="cornerRodCountInput" min="0" />
-          </div>
-        </div>
-        <div class="form-row">
-          <label>가구</label>
-          <div class="field-col">
-            <button type="button" id="cornerAddonBtn">가구 선택</button>
-            <div
-              id="selectedCornerOptionAddon"
-              class="selected-material-card addon-card-display option-addon-preview"
-            ></div>
-          </div>
-        </div>
-        <div class="module-option-front-preview" id="cornerOptionFrontPreview" aria-live="polite"></div>
-      </div>
-      <div class="modal-footer module-option-modal-footer">
-        <button type="button" id="saveCornerOptionModal" class="send-btn">적용</button>
-        <button type="button" id="closeCornerOptionModal" class="modal-close ghost-btn">닫기</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="bayOptionModal" class="modal hidden">
-    <div class="modal-backdrop" id="bayOptionModalBackdrop"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="bayOptionModalTitle" tabindex="-1">모듈 옵션 설정</h3>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label>선반 폭 (mm)</label>
-          <div class="field-col">
-            <select id="bayWidthPresetSelect" class="select-caret">
-              <option value="400">400</option>
-              <option value="600">600</option>
-              <option value="800">800</option>
-              <option value="custom">직접 입력</option>
-            </select>
-            <input type="number" id="bayWidthCustomInput" class="hidden" min="400" max="1000" placeholder="직접 입력 (400~1000mm)" />
-            <div class="error-msg" id="bayWidthError"></div>
-          </div>
-        </div>
-        <div class="form-row">
-          <label>선반 갯수</label>
-          <div class="field-col">
-            <input type="number" id="bayCountInput" min="0" />
-            <div class="error-msg" id="bayCountError"></div>
-          </div>
-        </div>
-        <div class="form-row">
-          <label>구성품 (행거)</label>
-          <div class="field-col">
-            <input type="number" id="bayRodCountInput" min="0" />
-          </div>
-        </div>
-        <div class="form-row">
-          <label>가구</label>
-          <div class="field-col">
-            <button type="button" id="bayAddonBtn">가구 선택</button>
-            <div
-              id="selectedBayOptionAddon"
-              class="selected-material-card addon-card-display option-addon-preview"
-            ></div>
-          </div>
-        </div>
-        <div class="module-option-front-preview" id="bayOptionFrontPreview" aria-live="polite"></div>
-      </div>
-      <div class="modal-footer module-option-modal-footer">
-        <button type="button" id="saveBayOptionModal" class="send-btn">적용</button>
-        <button type="button" id="closeBayOptionModal" class="modal-close ghost-btn">닫기</button>
-      </div>
-    </div>
-  </div>
-
   <div
     id="previewAddTypeModal"
     class="preview-action-modal modal hidden"
@@ -466,14 +365,6 @@
           <div class="step-card-actions preview-action-modal-actions">
             <button type="button" id="previewAddModalNormalBtn">일반 모듈 추가</button>
             <button type="button" id="previewAddModalCornerBtn">코너 모듈 추가</button>
-          </div>
-        </div>
-        <div id="previewAddTypeModalModeStep" class="preview-action-modal-step hidden">
-          <div class="preview-action-modal-selected" id="previewAddTypeModalSelectedType"></div>
-          <div class="step-card-actions preview-action-modal-actions">
-            <button type="button" id="previewAddModalPresetBtn">모듈선택</button>
-            <button type="button" id="previewAddModalCustomBtn">직접구성</button>
-            <button type="button" id="previewAddModalBackBtn" class="ghost-btn">이전</button>
           </div>
         </div>
         <div id="previewAddTypeModalRootCornerStep" class="preview-action-modal-step hidden">
@@ -540,31 +431,147 @@
     <div class="modal-backdrop" id="presetModuleOptionModalBackdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="presetModuleOptionModalTitle" tabindex="-1">모듈선택 설정</h3>
+        <h3 id="presetModuleOptionModalTitle" tabindex="-1">모듈 구성 설정</h3>
+      </div>
+      <div class="modal-tabs">
+        <div class="material-tabs preset-module-option-tabs" role="tablist" aria-label="모듈 구성 방식">
+          <button
+            type="button"
+            id="presetModuleOptionPresetTabBtn"
+            class="material-tab active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="presetModuleOptionPresetTabPanel"
+          >
+            모듈선택
+          </button>
+          <button
+            type="button"
+            id="presetModuleOptionCustomTabBtn"
+            class="material-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="presetModuleOptionCustomTabPanel"
+          >
+            맞춤구성
+          </button>
+        </div>
       </div>
       <div class="modal-body">
-        <div class="form-row">
-          <label id="presetModuleOptionFilterLabel">선반 폭 (mm)</label>
-          <div class="field-col">
-            <select id="presetModuleOptionFilterSelect" class="select-caret"></select>
-            <div id="presetModuleOptionFilterNote" class="field-note">선반 폭을 먼저 선택해주세요.</div>
+        <div id="presetModuleOptionPresetTabPanel" role="tabpanel" aria-labelledby="presetModuleOptionPresetTabBtn">
+          <div class="form-row">
+            <label id="presetModuleOptionFilterLabel">선반 폭 (mm)</label>
+            <div class="field-col">
+              <select id="presetModuleOptionFilterSelect" class="select-caret"></select>
+              <div id="presetModuleOptionFilterNote" class="field-note">선반 폭을 먼저 선택해주세요.</div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>모듈</label>
+            <div class="field-col">
+              <button type="button" id="openPresetModulePickerBtn">모듈 선택</button>
+              <div
+                id="selectedPresetModuleOption"
+                class="selected-material-card addon-card-display option-addon-preview"
+              ></div>
+              <div class="error-msg" id="presetModuleOptionError"></div>
+            </div>
           </div>
         </div>
-        <div class="form-row">
-          <label>모듈</label>
-          <div class="field-col">
-            <button type="button" id="openPresetModulePickerBtn">모듈 선택</button>
-            <div
-              id="selectedPresetModuleOption"
-              class="selected-material-card addon-card-display option-addon-preview"
-            ></div>
-            <div class="error-msg" id="presetModuleOptionError"></div>
+        <div
+          id="presetModuleOptionCustomTabPanel"
+          class="preset-module-option-custom-panel hidden"
+          role="tabpanel"
+          aria-labelledby="presetModuleOptionCustomTabBtn"
+        >
+          <div id="presetModuleOptionCustomBayPanel" class="hidden">
+            <div class="form-row">
+              <label>선반 폭 (mm)</label>
+              <div class="field-col">
+                <select id="bayWidthPresetSelect" class="select-caret">
+                  <option value="400">400</option>
+                  <option value="600">600</option>
+                  <option value="800">800</option>
+                  <option value="custom">직접 입력</option>
+                </select>
+                <input
+                  type="number"
+                  id="bayWidthCustomInput"
+                  class="hidden"
+                  min="400"
+                  max="1000"
+                  placeholder="직접 입력 (400~1000mm)"
+                />
+                <div class="error-msg" id="bayWidthError"></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>선반 갯수</label>
+              <div class="field-col">
+                <input type="number" id="bayCountInput" min="0" />
+                <div class="error-msg" id="bayCountError"></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>구성품 (행거)</label>
+              <div class="field-col">
+                <input type="number" id="bayRodCountInput" min="0" />
+              </div>
+            </div>
+            <div class="form-row">
+              <label>가구</label>
+              <div class="field-col">
+                <button type="button" id="bayAddonBtn">가구 선택</button>
+                <div
+                  id="selectedBayOptionAddon"
+                  class="selected-material-card addon-card-display option-addon-preview"
+                ></div>
+              </div>
+            </div>
+            <div id="bayOptionFrontPreview" class="module-option-front-preview" aria-live="polite"></div>
+          </div>
+          <div id="presetModuleOptionCustomCornerPanel" class="hidden">
+            <div class="form-row">
+              <label>코너 방향</label>
+              <div class="field-col">
+                <select id="cornerSwapSelect" class="select-caret">
+                  <option value="default">800 × 600</option>
+                  <option value="swap">600 × 800</option>
+                </select>
+                <div class="field-note">깊이 400mm 고정</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>선반 갯수</label>
+              <div class="field-col">
+                <input type="number" id="cornerCountInput" min="0" />
+                <div class="error-msg" id="cornerCountError"></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>구성품 (행거)</label>
+              <div class="field-col">
+                <input type="number" id="cornerRodCountInput" min="0" />
+              </div>
+            </div>
+            <div class="form-row">
+              <label>가구</label>
+              <div class="field-col">
+                <button type="button" id="cornerAddonBtn">가구 선택</button>
+                <div
+                  id="selectedCornerOptionAddon"
+                  class="selected-material-card addon-card-display option-addon-preview"
+                ></div>
+              </div>
+            </div>
+            <div id="cornerOptionFrontPreview" class="module-option-front-preview" aria-live="polite"></div>
           </div>
         </div>
         <div id="presetModuleOptionFrontPreview" class="module-option-front-preview" aria-live="polite"></div>
       </div>
       <div class="modal-footer module-option-modal-footer">
         <button type="button" id="savePresetModuleOptionModal" class="send-btn">적용</button>
+        <button type="button" id="backPresetModuleOptionModal" class="ghost-btn hidden">이전</button>
         <button type="button" id="closePresetModuleOptionModal" class="modal-close ghost-btn">닫기</button>
       </div>
     </div>

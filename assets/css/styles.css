@@ -555,6 +555,10 @@ section {
   border-color: var(--color-accent);
 }
 
+.preset-module-option-tabs {
+  margin: 0;
+}
+
 .form-row {
   display: flex;
   margin-bottom: 12px;
@@ -2005,8 +2009,6 @@ th, td {
   min-height: 36px;
 }
 
-.module-option-modal-footer #saveCornerOptionModal,
-.module-option-modal-footer #saveBayOptionModal,
 .module-option-modal-footer #savePresetModuleOptionModal {
   min-width: 76px;
 }
@@ -2015,8 +2017,6 @@ th, td {
   margin-top: 10px;
 }
 
-#cornerOptionModal .modal-body,
-#bayOptionModal .modal-body,
 #presetModuleOptionModal .modal-body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2024,16 +2024,67 @@ th, td {
   align-items: start;
 }
 
-#cornerOptionModal .modal-body > .form-row,
-#bayOptionModal .modal-body > .form-row,
 #presetModuleOptionModal .modal-body > .form-row {
   grid-column: 1;
   margin-bottom: 0;
 }
 
-#cornerOptionModal .modal-body > .module-option-front-preview,
-#bayOptionModal .modal-body > .module-option-front-preview,
+#presetModuleOptionModal .modal-body > #presetModuleOptionPresetTabPanel > .form-row {
+  grid-column: 1;
+  margin-bottom: 0;
+}
+
+#presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel .form-row {
+  grid-column: 1;
+  margin-bottom: 0;
+}
+
+#presetModuleOptionModal .modal-body > #presetModuleOptionPresetTabPanel,
+#presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel {
+  grid-column: 1;
+}
+
+#presetModuleOptionPresetTabPanel:not(.hidden) {
+  display: contents;
+}
+
+#presetModuleOptionCustomTabPanel:not(.hidden) {
+  display: contents;
+}
+
+#presetModuleOptionCustomBayPanel:not(.hidden),
+#presetModuleOptionCustomCornerPanel:not(.hidden) {
+  display: contents;
+}
+
+.preset-module-option-custom-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+  padding: 12px;
+}
+
+.preset-module-option-custom-title {
+  font-weight: 800;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.preset-module-option-custom-card .field-note {
+  margin: 0 0 10px;
+}
+
 #presetModuleOptionModal .modal-body > .module-option-front-preview {
+  grid-column: 2;
+  grid-row: 1 / span 8;
+  align-self: start;
+  margin-top: 0;
+  position: sticky;
+  top: 0;
+}
+
+#presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomBayPanel > .module-option-front-preview,
+#presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomCornerPanel > .module-option-front-preview {
   grid-column: 2;
   grid-row: 1 / span 8;
   align-self: start;
@@ -2418,15 +2469,17 @@ th, td {
     gap: 6px;
   }
 
-  #cornerOptionModal .modal-body,
-  #bayOptionModal .modal-body,
   #presetModuleOptionModal .modal-body {
     display: block;
   }
 
-  #cornerOptionModal .modal-body > .module-option-front-preview,
-  #bayOptionModal .modal-body > .module-option-front-preview,
   #presetModuleOptionModal .modal-body > .module-option-front-preview {
+    position: static;
+    margin-top: 10px;
+  }
+
+  #presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomBayPanel > .module-option-front-preview,
+  #presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomCornerPanel > .module-option-front-preview {
     position: static;
     margin-top: 10px;
   }
