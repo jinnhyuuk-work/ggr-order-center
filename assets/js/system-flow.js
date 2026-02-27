@@ -2620,7 +2620,6 @@ export function findMatchingPreviewPresetIdForTargetEdge({
     if (!presetSnapshot || typeof presetSnapshot !== "object") return false;
     if (normalizedModuleType === "corner" && String(target.edgeType || "") === "corner") {
       return (
-        Boolean(presetSnapshot.swap) === Boolean(target.swap) &&
         Number(presetSnapshot.count || 0) === Number(target.count || 0) &&
         Number(presetSnapshot.rodCount || 0) === Number(target.rodCount || 0) &&
         String(presetSnapshot.furnitureId || "") === String(target.furnitureId || "")
