@@ -2342,6 +2342,7 @@ function renderPreviewPresetModuleCards() {
           data-preview-preset-type="${escapeHtml(type)}"
           aria-pressed="${selected ? "true" : "false"}"
         >
+          <div class="material-visual module_visual"></div>
           <span class="preset-title">${escapeHtml(item.label)}</span>
           <span class="preset-meta">${escapeHtml(meta)}</span>
           ${item.description ? `<span class="preset-desc">${escapeHtml(item.description)}</span>` : ""}
