@@ -1960,6 +1960,7 @@ export function buildPendingCornerComposeEdgeCreatePlan({
 export function buildPreviewPresetCornerEdge({
   source = null,
   preset = null,
+  selectedFilterKey = "",
   placement = null,
   normalizeDirection: normalizeDirectionFn,
   directionToSideIndex: directionToSideIndexFn,
@@ -1984,6 +1985,12 @@ export function buildPreviewPresetCornerEdge({
   const suffix = String(randomSuffix || Math.random().toString(16).slice(2));
   const anchorDir = normalizeDir(source?.extendDx, source?.extendDy);
   const anchorInwardDir = normalizeDir(source?.inwardX, source?.inwardY);
+  const resolvedSwap =
+    String(selectedFilterKey || "") === "600x800"
+      ? true
+      : String(selectedFilterKey || "") === "800x600"
+        ? false
+        : Boolean(preset?.swap);
   return {
     id: `corner-${sideIndex}-${safeCreatedAt}-${suffix}`,
     type: "corner",
@@ -2000,7 +2007,7 @@ export function buildPreviewPresetCornerEdge({
     inwardX: Number(source?.inwardX || 0),
     inwardY: Number(source?.inwardY || 0),
     placement: placement || null,
-    swap: Boolean(preset?.swap),
+    swap: resolvedSwap,
     count: Math.max(1, Math.floor(Number(preset?.count || 1))),
     createdAt: safeCreatedAt,
   };
