@@ -1136,6 +1136,16 @@ input[type="number"]::-webkit-outer-spin-button {
   z-index: 4;
 }
 
+.system-module-label[data-density-level="0"] {
+  min-width: 0;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .system-module-label-line {
   max-width: 100%;
   white-space: nowrap;
