@@ -111,6 +111,17 @@ export const SYSTEM_SHELF_TIER_GUIDE = Object.freeze({
   cornerCustomNote: "코너 비규격은 800×600 이하 절단만 가능",
 });
 
+export const SYSTEM_POST_BAR_HEIGHT_LIMITS = Object.freeze({
+  min: 1800,
+  max: 2700,
+  pricing: Object.freeze({
+    lte2100: 2100,
+    lte2300: 2300,
+    lte2500: 2500,
+  }),
+  consultAt: 2500,
+});
+
 export const SYSTEM_SHELF_TIER_PRICING = Object.freeze({
   normal: Object.freeze({
     id: "normal_shelf_pricing",
@@ -186,18 +197,48 @@ export const SYSTEM_POST_BAR_PRICING = Object.freeze({
     id: "basic_post_bar",
     label: "기본 포스트바",
     tiers: Object.freeze([
-      Object.freeze({ key: "lte_2100", label: "2100 이하", maxHeightMm: 2100, unitPrice: 28000 }),
-      Object.freeze({ key: "lte_2300", label: "2300 이하", maxHeightMm: 2300, unitPrice: 28000 }),
-      Object.freeze({ key: "lte_2500", label: "2500 이하", maxHeightMm: 2500, unitPrice: 31000 }),
+      Object.freeze({
+        key: "lte_2100",
+        label: "2100 이하",
+        maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2100,
+        unitPrice: 28000,
+      }),
+      Object.freeze({
+        key: "lte_2300",
+        label: "2300 이하",
+        maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2300,
+        unitPrice: 28000,
+      }),
+      Object.freeze({
+        key: "lte_2500",
+        label: "2500 이하",
+        maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2500,
+        unitPrice: 31000,
+      }),
     ]),
   }),
   corner: Object.freeze({
     id: "corner_post_bar",
     label: "코너 포스트바",
     tiers: Object.freeze([
-      Object.freeze({ key: "lte_2100", label: "2100 이하", maxHeightMm: 2100, unitPrice: 14000 }),
-      Object.freeze({ key: "lte_2300", label: "2300 이하", maxHeightMm: 2300, unitPrice: 14000 }),
-      Object.freeze({ key: "lte_2500", label: "2500 이하", maxHeightMm: 2500, unitPrice: 14000 }),
+      Object.freeze({
+        key: "lte_2100",
+        label: "2100 이하",
+        maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2100,
+        unitPrice: 14000,
+      }),
+      Object.freeze({
+        key: "lte_2300",
+        label: "2300 이하",
+        maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2300,
+        unitPrice: 14000,
+      }),
+      Object.freeze({
+        key: "lte_2500",
+        label: "2500 이하",
+        maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2500,
+        unitPrice: 14000,
+      }),
     ]),
   }),
 });

@@ -5,6 +5,7 @@ import {
   SYSTEM_CUSTOM_PROCESSING,
   SYSTEM_SHELF_TIER_PRICING,
   SYSTEM_POST_BAR_PRICING,
+  SYSTEM_POST_BAR_HEIGHT_LIMITS as MODULE_POST_BAR_HEIGHT_LIMITS,
   SYSTEM_ADDON_ITEM_IDS,
   SYSTEM_ADDON_OPTION_CONFIG,
   SYSTEM_ADDON_ITEMS,
@@ -133,8 +134,8 @@ const SHELF_PANEL_LIMITS = Object.freeze({
   maxLength: 2400,
 });
 const POST_BAR_LENGTH_LIMITS = Object.freeze({
-  minLength: 1800,
-  maxLength: 2700,
+  minLength: MODULE_POST_BAR_HEIGHT_LIMITS.min,
+  maxLength: MODULE_POST_BAR_HEIGHT_LIMITS.max,
 });
 const SYSTEM_DIMENSION_LIMITS = Object.freeze({
   shelf: SHELF_PANEL_LIMITS,
@@ -173,7 +174,7 @@ const SYSTEM_LAYOUT_TYPE_LABELS = Object.freeze({
 });
 const SYSTEM_SECTION_LENGTH_MIN_MM = 460;
 const SYSTEM_SECTION_LENGTH_CONSULT_AT_MM = 8000;
-const SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM = 2500;
+const SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM = MODULE_POST_BAR_HEIGHT_LIMITS.consultAt;
 
 const SHAPE_BAY_COUNTS = {
   i_single: 1,
@@ -830,11 +831,15 @@ function buildPostBarTierPriceHtml() {
   const basicTiers = (Array.isArray(SYSTEM_POST_BAR_PRICING?.basic?.tiers)
     ? SYSTEM_POST_BAR_PRICING.basic.tiers
     : []
-  ).filter((tier) => Number(tier?.maxHeightMm || 0) !== 2100);
+  ).filter(
+    (tier) => Number(tier?.maxHeightMm || 0) !== Number(MODULE_POST_BAR_HEIGHT_LIMITS.pricing?.lte2100 || 2100)
+  );
   const cornerAllTiers = Array.isArray(SYSTEM_POST_BAR_PRICING?.corner?.tiers)
     ? SYSTEM_POST_BAR_PRICING.corner.tiers
     : [];
-  let cornerTiers = cornerAllTiers.filter((tier) => Number(tier?.maxHeightMm || 0) === 2500);
+  let cornerTiers = cornerAllTiers.filter(
+    (tier) => Number(tier?.maxHeightMm || 0) === SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM
+  );
   if (!cornerTiers.length && cornerAllTiers.length) {
     const maxTierHeight = Math.max(...cornerAllTiers.map((tier) => Number(tier?.maxHeightMm || 0)));
     cornerTiers = cornerAllTiers.filter((tier) => Number(tier?.maxHeightMm || 0) === maxTierHeight);
@@ -4303,7 +4308,7 @@ function setSpaceExtraHeights(spaceIndex, values) {
     .map(
       (value) => `
         <div class="space-extra-row">
-          <input type="number" data-space-extra-height="${spaceIndex}" placeholder="개별높이 (1800mm 이상)" value="${Number(value)}" />
+          <input type="number" data-space-extra-height="${spaceIndex}" placeholder="개별높이 (${LIMITS.column.minLength}mm 이상)" value="${Number(value)}" />
           <button type="button" class="ghost-btn" data-space-extra-remove="${spaceIndex}">삭제</button>
         </div>
       `
@@ -6453,13 +6458,13 @@ function renderShapeSizeInputs() {
     <div class="form-row">
       <label>가장 낮은 천장 높이 (mm)</label>
       <div class="field-col">
-        <input type="number" id="spaceMin-${i}" placeholder="1800mm 이상" value="${Number(previousSpace.min || 0) > 0 ? Number(previousSpace.min) : ""}" />
+        <input type="number" id="spaceMin-${i}" placeholder="${LIMITS.column.minLength}mm 이상" value="${Number(previousSpace.min || 0) > 0 ? Number(previousSpace.min) : ""}" />
       </div>
     </div>
     <div class="form-row">
       <label>가장 높은 천장 높이 (mm)</label>
       <div class="field-col">
-        <input type="number" id="spaceMax-${i}" placeholder="1800mm 이상" value="${Number(previousSpace.max || 0) > 0 ? Number(previousSpace.max) : ""}" />
+        <input type="number" id="spaceMax-${i}" placeholder="${LIMITS.column.minLength}mm 이상" value="${Number(previousSpace.max || 0) > 0 ? Number(previousSpace.max) : ""}" />
         <div class="error-msg" id="spaceHeightError-${i}"></div>
       </div>
     </div>
@@ -6499,7 +6504,7 @@ function renderShapeSizeInputs() {
     const extraRow = document.createElement("div");
     extraRow.className = "space-extra-row";
     extraRow.innerHTML = `
-      <input type="number" data-space-extra-height="0" placeholder="개별높이 (1800mm 이상)" />
+      <input type="number" data-space-extra-height="0" placeholder="개별높이 (${LIMITS.column.minLength}mm 이상)" />
       <button type="button" class="ghost-btn" data-space-extra-remove="0">삭제</button>
     `;
     list.appendChild(extraRow);
@@ -7103,12 +7108,15 @@ function buildModuleFrontPreviewGeometry({ shelfWidthMm, averageHeightMm } = {})
   const columnThicknessMm = 20;
   const shelfThicknessMm = 20;
   const widthMm = Math.max(200, Math.round(Number(shelfWidthMm || 0) || 600));
-  const minHeightMm = Number(LIMITS.column.minLength || 1800);
+  const minHeightMm = Number(LIMITS.column.minLength || MODULE_POST_BAR_HEIGHT_LIMITS.min);
   const heightMm = Math.max(minHeightMm, Math.round(Number(averageHeightMm || 0) || minHeightMm));
   const totalWidthMm = widthMm + columnThicknessMm * 2;
   const widthMinRef = 400;
   const widthMaxRef = 1000;
-  const heightMaxRef = Math.max(Number(LIMITS.column.maxLength || 2700) + 600, minHeightMm + 600);
+  const heightMaxRef = Math.max(
+    Number(LIMITS.column.maxLength || MODULE_POST_BAR_HEIGHT_LIMITS.max) + 600,
+    minHeightMm + 600
+  );
   const baselineShelfWidthMm = 400;
   const baselineTotalWidthMm = baselineShelfWidthMm + columnThicknessMm * 2;
   const clamp01 = (value) => Math.min(1, Math.max(0, Number(value || 0)));
