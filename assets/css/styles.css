@@ -1128,6 +1128,14 @@ input[type="number"]::-webkit-outer-spin-button {
   background: rgba(255, 247, 235, 0.96);
 }
 
+.system-module-label--compact {
+  cursor: pointer;
+}
+
+.system-module-label--expanded {
+  z-index: 4;
+}
+
 .system-module-label-line {
   max-width: 100%;
   white-space: nowrap;

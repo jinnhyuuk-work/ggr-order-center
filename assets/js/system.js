@@ -3386,23 +3386,34 @@ function createModuleLabelElement(
   labelEl.className = `system-module-label${
     labelInfo.corner ? " system-module-label--corner" : ""
   }`;
+  if (normalizedLevel < 2) labelEl.classList.add("system-module-label--compact");
   labelEl.dataset.densityLevel = String(normalizedLevel);
+  labelEl.dataset.restoreLevel = String(normalizedLevel);
+  labelEl.dataset.labelIndex = String(Math.max(1, Number(index || 1)));
+  labelEl.dataset.shelfCount = String(Math.max(1, Number(labelInfo.count || 1)));
+  labelEl.dataset.addons = String(labelInfo.addons || "");
+  const composeInfo =
+    labelInfo.compose && typeof labelInfo.compose === "object"
+      ? labelInfo.compose
+      : { key: "unknown", label: "미지정" };
+  labelEl.dataset.composeKey = String(composeInfo.key || "unknown");
+  labelEl.dataset.composeLabel = String(composeInfo.label || "미지정");
+  const edgeId = String(labelInfo.edgeId || "");
+  labelEl.dataset.edgeId = edgeId;
+  if (labelInfo.corner) labelEl.dataset.cornerPreview = edgeId;
+  else labelEl.dataset.bayPreview = edgeId;
   labelEl.style.left = `${Number(labelInfo.x || 0)}px`;
   labelEl.style.top = `${Number(labelInfo.y || 0)}px`;
 
   if (normalizedLevel === 0) {
     const chip = document.createElement("span");
     chip.className = "system-module-index-chip";
-    chip.textContent = `#${Math.max(1, Number(index || 1))}`;
+    chip.textContent = String(Math.max(1, Number(index || 1)));
     labelEl.appendChild(chip);
     return labelEl;
   }
 
   const composeBadge = document.createElement("span");
-  const composeInfo =
-    labelInfo.compose && typeof labelInfo.compose === "object"
-      ? labelInfo.compose
-      : { key: "unknown", label: "미지정" };
   composeBadge.className = `system-module-label-compose system-module-label-compose--${escapeHtml(
     String(composeInfo.key || "unknown")
   )}`;
@@ -3422,6 +3433,58 @@ function createModuleLabelElement(
     labelEl.appendChild(addonLine);
   }
   return labelEl;
+}
+
+function getModuleLabelInfoFromElement(labelEl) {
+  if (!(labelEl instanceof Element)) return null;
+  const composeKey = String(labelEl.dataset.composeKey || "unknown");
+  const composeLabel = String(labelEl.dataset.composeLabel || "미지정");
+  return {
+    edgeId: String(labelEl.dataset.edgeId || ""),
+    corner: labelEl.classList.contains("system-module-label--corner"),
+    count: Math.max(1, Number(labelEl.dataset.shelfCount || 1)),
+    addons: String(labelEl.dataset.addons || ""),
+    compose: {
+      key: composeKey,
+      label: composeLabel,
+    },
+    x: Number(labelEl.style.left.replace("px", "") || 0),
+    y: Number(labelEl.style.top.replace("px", "") || 0),
+  };
+}
+
+function setModuleLabelExpandedState(labelEl, expanded = false) {
+  if (!(labelEl instanceof Element)) return;
+  const restoreLevel = Math.max(
+    0,
+    Math.min(2, Math.floor(Number(labelEl.dataset.restoreLevel || labelEl.dataset.densityLevel || 2)))
+  );
+  if (restoreLevel >= 2) return;
+  const index = Math.max(1, Math.floor(Number(labelEl.dataset.labelIndex || 1)));
+  const targetLevel = expanded ? 2 : restoreLevel;
+  const info = getModuleLabelInfoFromElement(labelEl);
+  if (!info) return;
+  const rebuilt = createModuleLabelElement(info, {
+    level: targetLevel,
+    index,
+  });
+  rebuilt.dataset.restoreLevel = String(restoreLevel);
+  rebuilt.dataset.densityLevel = String(targetLevel);
+  rebuilt.classList.toggle("system-module-label--expanded", Boolean(expanded));
+  labelEl.replaceWith(rebuilt);
+}
+
+function syncModuleLabelExpansionByEdge(edgeId = "", active = false) {
+  const container = $("#systemPreviewShelves");
+  if (!container) return;
+  const targetId = String(edgeId || "");
+  const labels = Array.from(container.querySelectorAll(".system-module-label"));
+  labels.forEach((labelEl) => {
+    if (!(labelEl instanceof Element)) return;
+    const shouldExpand =
+      Boolean(active) && Boolean(targetId) && String(labelEl.dataset.edgeId || "") === targetId;
+    setModuleLabelExpandedState(labelEl, shouldExpand);
+  });
 }
 
 function isRectOverlapping(a = null, b = null, padding = 0) {
@@ -3684,9 +3747,15 @@ function setPreviewEdgeHoverState(edgeId = "", active = false) {
   container.querySelectorAll(".system-shelf.is-edge-hovered").forEach((el) => {
     el.classList.remove("is-edge-hovered");
   });
-  if (!active) return;
+  if (!active) {
+    syncModuleLabelExpansionByEdge("", false);
+    return;
+  }
   const targetId = String(edgeId || "");
-  if (!targetId) return;
+  if (!targetId) {
+    syncModuleLabelExpansionByEdge("", false);
+    return;
+  }
   const target = Array.from(
     container.querySelectorAll("[data-bay-preview], [data-corner-preview]")
   ).find(
@@ -3695,6 +3764,7 @@ function setPreviewEdgeHoverState(edgeId = "", active = false) {
       String(el?.dataset?.cornerPreview || "") === targetId
   );
   if (target) target.classList.add("is-edge-hovered");
+  syncModuleLabelExpansionByEdge(targetId, Boolean(target));
 }
 
 function renderBuilderStructure() {
@@ -5633,6 +5703,12 @@ function updatePreview() {
       } else {
         shelf.style.background = shelfMat.swatch || "#ddd";
       }
+      shelf.addEventListener("mouseenter", () => {
+        setPreviewEdgeHoverState(item.id, true);
+      });
+      shelf.addEventListener("mouseleave", () => {
+        setPreviewEdgeHoverState("", false);
+      });
       shelvesEl.appendChild(shelf);
   });
 
@@ -5748,6 +5824,7 @@ function updatePreview() {
         corner: true,
       });
       moduleInfoLabels.push({
+        edgeId: item.id,
         x: labelXMm * scale + tx,
         y: labelYMm * scale + ty,
         count: shelfCount,
@@ -5769,6 +5846,7 @@ function updatePreview() {
       corner: false,
     });
     moduleInfoLabels.push({
+      edgeId: item.id,
       x: ((item.minX + item.maxX) / 2) * scale + tx,
       y: ((item.minY + item.maxY) / 2) * scale + ty,
       count: shelfCount,
