@@ -36,17 +36,17 @@
       <div class="steps-main">
         <section id="stepColumnMaterial" class="step-card is-accordion is-collapsed">
           <div class="step-card-header">
-            <h2>기둥 컬러를 선택해주세요.</h2>
+            <h2>포스트바 컬러를 선택해주세요.</h2>
             <div class="step-card-meta">
               <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="stepColumnMaterial" aria-expanded="false">열기</button>
             </div>
           </div>
           <div class="accordion-body" id="stepColumnMaterialBody">
             <div class="material-picker">
-              <button type="button" id="openColumnMaterialModal">기둥 컬러 선택</button>
+              <button type="button" id="openColumnMaterialModal">포스트바 컬러 선택</button>
             </div>
             <div id="selectedColumnMaterialCard" class="selected-material-card">
-              <div class="placeholder">선택된 기둥 컬러 없음</div>
+              <div class="placeholder">선택된 포스트바 컬러 없음</div>
             </div>
           </div>
         </section>
@@ -300,7 +300,7 @@
     <div class="modal-backdrop" id="columnMaterialModalBackdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="columnMaterialModalTitle" tabindex="-1">기둥 컬러 선택</h3>
+        <h3 id="columnMaterialModalTitle" tabindex="-1">포스트바 컬러 선택</h3>
       </div>
       <div class="modal-tabs">
         <div id="columnMaterialTabs" class="material-tabs"></div>
@@ -424,6 +424,7 @@
         <h3 id="previewPresetModuleModalTitle" tabindex="-1">모듈 선택</h3>
       </div>
       <div class="modal-body">
+        <div id="previewPresetModuleCategoryTabs" class="material-tabs preview-preset-category-tabs" aria-label="모듈 카테고리"></div>
         <div id="previewPresetModuleCards" class="grid-cards grid-cards--2 grid-cards--keep-2"></div>
         <div id="previewPresetModuleError" class="error-msg"></div>
       </div>
@@ -543,8 +544,22 @@
                 <select id="cornerSwapSelect" class="select-caret">
                   <option value="default">800 × 600</option>
                   <option value="swap">600 × 800</option>
+                  <option value="custom">직접입력 (상담)</option>
                 </select>
                 <div class="field-note">깊이 400mm 고정</div>
+              </div>
+            </div>
+            <div class="form-row" id="cornerCustomCutRow">
+              <label>직접입력 (mm)</label>
+              <div class="field-col">
+                <div id="cornerCustomCutInputs" class="field-stack hidden">
+                  <div class="space-extra-row">
+                    <input type="number" id="cornerCustomPrimaryInput" placeholder="1축" />
+                    <input type="number" id="cornerCustomSecondaryInput" placeholder="2축" />
+                  </div>
+                  <div id="cornerCustomCutGuide" class="field-note">입력 가능 범위: 400~800mm / 400~800mm · 두 축 중 1개는 600mm 이하</div>
+                  <div id="cornerCustomCutError" class="error-msg"></div>
+                </div>
               </div>
             </div>
             <div class="form-row">

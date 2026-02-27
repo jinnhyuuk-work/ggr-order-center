@@ -60,7 +60,7 @@ const COLUMN_ITEMS = [
   {
     id: "column_white",
     name: "화이트",
-    category: "기둥",
+    category: "포스트바",
     availableThickness: [18],
     pricePerM2: 45000,
     density: 720,
@@ -69,7 +69,7 @@ const COLUMN_ITEMS = [
   {
     id: "column_silver",
     name: "실버",
-    category: "기둥",
+    category: "포스트바",
     availableThickness: [18],
     pricePerM2: 45000,
     density: 720,
@@ -78,7 +78,7 @@ const COLUMN_ITEMS = [
   {
     id: "column_black",
     name: "블랙",
-    category: "기둥",
+    category: "포스트바",
     availableThickness: [18],
     pricePerM2: 45000,
     density: 720,
@@ -93,7 +93,7 @@ export const SYSTEM_COLUMN_MATERIALS = {
 export const SYSTEM_MATERIAL_CATEGORIES_DESC = {
   LPM: "LPM 마감재 카테고리입니다.",
   PP: "PP 마감재 카테고리입니다.",
-  기둥: "기둥 컬러 카테고리입니다.",
+  포스트바: "포스트바 컬러 카테고리입니다.",
 };
 
 export const SYSTEM_CUSTOM_PROCESSING = {
@@ -104,6 +104,82 @@ export const SYSTEM_CUSTOM_PROCESSING = {
     description: "규격 외 사이즈는 상담 후 견적입니다.",
   },
 };
+
+export const SYSTEM_SHELF_TIER_GUIDE = Object.freeze({
+  normal: "일반 선반: 400 이하 / 600 이하 / 800 이하 / 비규격(상담)",
+  corner: "코너 선반: 코너 표준 / 비규격(상담)",
+  cornerCustomNote: "코너 비규격은 800×600 이하 절단만 가능",
+});
+
+export const SYSTEM_SHELF_TIER_PRICING = Object.freeze({
+  normal: Object.freeze({
+    id: "normal_shelf_pricing",
+    label: "일반 선반",
+    tiers: Object.freeze([
+      Object.freeze({
+        key: "lte_400",
+        label: "400 이하",
+        matchMode: "range",
+        maxWidthMm: 400,
+        priceByCategory: Object.freeze({
+          LPM: 22000,
+          PP: 20000,
+        }),
+      }),
+      Object.freeze({
+        key: "lte_600",
+        label: "600 이하",
+        matchMode: "range",
+        maxWidthMm: 600,
+        priceByCategory: Object.freeze({
+          LPM: 28000,
+          PP: 25500,
+        }),
+      }),
+      Object.freeze({
+        key: "lte_800",
+        label: "800 이하",
+        matchMode: "range",
+        maxWidthMm: 800,
+        priceByCategory: Object.freeze({
+          LPM: 34000,
+          PP: 31000,
+        }),
+      }),
+      Object.freeze({
+        key: "gt_800_custom",
+        label: "비규격(상담)",
+        matchMode: "range",
+        minWidthExclusiveMm: 800,
+        isCustomPrice: true,
+      }),
+    ]),
+  }),
+  corner: Object.freeze({
+    id: "corner_shelf_pricing",
+    label: "코너 선반",
+    tiers: Object.freeze([
+      Object.freeze({
+        key: "corner_standard",
+        label: "코너 표준",
+        matchMode: "range",
+        maxWidthMm: 800,
+        priceByCategory: Object.freeze({
+          LPM: 42000,
+          PP: 39000,
+        }),
+      }),
+      Object.freeze({
+        key: "corner_custom",
+        label: "비규격(상담)",
+        matchMode: "manual",
+        mode: "trim_only",
+        baseSizeMm: Object.freeze({ primary: 800, secondary: 600 }),
+        isCustomPrice: true,
+      }),
+    ]),
+  }),
+});
 
 export const SYSTEM_POST_BAR_PRICING = Object.freeze({
   basic: Object.freeze({
@@ -153,10 +229,10 @@ export const SYSTEM_MODULE_OPTION_CONFIG = Object.freeze({
 });
 
 export const SYSTEM_MODULE_PRESET_CATEGORIES = Object.freeze([
-  Object.freeze({ key: "hanger", label: "행거모듈", order: 10 }),
-  Object.freeze({ key: "shelf", label: "선반모듈", order: 20 }),
-  Object.freeze({ key: "furniture", label: "가구모듈", order: 30 }),
-  Object.freeze({ key: "etc", label: "기타모듈", order: 99 }),
+  Object.freeze({ key: "hanger", label: "행거형", order: 10 }),
+  Object.freeze({ key: "shelf", label: "선반형", order: 20 }),
+  Object.freeze({ key: "furniture", label: "가구형", order: 30 }),
+  Object.freeze({ key: "etc", label: "확장형", order: 99 }),
 ]);
 
 const SYSTEM_MODULE_PRESET_ITEMS = [
@@ -230,7 +306,7 @@ const SYSTEM_MODULE_PRESET_ITEMS = [
     moduleType: "normal",
     categoryKey: "furniture",
     label: "GED-1",
-    filterKeys: ["400", "600", "800"],
+    filterKeys: ["600", "800"],
     count: 2,
     rodCount: 2,
     furnitureAddonId: "drawer_hanging_1tier",
@@ -244,7 +320,7 @@ const SYSTEM_MODULE_PRESET_ITEMS = [
     moduleType: "normal",
     categoryKey: "furniture",
     label: "GED-2",
-    filterKeys: ["400", "600", "800"],
+    filterKeys: ["600", "800"],
     count: 2,
     rodCount: 1,
     furnitureAddonId: "drawer_hanging_2tier",
@@ -258,7 +334,7 @@ const SYSTEM_MODULE_PRESET_ITEMS = [
     moduleType: "normal",
     categoryKey: "furniture",
     label: "GFD-2",
-    filterKeys: ["400", "600", "800"],
+    filterKeys: ["600", "800"],
     count: 1,
     rodCount: 1,
     furnitureAddonId: "drawer_floor_2tier",
@@ -272,7 +348,7 @@ const SYSTEM_MODULE_PRESET_ITEMS = [
     moduleType: "normal",
     categoryKey: "furniture",
     label: "GFD-3",
-    filterKeys: ["400", "600", "800"],
+    filterKeys: ["600", "800"],
     count: 1,
     rodCount: 1,
     furnitureAddonId: "drawer_floor_3tier",
@@ -286,7 +362,7 @@ const SYSTEM_MODULE_PRESET_ITEMS = [
     moduleType: "normal",
     categoryKey: "furniture",
     label: "GFD-4",
-    filterKeys: ["400", "600", "800"],
+    filterKeys: ["600", "800"],
     count: 1,
     rodCount: 1,
     furnitureAddonId: "drawer_floor_4tier",
@@ -468,7 +544,7 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: SYSTEM_ADDON_ITEM_IDS.CLOTHES_ROD,
     name: "행거",
     categoryKey: "hanger",
-    price: 12000,
+    price: 5000,
     description: "알루미늄 행거 1개",
     optionMode: "counter",
     selectableInModuleAddonModal: false,

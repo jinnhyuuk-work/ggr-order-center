@@ -2,6 +2,7 @@ import {
   SYSTEM_SHELF_MATERIALS,
   SYSTEM_COLUMN_MATERIALS,
   SYSTEM_POST_BAR_PRICING,
+  SYSTEM_SHELF_TIER_PRICING,
   SYSTEM_ADDON_ITEMS,
 } from "./data/system-data.js";
 import { calcShippingCost } from "./shared.js";
@@ -62,6 +63,49 @@ export function createSystemPricingHelpers({
   const safePostBarPriceMaxHeightMm = normalizeMm(postBarPriceMaxHeightMm);
   const safeAddonClothesRodId = String(addonClothesRodId || "clothes_rod");
 
+  function getShelfPricingConfig(kind = "normal") {
+    return kind === "corner" ? SYSTEM_SHELF_TIER_PRICING.corner : SYSTEM_SHELF_TIER_PRICING.normal;
+  }
+
+  function matchShelfTierByWidth(tier, widthMm) {
+    const width = normalizeMm(widthMm);
+    if (!width) return false;
+    const matchMode = String(tier?.matchMode || "range");
+    if (matchMode !== "range") return false;
+    const minExclusiveMm = Number(tier?.minWidthExclusiveMm);
+    const maxMm = Number(tier?.maxWidthMm);
+    if (Number.isFinite(minExclusiveMm) && !(width > minExclusiveMm)) return false;
+    if (Number.isFinite(maxMm) && maxMm > 0 && !(width <= maxMm)) return false;
+    return true;
+  }
+
+  function getShelfTier({ kind = "normal", widthMm = 0 } = {}) {
+    const config = getShelfPricingConfig(kind);
+    const tiers = Array.isArray(config?.tiers) ? config.tiers : [];
+    return tiers.find((tier) => matchShelfTierByWidth(tier, widthMm)) || null;
+  }
+
+  function getShelfTierUnitPrice({ tier = null, material = null } = {}) {
+    if (!tier || Boolean(tier?.isCustomPrice)) return 0;
+    const materialId = String(material?.id || "");
+    const category = String(material?.category || "");
+    const priceByMaterialId = tier?.priceByMaterialId && typeof tier.priceByMaterialId === "object"
+      ? tier.priceByMaterialId
+      : null;
+    const priceByCategory = tier?.priceByCategory && typeof tier.priceByCategory === "object"
+      ? tier.priceByCategory
+      : null;
+    const byMaterialPrice = priceByMaterialId ? Number(priceByMaterialId[materialId] || 0) : 0;
+    if (byMaterialPrice > 0) return roundWon(byMaterialPrice);
+    const byCategoryPrice = priceByCategory ? Number(priceByCategory[category] || 0) : 0;
+    if (byCategoryPrice > 0) return roundWon(byCategoryPrice);
+    return 0;
+  }
+
+  function isShelfLengthCustom() {
+    return safeShelfLengthMm > Number(shelfLimits.maxLength || 0);
+  }
+
   function calcAddonCostBreakdown(addonIds = [], quantity = 1) {
     const qtyMultiplier = Math.max(1, normalizeCount(quantity, 1));
     return (Array.isArray(addonIds) ? addonIds : []).reduce(
@@ -103,14 +147,6 @@ export function createSystemPricingHelpers({
       weightKg,
       isCustomPrice: isCustom,
     };
-  }
-
-  function isShelfCustom(width, customFlag) {
-    return (
-      customFlag ||
-      Number(width || 0) > Number(shelfLimits.maxWidth || 0) ||
-      safeShelfLengthMm > Number(shelfLimits.maxLength || 0)
-    );
   }
 
   function isColumnCustom(length) {
@@ -178,22 +214,39 @@ export function createSystemPricingHelpers({
     }, 0);
   }
 
-  function calcBayDetail({ shelf, addons = [], quantity }) {
-    const shelfIsCustom = isShelfCustom(shelf.width, shelf.customProcessing);
+  function calcBayDetail({ shelf, addons = [], quantity, isCorner = false }) {
+    const unitQuantity = Math.max(1, normalizeCount(quantity, 1));
+    const shelfMaterial = SYSTEM_SHELF_MATERIALS[shelf?.materialId];
+    const shelfWidthMm = normalizeMm(shelf?.width);
+    const shelfCount = Math.max(1, normalizeCount(shelf?.count, 1));
+    const shelfTier = getShelfTier({
+      kind: isCorner ? "corner" : "normal",
+      widthMm: shelfWidthMm,
+    });
+    const shelfTierUnitPrice = getShelfTierUnitPrice({
+      tier: shelfTier,
+      material: shelfMaterial,
+    });
+    const shelfIsCustom =
+      Boolean(shelf?.customProcessing) ||
+      isShelfLengthCustom() ||
+      !shelfTier ||
+      Boolean(shelfTier?.isCustomPrice) ||
+      shelfTierUnitPrice <= 0;
     const shelfDetail = calcPartDetail({
       materials: SYSTEM_SHELF_MATERIALS,
       materialId: shelf.materialId,
       thickness: shelf.thickness,
       width: shelf.width,
       length: shelf.length,
-      quantity,
-      partMultiplier: shelf.count || 1,
-      isCustom: shelfIsCustom,
+      quantity: unitQuantity,
+      partMultiplier: shelfCount,
+      isCustom: false,
     });
     const addonTotal = calcAddonsUnitTotal(addons);
 
-    const processingCost = addonTotal * quantity;
-    const materialCost = shelfDetail.materialCost;
+    const processingCost = shelfIsCustom ? 0 : addonTotal * unitQuantity;
+    const materialCost = shelfIsCustom ? 0 : roundWon(shelfTierUnitPrice * shelfCount * unitQuantity);
     const subtotal = materialCost + processingCost;
     const vat = 0;
     const total = roundWon(subtotal);
@@ -208,6 +261,12 @@ export function createSystemPricingHelpers({
       total,
       weightKg,
       isCustomPrice,
+      shelfPricing: {
+        kind: isCorner ? "corner" : "normal",
+        tierKey: String(shelfTier?.key || ""),
+        tierLabel: String(shelfTier?.label || ""),
+        unitPrice: roundWon(shelfTierUnitPrice),
+      },
     };
   }
 

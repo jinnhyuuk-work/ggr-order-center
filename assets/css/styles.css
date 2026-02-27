@@ -595,6 +595,12 @@ section {
   align-items: center;
 }
 
+.space-extra-row input[type="number"] {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 .space-extra-add-btn {
   --btn-padding: 6px 10px;
   font-size: 12px;
@@ -1011,6 +1017,10 @@ input[type="number"]::-webkit-outer-spin-button {
 
 #previewPresetModuleCards {
   margin-top: 4px;
+}
+
+.preview-preset-category-tabs {
+  margin-bottom: 8px;
 }
 
 .preview-preset-card.is-selected {
@@ -1905,6 +1915,26 @@ th, td {
   font-weight: 400;
   color: var(--color-text);
   margin-bottom: 2px;
+}
+
+.card-base .material-tier-heading {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text-strong);
+  margin-top: 4px;
+}
+
+.card-base .material-tier-line {
+  font-size: var(--font-size-xs);
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.card-base .material-tier-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-meta);
+  line-height: 1.35;
+  margin-top: 2px;
 }
 
 .card-base .size {

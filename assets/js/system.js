@@ -3,11 +3,14 @@ import {
   SYSTEM_COLUMN_MATERIALS,
   SYSTEM_MATERIAL_CATEGORIES_DESC,
   SYSTEM_CUSTOM_PROCESSING,
+  SYSTEM_SHELF_TIER_PRICING,
+  SYSTEM_POST_BAR_PRICING,
   SYSTEM_ADDON_ITEM_IDS,
   SYSTEM_ADDON_OPTION_CONFIG,
   SYSTEM_ADDON_ITEMS,
   SYSTEM_MODULE_OPTION_CONFIG,
   SYSTEM_MODULE_PRESETS,
+  SYSTEM_MODULE_PRESET_CATEGORIES,
 } from "./data/system-data.js";
 import {
   createPreviewAddFlowState,
@@ -123,9 +126,27 @@ import {
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+const SHELF_PANEL_LIMITS = Object.freeze({
+  minWidth: 460,
+  maxWidth: 1200,
+  minLength: 200,
+  maxLength: 2400,
+});
+const POST_BAR_LENGTH_LIMITS = Object.freeze({
+  minLength: 1800,
+  maxLength: 2700,
+});
+const SYSTEM_DIMENSION_LIMITS = Object.freeze({
+  shelf: SHELF_PANEL_LIMITS,
+  column: POST_BAR_LENGTH_LIMITS,
+});
+
 const LIMITS = {
-  shelf: { minWidth: 460, maxWidth: 1200, minLength: 200, maxLength: 2400 },
-  column: { minLength: 1800, maxLength: 2700 },
+  // NOTE:
+  // - `LIMITS.shelf` is panel/material spec bounds used in validation/pricing helpers.
+  // - module width input bounds are controlled separately by `MODULE_SHELF_WIDTH_LIMITS`.
+  shelf: SYSTEM_DIMENSION_LIMITS.shelf,
+  column: SYSTEM_DIMENSION_LIMITS.column,
 };
 
 const COLUMN_WIDTH_MM = 30;
@@ -134,7 +155,9 @@ const COLUMN_EXTRA_LENGTH_THRESHOLD = 2400;
 const SHELF_LENGTH_MM = 600;
 const SHELF_THICKNESS_MM = 18;
 const COLUMN_THICKNESS_MM = 18;
-const BAY_WIDTH_LIMITS = { min: 400, max: 1000 };
+// Module input width (shelf width only, without post bar).
+const MODULE_SHELF_WIDTH_LIMITS = Object.freeze({ min: 400, max: 1000 });
+const FURNITURE_ALLOWED_NORMAL_WIDTHS = Object.freeze([600, 800]);
 const SUPPORT_BRACKET_WIDTH_MM = 15;
 const SUPPORT_BRACKET_INSERT_MM = 10;
 const SUPPORT_VISIBLE_MM = SUPPORT_BRACKET_WIDTH_MM - SUPPORT_BRACKET_INSERT_MM;
@@ -179,7 +202,7 @@ const {
   calcColumnsDetail,
   calcOrderSummary,
 } = createSystemPricingHelpers({
-  limits: LIMITS,
+  limits: SYSTEM_DIMENSION_LIMITS,
   shelfLengthMm: SHELF_LENGTH_MM,
   postBarPriceMaxHeightMm: SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM,
   addonClothesRodId: ADDON_CLOTHES_ROD_ID,
@@ -612,7 +635,9 @@ let activeShelfAddonId = null;
 let activeCornerOptionId = null;
 let activeBayOptionId = null;
 let shelfAddonModalReturnTo = "";
+let suppressPendingOptionModalCleanupOnce = false;
 let systemAddonModalCategoryFilterKey = "all";
+let previewPresetModuleCategoryFilterKey = "all";
 let bayDirectComposeDraft = null;
 let cornerDirectComposeDraft = null;
 const previewAddFlowState = createPreviewAddFlowState();
@@ -681,8 +706,8 @@ const materialPickers = {
     categoryDescId: "#columnMaterialCategoryDesc",
     selectedCardId: "#selectedColumnMaterialCard",
     thicknessSelectId: "#columnThicknessSelect",
-    emptyTitle: "선택된 기둥 컬러 없음",
-    emptyMeta: "기둥 컬러를 선택해주세요.",
+    emptyTitle: "선택된 포스트바 컬러 없음",
+    emptyMeta: "포스트바 컬러를 선택해주세요.",
     selectedCategory: "",
     selectedMaterialId: "",
   },
@@ -728,6 +753,127 @@ function renderCategoryDesc(picker) {
   descEl.textContent = desc;
 }
 
+function formatWon(amount) {
+  const value = Math.round(Number(amount || 0));
+  if (!Number.isFinite(value) || value <= 0) return "-";
+  return `${value.toLocaleString()}원`;
+}
+
+function resolveTierUnitPrice(tier, material) {
+  if (!tier || !material || Boolean(tier.isCustomPrice)) return 0;
+  const materialId = String(material.id || "");
+  const category = String(material.category || "");
+  const priceByMaterialId =
+    tier.priceByMaterialId && typeof tier.priceByMaterialId === "object" ? tier.priceByMaterialId : null;
+  const priceByCategory =
+    tier.priceByCategory && typeof tier.priceByCategory === "object" ? tier.priceByCategory : null;
+  const byMaterialId = priceByMaterialId ? Number(priceByMaterialId[materialId] || 0) : 0;
+  if (Number.isFinite(byMaterialId) && byMaterialId > 0) return Math.round(byMaterialId);
+  const byCategory = priceByCategory ? Number(priceByCategory[category] || 0) : 0;
+  if (Number.isFinite(byCategory) && byCategory > 0) return Math.round(byCategory);
+  const unitPrice = Number(tier.unitPrice || 0);
+  if (Number.isFinite(unitPrice) && unitPrice > 0) return Math.round(unitPrice);
+  return 0;
+}
+
+function formatTierConstraintLabel(tier, { widthKey = "maxWidthMm", heightKey = "maxHeightMm" } = {}) {
+  const rawLabel = String(tier?.label || "").trim();
+  if (!rawLabel) return "-";
+  if (rawLabel.includes("이하") || rawLabel.includes("이상")) return rawLabel;
+  const maxWidth = Number(tier?.[widthKey] || 0);
+  if (Number.isFinite(maxWidth) && maxWidth > 0) return `${rawLabel} (${maxWidth} 이하)`;
+  const maxHeight = Number(tier?.[heightKey] || 0);
+  if (Number.isFinite(maxHeight) && maxHeight > 0) return `${rawLabel} (${maxHeight} 이하)`;
+  return rawLabel;
+}
+
+function getShelfDisplayWidthRangeText() {
+  const minWidthMm = Number(MODULE_SHELF_WIDTH_LIMITS.min || 400) || 400;
+  const maxWidthMm = Number(MODULE_SHELF_WIDTH_LIMITS.max || 1000) || 1000;
+  return `${minWidthMm}~${maxWidthMm}mm`;
+}
+
+function buildShelfTierPriceHtml(material) {
+  const groups = [
+    { title: "일반 선반", tiers: SYSTEM_SHELF_TIER_PRICING?.normal?.tiers || [] },
+    { title: "코너 선반", tiers: SYSTEM_SHELF_TIER_PRICING?.corner?.tiers || [] },
+  ];
+  const groupHtml = groups
+    .map((group) => {
+      const tiers = Array.isArray(group.tiers) ? group.tiers : [];
+      if (!tiers.length) return "";
+      const rows = tiers
+        .map((tier) => {
+          const label = String(tier?.label || "-");
+          if (Boolean(tier?.isCustomPrice)) {
+            const consultLabel = String(label || "").includes("비규격")
+              ? "비규격 상담 안내"
+              : `${label} 상담 안내`;
+            return `<div class="material-tier-line">${escapeHtml(consultLabel)}</div>`;
+          }
+          return `<div class="material-tier-line">${escapeHtml(label)} ${formatWon(
+            resolveTierUnitPrice(tier, material)
+          )}</div>`;
+        })
+        .join("");
+      return `
+        <div class="material-tier-heading">${escapeHtml(group.title)}</div>
+        ${rows}
+      `;
+    })
+    .filter(Boolean)
+    .join("");
+  return groupHtml || `<div class="material-tier-line">가격 정보 준비중</div>`;
+}
+
+function buildPostBarTierPriceHtml() {
+  const basicTiers = (Array.isArray(SYSTEM_POST_BAR_PRICING?.basic?.tiers)
+    ? SYSTEM_POST_BAR_PRICING.basic.tiers
+    : []
+  ).filter((tier) => Number(tier?.maxHeightMm || 0) !== 2100);
+  const cornerAllTiers = Array.isArray(SYSTEM_POST_BAR_PRICING?.corner?.tiers)
+    ? SYSTEM_POST_BAR_PRICING.corner.tiers
+    : [];
+  let cornerTiers = cornerAllTiers.filter((tier) => Number(tier?.maxHeightMm || 0) === 2500);
+  if (!cornerTiers.length && cornerAllTiers.length) {
+    const maxTierHeight = Math.max(...cornerAllTiers.map((tier) => Number(tier?.maxHeightMm || 0)));
+    cornerTiers = cornerAllTiers.filter((tier) => Number(tier?.maxHeightMm || 0) === maxTierHeight);
+  }
+  const groups = [
+    { title: SYSTEM_POST_BAR_PRICING?.basic?.label || "기본 포스트바", tiers: basicTiers },
+    { title: SYSTEM_POST_BAR_PRICING?.corner?.label || "코너 포스트바", tiers: cornerTiers },
+  ];
+  const groupHtml = groups
+    .map((group) => {
+      const tiers = Array.isArray(group.tiers) ? group.tiers : [];
+      if (!tiers.length) return "";
+      const rows = tiers
+        .map((tier) => {
+          const label = formatTierConstraintLabel(tier);
+          const price = formatWon(resolveTierUnitPrice(tier, {}));
+          return `<div class="material-tier-line">${escapeHtml(label)} ${price}</div>`;
+        })
+        .join("");
+      return `
+        <div class="material-tier-heading">${escapeHtml(group.title)}</div>
+        ${rows}
+      `;
+    })
+    .filter(Boolean)
+    .join("");
+  return `${groupHtml}<div class="material-tier-note">${SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM}mm 초과 상담 안내</div>`;
+}
+
+function buildMaterialTierPriceHtml(picker, material) {
+  if (picker.key === "shelf") {
+    return buildShelfTierPriceHtml(material);
+  }
+  if (picker.key === "column") {
+    return buildPostBarTierPriceHtml();
+  }
+  return `<div class="material-tier-line">㎡당 ${getPricePerM2(material).toLocaleString()}원</div>`;
+}
+
 function renderMaterialCards(picker) {
   const container = $(picker.cardsId);
   if (!container) return;
@@ -743,21 +889,28 @@ function renderMaterialCards(picker) {
       picker.selectedMaterialId === mat.id ? " selected" : ""
     }`;
     const limits = LIMITS[picker.key];
-    const sizeLine =
+    const heightLine = `높이 ${limits.minLength}~${limits.maxLength}mm`;
+    const tierPriceHtml = buildMaterialTierPriceHtml(picker, mat);
+    const thicknessLineHtml =
       picker.key === "column"
-        ? `두께 ${COLUMN_THICKNESS_MM}T 고정 / 폭 ${COLUMN_WIDTH_MM}mm 고정 / 높이 ${limits.minLength}~${limits.maxLength}mm`
-        : `두께 ${SHELF_THICKNESS_MM}T 고정 / 폭 ${limits.minWidth}~${limits.maxWidth}mm / 길이 ${SHELF_LENGTH_MM}mm 고정`;
+        ? ""
+        : `<div class="size">가능 두께: ${(mat.availableThickness || [])
+            .map((t) => `${t}T`)
+            .join(", ")}</div>`;
+    const shelfWidthRangeText = getShelfDisplayWidthRangeText();
+    const widthLineHtml =
+      picker.key === "column" ? "" : `<div class="size">가능 폭: ${shelfWidthRangeText}</div>`;
+    const heightLineHtml = picker.key === "column" ? `<div class="size">${heightLine}</div>` : "";
     label.innerHTML = `
       <input type="radio" name="${picker.inputName}" value="${mat.id}" ${
         picker.selectedMaterialId === mat.id ? "checked" : ""
       } />
       <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
       <div class="name">${mat.name}</div>
-      <div class="price">㎡당 ${getPricePerM2(mat).toLocaleString()}원</div>
-      <div class="size">가능 두께: ${(mat.availableThickness || [])
-        .map((t) => `${t}T`)
-        .join(", ")}</div>
-      <div class="size">${sizeLine}</div>
+      ${tierPriceHtml}
+      ${thicknessLineHtml}
+      ${widthLineHtml}
+      ${heightLineHtml}
     `;
     container.appendChild(label);
   });
@@ -780,22 +933,22 @@ function renderMaterialCards(picker) {
 function updateSelectedMaterialCard(picker) {
   const mat = picker.materials[picker.selectedMaterialId];
   const limits = LIMITS[picker.key];
-  const sizeLine =
-    picker.key === "column"
-      ? `두께 ${COLUMN_THICKNESS_MM}T 고정 / 폭 ${COLUMN_WIDTH_MM}mm 고정 / 높이 ${limits.minLength}~${limits.maxLength}mm`
-      : `두께 ${SHELF_THICKNESS_MM}T 고정 / 폭 ${limits.minWidth}~${limits.maxWidth}mm / 길이 ${SHELF_LENGTH_MM}mm 고정`;
+  const metaLines = [];
+  if (mat) {
+    if (picker.key === "column") {
+      metaLines.push(`높이 ${limits.minLength}~${limits.maxLength}mm`);
+    } else {
+      metaLines.push(`가능 두께: ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`);
+      metaLines.push(`가능 폭: ${getShelfDisplayWidthRangeText()}`);
+    }
+  }
   renderSelectedCard({
     cardId: picker.selectedCardId,
     emptyTitle: picker.emptyTitle,
     emptyMeta: picker.emptyMeta,
     swatch: mat?.swatch,
     name: mat ? escapeHtml(mat.name) : "",
-    metaLines: mat
-      ? [
-          `가능 두께: ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`,
-          sizeLine,
-        ]
-      : [],
+    metaLines,
   });
 }
 
@@ -1668,6 +1821,7 @@ function applyPreviewPresetPickerOpenUiDispatchPlanToRuntime(openDispatchPlan) {
     openDispatchPlan.openState.options
   );
   patchPreviewPresetPickerFlowState(previewPresetPickerFlowState, openDispatchPlan.pickerStatePatch);
+  previewPresetModuleCategoryFilterKey = "all";
   const titleEl = $("#previewPresetModuleModalTitle");
   if (titleEl) {
     titleEl.textContent = openDispatchPlan.title;
@@ -2047,12 +2201,72 @@ function getPreviewPresetFilterOptions(type = previewPresetPickerFlowState.modul
     .map((key) => ({ key, label: key }));
 }
 
-function getFilteredPreviewPresetItems() {
+function getWidthFilteredPreviewPresetItems() {
   const items = getPreviewPresetItemsForType(previewPresetPickerFlowState.moduleType);
   if (!previewPresetPickerFlowState.filterKey) return items;
   return items.filter((item) =>
     isPreviewPresetAvailableForFilter(item, previewPresetPickerFlowState.filterKey, previewPresetPickerFlowState.moduleType)
   );
+}
+
+function getPreviewPresetCategoryFilterOptions(
+  widthFilteredItems = getWidthFilteredPreviewPresetItems()
+) {
+  const items = Array.isArray(widthFilteredItems) ? widthFilteredItems : [];
+  const usedCategoryKeys = new Set(
+    items.map((item) => String(item?.categoryKey || "")).filter(Boolean)
+  );
+  const categories = (SYSTEM_MODULE_PRESET_CATEGORIES || [])
+    .filter((category) => usedCategoryKeys.has(String(category?.key || "")))
+    .sort((a, b) => {
+      const aOrder = Number(a?.order || 0);
+      const bOrder = Number(b?.order || 0);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return String(a?.label || "").localeCompare(String(b?.label || ""), "ko");
+    })
+    .map((category) => ({
+      key: String(category?.key || ""),
+      label: String(category?.label || category?.key || ""),
+    }));
+  return [{ key: "all", label: "전체" }, ...categories];
+}
+
+function renderPreviewPresetModuleCategoryTabs(
+  widthFilteredItems = getWidthFilteredPreviewPresetItems()
+) {
+  const container = $("#previewPresetModuleCategoryTabs");
+  if (!container) return;
+  const options = getPreviewPresetCategoryFilterOptions(widthFilteredItems);
+  const currentKey = String(previewPresetModuleCategoryFilterKey || "all");
+  if (!options.some((option) => option.key === currentKey)) {
+    previewPresetModuleCategoryFilterKey = "all";
+  }
+  container.classList.toggle("hidden", options.length <= 1);
+  container.innerHTML = options
+    .map((option) => {
+      const key = String(option.key || "");
+      const isActive = key === String(previewPresetModuleCategoryFilterKey || "all");
+      return `
+        <button
+          type="button"
+          class="material-tab${isActive ? " active" : ""}"
+          data-preview-preset-category="${escapeHtml(key)}"
+          aria-pressed="${isActive ? "true" : "false"}"
+        >
+          ${escapeHtml(option.label)}
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function getFilteredPreviewPresetItems(widthFilteredItems = null) {
+  const items = Array.isArray(widthFilteredItems)
+    ? widthFilteredItems
+    : getWidthFilteredPreviewPresetItems();
+  const categoryKey = String(previewPresetModuleCategoryFilterKey || "all");
+  if (!categoryKey || categoryKey === "all") return [...items];
+  return items.filter((item) => String(item?.categoryKey || "") === categoryKey);
 }
 
 function getPreviewPresetSelectedPreset() {
@@ -2105,7 +2319,9 @@ function buildPresetAddonBreakdownFromPreset(preset) {
 function renderPreviewPresetModuleCards() {
   const container = $("#previewPresetModuleCards");
   if (!container) return;
-  const items = getFilteredPreviewPresetItems();
+  const widthFilteredItems = getWidthFilteredPreviewPresetItems();
+  renderPreviewPresetModuleCategoryTabs(widthFilteredItems);
+  const items = getFilteredPreviewPresetItems(widthFilteredItems);
   if (!items.length) {
     container.innerHTML = `<div class="builder-hint">표시할 모듈이 없습니다.</div>`;
     return;
@@ -2217,15 +2433,28 @@ function applyPreviewPresetToExistingCorner(edgeId, preset, selectedFilterKey = 
   const prevSwap = Boolean(corner.swap);
   const prevCount = Number(corner.count || 0);
   const prevRodCount = getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID);
+  const prevCustomProcessing = Boolean(corner.customProcessing);
+  const prevCustomPrimaryMm = Number(corner.customPrimaryMm || 0);
+  const prevCustomSecondaryMm = Number(corner.customSecondaryMm || 0);
   const prevFurnitureAddonId = getSelectedFurnitureAddonId(corner.id);
   const nextFurnitureAddonId = String(getPresetFurnitureAddonIds(preset)[0] || "");
-  if (prevSwap !== nextSwap || prevCount !== nextCount || prevRodCount !== nextRodCount) {
+  if (
+    prevSwap !== nextSwap ||
+    prevCount !== nextCount ||
+    prevRodCount !== nextRodCount ||
+    prevCustomProcessing ||
+    prevCustomPrimaryMm > 0 ||
+    prevCustomSecondaryMm > 0
+  ) {
     pushBuilderHistory("update-corner-preset");
   } else if (prevFurnitureAddonId !== nextFurnitureAddonId) {
     pushBuilderHistory("update-corner-preset");
   }
   corner.swap = nextSwap;
   corner.count = nextCount;
+  corner.customProcessing = false;
+  delete corner.customPrimaryMm;
+  delete corner.customSecondaryMm;
   applyPresetAddonsToEdge(corner.id, preset);
   closePreviewPresetModuleModal({ returnFocus: false, clearTarget: true });
   renderBayInputs();
@@ -2427,6 +2656,10 @@ function bindPendingOptionModalCleanupOnClose() {
   document.addEventListener("app:modal-closed", (event) => {
     if (builderHistory.applying) return;
     const modalId = getClosedModalIdFromEvent(event);
+    if (modalId === "presetModuleOptionModal" && suppressPendingOptionModalCleanupOnce) {
+      suppressPendingOptionModalCleanupOnce = false;
+      return;
+    }
     const activeEdgeId = activeCornerOptionId || activeBayOptionId || "";
     const edge = activeEdgeId ? findShelfById(activeEdgeId) : null;
     const discarded = modalId === "presetModuleOptionModal" ? discardPendingEdge(edge) : false;
@@ -2809,6 +3042,48 @@ function getEdgeModuleTypeById(edgeId) {
   return edge.type === "corner" ? "corner" : "normal";
 }
 
+function isFurnitureSelectableForNormalModuleWidth(widthMm) {
+  const normalized = Math.round(Number(widthMm || 0));
+  return FURNITURE_ALLOWED_NORMAL_WIDTHS.includes(normalized);
+}
+
+function getEdgeByIdOrInstance(edgeOrId) {
+  if (!edgeOrId) return null;
+  if (typeof edgeOrId === "string") return findShelfById(edgeOrId);
+  return edgeOrId;
+}
+
+function getFurnitureSelectionWidthMmForEdge(edgeOrId, { modalReturnTo = "" } = {}) {
+  const edge = getEdgeByIdOrInstance(edgeOrId);
+  if (!edge) return 0;
+  const edgeWidthMm = Math.round(Number(edge.width || 0));
+  if (
+    modalReturnTo === "bay" &&
+    String(activeBayOptionId || "") === String(edge.id || "")
+  ) {
+    return getBayOptionModalWidthMm(edgeWidthMm);
+  }
+  return edgeWidthMm;
+}
+
+function canSelectFurnitureForEdge(edgeOrId, { modalReturnTo = "" } = {}) {
+  const edge = getEdgeByIdOrInstance(edgeOrId);
+  if (!edge) return false;
+  if (edge.type === "corner") return false;
+  const widthMm = getFurnitureSelectionWidthMmForEdge(edge, { modalReturnTo });
+  return isFurnitureSelectableForNormalModuleWidth(widthMm);
+}
+
+function getFurnitureAddonBlockedReason(edgeOrId, { modalReturnTo = "" } = {}) {
+  const edge = getEdgeByIdOrInstance(edgeOrId);
+  if (!edge) return "모듈 정보를 확인해주세요.";
+  if (edge.type === "corner") return "코너 모듈에는 가구를 적용할 수 없습니다.";
+  if (!canSelectFurnitureForEdge(edge, { modalReturnTo })) {
+    return "가구는 일반모듈 폭 600mm 또는 800mm에서만 선택할 수 있습니다.";
+  }
+  return "";
+}
+
 function clearFurnitureAddonsForEdge(edgeId) {
   const key = String(edgeId || "");
   if (!key) return;
@@ -2821,13 +3096,21 @@ function clearFurnitureAddonsForEdge(edgeId) {
   state.shelfAddons[key] = quantities;
 }
 
+function enforceFurnitureAddonPolicyForEdge(edgeOrId) {
+  const edge = getEdgeByIdOrInstance(edgeOrId);
+  if (!edge?.id) return false;
+  if (canSelectFurnitureForEdge(edge)) return false;
+  clearFurnitureAddonsForEdge(edge.id);
+  return true;
+}
+
 function applyPresetAddonsToEdge(edgeId, preset) {
   if (!edgeId) return;
-  const moduleType = getEdgeModuleTypeById(edgeId);
   const rodCount = Math.max(0, Math.floor(Number(preset?.rodCount || 0)));
   const furnitureAddonIds = getPresetFurnitureAddonIds(preset);
-  const targetFurnitureId =
-    moduleType === "corner" ? "" : String(furnitureAddonIds[0] || "");
+  const targetFurnitureId = canSelectFurnitureForEdge(edgeId)
+    ? String(furnitureAddonIds[0] || "")
+    : "";
   const quantities = { ...getShelfAddonQuantities(edgeId) };
   Object.keys(quantities).forEach((addonId) => {
     if (String(addonId || "") !== ADDON_CLOTHES_ROD_ID) {
@@ -2854,6 +3137,12 @@ function getSelectableSystemAddonItems() {
     ])
   );
   const currentModuleType = getEdgeModuleTypeById(activeShelfAddonId);
+  if (
+    activeShelfAddonId &&
+    !canSelectFurnitureForEdge(activeShelfAddonId, { modalReturnTo: shelfAddonModalReturnTo })
+  ) {
+    return [];
+  }
   return SYSTEM_ADDON_ITEMS.filter((item) => {
     if (item.selectableInModuleAddonModal === false) return false;
     const applicableModuleTypes = Array.isArray(item?.applicableModuleTypes)
@@ -3067,6 +3356,128 @@ function getCornerSizeAlongSide(sideIndex, swap) {
   return swap ? 800 : 600;
 }
 
+function getCornerCustomCutLimits() {
+  return {
+    primaryMinMm: 400,
+    primaryMaxMm: 800,
+    secondaryMinMm: 400,
+    secondaryMaxMm: 800,
+    maxSingleAxisMm: 600,
+  };
+}
+
+function syncCornerCustomCutInputsUI() {
+  const row = $("#cornerCustomCutRow");
+  const wrap = $("#cornerCustomCutInputs");
+  const primaryInput = $("#cornerCustomPrimaryInput");
+  const secondaryInput = $("#cornerCustomSecondaryInput");
+  const guideEl = $("#cornerCustomCutGuide");
+  if (!wrap || !primaryInput || !secondaryInput) return;
+  const mode = String($("#cornerSwapSelect")?.value || "default");
+  const limits = getCornerCustomCutLimits();
+  const enabled = mode === "custom";
+
+  if (row) row.classList.toggle("hidden", !enabled);
+  wrap.classList.toggle("hidden", !enabled);
+  primaryInput.disabled = !enabled;
+  secondaryInput.disabled = !enabled;
+
+  primaryInput.min = String(limits.primaryMinMm);
+  primaryInput.max = String(limits.primaryMaxMm);
+  secondaryInput.min = String(limits.secondaryMinMm);
+  secondaryInput.max = String(limits.secondaryMaxMm);
+  primaryInput.placeholder = `${limits.primaryMinMm}~${limits.primaryMaxMm}`;
+  secondaryInput.placeholder = `${limits.secondaryMinMm}~${limits.secondaryMaxMm}`;
+
+  if (enabled) {
+    if (!String(primaryInput.value || "").trim()) primaryInput.value = String(limits.primaryMaxMm);
+    if (!String(secondaryInput.value || "").trim()) secondaryInput.value = String(limits.secondaryMaxMm);
+  }
+
+  if (guideEl) {
+    guideEl.textContent =
+      `입력 가능 범위: ${limits.primaryMinMm}~${limits.primaryMaxMm}mm / ` +
+      `${limits.secondaryMinMm}~${limits.secondaryMaxMm}mm · ` +
+      `두 축 중 1개는 ${limits.maxSingleAxisMm}mm 이하`;
+  }
+}
+
+function setCornerCustomCutError(message = "") {
+  const primaryInput = $("#cornerCustomPrimaryInput");
+  const secondaryInput = $("#cornerCustomSecondaryInput");
+  const errorEl = $("#cornerCustomCutError");
+  const hasError = Boolean(message);
+  [primaryInput, secondaryInput].forEach((input) => {
+    if (input) input.classList.toggle("input-error", hasError);
+  });
+  if (errorEl) {
+    errorEl.textContent = hasError ? String(message) : "";
+    errorEl.classList.toggle("error", hasError);
+  }
+}
+
+function getCornerCustomCutValidationState() {
+  const mode = String($("#cornerSwapSelect")?.value || "default");
+  const enabled = mode === "custom";
+  if (!enabled) {
+    return {
+      enabled: false,
+      valid: true,
+      message: "",
+      primaryMm: 0,
+      secondaryMm: 0,
+    };
+  }
+  const primaryInput = $("#cornerCustomPrimaryInput");
+  const secondaryInput = $("#cornerCustomSecondaryInput");
+  const limits = getCornerCustomCutLimits();
+  const primaryRaw = Number(primaryInput?.value || 0);
+  const secondaryRaw = Number(secondaryInput?.value || 0);
+  if (!Number.isFinite(primaryRaw) || !Number.isFinite(secondaryRaw) || primaryRaw <= 0 || secondaryRaw <= 0) {
+    return {
+      enabled: true,
+      valid: false,
+      message: "코너 비규격 절단값(1축/2축)을 입력해주세요.",
+      primaryMm: 0,
+      secondaryMm: 0,
+    };
+  }
+  const primaryMm = Math.round(primaryRaw);
+  const secondaryMm = Math.round(secondaryRaw);
+  if (
+    primaryMm < limits.primaryMinMm ||
+    primaryMm > limits.primaryMaxMm ||
+    secondaryMm < limits.secondaryMinMm ||
+    secondaryMm > limits.secondaryMaxMm
+  ) {
+    return {
+      enabled: true,
+      valid: false,
+      message:
+        `코너 비규격 절단값은 ${limits.primaryMinMm}~${limits.primaryMaxMm}mm / ` +
+        `${limits.secondaryMinMm}~${limits.secondaryMaxMm}mm 범위로 입력해주세요.`,
+      primaryMm,
+      secondaryMm,
+    };
+  }
+  if (primaryMm > limits.maxSingleAxisMm && secondaryMm > limits.maxSingleAxisMm) {
+    return {
+      enabled: true,
+      valid: false,
+      message: `직접입력은 두 축 중 최소 1개를 ${limits.maxSingleAxisMm}mm 이하로 입력해주세요.`,
+      primaryMm,
+      secondaryMm,
+    };
+  }
+  return {
+    enabled: true,
+    valid: true,
+    message: "",
+    primaryMm,
+    secondaryMm,
+  };
+}
+
 function getCornerLabel(corner) {
   const sideNumber = Number(corner?.sideIndex) + 1;
   return Number.isFinite(sideNumber) ? `코너 ${sideNumber}` : "코너";
@@ -3108,11 +3519,17 @@ function renderBuilderStructure() {
     const sideIndex = directionToSideIndex(dir.dx, dir.dy);
     const isCorner = edge.type === "corner";
     const addonText = formatAddonCompactBreakdown(getShelfAddonIds(edge.id));
+    const secondarySideIndex = directionToSideIndex(-dir.dy, dir.dx);
+    const defaultCornerPrimaryMm = getCornerSizeAlongSide(sideIndex, edge.swap);
+    const defaultCornerSecondaryMm = getCornerSizeAlongSide(secondarySideIndex, edge.swap);
+    const cornerPrimaryMm = edge.customProcessing
+      ? Math.max(0, Number(edge.customPrimaryMm || defaultCornerPrimaryMm))
+      : defaultCornerPrimaryMm;
+    const cornerSecondaryMm = edge.customProcessing
+      ? Math.max(0, Number(edge.customSecondaryMm || defaultCornerSecondaryMm))
+      : defaultCornerSecondaryMm;
     const widthText = isCorner
-      ? `${getCornerSizeAlongSide(sideIndex, edge.swap)} × ${getCornerSizeAlongSide(
-          directionToSideIndex(-dir.dy, dir.dx),
-          edge.swap
-        )}mm`
+      ? `${cornerPrimaryMm} × ${cornerSecondaryMm}mm${edge.customProcessing ? " (비규격)" : ""}`
       : `${Number(edge.width || 0)}mm`;
     rows.push({
       id: edge.id,
@@ -3446,12 +3863,24 @@ function readBayInputs() {
       ? normalizeDirection(edge.placement.dirDx, edge.placement.dirDy)
       : { dx: 1, dy: 0 };
     const sideIndex = directionToSideIndex(dir.dx, dir.dy);
+    const secondarySideIndex = directionToSideIndex(-dir.dy, dir.dx);
+    const defaultCornerPrimaryMm = getCornerSizeAlongSide(sideIndex, edge.swap);
+    const defaultCornerSecondaryMm = getCornerSizeAlongSide(secondarySideIndex, edge.swap);
+    const cornerPrimaryMm = edge.customProcessing
+      ? Math.max(0, Number(edge.customPrimaryMm || defaultCornerPrimaryMm))
+      : defaultCornerPrimaryMm;
+    const cornerSecondaryMm = edge.customProcessing
+      ? Math.max(0, Number(edge.customSecondaryMm || defaultCornerSecondaryMm))
+      : defaultCornerSecondaryMm;
     return {
       id: edge.id,
-      width: isCorner ? getCornerSizeAlongSide(sideIndex, edge.swap) : edge.width || 0,
+      width: isCorner ? cornerPrimaryMm : edge.width || 0,
       count: edge.count || 1,
       addons: getShelfAddonIds(edge.id),
       isCorner,
+      customProcessing: Boolean(edge.customProcessing),
+      customPrimaryMm: isCorner ? cornerPrimaryMm : 0,
+      customSecondaryMm: isCorner ? cornerSecondaryMm : 0,
       sideIndex,
       placement: edge.placement || null,
     };
@@ -3486,27 +3915,27 @@ function validateInputs(input, bays) {
     }
   }
 
-  if (!input.column.materialId) return "기둥 컬러를 선택해주세요.";
+  if (!input.column.materialId) return "포스트바 컬러를 선택해주세요.";
   if (!input.shelf.materialId) return "선반 컬러를 선택해주세요.";
 
-  const shelfLimits = LIMITS.shelf;
+  const shelfPanelLimits = LIMITS.shelf;
   for (let i = 0; i < bays.length; i += 1) {
     const bay = bays[i];
     if (!bay.width) return `선반 폭을 입력해주세요.`;
     if (!bay.count || bay.count < 1) return `선반 갯수를 입력해주세요.`;
-    if (!bay.isCorner && (bay.width < BAY_WIDTH_LIMITS.min || bay.width > BAY_WIDTH_LIMITS.max)) {
-      return `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`;
+    if (!bay.isCorner && (bay.width < MODULE_SHELF_WIDTH_LIMITS.min || bay.width > MODULE_SHELF_WIDTH_LIMITS.max)) {
+      return `폭은 ${MODULE_SHELF_WIDTH_LIMITS.min}~${MODULE_SHELF_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`;
     }
   }
-  if (SHELF_LENGTH_MM > shelfLimits.maxLength) {
-    return `선반 길이는 ${shelfLimits.maxLength}mm 이하입니다.`;
+  if (SHELF_LENGTH_MM > shelfPanelLimits.maxLength) {
+    return `선반 길이는 ${shelfPanelLimits.maxLength}mm 이하입니다.`;
   }
 
   if (!shelfMat?.availableThickness?.includes(input.shelf.thickness)) {
     return `선택한 선반 컬러는 ${shelfMat.availableThickness.join(", ")}T만 가능합니다.`;
   }
   if (!columnMat?.availableThickness?.includes(input.column.thickness)) {
-    return `선택한 기둥 컬러는 ${columnMat.availableThickness.join(", ")}T만 가능합니다.`;
+    return `선택한 포스트바 컬러는 ${columnMat.availableThickness.join(", ")}T만 가능합니다.`;
   }
 
   return null;
@@ -3560,7 +3989,7 @@ function updateSizeErrorsUI(input, bays) {
     }
   });
   if (!extraMsg && (space.extraHeights || []).length > 1) {
-    extraMsg = "창문, 커튼박스 등으로 동일 높이 설치가 어려운 경우에는 구간별 개별 높이 기둥을 추가해 주세요.";
+    extraMsg = "창문, 커튼박스 등으로 동일 높이 설치가 어려운 경우에는 구간별 개별 높이 포스트바를 추가해 주세요.";
   }
   if (extraError) {
     extraError.textContent = extraMsg;
@@ -3574,8 +4003,8 @@ function updateSizeErrorsUI(input, bays) {
     const widthError = document.querySelector(`[data-shelf-width-error="${bay.id}"]`);
     const countError = document.querySelector(`[data-shelf-count-error="${bay.id}"]`);
     const widthMsg =
-      !bay.isCorner && bay.width && (bay.width < BAY_WIDTH_LIMITS.min || bay.width > BAY_WIDTH_LIMITS.max)
-        ? `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`
+      !bay.isCorner && bay.width && (bay.width < MODULE_SHELF_WIDTH_LIMITS.min || bay.width > MODULE_SHELF_WIDTH_LIMITS.max)
+        ? `폭은 ${MODULE_SHELF_WIDTH_LIMITS.min}~${MODULE_SHELF_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`
         : "";
     const countMsg = bay.count < 1 ? "선반 갯수는 1개 이상이어야 합니다." : "";
     setFieldError(widthEl, widthError, widthMsg);
@@ -3641,7 +4070,7 @@ function isPreviewBuilderReady(input) {
 }
 
 function getPreviewBuilderDisabledReason(input) {
-  if (!input?.column?.materialId) return "기둥 컬러를 먼저 선택해주세요.";
+  if (!input?.column?.materialId) return "포스트바 컬러를 먼저 선택해주세요.";
   if (!input?.shelf?.materialId) return "선반 컬러를 먼저 선택해주세요.";
   const layoutValidation = evaluateLayoutValidationState(getLayoutConfigSnapshot(input));
   if (layoutValidation.status === "invalid") {
@@ -3659,7 +4088,7 @@ function getPreviewBuilderDisabledReason(input) {
 }
 
 function getItemPriceDisplayValidationMessage(input, bays) {
-  if (!input?.column?.materialId) return "기둥 컬러를 선택해주세요.";
+  if (!input?.column?.materialId) return "포스트바 컬러를 선택해주세요.";
   if (!input?.shelf?.materialId) return "선반 컬러를 선택해주세요.";
 
   const space = (input?.spaces || [])[0] || { min: 0, max: 0, extraHeights: [] };
@@ -3695,7 +4124,7 @@ function buildPreviewOptionText(input, shelfMat, columnMat) {
     : 0;
   const extraText = extraCount > 0 ? ` · 개별높이 ${extraCount}개` : "";
   const layoutText = buildLayoutPreviewSummaryText(input);
-  return `탑뷰 · ${layoutText} · 선반 ${shelfMat?.name || "-"} · 기둥 ${columnMat?.name || "-"} · 천장 ${heightText}${extraText}`;
+  return `탑뷰 · ${layoutText} · 선반 ${shelfMat?.name || "-"} · 포스트바 ${columnMat?.name || "-"} · 천장 ${heightText}${extraText}`;
 }
 
 function applyPreviewAddButtonState(btn, { enabled = true, reason = "" } = {}) {
@@ -4305,6 +4734,13 @@ function buildSectionRunsFromSegments(segments = []) {
   return runs;
 }
 
+function calcSectionUsedWidthWithPostBarsMm({ shelfTotalMm = 0, postBarCount = 0 } = {}) {
+  // Section usage is measured with post bars included.
+  const safeShelfMm = Math.max(0, Number(shelfTotalMm || 0));
+  const safePostBarCount = Math.max(0, Math.floor(Number(postBarCount || 0)));
+  return safeShelfMm + safePostBarCount * COLUMN_WIDTH_MM;
+}
+
 function buildOuterSectionLabels(sectionRuns = [], columnMarksByHint = {}) {
   if (!Array.isArray(sectionRuns) || !sectionRuns.length) return [];
   const buckets = {
@@ -4329,7 +4765,10 @@ function buildOuterSectionLabels(sectionRuns = [], columnMarksByHint = {}) {
     const columnSet = columnMarksByHint?.[edgeHint];
     const columnCount =
       columnSet && typeof columnSet.size === "number" ? Number(columnSet.size || 0) : 0;
-    const totalMm = shelfTotalMm + columnCount * COLUMN_WIDTH_MM;
+    const totalMm = calcSectionUsedWidthWithPostBarsMm({
+      shelfTotalMm,
+      postBarCount: columnCount,
+    });
     const axisStart = Math.min(...runs.map((run) => Number(run.axisStart || 0)));
     const axisEnd = Math.max(...runs.map((run) => Number(run.axisEnd || 0)));
     const lineCoord = runs.reduce((sum, run) => sum + Number(run.lineCoord || 0), 0) / runs.length;
@@ -4396,7 +4835,7 @@ function updatePreviewWidthSummary(input, sectionRuns = null) {
     widthSummaryEl.textContent = "적용 너비 합계: -";
     return;
   }
-  widthSummaryEl.textContent = `사용/전체(기둥 포함): ${segments.join(" | ")}`;
+  widthSummaryEl.textContent = `사용/전체(포스트바 포함): ${segments.join(" | ")}`;
 }
 
 function updateShelfAddButtonState(input) {
@@ -5581,11 +6020,14 @@ function autoCalculatePrice() {
         width: bay.width,
         count: bay.count,
         customProcessing: bay.customProcessing,
+        customPrimaryMm: bay.customPrimaryMm,
+        customSecondaryMm: bay.customSecondaryMm,
       };
       const detail = calcBayDetail({
         shelf,
         addons: bay.addons,
         quantity: 1,
+        isCorner: Boolean(bay.isCorner),
       });
       const addonCost = calcAddonCostBreakdown(bay.addons, 1);
       return {
@@ -5622,7 +6064,7 @@ function autoCalculatePrice() {
     const cornerPostCost = Number(columnDetail?.cornerPostBar?.totalCost || 0);
     $("#itemPriceDisplay").textContent =
       `금액: ${totalPrice.toLocaleString()}원 ` +
-      `(자재비 ${bayTotals.materialCost.toLocaleString()} + 구성품 ${bayTotals.componentCost.toLocaleString()} + 가구 ${bayTotals.furnitureCost.toLocaleString()} + 기본 포스트바 ${basePostCost.toLocaleString()} + 코너 포스트바 ${cornerPostCost.toLocaleString()})`;
+      `(선반 ${bayTotals.materialCost.toLocaleString()} + 행거 ${bayTotals.componentCost.toLocaleString()} + 가구 ${bayTotals.furnitureCost.toLocaleString()} + 기본 포스트바 ${basePostCost.toLocaleString()} + 코너 포스트바 ${cornerPostCost.toLocaleString()})`;
   }
   updateAddItemState();
 }
@@ -5764,7 +6206,7 @@ function renderShapeSizeInputs() {
       <div class="field-col">
         <button type="button" class="ghost-btn space-extra-add-btn" id="addSpaceExtra-${i}">개별높이 추가</button>
         <div id="spaceExtraList-${i}" class="field-stack"></div>
-        <div class="field-note">창문, 커튼박스 등으로 동일 높이 설치가 어려운 경우에는 구간별 개별 높이 기둥을 추가해 주세요.</div>
+        <div class="field-note">창문, 커튼박스 등으로 동일 높이 설치가 어려운 경우에는 구간별 개별 높이 포스트바를 추가해 주세요.</div>
         <div class="error-msg" id="spaceExtraError-${i}"></div>
       </div>
     </div>
@@ -5836,6 +6278,7 @@ function renderBayInputs() {
     const list = block.querySelector(".shelf-list");
     if (list) {
       getPreviewOrderedEdges(getOrderedCommittedGraphEdges()).forEach((edge) => {
+        enforceFurnitureAddonPolicyForEdge(edge);
         if (edge.type === "corner") list.appendChild(buildCornerShelfItem(edge));
         else list.appendChild(buildShelfItem(edge));
         renderShelfAddonSelection(edge.id);
@@ -5864,7 +6307,7 @@ function buildShelfItem(shelf) {
           <option value="800">800</option>
           <option value="custom">직접 입력</option>
         </select>
-        <input type="number" class="bay-width-input" data-shelf-width="${shelf.id}" min="${BAY_WIDTH_LIMITS.min}" max="${BAY_WIDTH_LIMITS.max}" placeholder="직접 입력 (${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm)" value="${shelf.width || ""}" />
+        <input type="number" class="bay-width-input" data-shelf-width="${shelf.id}" min="${MODULE_SHELF_WIDTH_LIMITS.min}" max="${MODULE_SHELF_WIDTH_LIMITS.max}" placeholder="직접 입력 (${MODULE_SHELF_WIDTH_LIMITS.min}~${MODULE_SHELF_WIDTH_LIMITS.max}mm)" value="${shelf.width || ""}" />
         <div class="error-msg" data-shelf-width-error="${shelf.id}"></div>
       </div>
     </div>
@@ -5949,11 +6392,15 @@ function captureCornerOptionModalDraft() {
   const swapSelect = $("#cornerSwapSelect");
   const countInput = $("#cornerCountInput");
   const rodCountInput = $("#cornerRodCountInput");
+  const customPrimaryInput = $("#cornerCustomPrimaryInput");
+  const customSecondaryInput = $("#cornerCustomSecondaryInput");
   cornerDirectComposeDraft = {
     edgeId: String(activeCornerOptionId),
     swapValue: String(swapSelect?.value || ""),
     countValue: String(countInput?.value || ""),
     rodCountValue: String(rodCountInput?.value || ""),
+    customPrimaryValue: String(customPrimaryInput?.value || ""),
+    customSecondaryValue: String(customSecondaryInput?.value || ""),
   };
   return cornerDirectComposeDraft;
 }
@@ -6015,7 +6462,11 @@ function bindShelfInputEvents() {
       const nextWidth = Number(widthInput.value || 0);
       if (nextWidth !== prevWidth) pushBuilderHistory("update-normal-width");
       shelf.width = nextWidth;
+      if (enforceFurnitureAddonPolicyForEdge(shelf.id)) {
+        renderShelfAddonSelection(shelf.id);
+      }
       updatePreview();
+      updateBayAddonAvailability();
       autoCalculatePrice();
     });
   });
@@ -6032,7 +6483,11 @@ function bindShelfInputEvents() {
       const id = input.dataset.shelfWidth;
       const shelf = findShelfById(id);
       if (shelf) shelf.width = Number(input.value || 0);
+      if (shelf && enforceFurnitureAddonPolicyForEdge(shelf.id)) {
+        renderShelfAddonSelection(shelf.id);
+      }
       updatePreview();
+      updateBayAddonAvailability();
       autoCalculatePrice();
     });
   });
@@ -6134,16 +6589,42 @@ function getBayOptionApplyValidationState() {
   const widthValue = Number((isCustom ? customInput?.value : presetSelect?.value) || 0);
   if (
     !Number.isFinite(widthValue) ||
-    widthValue < BAY_WIDTH_LIMITS.min ||
-    widthValue > BAY_WIDTH_LIMITS.max
+    widthValue < MODULE_SHELF_WIDTH_LIMITS.min ||
+    widthValue > MODULE_SHELF_WIDTH_LIMITS.max
   ) {
     return {
       canApply: false,
-      message: `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`,
+      message: `폭은 ${MODULE_SHELF_WIDTH_LIMITS.min}~${MODULE_SHELF_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`,
     };
   }
 
   return { canApply: true, message: "" };
+}
+
+function getBayOptionModalWidthMm(fallbackWidth = 0) {
+  const presetSelect = $("#bayWidthPresetSelect");
+  const customInput = $("#bayWidthCustomInput");
+  const isCustom = presetSelect?.value === "custom";
+  const raw = isCustom ? customInput?.value : presetSelect?.value;
+  const width = Number(raw || fallbackWidth || 0);
+  if (!Number.isFinite(width)) return 0;
+  return Math.max(0, Math.round(width));
+}
+
+function syncBayOptionFurnitureSelectionAvailability(fallbackWidth = 0) {
+  const addonBtn = $("#bayAddonBtn");
+  if (!addonBtn) return false;
+  const widthMm = getBayOptionModalWidthMm(fallbackWidth);
+  const canSelect = isFurnitureSelectableForNormalModuleWidth(widthMm);
+  addonBtn.disabled = !canSelect;
+  addonBtn.classList.toggle("btn-disabled", !canSelect);
+  addonBtn.setAttribute("aria-disabled", canSelect ? "false" : "true");
+  if (canSelect) {
+    addonBtn.removeAttribute("title");
+  } else {
+    addonBtn.title = "가구는 일반모듈 폭 600mm 또는 800mm에서만 선택할 수 있습니다.";
+  }
+  return canSelect;
 }
 
 function getCornerOptionApplyValidationState() {
@@ -6153,6 +6634,10 @@ function getCornerOptionApplyValidationState() {
   const countValue = Number($("#cornerCountInput")?.value ?? 0);
   if (!Number.isFinite(countValue) || countValue < 1) {
     return { canApply: false, message: "선반 갯수를 1개 이상 입력해주세요." };
+  }
+  const customValidation = getCornerCustomCutValidationState();
+  if (!customValidation.valid) {
+    return { canApply: false, message: customValidation.message || "코너 비규격 절단값을 확인해주세요." };
   }
   return { canApply: true, message: "" };
 }
@@ -6199,23 +6684,43 @@ function syncCornerOptionModal() {
   const swapSelect = $("#cornerSwapSelect");
   const countInput = $("#cornerCountInput");
   const rodCountInput = $("#cornerRodCountInput");
+  const customPrimaryInput = $("#cornerCustomPrimaryInput");
+  const customSecondaryInput = $("#cornerCustomSecondaryInput");
   const addonBtn = $("#cornerAddonBtn");
   const draft =
     cornerDirectComposeDraft && String(cornerDirectComposeDraft.edgeId || "") === String(corner.id)
       ? cornerDirectComposeDraft
       : null;
-  if (swapSelect) swapSelect.value = draft?.swapValue || (corner.swap ? "swap" : "default");
+  if (swapSelect) {
+    const fallbackMode = corner.customProcessing ? "custom" : corner.swap ? "swap" : "default";
+    const nextMode = String(draft?.swapValue || fallbackMode);
+    swapSelect.value = nextMode === "custom" || nextMode === "swap" || nextMode === "default" ? nextMode : fallbackMode;
+  }
   if (countInput) countInput.value = draft?.countValue ?? String(corner.count ?? 0);
   if (rodCountInput) {
     rodCountInput.value =
       draft?.rodCountValue || String(getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID));
   }
+  if (customPrimaryInput) {
+    customPrimaryInput.value =
+      draft?.customPrimaryValue ||
+      (Number(corner.customPrimaryMm || 0) > 0 ? String(corner.customPrimaryMm) : "800");
+  }
+  if (customSecondaryInput) {
+    customSecondaryInput.value =
+      draft?.customSecondaryValue ||
+      (Number(corner.customSecondaryMm || 0) > 0
+        ? String(corner.customSecondaryMm)
+        : "600");
+  }
+  syncCornerCustomCutInputsUI();
   const addonRow = addonBtn?.closest(".form-row");
   if (addonRow) addonRow.classList.add("hidden");
   const addonSelectionEl = $("#selectedCornerOptionAddon");
   if (addonSelectionEl) addonSelectionEl.innerHTML = "";
   if (addonBtn) addonBtn.disabled = true;
   setFieldError(countInput, $("#cornerCountError"), "");
+  setCornerCustomCutError("");
   updateCornerOptionModalApplyButtonState();
   renderCornerOptionFrontPreview();
 }
@@ -6247,11 +6752,11 @@ function syncBayOptionModal() {
   if (!activeBayOptionId) return;
   const shelf = findShelfById(activeBayOptionId);
   if (!shelf) return;
+  const furnitureCleared = enforceFurnitureAddonPolicyForEdge(shelf.id);
   const presetSelect = $("#bayWidthPresetSelect");
   const customInput = $("#bayWidthCustomInput");
   const countInput = $("#bayCountInput");
   const rodCountInput = $("#bayRodCountInput");
-  const addonBtn = $("#bayAddonBtn");
   const draft =
     bayDirectComposeDraft && String(bayDirectComposeDraft.edgeId || "") === String(shelf.id)
       ? bayDirectComposeDraft
@@ -6273,7 +6778,13 @@ function syncBayOptionModal() {
       draft?.rodCountValue || String(getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID));
   }
   renderShelfAddonSelectionToTarget(shelf.id, "selectedBayOptionAddon");
-  if (addonBtn) addonBtn.disabled = false;
+  if (furnitureCleared) {
+    renderShelfAddonSelection(shelf.id);
+  }
+  const initialWidthMm = presetValue === "custom"
+    ? Number(customInput?.value || width || 0)
+    : Number(presetValue || width || 0);
+  syncBayOptionFurnitureSelectionAvailability(initialWidthMm);
 
   setFieldError(customInput, $("#bayWidthError"), "");
   setFieldError(countInput, $("#bayCountError"), "");
@@ -6474,6 +6985,7 @@ function renderBayOptionFrontPreview() {
   const widthValue = Number(
     (isCustom ? customInput?.value : presetSelect?.value) || Number(shelf.width || 0) || 0
   );
+  syncBayOptionFurnitureSelectionAvailability(widthValue);
   const shelfCount = Number(countInput?.value ?? shelf.count ?? 0);
   const rodCount = Number(rodCountInput?.value || getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID) || 0);
   const { componentSummary, furnitureSummary } = buildModalDraftAddonBreakdown(shelf.id, rodCount);
@@ -6508,15 +7020,30 @@ function renderCornerOptionFrontPreview() {
   const swapSelect = $("#cornerSwapSelect");
   const countInput = $("#cornerCountInput");
   const rodCountInput = $("#cornerRodCountInput");
-  const isSwap = swapSelect ? swapSelect.value === "swap" : Boolean(corner.swap);
-  const frontShelfWidthMm = isSwap ? 600 : 800;
-  const sizeLabel = isSwap ? "600 × 800mm" : "800 × 600mm";
+  const mode = String(swapSelect?.value || (corner.swap ? "swap" : "default"));
+  const isSwap = mode === "swap" ? true : mode === "default" ? false : Boolean(corner.swap);
+  syncCornerCustomCutInputsUI();
+  const customValidation = getCornerCustomCutValidationState();
+  const isCustomCut = Boolean(customValidation.enabled);
+  const frontShelfWidthMm = isCustomCut && customValidation.valid
+    ? Number(customValidation.primaryMm || (isSwap ? 600 : 800))
+    : isSwap
+      ? 600
+      : 800;
+  const sizeLabel = isCustomCut
+    ? customValidation.valid
+      ? `${customValidation.primaryMm} × ${customValidation.secondaryMm}mm (비규격)`
+      : "비규격(상담)"
+    : isSwap
+      ? "600 × 800mm"
+      : "800 × 600mm";
   const shelfCount = Number(countInput?.value ?? corner.count ?? 0);
   const rodCount = Number(
     rodCountInput?.value || getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID) || 0
   );
   const { componentSummary, furnitureSummary } = buildModalDraftAddonBreakdown(corner.id, rodCount);
   const averageHeightMm = getModuleOptionAverageHeightMm();
+  setCornerCustomCutError(isCustomCut && !customValidation.valid ? customValidation.message : "");
   updateCornerOptionModalApplyButtonState();
   container.innerHTML = buildModuleFrontPreviewHtml({
     moduleLabel: getCornerLabel(corner),
@@ -6531,8 +7058,25 @@ function renderCornerOptionFrontPreview() {
 }
 
 function bindOptionModalFrontPreviewEvents() {
+  const cornerSwapEl = $("#cornerSwapSelect");
+  if (cornerSwapEl && cornerSwapEl.dataset.frontPreviewBound !== "true") {
+    cornerSwapEl.dataset.frontPreviewBound = "true";
+    cornerSwapEl.addEventListener("change", () => {
+      syncCornerCustomCutInputsUI();
+      renderCornerOptionFrontPreview();
+    });
+  }
+  const cornerCustomPrimaryEl = $("#cornerCustomPrimaryInput");
+  if (cornerCustomPrimaryEl && cornerCustomPrimaryEl.dataset.frontPreviewBound !== "true") {
+    cornerCustomPrimaryEl.dataset.frontPreviewBound = "true";
+    cornerCustomPrimaryEl.addEventListener("input", renderCornerOptionFrontPreview);
+  }
+  const cornerCustomSecondaryEl = $("#cornerCustomSecondaryInput");
+  if (cornerCustomSecondaryEl && cornerCustomSecondaryEl.dataset.frontPreviewBound !== "true") {
+    cornerCustomSecondaryEl.dataset.frontPreviewBound = "true";
+    cornerCustomSecondaryEl.addEventListener("input", renderCornerOptionFrontPreview);
+  }
   [
-    ["#cornerSwapSelect", "change", renderCornerOptionFrontPreview],
     ["#cornerCountInput", "input", renderCornerOptionFrontPreview],
     ["#cornerRodCountInput", "input", renderCornerOptionFrontPreview],
     ["#bayWidthPresetSelect", "change", renderBayOptionFrontPreview],
@@ -6567,11 +7111,11 @@ function saveBayOptionModal() {
     : 0;
 
   let hasError = false;
-  if (!width || width < BAY_WIDTH_LIMITS.min || width > BAY_WIDTH_LIMITS.max) {
+  if (!width || width < MODULE_SHELF_WIDTH_LIMITS.min || width > MODULE_SHELF_WIDTH_LIMITS.max) {
     setFieldError(
       customInput,
       widthError,
-      `폭은 ${BAY_WIDTH_LIMITS.min}~${BAY_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`
+      `폭은 ${MODULE_SHELF_WIDTH_LIMITS.min}~${MODULE_SHELF_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`
     );
     hasError = true;
   } else {
@@ -6599,6 +7143,7 @@ function saveBayOptionModal() {
   shelf.width = width;
   shelf.count = count;
   setShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID, rodCount);
+  enforceFurnitureAddonPolicyForEdge(shelf.id);
   bayDirectComposeDraft = null;
   closePresetModuleOptionModal({ returnFocus: false, clearState: true });
   renderBayInputs();
@@ -6685,24 +7230,48 @@ function saveCornerOptionModal() {
     setFieldError(countInput, countError, "선반 갯수는 1개 이상이어야 합니다.");
     return;
   }
+  const customValidation = getCornerCustomCutValidationState();
+  if (!customValidation.valid) {
+    setCornerCustomCutError(customValidation.message);
+    return;
+  }
+  setCornerCustomCutError("");
 
-  const nextSwap = swapSelect.value === "swap";
+  const mode = String(swapSelect.value || "default");
+  const nextSwap = mode === "swap" ? true : mode === "default" ? false : Boolean(corner.swap);
   const prevSwap = Boolean(corner.swap);
   const prevCount = Number(corner.count || 1);
   const prevRodCount = getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID);
+  const prevCustomProcessing = Boolean(corner.customProcessing);
+  const prevCustomPrimaryMm = Number(corner.customPrimaryMm || 0);
+  const prevCustomSecondaryMm = Number(corner.customSecondaryMm || 0);
+  const nextCustomProcessing = mode === "custom" && Boolean(customValidation.enabled);
+  const nextCustomPrimaryMm = nextCustomProcessing ? Number(customValidation.primaryMm || 0) : 0;
+  const nextCustomSecondaryMm = nextCustomProcessing ? Number(customValidation.secondaryMm || 0) : 0;
   const wasPendingAdd = isPendingEdge(corner);
   if (wasPendingAdd) {
     pushBuilderHistory("add-corner");
   } else if (
     prevSwap !== nextSwap ||
     prevCount !== count ||
-    prevRodCount !== rodCount
+    prevRodCount !== rodCount ||
+    prevCustomProcessing !== nextCustomProcessing ||
+    prevCustomPrimaryMm !== nextCustomPrimaryMm ||
+    prevCustomSecondaryMm !== nextCustomSecondaryMm
   ) {
     pushBuilderHistory("update-corner");
   }
   if (wasPendingAdd) delete corner.pendingAdd;
   corner.swap = nextSwap;
   corner.count = count;
+  corner.customProcessing = nextCustomProcessing;
+  if (nextCustomProcessing) {
+    corner.customPrimaryMm = nextCustomPrimaryMm;
+    corner.customSecondaryMm = nextCustomSecondaryMm;
+  } else {
+    delete corner.customPrimaryMm;
+    delete corner.customSecondaryMm;
+  }
   setShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID, rodCount);
   clearFurnitureAddonsForEdge(corner.id);
   cornerDirectComposeDraft = null;
@@ -6782,8 +7351,9 @@ function syncSystemAddonModalSelection() {
 }
 
 function openShelfAddonModal(id, { returnTo = "" } = {}) {
-  if (getEdgeModuleTypeById(id) === "corner") {
-    showInfoModal("코너 모듈에는 가구를 적용할 수 없습니다.");
+  const blockedReason = getFurnitureAddonBlockedReason(id, { modalReturnTo: returnTo });
+  if (blockedReason) {
+    showInfoModal(blockedReason);
     return;
   }
   if (returnTo === "bay") captureBayOptionModalDraft();
@@ -6810,7 +7380,14 @@ function closeShelfAddonModalAndReturn() {
 
 function updateBayAddonAvailability() {
   document.querySelectorAll("[data-shelf-addon-btn]").forEach((btn) => {
-    btn.disabled = false;
+    const edgeId = String(btn.dataset.shelfAddonBtn || "");
+    const blockedReason = getFurnitureAddonBlockedReason(edgeId);
+    const blocked = Boolean(blockedReason);
+    btn.disabled = blocked;
+    btn.classList.toggle("btn-disabled", blocked);
+    btn.setAttribute("aria-disabled", blocked ? "true" : "false");
+    if (blocked) btn.title = blockedReason;
+    else btn.removeAttribute("title");
   });
 }
 
@@ -6853,11 +7430,14 @@ function commitBaysToEstimate() {
       width: bay.width,
       count: bay.count,
       customProcessing: bay.customProcessing,
+      customPrimaryMm: bay.customPrimaryMm,
+      customSecondaryMm: bay.customSecondaryMm,
     };
     let detail = calcBayDetail({
       shelf,
       addons: bay.addons,
       quantity: 1,
+      isCorner: Boolean(bay.isCorner),
     });
     if (isLayoutConsultStatus(layoutConsult)) {
       detail = applyConsultPriceToDetail(detail);
@@ -6881,129 +7461,290 @@ function commitBaysToEstimate() {
   renderSummary();
 }
 
+function sumNumericField(items = [], field = "") {
+  return (Array.isArray(items) ? items : []).reduce((sum, item) => sum + Number(item?.[field] || 0), 0);
+}
+
+function getSystemGroupItems(groupId) {
+  const key = String(groupId || "");
+  if (!key) return [];
+  return state.items.filter((item) => String(item?.groupId || item?.id || "") === key);
+}
+
+function buildSystemGroupedShelfBreakdown(entries = []) {
+  const normalShelfMap = new Map();
+  const cornerShelfMap = new Map();
+  const cornerCustomCutMap = new Map();
+  const furnitureMap = new Map();
+  const basePostBarMap = new Map();
+  const cornerPostBarMap = new Map();
+  let hangerCount = 0;
+
+  const addShelfCount = (bucket, shelf, qty = 0, materialCost = 0) => {
+    const thickness = Math.max(0, Number(shelf?.thickness || 0));
+    const width = Math.max(0, Number(shelf?.width || 0));
+    const length = Math.max(0, Number(shelf?.length || SHELF_LENGTH_MM || 0));
+    const count = Math.max(0, Number(qty || 0));
+    if (!count || !width || !length) return;
+    const key = `${thickness}T-${width}x${length}`;
+    const prev = bucket.get(key) || { thickness, width, length, count: 0, materialCost: 0 };
+    prev.count += count;
+    prev.materialCost += Math.max(0, Number(materialCost || 0));
+    bucket.set(key, prev);
+  };
+
+  const addPostBarCount = (bucket, kindLabel, postBarDetail = null) => {
+    if (!postBarDetail || typeof postBarDetail !== "object") return;
+    const count = Math.max(0, Number(postBarDetail.count || 0));
+    if (!count) return;
+    const tierLabel = String(postBarDetail.tierLabel || "");
+    const key = `${kindLabel}:${tierLabel || "-"}`;
+    const prev = bucket.get(key) || {
+      kindLabel,
+      tierLabel,
+      count: 0,
+    };
+    prev.count += count;
+    bucket.set(key, prev);
+  };
+
+  (Array.isArray(entries) ? entries : []).forEach((item) => {
+    if (!item || typeof item !== "object") return;
+    if (item.type === "bay") {
+      addShelfCount(
+        item.isCorner ? cornerShelfMap : normalShelfMap,
+        item.shelf,
+        item.shelf?.count || 1,
+        item.materialCost
+      );
+      if (item.isCorner && item.shelf?.customProcessing) {
+        const primaryMm = Math.max(0, Number(item.shelf?.customPrimaryMm || item.shelf?.width || 0));
+        const secondaryMm = Math.max(0, Number(item.shelf?.customSecondaryMm || 0));
+        const cutCount = Math.max(1, Math.floor(Number(item.shelf?.count || 1)));
+        if (primaryMm > 0 && secondaryMm > 0) {
+          const key = `${primaryMm}x${secondaryMm}`;
+          const prev = cornerCustomCutMap.get(key) || { primaryMm, secondaryMm, count: 0 };
+          prev.count += cutCount;
+          cornerCustomCutMap.set(key, prev);
+        }
+      }
+      (Array.isArray(item.addons) ? item.addons : []).forEach((addonId) => {
+        const key = String(addonId || "");
+        if (!key) return;
+        if (key === ADDON_CLOTHES_ROD_ID) {
+          hangerCount += 1;
+          return;
+        }
+        const addon = SYSTEM_ADDON_ITEMS.find((entry) => String(entry?.id || "") === key);
+        const prev = furnitureMap.get(key) || { id: key, label: addon?.name || key, count: 0 };
+        prev.count += 1;
+        furnitureMap.set(key, prev);
+      });
+      return;
+    }
+    if (item.type === "columns") {
+      addPostBarCount(basePostBarMap, "기본", item.basePostBar);
+      addPostBarCount(cornerPostBarMap, "코너", item.cornerPostBar);
+    }
+  });
+
+  return {
+    normalShelf: Array.from(normalShelfMap.values()).sort((a, b) => {
+      if (a.width !== b.width) return a.width - b.width;
+      if (a.length !== b.length) return a.length - b.length;
+      return a.thickness - b.thickness;
+    }),
+    cornerShelf: Array.from(cornerShelfMap.values()).sort((a, b) => {
+      if (a.width !== b.width) return a.width - b.width;
+      if (a.length !== b.length) return a.length - b.length;
+      return a.thickness - b.thickness;
+    }),
+    cornerCustomCuts: Array.from(cornerCustomCutMap.values()).sort((a, b) => {
+      if (a.primaryMm !== b.primaryMm) return a.primaryMm - b.primaryMm;
+      return a.secondaryMm - b.secondaryMm;
+    }),
+    furniture: Array.from(furnitureMap.values()).sort((a, b) =>
+      String(a.label || "").localeCompare(String(b.label || ""), "ko")
+    ),
+    basePostBars: Array.from(basePostBarMap.values()),
+    cornerPostBars: Array.from(cornerPostBarMap.values()),
+    hangerCount,
+  };
+}
+
+function formatSystemGroupedCountText(entries = [], formatter, emptyText = "없음") {
+  const rows = (Array.isArray(entries) ? entries : [])
+    .map((entry) => formatter(entry))
+    .filter(Boolean);
+  return rows.length ? rows.join(", ") : emptyText;
+}
+
+function buildSystemGroupDisplayItems(items = state.items) {
+  const groupMap = new Map();
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    if (!item || typeof item !== "object") return;
+    const groupKey = String(item.groupId || item.id || "");
+    if (!groupKey) return;
+    if (!groupMap.has(groupKey)) groupMap.set(groupKey, []);
+    groupMap.get(groupKey).push(item);
+  });
+
+  return Array.from(groupMap.entries()).map(([groupId, entries]) => {
+    const columnsItem = entries.find((item) => item.type === "columns") || null;
+    const bays = entries.filter((item) => item.type === "bay");
+    const quantity = Math.max(
+      1,
+      Number(columnsItem?.quantity || bays[0]?.quantity || entries[0]?.quantity || 1)
+    );
+    return {
+      id: `group:${groupId}`,
+      groupId,
+      quantity,
+      type: "group",
+      total: sumNumericField(entries, "total"),
+      materialCost: sumNumericField(entries, "materialCost"),
+      processingCost: sumNumericField(entries, "processingCost"),
+      subtotal: sumNumericField(entries, "subtotal"),
+      vat: sumNumericField(entries, "vat"),
+      weightKg: sumNumericField(entries, "weightKg"),
+      isCustomPrice: entries.some((item) => Boolean(item?.isCustomPrice)),
+      column: columnsItem?.column || null,
+      layoutSpec: columnsItem?.layoutSpec || bays[0]?.layoutSpec || null,
+      layoutConsult: columnsItem?.layoutConsult || bays[0]?.layoutConsult || null,
+      breakdown: buildSystemGroupedShelfBreakdown(entries),
+    };
+  });
+}
+
+function buildSystemGroupDetailLines(groupItem, { includeLayout = true } = {}) {
+  const breakdown = groupItem?.breakdown || {};
+  const column = groupItem?.column || null;
+  const columnMat = column ? SYSTEM_COLUMN_MATERIALS[column.materialId] : null;
+  const lines = [];
+
+  if (column) {
+    lines.push(`포스트바 컬러 ${columnMat?.name || "-"} · ${formatColumnSize(column)}`);
+  }
+
+  lines.push(
+    `선반 ${formatSystemGroupedCountText(
+      breakdown.normalShelf,
+      (entry) =>
+        `${entry.thickness}T/${entry.width}×${entry.length}mm ${entry.count}개${
+          Number(entry.materialCost || 0) > 0 ? ` (${Number(entry.materialCost).toLocaleString()}원)` : ""
+        }`
+    )}`
+  );
+  lines.push(
+    `코너선반 ${formatSystemGroupedCountText(
+      breakdown.cornerShelf,
+      (entry) =>
+        `${entry.thickness}T/${entry.width}×${entry.length}mm ${entry.count}개${
+          Number(entry.materialCost || 0) > 0 ? ` (${Number(entry.materialCost).toLocaleString()}원)` : ""
+        }`
+    )}`
+  );
+  if (Array.isArray(breakdown.cornerCustomCuts) && breakdown.cornerCustomCuts.length) {
+    lines.push(
+      `코너 비규격 절단 ${formatSystemGroupedCountText(
+        breakdown.cornerCustomCuts,
+        (entry) => `${entry.primaryMm}×${entry.secondaryMm}mm ${entry.count}개`
+      )}`
+    );
+  }
+  lines.push(
+    `포스트바 ${formatSystemGroupedCountText(
+      [...(breakdown.basePostBars || []), ...(breakdown.cornerPostBars || [])],
+      (entry) => `${entry.kindLabel} 포스트바${entry.tierLabel ? `(${entry.tierLabel})` : ""} ${entry.count}개`
+    )}`
+  );
+  lines.push(
+    `가구 ${formatSystemGroupedCountText(
+      breakdown.furniture,
+      (entry) => `${entry.label} ${entry.count}개`
+    )}`
+  );
+  lines.push(`행거 ${Number(breakdown.hangerCount || 0) > 0 ? `${breakdown.hangerCount}개` : "없음"}`);
+
+  if (includeLayout) {
+    const layoutLines = buildLayoutSpecLinesFromSnapshot(groupItem?.layoutSpec, groupItem?.layoutConsult, {
+      includeStatus: true,
+    });
+    layoutLines.forEach((line) => lines.push(line));
+  }
+
+  if (groupItem?.isCustomPrice) {
+    lines.push("비규격 상담 안내");
+  }
+  return lines;
+}
+
+function removeSystemGroup(groupId) {
+  const key = String(groupId || "");
+  if (!key) return;
+  state.items = state.items.filter((item) => String(item?.groupId || item?.id || "") !== key);
+}
+
+function updateSystemGroupQuantity(groupId, quantity) {
+  const key = String(groupId || "");
+  if (!key) return;
+  const nextQty = Math.max(1, Number(quantity) || 1);
+  const groupedItems = getSystemGroupItems(key);
+  if (!groupedItems.length) return;
+  const groupedBays = groupedItems.filter((item) => item.type === "bay");
+
+  state.items = state.items.map((item) => {
+    if (String(item?.groupId || item?.id || "") !== key) return item;
+    if (item.type === "columns") {
+      let detail = calcColumnsDetail({
+        column: item.column,
+        count: item.count,
+        quantity: nextQty,
+        bays: groupedBays,
+      });
+      if (isLayoutConsultStatus(item.layoutConsult)) {
+        detail = applyConsultPriceToDetail(detail);
+      }
+      return { ...item, quantity: nextQty, ...detail };
+    }
+    if (item.type === "bay") {
+      let detail = calcBayDetail({
+        shelf: item.shelf,
+        addons: item.addons,
+        quantity: nextQty,
+        isCorner: Boolean(item.isCorner),
+      });
+      if (isLayoutConsultStatus(item.layoutConsult)) {
+        detail = applyConsultPriceToDetail(detail);
+      }
+      return { ...item, quantity: nextQty, ...detail };
+    }
+    return { ...item, quantity: nextQty };
+  });
+}
+
 function renderTable() {
+  const displayItems = buildSystemGroupDisplayItems(state.items);
   renderEstimateTable({
-    items: state.items,
-    getName: (item) => {
-      if (item.type === "columns") {
-        return "기둥 세트";
-      }
-      if (item.type === "bay") {
-        return "시스템 수납장 모듈";
-      }
-      return "시스템 수납장";
-    },
+    items: displayItems,
+    getName: () => "시스템 구성",
     getTotalText: (item) => (item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`),
-    getDetailLines: (item) => {
-      if (item.type === "columns") {
-        const columnMat = SYSTEM_COLUMN_MATERIALS[item.column.materialId];
-        const columnSize = formatColumnSize(item.column);
-        const basePostBar = item.basePostBar || {};
-        const cornerPostBar = item.cornerPostBar || {};
-        const baseCount = Math.max(0, Number(basePostBar.count || item.count || 0));
-        const cornerCount = Math.max(0, Number(cornerPostBar.count || 0));
-        const baseTierLabel = String(basePostBar.tierLabel || (baseCount > 0 ? "-" : ""));
-        const cornerTierLabel = String(cornerPostBar.tierLabel || (cornerCount > 0 ? "-" : ""));
-        const lines = [
-          `기둥 컬러 ${escapeHtml(columnMat?.name || "-")} · ${escapeHtml(columnSize)}`,
-          `기본 포스트바 · ${baseTierLabel ? escapeHtml(baseTierLabel) : "-"} · ${baseCount}개`,
-        ];
-        if (cornerCount > 0) {
-          lines.push(`코너 포스트바 · ${cornerTierLabel ? escapeHtml(cornerTierLabel) : "-"} · ${cornerCount}개`);
-        }
-        const layoutLines = buildLayoutSpecLinesFromSnapshot(item.layoutSpec, item.layoutConsult, {
-          includeStatus: true,
-        });
-        layoutLines.forEach((line) => lines.push(escapeHtml(line)));
-        if (item.isCustomPrice) lines.push("비규격 상담 안내");
-        if (Number.isFinite(basePostBar.totalCost) && Number(basePostBar.totalCost || 0) > 0) {
-          lines.push(`기본 포스트바 ${Number(basePostBar.totalCost).toLocaleString()}원`);
-        }
-        if (Number.isFinite(cornerPostBar.totalCost) && Number(cornerPostBar.totalCost || 0) > 0) {
-          lines.push(`코너 포스트바 ${Number(cornerPostBar.totalCost).toLocaleString()}원`);
-        }
-        if (
-          Number.isFinite(item.materialCost) &&
-          (!Number(basePostBar.totalCost || 0) && !Number(cornerPostBar.totalCost || 0))
-        ) {
-          lines.push(`기둥 ${item.materialCost.toLocaleString()}원`);
-        }
-        return lines;
-      }
-      if (item.type === "bay") {
-        const shelfMat = SYSTEM_SHELF_MATERIALS[item.shelf.materialId];
-        const shelfSize = `${item.shelf.thickness}T / ${item.shelf.width}×${item.shelf.length}mm`;
-        const { componentSummary, furnitureSummary } = buildAddonBreakdownFromIds(item.addons, "없음");
-        const { componentCost, furnitureCost } = calcAddonCostBreakdown(item.addons, item.quantity);
-        const isCornerModule = Boolean(item.isCorner);
-        const furnitureSummaryText = isCornerModule ? "적용 불가" : furnitureSummary;
-        const furnitureCostForDisplay = isCornerModule ? 0 : furnitureCost;
-        const lines = [
-          `선반 ${escapeHtml(shelfMat?.name || "-")} · ${escapeHtml(shelfSize)} · ${item.shelf.count || 1}개`,
-          `구성품 ${escapeHtml(componentSummary)}`,
-          `가구 ${escapeHtml(furnitureSummaryText)}`,
-        ];
-        if (item.isCustomPrice) lines.push("비규격 상담 안내");
-        if (Number.isFinite(item.materialCost)) {
-          lines.push(`자재비 ${item.materialCost.toLocaleString()}원`);
-        }
-        if (Number.isFinite(componentCost) && componentCost > 0) {
-          lines.push(`구성품 ${componentCost.toLocaleString()}원`);
-        }
-        if (Number.isFinite(furnitureCostForDisplay) && furnitureCostForDisplay > 0) {
-          lines.push(`가구 ${furnitureCostForDisplay.toLocaleString()}원`);
-        }
-        return lines;
-      }
-      return [];
-    },
+    getDetailLines: (item) => buildSystemGroupDetailLines(item).map((line) => escapeHtml(line)),
     onQuantityChange: (id, value) => updateItemQuantity(id, value),
     onDelete: (id) => {
-      const removedItem = state.items.find((it) => it.id === id);
-      if (!removedItem) return;
-      if (removedItem.type === "bay") {
-        state.items = state.items.filter((it) => it.id !== id);
-        const groupId = removedItem.groupId;
-        if (groupId) {
-          const remainingBays = state.items.filter(
-            (it) => it.type === "bay" && it.groupId === groupId
-          );
-          if (!remainingBays.length) {
-            state.items = state.items.filter(
-              (it) => !(it.type === "columns" && it.groupId === groupId)
-            );
-          } else {
-            const columnItem = state.items.find(
-              (it) => it.type === "columns" && it.groupId === groupId
-            );
-            if (columnItem) {
-              const columnCount = remainingBays.length + 1;
-              let detail = calcColumnsDetail({
-                column: columnItem.column,
-                count: columnCount,
-                quantity: columnItem.quantity,
-                bays: remainingBays,
-              });
-              if (isLayoutConsultStatus(columnItem.layoutConsult)) {
-                detail = applyConsultPriceToDetail(detail);
-              }
-              Object.assign(columnItem, { count: columnCount, ...detail });
-            }
-          }
-        }
+      const rawId = String(id || "");
+      if (rawId.startsWith("group:")) {
+        removeSystemGroup(rawId.slice(6));
         renderTable();
         renderSummary();
         return;
       }
-      if (removedItem.type === "columns") {
-        const groupId = removedItem.groupId;
-        if (groupId) {
-          state.items = state.items.filter((it) => it.groupId !== groupId);
-          renderTable();
-          renderSummary();
-          return;
-        }
-        showInfoModal("기둥 세트는 모듈 수에 따라 자동 계산됩니다.");
+      const removedItem = state.items.find((it) => String(it.id) === rawId);
+      if (!removedItem) return;
+      if (removedItem.groupId) {
+        removeSystemGroup(removedItem.groupId);
+        renderTable();
+        renderSummary();
       }
     },
   });
@@ -7011,6 +7752,13 @@ function renderTable() {
 }
 
 function updateItemQuantity(id, quantity) {
+  const rawId = String(id || "");
+  if (rawId.startsWith("group:")) {
+    updateSystemGroupQuantity(rawId.slice(6), quantity);
+    renderTable();
+    renderSummary();
+    return;
+  }
   const idx = state.items.findIndex((it) => it.id === id);
   if (idx === -1) return;
   const item = state.items[idx];
@@ -7037,6 +7785,7 @@ function updateItemQuantity(id, quantity) {
       shelf: item.shelf,
       addons: item.addons,
       quantity,
+      isCorner: Boolean(item.isCorner),
     });
     if (isLayoutConsultStatus(item.layoutConsult)) {
       detail = applyConsultPriceToDetail(detail);
@@ -7068,6 +7817,7 @@ function renderSummary() {
 function buildEmailContent() {
   const customer = getCustomerInfo();
   const summary = calcOrderSummary(state.items);
+  const displayItems = buildSystemGroupDisplayItems(state.items);
 
   const lines = [];
   lines.push("[고객 정보]");
@@ -7079,50 +7829,15 @@ function buildEmailContent() {
   lines.push("");
   lines.push("[주문 내역]");
 
-  if (state.items.length === 0) {
+  if (displayItems.length === 0) {
     lines.push("담긴 항목 없음");
   } else {
-    state.items.forEach((item, idx) => {
-      if (item.type === "columns") {
-        const columnMat = SYSTEM_COLUMN_MATERIALS[item.column.materialId];
-        const columnSize = formatColumnSize(item.column);
-        const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-        const basePostBar = item.basePostBar || {};
-        const cornerPostBar = item.cornerPostBar || {};
-        const baseCount = Math.max(0, Number(basePostBar.count || item.count || 0));
-        const cornerCount = Math.max(0, Number(cornerPostBar.count || 0));
-        const postBarInline = [
-          `기본 포스트바 ${baseCount}개${basePostBar.tierLabel ? `(${basePostBar.tierLabel})` : ""}`,
-          cornerCount > 0
-            ? `코너 포스트바 ${cornerCount}개${cornerPostBar.tierLabel ? `(${cornerPostBar.tierLabel})` : ""}`
-            : "",
-        ]
-          .filter(Boolean)
-          .join(" / ");
-        const layoutInline = buildLayoutSpecLinesFromSnapshot(item.layoutSpec, item.layoutConsult, {
-          includeStatus: true,
-        }).join(" / ");
-        lines.push(
-          `${idx + 1}. 기둥 세트 x${item.quantity} | ${columnMat?.name || "-"} ${columnSize}${
-            postBarInline ? ` | ${postBarInline}` : ""
-          }${
-            layoutInline ? ` | ${layoutInline}` : ""
-          } | 금액 ${amountText}`
-        );
-        return;
-      }
-      if (item.type === "bay") {
-        const shelfMat = SYSTEM_SHELF_MATERIALS[item.shelf.materialId];
-        const shelfSize = `${item.shelf.thickness}T / ${item.shelf.width}×${item.shelf.length}mm`;
-        const { componentSummary, furnitureSummary } = buildAddonBreakdownFromIds(item.addons, "없음");
-        const furnitureSummaryText = item.isCorner ? "적용 불가" : furnitureSummary;
-        const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-        lines.push(
-          `${idx + 1}. 시스템 수납장 모듈 x${item.quantity} | ` +
-            `선반 ${shelfMat?.name || "-"} ${shelfSize} ${item.shelf.count || 1}개 | ` +
-            `구성품 ${componentSummary} | 가구 ${furnitureSummaryText} | 금액 ${amountText}`
-        );
-      }
+    displayItems.forEach((item, idx) => {
+      const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
+      const detailInline = buildSystemGroupDetailLines(item).join(" / ");
+      lines.push(
+        `${idx + 1}. 시스템 구성 x${item.quantity}${detailInline ? ` | ${detailInline}` : ""} | 금액 ${amountText}`
+      );
     });
   }
 
@@ -7284,53 +7999,18 @@ function renderOrderCompleteDetails() {
   if (!container) return;
   const customer = getCustomerInfo();
   const summary = calcOrderSummary(state.items);
+  const displayItems = buildSystemGroupDisplayItems(state.items);
 
   const itemsHtml =
-    state.items.length === 0
+    displayItems.length === 0
       ? "<p class=\"item-line\">담긴 항목이 없습니다.</p>"
-      : state.items
+      : displayItems
           .map((item, idx) => {
-            if (item.type === "columns") {
-              const columnMat = SYSTEM_COLUMN_MATERIALS[item.column.materialId];
-              const columnSize = formatColumnSize(item.column);
-              const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-              const basePostBar = item.basePostBar || {};
-              const cornerPostBar = item.cornerPostBar || {};
-              const baseCount = Math.max(0, Number(basePostBar.count || item.count || 0));
-              const cornerCount = Math.max(0, Number(cornerPostBar.count || 0));
-              const postBarInline = [
-                `기본 포스트바 ${baseCount}개${basePostBar.tierLabel ? `(${basePostBar.tierLabel})` : ""}`,
-                cornerCount > 0
-                  ? `코너 포스트바 ${cornerCount}개${cornerPostBar.tierLabel ? `(${cornerPostBar.tierLabel})` : ""}`
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" · ");
-              const layoutInline = buildLayoutSpecLinesFromSnapshot(item.layoutSpec, item.layoutConsult, {
-                includeStatus: true,
-              }).join(" / ");
-              return `<p class="item-line">${idx + 1}. 기둥 세트 x${item.quantity} · ${escapeHtml(
-                columnMat?.name || "-"
-              )} ${escapeHtml(columnSize)}${postBarInline ? ` · ${escapeHtml(postBarInline)}` : ""}${
-                layoutInline ? ` · ${escapeHtml(layoutInline)}` : ""
-              } · 금액 ${amountText}</p>`;
-            }
-            if (item.type === "bay") {
-              const shelfMat = SYSTEM_SHELF_MATERIALS[item.shelf.materialId];
-              const shelfSize = `${item.shelf.thickness}T / ${item.shelf.width}×${item.shelf.length}mm`;
-              const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-              const { componentSummary, furnitureSummary } = buildAddonBreakdownFromIds(
-                item.addons,
-                "없음"
-              );
-              const furnitureSummaryText = item.isCorner ? "적용 불가" : furnitureSummary;
-              return `<p class="item-line">${idx + 1}. 시스템 수납장 모듈 x${item.quantity} · 선반 ${escapeHtml(
-                shelfMat?.name || "-"
-              )} ${escapeHtml(shelfSize)} ${item.shelf.count || 1}개 · 구성품 ${escapeHtml(
-                componentSummary
-              )} · 가구 ${escapeHtml(furnitureSummaryText)} · 금액 ${amountText}</p>`;
-            }
-            return "";
+            const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
+            const detailInline = buildSystemGroupDetailLines(item).join(" · ");
+            return `<p class="item-line">${idx + 1}. 시스템 구성 x${item.quantity}${
+              detailInline ? ` · ${escapeHtml(detailInline)}` : ""
+            } · 금액 ${amountText}</p>`;
           })
           .join("");
 
@@ -7489,10 +8169,12 @@ function init() {
   });
   $("#cornerAddonBtn")?.addEventListener("click", () => {
     if (!activeCornerOptionId) return;
+    const targetEdgeId = activeCornerOptionId;
     if (isPresetModuleOptionCustomTabActive(presetModuleOptionFlowState.modalState, presetModuleOptionFlowState.draft)) {
+      suppressPendingOptionModalCleanupOnce = true;
       closePresetModuleOptionModal({ returnFocus: false, clearState: false });
     }
-    openShelfAddonModal(activeCornerOptionId, { returnTo: "corner" });
+    openShelfAddonModal(targetEdgeId, { returnTo: "corner" });
   });
   $("#bayWidthPresetSelect")?.addEventListener("change", () => {
     const presetSelect = $("#bayWidthPresetSelect");
@@ -7507,10 +8189,12 @@ function init() {
   });
   $("#bayAddonBtn")?.addEventListener("click", () => {
     if (!activeBayOptionId) return;
+    const targetEdgeId = activeBayOptionId;
     if (isPresetModuleOptionCustomTabActive(presetModuleOptionFlowState.modalState, presetModuleOptionFlowState.draft)) {
+      suppressPendingOptionModalCleanupOnce = true;
       closePresetModuleOptionModal({ returnFocus: false, clearState: false });
     }
-    openShelfAddonModal(activeBayOptionId, { returnTo: "bay" });
+    openShelfAddonModal(targetEdgeId, { returnTo: "bay" });
   });
   $("#closePreviewAddTypeModal")?.addEventListener("click", () => closePreviewAddTypePicker({ returnFocus: true }));
   $("#previewAddTypeModalBackdrop")?.addEventListener("click", () => closePreviewAddTypePicker());
@@ -7536,6 +8220,14 @@ function init() {
     const btn = e.target.closest("[data-preview-preset-id]");
     if (!btn) return;
     handlePreviewPresetModuleCardClick(btn);
+  });
+  $("#previewPresetModuleCategoryTabs")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-preview-preset-category]");
+    if (!btn) return;
+    const nextKey = String(btn.dataset.previewPresetCategory || "all");
+    if (nextKey === String(previewPresetModuleCategoryFilterKey || "all")) return;
+    previewPresetModuleCategoryFilterKey = nextKey || "all";
+    renderPreviewPresetModuleModalUI();
   });
   $("#openPresetModulePickerBtn")?.addEventListener("click", openPresetPickerFromPresetModuleOptionModal);
   $("#presetModuleOptionPresetTabBtn")?.addEventListener("click", () =>
