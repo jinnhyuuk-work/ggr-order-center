@@ -3374,6 +3374,118 @@ function getComposeTabLabelInfo(edge = null) {
   return { key: "unknown", label: "미지정" };
 }
 
+function createModuleLabelElement(
+  labelInfo = {},
+  {
+    level = 2, // 2: badge+shelf+addons, 1: badge+shelf, 0: index chip only
+    index = 1,
+  } = {}
+) {
+  const normalizedLevel = Math.max(0, Math.min(2, Math.floor(Number(level) || 0)));
+  const labelEl = document.createElement("div");
+  labelEl.className = `system-module-label${
+    labelInfo.corner ? " system-module-label--corner" : ""
+  }`;
+  labelEl.dataset.densityLevel = String(normalizedLevel);
+  labelEl.style.left = `${Number(labelInfo.x || 0)}px`;
+  labelEl.style.top = `${Number(labelInfo.y || 0)}px`;
+
+  if (normalizedLevel === 0) {
+    const chip = document.createElement("span");
+    chip.className = "system-module-index-chip";
+    chip.textContent = `#${Math.max(1, Number(index || 1))}`;
+    labelEl.appendChild(chip);
+    return labelEl;
+  }
+
+  const composeBadge = document.createElement("span");
+  const composeInfo =
+    labelInfo.compose && typeof labelInfo.compose === "object"
+      ? labelInfo.compose
+      : { key: "unknown", label: "미지정" };
+  composeBadge.className = `system-module-label-compose system-module-label-compose--${escapeHtml(
+    String(composeInfo.key || "unknown")
+  )}`;
+  composeBadge.textContent = String(composeInfo.label || "미지정");
+
+  const shelfLine = document.createElement("span");
+  shelfLine.className = "system-module-label-line";
+  shelfLine.textContent = `선반 ${labelInfo.count}개`;
+
+  labelEl.appendChild(composeBadge);
+  labelEl.appendChild(shelfLine);
+
+  if (normalizedLevel >= 2) {
+    const addonLine = document.createElement("span");
+    addonLine.className = "system-module-label-line";
+    addonLine.textContent = `${labelInfo.addons}`;
+    labelEl.appendChild(addonLine);
+  }
+  return labelEl;
+}
+
+function isRectOverlapping(a = null, b = null, padding = 0) {
+  if (!a || !b) return false;
+  const pad = Math.max(0, Number(padding || 0));
+  return !(
+    a.right + pad <= b.left - pad ||
+    a.left - pad >= b.right + pad ||
+    a.bottom + pad <= b.top - pad ||
+    a.top - pad >= b.bottom + pad
+  );
+}
+
+function getBoundingRectOnParent(childEl, parentEl) {
+  if (!(childEl instanceof Element) || !(parentEl instanceof Element)) return null;
+  const childRect = childEl.getBoundingClientRect();
+  const parentRect = parentEl.getBoundingClientRect();
+  return {
+    left: childRect.left - parentRect.left,
+    right: childRect.right - parentRect.left,
+    top: childRect.top - parentRect.top,
+    bottom: childRect.bottom - parentRect.top,
+  };
+}
+
+function resolveModuleLabelDensityLevels(labelInfos = [], parentEl) {
+  const infos = Array.isArray(labelInfos) ? labelInfos : [];
+  if (!(parentEl instanceof Element) || infos.length <= 1) return infos.map(() => 2);
+  let globalLevel = 2;
+  const levels = infos.map(() => globalLevel);
+  const maxPass = 3;
+  const overlapPadding = 2;
+  for (let pass = 0; pass < maxPass; pass += 1) {
+    const tempLabels = [];
+    const tempRects = [];
+    infos.forEach((info, index) => {
+      const tempEl = createModuleLabelElement(info, {
+        level: levels[index],
+        index: index + 1,
+      });
+      tempEl.classList.add("system-module-label--measure");
+      parentEl.appendChild(tempEl);
+      tempLabels.push(tempEl);
+      tempRects.push(getBoundingRectOnParent(tempEl, parentEl));
+    });
+
+    let hasOverlap = false;
+    for (let i = 0; i < tempRects.length; i += 1) {
+      for (let j = i + 1; j < tempRects.length; j += 1) {
+        if (isRectOverlapping(tempRects[i], tempRects[j], overlapPadding)) {
+          hasOverlap = true;
+        }
+      }
+    }
+
+    tempLabels.forEach((el) => el.remove());
+    if (!hasOverlap) break;
+    if (globalLevel <= 0) break;
+    globalLevel -= 1;
+    for (let i = 0; i < levels.length; i += 1) levels[i] = globalLevel;
+  }
+  return levels;
+}
+
 function normalizePreviewInfoMode(mode) {
   return String(mode || "").toLowerCase() === "module" ? "module" : "size";
 }
@@ -5678,31 +5790,12 @@ function updatePreview() {
       shelvesEl.appendChild(labelEl);
     });
   } else {
-    moduleInfoLabels.forEach((labelInfo) => {
-      const labelEl = document.createElement("div");
-      labelEl.className = `system-module-label${
-        labelInfo.corner ? " system-module-label--corner" : ""
-      }`;
-      const composeBadge = document.createElement("span");
-      const composeInfo =
-        labelInfo.compose && typeof labelInfo.compose === "object"
-          ? labelInfo.compose
-          : { key: "unknown", label: "미지정" };
-      composeBadge.className = `system-module-label-compose system-module-label-compose--${escapeHtml(
-        String(composeInfo.key || "unknown")
-      )}`;
-      composeBadge.textContent = String(composeInfo.label || "미지정");
-      const shelfLine = document.createElement("span");
-      shelfLine.className = "system-module-label-line";
-      shelfLine.textContent = `선반 ${labelInfo.count}개`;
-      const addonLine = document.createElement("span");
-      addonLine.className = "system-module-label-line";
-      addonLine.textContent = `${labelInfo.addons}`;
-      labelEl.appendChild(composeBadge);
-      labelEl.appendChild(shelfLine);
-      labelEl.appendChild(addonLine);
-      labelEl.style.left = `${labelInfo.x}px`;
-      labelEl.style.top = `${labelInfo.y}px`;
+    const densityLevels = resolveModuleLabelDensityLevels(moduleInfoLabels, shelvesEl);
+    moduleInfoLabels.forEach((labelInfo, index) => {
+      const labelEl = createModuleLabelElement(labelInfo, {
+        level: densityLevels[index],
+        index: index + 1,
+      });
       shelvesEl.appendChild(labelEl);
     });
   }

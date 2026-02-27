@@ -1119,6 +1119,11 @@ input[type="number"]::-webkit-outer-spin-button {
   z-index: 3;
 }
 
+.system-module-label--measure {
+  visibility: hidden;
+  opacity: 0;
+}
+
 .system-module-label--corner {
   background: rgba(255, 247, 235, 0.96);
 }
@@ -1156,6 +1161,21 @@ input[type="number"]::-webkit-outer-spin-button {
   border-color: rgba(171, 109, 18, 0.35);
   background: rgba(255, 243, 217, 0.92);
   color: #7a4c00;
+}
+
+.system-module-index-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  color: #333;
+  font-size: calc(var(--preview-dim-font-size, 11px) - 1px);
+  font-weight: 700;
+  line-height: 1.1;
 }
 
 .system-module-label-line:last-child {
