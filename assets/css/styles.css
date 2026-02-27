@@ -1130,6 +1130,34 @@ input[type="number"]::-webkit-outer-spin-button {
   text-overflow: ellipsis;
 }
 
+.system-module-label-compose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  white-space: nowrap;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: calc(var(--preview-dim-font-size, 11px) - 2px);
+  font-weight: 700;
+  line-height: 1.2;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(245, 245, 245, 0.95);
+  color: #4a4a4a;
+}
+
+.system-module-label-compose--preset {
+  border-color: rgba(30, 78, 122, 0.28);
+  background: rgba(226, 240, 255, 0.92);
+  color: #1f4e79;
+}
+
+.system-module-label-compose--custom {
+  border-color: rgba(171, 109, 18, 0.35);
+  background: rgba(255, 243, 217, 0.92);
+  color: #7a4c00;
+}
+
 .system-module-label-line:last-child {
   font-size: calc(var(--preview-dim-font-size, 11px) - 1px);
   color: #555;
