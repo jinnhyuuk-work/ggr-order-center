@@ -3134,7 +3134,7 @@ function getFurnitureSelectionWidthMmForEdge(edgeOrId, { modalReturnTo = "" } = 
     modalReturnTo === "bay" &&
     String(activeBayOptionId || "") === String(edge.id || "")
   ) {
-    return getBayOptionModalWidthMm(edgeWidthMm);
+    return getBayOptionModalWidthMm(edgeWidthMm, { edgeId: String(edge.id || "") });
   }
   return edgeWidthMm;
 }
@@ -3169,10 +3169,10 @@ function clearFurnitureAddonsForEdge(edgeId) {
   state.shelfAddons[key] = quantities;
 }
 
-function enforceFurnitureAddonPolicyForEdge(edgeOrId) {
+function enforceFurnitureAddonPolicyForEdge(edgeOrId, { modalReturnTo = "" } = {}) {
   const edge = getEdgeByIdOrInstance(edgeOrId);
   if (!edge?.id) return false;
-  if (canSelectFurnitureForEdge(edge)) return false;
+  if (canSelectFurnitureForEdge(edge, { modalReturnTo })) return false;
   clearFurnitureAddonsForEdge(edge.id);
   return true;
 }
@@ -6799,12 +6799,18 @@ function bindShelfInputEvents() {
       const parsed = raw === "" ? 0 : Number(raw);
       if (!Number.isFinite(parsed)) return;
       const qty = Math.max(0, Math.floor(parsed));
+      const prevQty = getShelfAddonQuantity(id, ADDON_CLOTHES_ROD_ID);
+      if (input.dataset.historyCaptured !== "true" && qty !== prevQty) {
+        pushBuilderHistory("update-rod-count");
+        input.dataset.historyCaptured = "true";
+      }
       setShelfAddonQuantity(id, ADDON_CLOTHES_ROD_ID, qty);
       renderShelfAddonSelection(id);
       autoCalculatePrice();
       updateAddItemState();
     });
     input.addEventListener("blur", () => {
+      delete input.dataset.historyCaptured;
       if (String(input.value || "").trim() === "") {
         input.value = "0";
       }
@@ -6883,11 +6889,18 @@ function getBayOptionApplyValidationState() {
   return { canApply: true, message: "" };
 }
 
-function getBayOptionModalWidthMm(fallbackWidth = 0) {
+function getBayOptionModalWidthMm(fallbackWidth = 0, { edgeId = "" } = {}) {
   const presetSelect = $("#bayWidthPresetSelect");
   const customInput = $("#bayWidthCustomInput");
-  const isCustom = presetSelect?.value === "custom";
-  const raw = isCustom ? customInput?.value : presetSelect?.value;
+  const draft =
+    bayDirectComposeDraft &&
+    (!edgeId || String(bayDirectComposeDraft.edgeId || "") === String(edgeId || ""))
+      ? bayDirectComposeDraft
+      : null;
+  const presetValue = String(presetSelect?.value || draft?.presetValue || "");
+  const customValue = String(customInput?.value || draft?.customWidthValue || "");
+  const isCustom = presetValue === "custom";
+  const raw = isCustom ? customValue : presetValue;
   const width = Number(raw || fallbackWidth || 0);
   if (!Number.isFinite(width)) return 0;
   return Math.max(0, Math.round(width));
@@ -7034,7 +7047,7 @@ function syncBayOptionModal() {
   if (!activeBayOptionId) return;
   const shelf = findShelfById(activeBayOptionId);
   if (!shelf) return;
-  const furnitureCleared = enforceFurnitureAddonPolicyForEdge(shelf.id);
+  const furnitureCleared = enforceFurnitureAddonPolicyForEdge(shelf.id, { modalReturnTo: "bay" });
   const presetSelect = $("#bayWidthPresetSelect");
   const customInput = $("#bayWidthCustomInput");
   const countInput = $("#bayCountInput");
@@ -7608,6 +7621,14 @@ function renderSystemAddonModalCards() {
     const input = e.target.closest('input[type="checkbox"]');
     if (!input || !activeShelfAddonId) return;
     const id = input.value;
+    const targetEdge = findShelfById(activeShelfAddonId);
+    const currentFurnitureAddonId = getSelectedFurnitureAddonId(activeShelfAddonId);
+    const willChangeFurnitureSelection = input.checked
+      ? String(currentFurnitureAddonId || "") !== String(id || "")
+      : String(currentFurnitureAddonId || "") === String(id || "");
+    if (willChangeFurnitureSelection && !isPendingEdge(targetEdge)) {
+      pushBuilderHistory("update-furniture-addon");
+    }
     if (input.checked) {
       allSelectableItems.forEach((item) => {
         setShelfAddonQuantity(activeShelfAddonId, item.id, item.id === id ? 1 : 0);
@@ -7638,13 +7659,13 @@ function syncSystemAddonModalSelection() {
 }
 
 function openShelfAddonModal(id, { returnTo = "" } = {}) {
+  if (returnTo === "bay") captureBayOptionModalDraft();
+  if (returnTo === "corner") captureCornerOptionModalDraft();
   const blockedReason = getFurnitureAddonBlockedReason(id, { modalReturnTo: returnTo });
   if (blockedReason) {
     showInfoModal(blockedReason);
     return;
   }
-  if (returnTo === "bay") captureBayOptionModalDraft();
-  if (returnTo === "corner") captureCornerOptionModalDraft();
   activeShelfAddonId = id;
   shelfAddonModalReturnTo = returnTo || "";
   renderSystemAddonModalCards();
@@ -8457,6 +8478,7 @@ function init() {
   $("#cornerAddonBtn")?.addEventListener("click", () => {
     if (!activeCornerOptionId) return;
     const targetEdgeId = activeCornerOptionId;
+    captureCornerOptionModalDraft();
     if (isPresetModuleOptionCustomTabActive(presetModuleOptionFlowState.modalState, presetModuleOptionFlowState.draft)) {
       suppressPendingOptionModalCleanupOnce = true;
       closePresetModuleOptionModal({ returnFocus: false, clearState: false });
@@ -8477,6 +8499,7 @@ function init() {
   $("#bayAddonBtn")?.addEventListener("click", () => {
     if (!activeBayOptionId) return;
     const targetEdgeId = activeBayOptionId;
+    captureBayOptionModalDraft();
     if (isPresetModuleOptionCustomTabActive(presetModuleOptionFlowState.modalState, presetModuleOptionFlowState.draft)) {
       suppressPendingOptionModalCleanupOnce = true;
       closePresetModuleOptionModal({ returnFocus: false, clearState: false });
