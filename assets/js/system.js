@@ -1604,6 +1604,7 @@ function renderPresetModuleOptionFrontPreview() {
       ? (preset.swap ? "600 × 800mm" : "800 × 600mm")
       : `폭 ${normalWidthFromFilter}mm`;
   const { componentSummary, furnitureSummary } = buildPresetAddonBreakdownFromPreset(preset);
+  const previewColors = getModuleFrontPreviewMaterialColors();
   container.innerHTML = buildModuleFrontPreviewHtml({
     moduleLabel: moduleType === "corner" ? "코너 모듈" : "일반 모듈",
     sizeLabel,
@@ -1613,6 +1614,8 @@ function renderPresetModuleOptionFrontPreview() {
     type: moduleType === "corner" ? "corner" : "bay",
     averageHeightMm,
     shelfWidthMm,
+    shelfColor: previewColors.shelfColor,
+    postBarColor: previewColors.postBarColor,
   });
 }
 
@@ -7188,6 +7191,21 @@ function buildModuleFrontPreviewGeometry({ shelfWidthMm, averageHeightMm } = {})
   };
 }
 
+function normalizeModuleFrontPreviewColor(value, fallback) {
+  const raw = String(value || "").trim();
+  return /^#([0-9a-fA-F]{3,8})$/.test(raw) ? raw : fallback;
+}
+
+function getModuleFrontPreviewMaterialColors(input = readCurrentInputs()) {
+  const safeInput = input && typeof input === "object" ? input : {};
+  const shelfMat = SYSTEM_SHELF_MATERIALS[safeInput?.shelf?.materialId];
+  const columnMat = SYSTEM_COLUMN_MATERIALS[safeInput?.column?.materialId];
+  return {
+    shelfColor: normalizeModuleFrontPreviewColor(shelfMat?.swatch, "rgba(0, 0, 0, 0.28)"),
+    postBarColor: normalizeModuleFrontPreviewColor(columnMat?.swatch, "rgba(0, 0, 0, 0.2)"),
+  };
+}
+
 function buildModuleFrontPreviewHtml({
   moduleLabel = "모듈",
   sizeLabel = "",
@@ -7197,6 +7215,8 @@ function buildModuleFrontPreviewHtml({
   type = "bay",
   averageHeightMm = 0,
   shelfWidthMm = 0,
+  shelfColor = "rgba(0, 0, 0, 0.28)",
+  postBarColor = "rgba(0, 0, 0, 0.2)",
 } = {}) {
   const normalizedShelfCount = Math.max(0, Math.floor(Number(shelfCount ?? 0) || 0));
   const visibleShelfLineCount = Math.max(0, Math.min(8, normalizedShelfCount));
@@ -7221,6 +7241,7 @@ function buildModuleFrontPreviewHtml({
           left:${geometry.columnThicknessPx}px;
           width:${geometry.shelfWidthPx}px;
           height:${geometry.shelfThicknessPx}px;
+          background:${shelfColor};
         "
       ></div>
     `;
@@ -7237,8 +7258,8 @@ function buildModuleFrontPreviewHtml({
           class="module-front-preview-box module-front-preview-box--${escapeHtml(type)}"
           style="width:${geometry.totalWidthPx}px; height:${geometry.heightPx}px;"
         >
-          <div class="module-front-preview-side module-front-preview-side--left" style="width:${geometry.columnThicknessPx}px;"></div>
-          <div class="module-front-preview-side module-front-preview-side--right" style="width:${geometry.columnThicknessPx}px;"></div>
+          <div class="module-front-preview-side module-front-preview-side--left" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
+          <div class="module-front-preview-side module-front-preview-side--right" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
           ${shelfLinesHtml}
         </div>
         ${overflowBadge}
@@ -7289,6 +7310,7 @@ function renderBayOptionFrontPreview() {
   const { componentSummary, furnitureSummary } = buildModalDraftAddonBreakdown(shelf.id, rodCount);
   const averageHeightMm = getModuleOptionAverageHeightMm();
   const sizeLabel = widthValue > 0 ? `폭 ${Math.round(widthValue)}mm` : "";
+  const previewColors = getModuleFrontPreviewMaterialColors();
   updateBayOptionModalApplyButtonState();
   container.innerHTML = buildModuleFrontPreviewHtml({
     moduleLabel: "모듈",
@@ -7299,6 +7321,8 @@ function renderBayOptionFrontPreview() {
     type: "bay",
     averageHeightMm,
     shelfWidthMm: widthValue,
+    shelfColor: previewColors.shelfColor,
+    postBarColor: previewColors.postBarColor,
   });
 }
 
@@ -7341,6 +7365,7 @@ function renderCornerOptionFrontPreview() {
   );
   const { componentSummary, furnitureSummary } = buildModalDraftAddonBreakdown(corner.id, rodCount);
   const averageHeightMm = getModuleOptionAverageHeightMm();
+  const previewColors = getModuleFrontPreviewMaterialColors();
   setCornerCustomCutError(isCustomCut && !customValidation.valid ? customValidation.message : "");
   updateCornerOptionModalApplyButtonState();
   container.innerHTML = buildModuleFrontPreviewHtml({
@@ -7352,6 +7377,8 @@ function renderCornerOptionFrontPreview() {
     type: "corner",
     averageHeightMm,
     shelfWidthMm: frontShelfWidthMm,
+    shelfColor: previewColors.shelfColor,
+    postBarColor: previewColors.postBarColor,
   });
 }
 
