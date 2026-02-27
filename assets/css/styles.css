@@ -1196,6 +1196,24 @@ input[type="number"]::-webkit-outer-spin-button {
   line-height: 1.1;
 }
 
+.system-module-label[data-density-level="0"][data-compose-key="preset"] .system-module-index-chip {
+  border-color: rgba(30, 78, 122, 0.28);
+  background: rgba(226, 240, 255, 0.92);
+  color: #1f4e79;
+}
+
+.system-module-label[data-density-level="0"][data-compose-key="custom"] .system-module-index-chip {
+  border-color: rgba(171, 109, 18, 0.35);
+  background: rgba(255, 243, 217, 0.92);
+  color: #7a4c00;
+}
+
+.system-module-label[data-density-level="0"][data-compose-key="unknown"] .system-module-index-chip {
+  border-color: rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  color: #333;
+}
+
 .system-module-label-line:last-child {
   font-size: calc(var(--preview-dim-font-size, 11px) - 1px);
   color: #555;
