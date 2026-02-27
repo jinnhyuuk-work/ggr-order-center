@@ -3615,13 +3615,43 @@ function getCornerSizeAlongSide(sideIndex, swap) {
   return swap ? 800 : 600;
 }
 
+function getResolvedCornerArmLengthsMm(edge, { primarySideIndex = null, secondarySideIndex = null } = {}) {
+  const swap = Boolean(edge?.swap);
+  const fallbackPrimary =
+    Number.isFinite(Number(primarySideIndex)) && Number(primarySideIndex) >= 0
+      ? getCornerSizeAlongSide(Number(primarySideIndex), swap)
+      : swap
+        ? 600
+        : 800;
+  const fallbackSecondary =
+    Number.isFinite(Number(secondarySideIndex)) && Number(secondarySideIndex) >= 0
+      ? getCornerSizeAlongSide(Number(secondarySideIndex), swap)
+      : swap
+        ? 800
+        : 600;
+  if (!edge?.customProcessing) {
+    return {
+      primaryMm: fallbackPrimary,
+      secondaryMm: fallbackSecondary,
+      isCustom: false,
+    };
+  }
+  const customPrimaryMm = Math.round(Number(edge.customPrimaryMm || 0));
+  const customSecondaryMm = Math.round(Number(edge.customSecondaryMm || 0));
+  return {
+    primaryMm: customPrimaryMm > 0 ? customPrimaryMm : fallbackPrimary,
+    secondaryMm: customSecondaryMm > 0 ? customSecondaryMm : fallbackSecondary,
+    isCustom: true,
+  };
+}
+
 function getCornerCustomCutLimits() {
   return {
-    primaryMinMm: 400,
+    primaryMinMm: 600,
     primaryMaxMm: 800,
-    secondaryMinMm: 400,
+    secondaryMinMm: 600,
     secondaryMaxMm: 800,
-    maxSingleAxisMm: 600,
+    fixedAxisMm: 600,
   };
 }
 
@@ -3648,16 +3678,10 @@ function syncCornerCustomCutInputsUI() {
   primaryInput.placeholder = `${limits.primaryMinMm}~${limits.primaryMaxMm}`;
   secondaryInput.placeholder = `${limits.secondaryMinMm}~${limits.secondaryMaxMm}`;
 
-  if (enabled) {
-    if (!String(primaryInput.value || "").trim()) primaryInput.value = String(limits.primaryMaxMm);
-    if (!String(secondaryInput.value || "").trim()) secondaryInput.value = String(limits.secondaryMaxMm);
-  }
-
   if (guideEl) {
     guideEl.textContent =
-      `입력 가능 범위: ${limits.primaryMinMm}~${limits.primaryMaxMm}mm / ` +
-      `${limits.secondaryMinMm}~${limits.secondaryMaxMm}mm · ` +
-      `두 축 중 1개는 ${limits.maxSingleAxisMm}mm 이하`;
+      `입력 가능 범위: ${limits.primaryMinMm}~${limits.primaryMaxMm}mm · ` +
+      `가로/세로 중 한 축은 ${limits.fixedAxisMm}mm 고정`;
   }
 }
 
@@ -3719,11 +3743,11 @@ function getCornerCustomCutValidationState() {
       secondaryMm,
     };
   }
-  if (primaryMm > limits.maxSingleAxisMm && secondaryMm > limits.maxSingleAxisMm) {
+  if (primaryMm !== limits.fixedAxisMm && secondaryMm !== limits.fixedAxisMm) {
     return {
       enabled: true,
       valid: false,
-      message: `직접입력은 두 축 중 최소 1개를 ${limits.maxSingleAxisMm}mm 이하로 입력해주세요.`,
+      message: `가로/세로 중 한 축은 ${limits.fixedAxisMm}mm로 입력해주세요.`,
       primaryMm,
       secondaryMm,
     };
@@ -3786,14 +3810,10 @@ function renderBuilderStructure() {
     const isCorner = edge.type === "corner";
     const addonText = formatAddonCompactBreakdown(getShelfAddonIds(edge.id));
     const secondarySideIndex = directionToSideIndex(-dir.dy, dir.dx);
-    const defaultCornerPrimaryMm = getCornerSizeAlongSide(sideIndex, edge.swap);
-    const defaultCornerSecondaryMm = getCornerSizeAlongSide(secondarySideIndex, edge.swap);
-    const cornerPrimaryMm = edge.customProcessing
-      ? Math.max(0, Number(edge.customPrimaryMm || defaultCornerPrimaryMm))
-      : defaultCornerPrimaryMm;
-    const cornerSecondaryMm = edge.customProcessing
-      ? Math.max(0, Number(edge.customSecondaryMm || defaultCornerSecondaryMm))
-      : defaultCornerSecondaryMm;
+    const { primaryMm: cornerPrimaryMm, secondaryMm: cornerSecondaryMm } = getResolvedCornerArmLengthsMm(edge, {
+      primarySideIndex: sideIndex,
+      secondarySideIndex,
+    });
     const widthText = isCorner
       ? `${cornerPrimaryMm} × ${cornerSecondaryMm}mm${edge.customProcessing ? " (비규격)" : ""}`
       : `${Number(edge.width || 0)}mm`;
@@ -4130,14 +4150,10 @@ function readBayInputs() {
       : { dx: 1, dy: 0 };
     const sideIndex = directionToSideIndex(dir.dx, dir.dy);
     const secondarySideIndex = directionToSideIndex(-dir.dy, dir.dx);
-    const defaultCornerPrimaryMm = getCornerSizeAlongSide(sideIndex, edge.swap);
-    const defaultCornerSecondaryMm = getCornerSizeAlongSide(secondarySideIndex, edge.swap);
-    const cornerPrimaryMm = edge.customProcessing
-      ? Math.max(0, Number(edge.customPrimaryMm || defaultCornerPrimaryMm))
-      : defaultCornerPrimaryMm;
-    const cornerSecondaryMm = edge.customProcessing
-      ? Math.max(0, Number(edge.customSecondaryMm || defaultCornerSecondaryMm))
-      : defaultCornerSecondaryMm;
+    const { primaryMm: cornerPrimaryMm, secondaryMm: cornerSecondaryMm } = getResolvedCornerArmLengthsMm(edge, {
+      primarySideIndex: sideIndex,
+      secondarySideIndex,
+    });
     return {
       id: edge.id,
       width: isCorner ? cornerPrimaryMm : edge.width || 0,
@@ -4771,12 +4787,13 @@ function getEdgeEndpointAliasSets(edge) {
     return { startAliases, endAliases };
   }
 
-  const primarySideIndex = directionToSideIndex(drawDir.dx, drawDir.dy);
-  const primaryNominal = getCornerSizeAlongSide(primarySideIndex, Boolean(edge.swap));
-  const primaryLen = primaryNominal + SUPPORT_VISIBLE_MM * 2;
   const secondDir = { dx: drawInward.x, dy: drawInward.y };
-  const secondSideIndex = directionToSideIndex(secondDir.dx, secondDir.dy);
-  const secondaryNominal = getCornerSizeAlongSide(secondSideIndex, Boolean(edge.swap));
+  const primarySideIndex = directionToSideIndex(drawDir.dx, drawDir.dy);
+  const { primaryMm: primaryNominal, secondaryMm: secondaryNominal } = getResolvedCornerArmLengthsMm(edge, {
+    primarySideIndex,
+    secondarySideIndex: directionToSideIndex(secondDir.dx, secondDir.dy),
+  });
+  const primaryLen = primaryNominal + SUPPORT_VISIBLE_MM * 2;
   const secondLen = secondaryNominal + SUPPORT_VISIBLE_MM * 2;
   const secondInward = { x: -drawDir.dx, y: -drawDir.dy };
   const secondStartX = px + drawDir.dx * primaryLen;
@@ -5432,11 +5449,13 @@ function updatePreview() {
     }
 
     const corner = edge;
-    const primaryNominal = getCornerSizeAlongSide(primarySideIndex, corner.swap);
-    const primaryLen = primaryNominal + SUPPORT_VISIBLE_MM * 2;
     const secondDir = { dx: drawInward.x, dy: drawInward.y };
     const secondSideIndex = directionToSideIndex(secondDir.dx, secondDir.dy);
-    const secondaryNominal = getCornerSizeAlongSide(secondSideIndex, corner.swap);
+    const { primaryMm: primaryNominal, secondaryMm: secondaryNominal } = getResolvedCornerArmLengthsMm(corner, {
+      primarySideIndex,
+      secondarySideIndex: secondSideIndex,
+    });
+    const primaryLen = primaryNominal + SUPPORT_VISIBLE_MM * 2;
     const secondLen = secondaryNominal + SUPPORT_VISIBLE_MM * 2;
     recordSectionSegment({
       startX: px,
@@ -5800,13 +5819,9 @@ function updatePreview() {
         item.cornerGeom && Number.isFinite(Number(item.cornerGeom.secondaryLen))
           ? Math.max(0, Math.round(Number(item.cornerGeom.secondaryLen) - SUPPORT_VISIBLE_MM * 2))
           : armNominalLength(secondaryArm);
-      // Corner option text should follow the option order (800x600 / 600x800),
-      // not the absolute placed orientation (horizontal/vertical side).
-      const optionPrimaryLength = edge?.swap ? 600 : 800;
-      const optionSecondaryLength = edge?.swap ? 800 : 600;
       const cornerText =
         secondaryLength > 0
-          ? `${optionPrimaryLength} x ${optionSecondaryLength}`
+          ? `${primaryLength} x ${secondaryLength}`
           : `${primaryLength}`;
       // Prefer the horizontal arm so corner labels sit on the same line as straight-module labels.
       const horizontalArm =
