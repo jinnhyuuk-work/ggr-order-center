@@ -7163,27 +7163,27 @@ function buildModuleFrontPreviewGeometry({ shelfWidthMm, averageHeightMm } = {})
   const clamp01 = (value) => Math.min(1, Math.max(0, Number(value || 0)));
   const widthRatio = clamp01((widthMm - widthMinRef) / Math.max(1, widthMaxRef - widthMinRef));
   const heightRatio = clamp01((heightMm - minHeightMm) / Math.max(1, heightMaxRef - minHeightMm));
-  const easedWidth = Math.pow(widthRatio, 0.82);
-  const easedHeight = Math.pow(heightRatio, 0.72);
+  const easedWidth = Math.pow(widthRatio, 0.92);
+  const easedHeight = Math.pow(heightRatio, 0.86);
 
   // Schematic mode: horizontal size responds to shelf width, but vertical size is anchored to the 400mm baseline.
-  const totalWidthPx = Math.round(160 + easedWidth * 96); // 160 ~ 256
-  const baseHeightPx = Math.round(220 + easedHeight * 188); // 220 ~ 408
+  const totalWidthPx = Math.round(154 + easedWidth * 82); // 154 ~ 236
+  const baseHeightPx = Math.round(212 + easedHeight * 146); // 212 ~ 358
   const baselineWidthRatio = clamp01((baselineShelfWidthMm - widthMinRef) / Math.max(1, widthMaxRef - widthMinRef));
-  const baselineEasedWidth = Math.pow(baselineWidthRatio, 0.82);
-  const baselineTotalWidthPx = Math.round(160 + baselineEasedWidth * 96); // 400mm 기준 폭 px
+  const baselineEasedWidth = Math.pow(baselineWidthRatio, 0.92);
+  const baselineTotalWidthPx = Math.round(154 + baselineEasedWidth * 82); // 400mm 기준 폭 px
   const actualAspectRatio = heightMm / Math.max(1, baselineTotalWidthMm);
   const aspectRatioNorm = clamp01((actualAspectRatio - 2.0) / 2.8);
-  const visualAspectRatio = 1.65 + aspectRatioNorm * 0.95; // 1.65 ~ 2.60
+  const visualAspectRatio = 1.55 + aspectRatioNorm * 0.72; // 1.55 ~ 2.27
   const aspectDrivenHeightPx = Math.round(baselineTotalWidthPx * visualAspectRatio);
-  const heightPx = Math.min(460, Math.max(baseHeightPx, aspectDrivenHeightPx));
+  const heightPx = Math.min(420, Math.max(baseHeightPx, aspectDrivenHeightPx));
   const exactScale = Math.max(0.02, Math.min(totalWidthPx / totalWidthMm, heightPx / heightMm));
 
   // Thickness is shown as a schematic exaggeration while still based on the 20mm real thickness.
-  const exaggeratedThicknessPx = Math.round(columnThicknessMm * exactScale * 3.2);
-  const columnThicknessPx = Math.min(18, Math.max(7, exaggeratedThicknessPx));
-  const shelfThicknessPx = Math.min(14, Math.max(6, Math.round(shelfThicknessMm * exactScale * 3.0)));
-  const shelfWidthPx = Math.max(44, totalWidthPx - columnThicknessPx * 2);
+  const exaggeratedThicknessPx = Math.round(columnThicknessMm * exactScale * 2.4);
+  const columnThicknessPx = Math.min(14, Math.max(5, exaggeratedThicknessPx));
+  const shelfThicknessPx = Math.min(10, Math.max(4, Math.round(shelfThicknessMm * exactScale * 2.2)));
+  const shelfWidthPx = Math.max(40, totalWidthPx - columnThicknessPx * 2);
   const scale = exactScale;
 
   return {
@@ -7536,8 +7536,8 @@ function buildModuleFrontPreviewHtml({
       `;
     })
     .join("");
-  const hangerWidthPx = Math.max(28, Math.round(geometry.shelfWidthPx * 0.84));
-  const hangerLeftPx = geometry.columnThicknessPx + Math.round((geometry.shelfWidthPx - hangerWidthPx) / 2);
+  const hangerWidthPx = Math.max(40, Math.round(geometry.shelfWidthPx));
+  const hangerLeftPx = geometry.columnThicknessPx;
   const hangerThicknessPx = Math.max(3, Math.min(7, Math.round(geometry.shelfThicknessPx * 0.45)));
   const hangerLinesHtml = layout.hangerPositionsMm
     .map((hangerTopMm) => {
