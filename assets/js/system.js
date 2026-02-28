@@ -1603,12 +1603,15 @@ function renderPresetModuleOptionFrontPreview() {
     moduleType === "corner"
       ? (preset.swap ? "600 × 800mm" : "800 × 600mm")
       : `폭 ${normalWidthFromFilter}mm`;
-  const { componentSummary, furnitureSummary } = buildPresetAddonBreakdownFromPreset(preset);
+  const { componentSummary, furnitureSummary, rodCount, furnitureAddonId } =
+    buildPresetAddonBreakdownFromPreset(preset);
   const previewColors = getModuleFrontPreviewMaterialColors();
   container.innerHTML = buildModuleFrontPreviewHtml({
     moduleLabel: moduleType === "corner" ? "코너 모듈" : "일반 모듈",
     sizeLabel,
     shelfCount: Number(preset.count || 1),
+    rodCount,
+    furnitureAddonId,
     componentSummary,
     furnitureSummary,
     type: moduleType === "corner" ? "corner" : "bay",
@@ -2373,9 +2376,13 @@ function getPresetFurnitureAddonIds(preset) {
 function buildPresetAddonBreakdownFromPreset(preset) {
   const furnitureAddonIds = getPresetFurnitureAddonIds(preset);
   const isCornerPreset = String(preset?.moduleType || "") === "corner";
+  const rodCount = Math.max(0, Math.floor(Number(preset?.rodCount || 0)));
+  const furnitureAddonId = isCornerPreset ? "" : String(furnitureAddonIds[0] || "");
   return {
-    componentSummary: buildRodAddonSummary(preset?.rodCount, "-"),
+    componentSummary: buildRodAddonSummary(rodCount, "-"),
     furnitureSummary: isCornerPreset ? "적용 불가" : buildFurnitureAddonSummary(furnitureAddonIds, "-"),
+    rodCount,
+    furnitureAddonId,
   };
 }
 
@@ -7114,13 +7121,16 @@ function openBayOptionModal(shelfId, { preserveDraft = false, backContext = null
 }
 
 function buildModalDraftAddonBreakdown(edgeId, rodCount) {
+  const normalizedRodCount = Math.max(0, Math.floor(Number(rodCount || 0)));
   if (!edgeId) {
-    return { componentSummary: "-", furnitureSummary: "-" };
+    return { componentSummary: "-", furnitureSummary: "-", rodCount: normalizedRodCount, furnitureAddonId: "" };
   }
   const baseAddonIds = getShelfAddonIds(edgeId).filter((addonId) => addonId !== ADDON_CLOTHES_ROD_ID);
   return {
-    componentSummary: buildRodAddonSummary(rodCount, "-"),
+    componentSummary: buildRodAddonSummary(normalizedRodCount, "-"),
     furnitureSummary: buildFurnitureAddonSummary(baseAddonIds, "-"),
+    rodCount: normalizedRodCount,
+    furnitureAddonId: String(baseAddonIds[0] || ""),
   };
 }
 
@@ -7196,6 +7206,34 @@ function normalizeModuleFrontPreviewColor(value, fallback) {
   return /^#([0-9a-fA-F]{3,8})$/.test(raw) ? raw : fallback;
 }
 
+function buildModuleFrontPreviewAlphaColor(color, alpha, fallback = "rgba(0, 0, 0, 0.2)") {
+  const safeAlpha = clampModuleFrontPreviewValue(Number(alpha || 0), 0, 1);
+  const raw = String(color || "").trim();
+  if (!raw) return fallback;
+  const hexMatch = raw.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (hexMatch) {
+    const hex = hexMatch[1];
+    const expandHex = (value) => (value.length === 1 ? `${value}${value}` : value);
+    const isShort = hex.length === 3;
+    const r = parseInt(expandHex(isShort ? hex[0] : hex.slice(0, 2)), 16);
+    const g = parseInt(expandHex(isShort ? hex[1] : hex.slice(2, 4)), 16);
+    const b = parseInt(expandHex(isShort ? hex[2] : hex.slice(4, 6)), 16);
+    if ([r, g, b].every((value) => Number.isFinite(value))) {
+      return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
+    }
+  }
+  const rgbMatch = raw.match(
+    /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i
+  );
+  if (rgbMatch) {
+    const r = clampModuleFrontPreviewValue(Number(rgbMatch[1] || 0), 0, 255);
+    const g = clampModuleFrontPreviewValue(Number(rgbMatch[2] || 0), 0, 255);
+    const b = clampModuleFrontPreviewValue(Number(rgbMatch[3] || 0), 0, 255);
+    return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${safeAlpha})`;
+  }
+  return fallback;
+}
+
 function getModuleFrontPreviewMaterialColors(input = readCurrentInputs()) {
   const safeInput = input && typeof input === "object" ? input : {};
   const shelfMat = SYSTEM_SHELF_MATERIALS[safeInput?.shelf?.materialId];
@@ -7206,10 +7244,248 @@ function getModuleFrontPreviewMaterialColors(input = readCurrentInputs()) {
   };
 }
 
+const MODULE_FRONT_PREVIEW_REFERENCE_HEIGHT_MM = 2300;
+const MODULE_FRONT_PREVIEW_TOP_UNDERSIDE_SPAN_MM = 1960;
+const MODULE_FRONT_PREVIEW_BOTTOM_SHELF_TOP_FROM_FLOOR_MM = 50;
+const MODULE_FRONT_PREVIEW_HANGER_OFFSET_MM = 40;
+const MODULE_FRONT_PREVIEW_DRAWER_TIER_HEIGHT_MM = 220;
+const MODULE_FRONT_PREVIEW_MIN_GAP_MM = 80;
+const MODULE_FRONT_PREVIEW_MIN_DRAWER_HEIGHT_MM = 180;
+
+function getAddonItemById(addonId) {
+  const key = String(addonId || "");
+  if (!key) return null;
+  return SYSTEM_ADDON_ITEMS.find((item) => String(item?.id || "") === key) || null;
+}
+
+function getModuleFrontPreviewFurnitureSpec(furnitureAddonId = "") {
+  const addon = getAddonItemById(furnitureAddonId);
+  if (!addon) return null;
+  const addonId = String(addon.id || "");
+  const normalizedId = addonId.toLowerCase();
+  const isFloating = normalizedId.includes("hanging");
+  const isFloor = normalizedId.includes("floor");
+  if (!isFloating && !isFloor) return null;
+  const tierMatch = normalizedId.match(/(\d+)tier/);
+  const tierCount = Math.max(1, Math.floor(Number(tierMatch?.[1] || 1)));
+  return {
+    addonId,
+    kind: isFloor ? "floor" : "floating",
+    tierCount,
+  };
+}
+
+function clampModuleFrontPreviewValue(value, min, max) {
+  if (!Number.isFinite(Number(value))) return min;
+  return Math.min(max, Math.max(min, Number(value)));
+}
+
+function buildModuleFrontPreviewInterpolatedPositionsMm(count, startMm, endMm) {
+  const normalizedCount = Math.max(0, Math.floor(Number(count || 0)));
+  if (normalizedCount <= 0) return [];
+  const safeStart = Number(startMm || 0);
+  const safeEnd = Number(endMm || 0);
+  if (normalizedCount === 1) return [safeStart];
+  const span = safeEnd - safeStart;
+  return Array.from({ length: normalizedCount }, (_, index) => safeStart + span * (index / (normalizedCount - 1)));
+}
+
+function buildModuleFrontPreviewInteriorPositionsMm(count, startMm, endMm) {
+  const normalizedCount = Math.max(0, Math.floor(Number(count || 0)));
+  if (normalizedCount <= 0) return [];
+  const safeStart = Number(startMm || 0);
+  const safeEnd = Number(endMm || 0);
+  const span = safeEnd - safeStart;
+  return Array.from(
+    { length: normalizedCount },
+    (_, index) => safeStart + span * ((index + 1) / (normalizedCount + 1))
+  );
+}
+
+function getModuleFrontPreviewShelfAnchorsMm({ heightMm = 0, shelfThicknessMm = 20 } = {}) {
+  const safeHeightMm = Math.max(0, Number(heightMm || 0));
+  const safeThicknessMm = Math.max(1, Number(shelfThicknessMm || 20));
+  const bottomShelfTopMm = Math.max(
+    safeThicknessMm + MODULE_FRONT_PREVIEW_MIN_GAP_MM,
+    safeHeightMm - MODULE_FRONT_PREVIEW_BOTTOM_SHELF_TOP_FROM_FLOOR_MM
+  );
+  const scaledSpanMm =
+    MODULE_FRONT_PREVIEW_TOP_UNDERSIDE_SPAN_MM *
+    (safeHeightMm / Math.max(1, MODULE_FRONT_PREVIEW_REFERENCE_HEIGHT_MM));
+  const maxAllowedSpanMm = Math.max(240, bottomShelfTopMm - safeThicknessMm - MODULE_FRONT_PREVIEW_MIN_GAP_MM);
+  const topUndersideToBottomTopMm = clampModuleFrontPreviewValue(
+    scaledSpanMm,
+    240,
+    maxAllowedSpanMm
+  );
+  const topShelfUndersideMm = bottomShelfTopMm - topUndersideToBottomTopMm;
+  const topShelfTopMm = Math.max(0, topShelfUndersideMm - safeThicknessMm);
+  return {
+    topShelfTopMm,
+    bottomShelfTopMm,
+  };
+}
+
+function buildModuleFrontPreviewLayout({
+  shelfCount = 0,
+  rodCount = 0,
+  furnitureAddonId = "",
+  geometry,
+} = {}) {
+  const heightMm = Math.max(0, Number(geometry?.heightMm || 0));
+  const shelfThicknessMm = Math.max(1, Number(geometry?.shelfThicknessMm || 20));
+  const normalizedShelfCount = Math.max(0, Math.floor(Number(shelfCount || 0)));
+  const normalizedRodCount = Math.max(0, Math.floor(Number(rodCount || 0)));
+  const furniture = getModuleFrontPreviewFurnitureSpec(furnitureAddonId);
+  const shelfRenderLimit = furniture ? 6 : 8;
+  const visibleShelfCount = Math.min(normalizedShelfCount, shelfRenderLimit);
+  const shelfOverflowCount = Math.max(0, normalizedShelfCount - visibleShelfCount);
+  const anchors = getModuleFrontPreviewShelfAnchorsMm({ heightMm, shelfThicknessMm });
+  const topShelfTopMm = anchors.topShelfTopMm;
+  const bottomShelfTopMm = anchors.bottomShelfTopMm;
+
+  let shelfTopPositionsMm = [];
+  let furnitureBox = null;
+  if (furniture?.kind === "floor") {
+    const requestedDrawerHeightMm = Math.max(
+      MODULE_FRONT_PREVIEW_DRAWER_TIER_HEIGHT_MM,
+      MODULE_FRONT_PREVIEW_DRAWER_TIER_HEIGHT_MM * furniture.tierCount
+    );
+    const maxDrawerHeightMm = Math.max(
+      MODULE_FRONT_PREVIEW_MIN_DRAWER_HEIGHT_MM,
+      heightMm - topShelfTopMm - MODULE_FRONT_PREVIEW_MIN_GAP_MM
+    );
+    const drawerHeightMm = Math.min(requestedDrawerHeightMm, maxDrawerHeightMm);
+    const drawerBottomMm = heightMm;
+    const drawerTopMm = Math.max(
+      topShelfTopMm + shelfThicknessMm + MODULE_FRONT_PREVIEW_MIN_GAP_MM,
+      drawerBottomMm - drawerHeightMm
+    );
+    if (visibleShelfCount <= 1) {
+      shelfTopPositionsMm = visibleShelfCount === 1 ? [topShelfTopMm] : [];
+    } else {
+      // Floor drawer: place lower shelves by evenly splitting the interval between
+      // the top shelf underside and the furniture top surface.
+      const topShelfUndersideMm = topShelfTopMm + shelfThicknessMm;
+      const dividedPositionsMm = buildModuleFrontPreviewInteriorPositionsMm(
+        visibleShelfCount - 1,
+        topShelfUndersideMm,
+        drawerTopMm
+      );
+      shelfTopPositionsMm = [topShelfTopMm, ...dividedPositionsMm];
+    }
+    furnitureBox = {
+      ...furniture,
+      topMm: drawerTopMm,
+      bottomMm: drawerBottomMm,
+      heightMm: Math.max(0, drawerBottomMm - drawerTopMm),
+      referenceShelfTopMm: null,
+    };
+  } else if (furniture?.kind === "floating") {
+    const referenceShelfTopMm = topShelfTopMm + (bottomShelfTopMm - topShelfTopMm) / 2;
+    const requestedDrawerHeightMm = Math.max(
+      MODULE_FRONT_PREVIEW_DRAWER_TIER_HEIGHT_MM,
+      MODULE_FRONT_PREVIEW_DRAWER_TIER_HEIGHT_MM * furniture.tierCount
+    );
+    const maxDrawerBottomMm = Math.max(
+      referenceShelfTopMm + MODULE_FRONT_PREVIEW_MIN_DRAWER_HEIGHT_MM,
+      bottomShelfTopMm - MODULE_FRONT_PREVIEW_MIN_GAP_MM
+    );
+    const drawerBottomMm = Math.min(maxDrawerBottomMm, referenceShelfTopMm + requestedDrawerHeightMm);
+    const normalizedDrawerBottomMm = Math.max(
+      referenceShelfTopMm + MODULE_FRONT_PREVIEW_MIN_DRAWER_HEIGHT_MM,
+      drawerBottomMm
+    );
+    const upperSpanMm = Math.max(0, referenceShelfTopMm - topShelfTopMm);
+    const lowerSpanMm = Math.max(0, bottomShelfTopMm - normalizedDrawerBottomMm);
+    if (visibleShelfCount <= 1) {
+      shelfTopPositionsMm = visibleShelfCount === 1 ? [topShelfTopMm] : [];
+    } else {
+      const extraShelfCount = Math.max(0, visibleShelfCount - 2);
+      const totalSpanMm = upperSpanMm + lowerSpanMm;
+      let upperExtraCount = totalSpanMm > 0 ? Math.round((extraShelfCount * upperSpanMm) / totalSpanMm) : 0;
+      upperExtraCount = clampModuleFrontPreviewValue(upperExtraCount, 0, extraShelfCount);
+      if (upperSpanMm <= 0) upperExtraCount = 0;
+      let lowerExtraCount = extraShelfCount - upperExtraCount;
+      if (lowerSpanMm <= 0) {
+        upperExtraCount = extraShelfCount;
+        lowerExtraCount = 0;
+      }
+      const upperShelves = buildModuleFrontPreviewInteriorPositionsMm(
+        upperExtraCount,
+        topShelfTopMm,
+        referenceShelfTopMm
+      );
+      const lowerShelves = buildModuleFrontPreviewInteriorPositionsMm(
+        lowerExtraCount,
+        normalizedDrawerBottomMm,
+        bottomShelfTopMm
+      );
+      shelfTopPositionsMm = [topShelfTopMm, ...upperShelves, ...lowerShelves, bottomShelfTopMm];
+    }
+    furnitureBox = {
+      ...furniture,
+      topMm: referenceShelfTopMm,
+      bottomMm: normalizedDrawerBottomMm,
+      heightMm: Math.max(0, normalizedDrawerBottomMm - referenceShelfTopMm),
+      referenceShelfTopMm,
+    };
+  } else {
+    shelfTopPositionsMm = buildModuleFrontPreviewInterpolatedPositionsMm(
+      visibleShelfCount,
+      topShelfTopMm,
+      bottomShelfTopMm
+    );
+  }
+
+  const normalizedShelfTopPositionsMm = shelfTopPositionsMm
+    .map((value) => clampModuleFrontPreviewValue(value, 0, heightMm - shelfThicknessMm))
+    .sort((a, b) => a - b)
+    .reduce((acc, value) => {
+      if (!acc.length || Math.abs(acc[acc.length - 1] - value) >= 1) acc.push(value);
+      return acc;
+    }, []);
+
+  const lowestShelfTopMm = normalizedShelfTopPositionsMm.length
+    ? normalizedShelfTopPositionsMm[normalizedShelfTopPositionsMm.length - 1]
+    : 0;
+  const hangerCandidatesMm = [];
+  if (normalizedShelfTopPositionsMm.length > 1) {
+    normalizedShelfTopPositionsMm.slice(0, -1).forEach((shelfTopMm) => {
+      hangerCandidatesMm.push(shelfTopMm + shelfThicknessMm + MODULE_FRONT_PREVIEW_HANGER_OFFSET_MM);
+    });
+  }
+  if (furnitureBox?.kind === "floating") {
+    hangerCandidatesMm.push(furnitureBox.bottomMm + MODULE_FRONT_PREVIEW_HANGER_OFFSET_MM);
+  }
+  const normalizedHangerCandidatesMm = hangerCandidatesMm
+    .filter((value) => Number.isFinite(Number(value)))
+    .map((value) => Number(value))
+    .filter((value) => value > 0 && value < heightMm && value < lowestShelfTopMm)
+    .sort((a, b) => a - b)
+    .reduce((acc, value) => {
+      if (!acc.length || Math.abs(acc[acc.length - 1] - value) >= 1) acc.push(value);
+      return acc;
+    }, []);
+  const visibleRodCount = Math.min(normalizedRodCount, normalizedHangerCandidatesMm.length);
+  const rodOverflowCount = Math.max(0, normalizedRodCount - visibleRodCount);
+  const hangerPositionsMm = normalizedHangerCandidatesMm.slice(0, visibleRodCount);
+
+  return {
+    shelfTopPositionsMm: normalizedShelfTopPositionsMm,
+    shelfOverflowCount,
+    hangerPositionsMm,
+    rodOverflowCount,
+    furnitureBox,
+  };
+}
+
 function buildModuleFrontPreviewHtml({
   moduleLabel = "모듈",
   sizeLabel = "",
   shelfCount = 1,
+  rodCount = 0,
+  furnitureAddonId = "",
   componentSummary = "-",
   furnitureSummary = "-",
   type = "bay",
@@ -7219,33 +7495,143 @@ function buildModuleFrontPreviewHtml({
   postBarColor = "rgba(0, 0, 0, 0.2)",
 } = {}) {
   const normalizedShelfCount = Math.max(0, Math.floor(Number(shelfCount ?? 0) || 0));
-  const visibleShelfLineCount = Math.max(0, Math.min(8, normalizedShelfCount));
-  const overflowCount = normalizedShelfCount - visibleShelfLineCount;
-  const overflowBadge =
-    overflowCount > 0
-      ? `<span class="module-front-preview-chip">+${overflowCount}단 추가</span>`
-      : "";
+  const normalizedRodCount = Math.max(0, Math.floor(Number(rodCount ?? 0) || 0));
   const safeComponentSummary =
     componentSummary && componentSummary !== "-" ? componentSummary : "없음";
   const safeFurnitureSummary =
     furnitureSummary && furnitureSummary !== "-" ? furnitureSummary : "없음";
   const avgHeight = Math.max(0, Math.round(Number(averageHeightMm || 0)));
   const geometry = buildModuleFrontPreviewGeometry({ shelfWidthMm, averageHeightMm: avgHeight });
-  const shelfLinesHtml = Array.from({ length: visibleShelfLineCount }, (_, idx) => {
-    const ratio = visibleShelfLineCount === 1 ? 0.55 : (idx + 1) / (visibleShelfLineCount + 1);
-    return `
+  const layout = buildModuleFrontPreviewLayout({
+    shelfCount: normalizedShelfCount,
+    rodCount: normalizedRodCount,
+    furnitureAddonId,
+    geometry,
+  });
+  const frameHeightPx = Math.max(1, Number(geometry.heightPx || 1));
+  const mmToPx = (valueMm) =>
+    clampModuleFrontPreviewValue(
+      Math.round(Number(valueMm || 0) * Number(geometry.scale || 0)),
+      0,
+      frameHeightPx
+    );
+  const shelfLinesHtml = layout.shelfTopPositionsMm
+    .map((shelfTopMm) => {
+      const topPx = clampModuleFrontPreviewValue(
+        mmToPx(shelfTopMm),
+        0,
+        frameHeightPx - geometry.shelfThicknessPx
+      );
+      return `
+        <div
+          class="module-front-preview-shelf-line"
+          style="
+            top:${topPx}px;
+            left:${geometry.columnThicknessPx}px;
+            width:${geometry.shelfWidthPx}px;
+            height:${geometry.shelfThicknessPx}px;
+            background:${shelfColor};
+          "
+        ></div>
+      `;
+    })
+    .join("");
+  const hangerWidthPx = Math.max(28, Math.round(geometry.shelfWidthPx * 0.84));
+  const hangerLeftPx = geometry.columnThicknessPx + Math.round((geometry.shelfWidthPx - hangerWidthPx) / 2);
+  const hangerThicknessPx = Math.max(3, Math.min(7, Math.round(geometry.shelfThicknessPx * 0.45)));
+  const hangerLinesHtml = layout.hangerPositionsMm
+    .map((hangerTopMm) => {
+      const topPx = clampModuleFrontPreviewValue(mmToPx(hangerTopMm), 0, frameHeightPx - hangerThicknessPx);
+      return `
+        <div
+          class="module-front-preview-hanger-line"
+          style="
+            top:${topPx}px;
+            left:${hangerLeftPx}px;
+            width:${hangerWidthPx}px;
+            height:${hangerThicknessPx}px;
+            background:${postBarColor};
+          "
+        ></div>
+      `;
+    })
+    .join("");
+  let furnitureHtml = "";
+  if (layout.furnitureBox) {
+    const furnitureWidthPx = Math.max(40, Math.round(geometry.shelfWidthPx));
+    const furnitureLeftPx = geometry.columnThicknessPx;
+    const furnitureTopPx = clampModuleFrontPreviewValue(
+      mmToPx(layout.furnitureBox.topMm),
+      0,
+      frameHeightPx - 24
+    );
+    const furnitureHeightPxRaw = Math.max(
+      Math.round(Number(layout.furnitureBox.heightMm || 0) * Number(geometry.scale || 0)),
+      Math.max(26, Math.round(layout.furnitureBox.tierCount * 18))
+    );
+    const furnitureHeightPx = clampModuleFrontPreviewValue(
+      furnitureHeightPxRaw,
+      24,
+      frameHeightPx - furnitureTopPx
+    );
+    const furnitureBorderColor = buildModuleFrontPreviewAlphaColor(
+      shelfColor,
+      0.66,
+      "rgba(0, 0, 0, 0.24)"
+    );
+    const furnitureFillColor = buildModuleFrontPreviewAlphaColor(
+      shelfColor,
+      0.22,
+      "rgba(0, 0, 0, 0.08)"
+    );
+    const furnitureTierBorderColor = buildModuleFrontPreviewAlphaColor(
+      shelfColor,
+      0.5,
+      "rgba(0, 0, 0, 0.28)"
+    );
+    const furnitureTierFillColor = buildModuleFrontPreviewAlphaColor(
+      shelfColor,
+      0.12,
+      "rgba(255, 255, 255, 0.78)"
+    );
+    const tierCellsHtml = Array.from({ length: layout.furnitureBox.tierCount }, () => {
+      return `<span class="module-front-preview-furniture-tier"></span>`;
+    }).join("");
+    furnitureHtml = `
       <div
-        class="module-front-preview-shelf-line"
+        class="module-front-preview-furniture module-front-preview-furniture--${escapeHtml(layout.furnitureBox.kind)}"
         style="
-          top:${Math.round(ratio * 100)}%;
-          left:${geometry.columnThicknessPx}px;
-          width:${geometry.shelfWidthPx}px;
-          height:${geometry.shelfThicknessPx}px;
-          background:${shelfColor};
+          top:${furnitureTopPx}px;
+          left:${furnitureLeftPx}px;
+          width:${furnitureWidthPx}px;
+          height:${furnitureHeightPx}px;
+          --module-front-furniture-border:${furnitureBorderColor};
+          --module-front-furniture-fill:${furnitureFillColor};
+          --module-front-furniture-tier-border:${furnitureTierBorderColor};
+          --module-front-furniture-tier-fill:${furnitureTierFillColor};
         "
-      ></div>
+      >
+        <div
+          class="module-front-preview-furniture-grid"
+          style="grid-template-rows:repeat(${layout.furnitureBox.tierCount}, minmax(0, 1fr));"
+        >
+          ${tierCellsHtml}
+        </div>
+      </div>
     `;
-  }).join("");
+  }
+  const overflowChips = [];
+  if (layout.shelfOverflowCount > 0) overflowChips.push(`+${layout.shelfOverflowCount} 선반`);
+  if (layout.rodOverflowCount > 0) overflowChips.push(`+${layout.rodOverflowCount} 행거`);
+  const overflowChipsHtml = overflowChips.length
+    ? `
+      <div class="module-front-preview-chip-stack">
+        ${overflowChips
+          .map((label) => `<span class="module-front-preview-chip">${escapeHtml(label)}</span>`)
+          .join("")}
+      </div>
+    `
+    : "";
 
   return `
     <div class="module-front-preview-card module-front-preview-card--${escapeHtml(type)}">
@@ -7260,9 +7646,11 @@ function buildModuleFrontPreviewHtml({
         >
           <div class="module-front-preview-side module-front-preview-side--left" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
           <div class="module-front-preview-side module-front-preview-side--right" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
+          ${furnitureHtml}
           ${shelfLinesHtml}
+          ${hangerLinesHtml}
         </div>
-        ${overflowBadge}
+        ${overflowChipsHtml}
       </div>
       <div class="module-front-preview-meta">
         <div class="module-front-preview-row">
@@ -7307,7 +7695,12 @@ function renderBayOptionFrontPreview() {
   syncBayOptionFurnitureSelectionAvailability(widthValue);
   const shelfCount = Number(countInput?.value ?? shelf.count ?? 0);
   const rodCount = Number(rodCountInput?.value || getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID) || 0);
-  const { componentSummary, furnitureSummary } = buildModalDraftAddonBreakdown(shelf.id, rodCount);
+  const {
+    componentSummary,
+    furnitureSummary,
+    rodCount: normalizedRodCount,
+    furnitureAddonId,
+  } = buildModalDraftAddonBreakdown(shelf.id, rodCount);
   const averageHeightMm = getModuleOptionAverageHeightMm();
   const sizeLabel = widthValue > 0 ? `폭 ${Math.round(widthValue)}mm` : "";
   const previewColors = getModuleFrontPreviewMaterialColors();
@@ -7316,6 +7709,8 @@ function renderBayOptionFrontPreview() {
     moduleLabel: "모듈",
     sizeLabel,
     shelfCount,
+    rodCount: normalizedRodCount,
+    furnitureAddonId,
     componentSummary,
     furnitureSummary,
     type: "bay",
@@ -7363,7 +7758,12 @@ function renderCornerOptionFrontPreview() {
   const rodCount = Number(
     rodCountInput?.value || getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID) || 0
   );
-  const { componentSummary, furnitureSummary } = buildModalDraftAddonBreakdown(corner.id, rodCount);
+  const {
+    componentSummary,
+    furnitureSummary,
+    rodCount: normalizedRodCount,
+    furnitureAddonId,
+  } = buildModalDraftAddonBreakdown(corner.id, rodCount);
   const averageHeightMm = getModuleOptionAverageHeightMm();
   const previewColors = getModuleFrontPreviewMaterialColors();
   setCornerCustomCutError(isCustomCut && !customValidation.valid ? customValidation.message : "");
@@ -7372,6 +7772,8 @@ function renderCornerOptionFrontPreview() {
     moduleLabel: getCornerLabel(corner),
     sizeLabel,
     shelfCount,
+    rodCount: normalizedRodCount,
+    furnitureAddonId,
     componentSummary,
     furnitureSummary,
     type: "corner",

@@ -2231,6 +2231,7 @@ th, td {
 }
 
 .module-front-preview-canvas {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2283,7 +2284,44 @@ th, td {
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.28);
   box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
-  transform: translateY(-50%);
+}
+
+.module-front-preview-hanger-line {
+  position: absolute;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.22);
+}
+
+.module-front-preview-furniture {
+  position: absolute;
+  border: 1px solid var(--module-front-furniture-border, rgba(0, 0, 0, 0.24));
+  border-radius: 8px;
+  background: var(--module-front-furniture-fill, rgba(0, 0, 0, 0.08));
+  overflow: hidden;
+}
+
+.module-front-preview-furniture-grid {
+  position: absolute;
+  inset: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.module-front-preview-furniture-tier {
+  border: 1px solid var(--module-front-furniture-tier-border, rgba(0, 0, 0, 0.28));
+  border-radius: 5px;
+  background: var(--module-front-furniture-tier-fill, rgba(255, 255, 255, 0.78));
+}
+
+.module-front-preview-chip-stack {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
 }
 
 .module-front-preview-meta {
