@@ -7449,9 +7449,13 @@ function buildModuleFrontPreviewLayout({
   const lowestShelfTopMm = normalizedShelfTopPositionsMm.length
     ? normalizedShelfTopPositionsMm[normalizedShelfTopPositionsMm.length - 1]
     : 0;
+  const allowLowestShelfHanger = furnitureBox?.kind === "floor";
   const hangerCandidatesMm = [];
-  if (normalizedShelfTopPositionsMm.length > 1) {
-    normalizedShelfTopPositionsMm.slice(0, -1).forEach((shelfTopMm) => {
+  const hangerAnchorShelves = allowLowestShelfHanger
+    ? normalizedShelfTopPositionsMm
+    : normalizedShelfTopPositionsMm.slice(0, -1);
+  if (hangerAnchorShelves.length) {
+    hangerAnchorShelves.forEach((shelfTopMm) => {
       hangerCandidatesMm.push(shelfTopMm + shelfThicknessMm + MODULE_FRONT_PREVIEW_HANGER_OFFSET_MM);
     });
   }
@@ -7461,7 +7465,12 @@ function buildModuleFrontPreviewLayout({
   const normalizedHangerCandidatesMm = hangerCandidatesMm
     .filter((value) => Number.isFinite(Number(value)))
     .map((value) => Number(value))
-    .filter((value) => value > 0 && value < heightMm && value < lowestShelfTopMm)
+    .filter(
+      (value) =>
+        value > 0 &&
+        value < heightMm &&
+        (allowLowestShelfHanger || value < lowestShelfTopMm)
+    )
     .sort((a, b) => a - b)
     .reduce((acc, value) => {
       if (!acc.length || Math.abs(acc[acc.length - 1] - value) >= 1) acc.push(value);
