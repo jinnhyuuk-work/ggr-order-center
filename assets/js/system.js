@@ -7245,7 +7245,7 @@ function getModuleFrontPreviewMaterialColors(input = readCurrentInputs()) {
 }
 
 const MODULE_FRONT_PREVIEW_REFERENCE_HEIGHT_MM = 2300;
-const MODULE_FRONT_PREVIEW_TOP_UNDERSIDE_SPAN_MM = 1960;
+const MODULE_FRONT_PREVIEW_TOP_UNDERSIDE_SPAN_MM = 1940;
 const MODULE_FRONT_PREVIEW_BOTTOM_SHELF_TOP_FROM_FLOOR_MM = 70;
 const MODULE_FRONT_PREVIEW_HANGER_OFFSET_MM = 40;
 const MODULE_FRONT_PREVIEW_DRAWER_TIER_HEIGHT_MM = 220;
@@ -7300,6 +7300,39 @@ function buildModuleFrontPreviewInteriorPositionsMm(count, startMm, endMm) {
     { length: normalizedCount },
     (_, index) => safeStart + span * ((index + 1) / (normalizedCount + 1))
   );
+}
+
+function buildModuleFrontPreviewSteppedShelfPositionsMm({
+  shelfCount = 0,
+  topShelfTopMm = 0,
+  bottomShelfTopMm = 0,
+  shelfThicknessMm = 20,
+} = {}) {
+  const normalizedShelfCount = Math.max(0, Math.floor(Number(shelfCount || 0)));
+  if (normalizedShelfCount <= 0) return [];
+  const safeTopShelfTopMm = Number(topShelfTopMm || 0);
+  const safeBottomShelfTopMm = Number(bottomShelfTopMm || 0);
+  const safeShelfThicknessMm = Math.max(1, Number(shelfThicknessMm || 20));
+  if (normalizedShelfCount === 1) return [safeTopShelfTopMm];
+  const clearSpanMm = Math.max(
+    0,
+    safeBottomShelfTopMm - (safeTopShelfTopMm + safeShelfThicknessMm)
+  );
+  const internalShelfCount = Math.max(0, normalizedShelfCount - 2);
+  const gapCount = Math.max(1, normalizedShelfCount - 1);
+  const gapMm = Math.max(
+    0,
+    (clearSpanMm - internalShelfCount * safeShelfThicknessMm) / gapCount
+  );
+  const positions = [safeTopShelfTopMm];
+  for (let index = 1; index < normalizedShelfCount; index += 1) {
+    const prevTopMm = positions[index - 1];
+    positions.push(prevTopMm + safeShelfThicknessMm + gapMm);
+  }
+  if (positions.length >= 2) {
+    positions[positions.length - 1] = safeBottomShelfTopMm;
+  }
+  return positions;
 }
 
 function getModuleFrontPreviewShelfAnchorsMm({ heightMm = 0, shelfThicknessMm = 20 } = {}) {
@@ -7431,11 +7464,12 @@ function buildModuleFrontPreviewLayout({
       referenceShelfTopMm,
     };
   } else {
-    shelfTopPositionsMm = buildModuleFrontPreviewInterpolatedPositionsMm(
-      visibleShelfCount,
+    shelfTopPositionsMm = buildModuleFrontPreviewSteppedShelfPositionsMm({
+      shelfCount: visibleShelfCount,
       topShelfTopMm,
-      bottomShelfTopMm
-    );
+      bottomShelfTopMm,
+      shelfThicknessMm,
+    });
   }
 
   const normalizedShelfTopPositionsMm = shelfTopPositionsMm
@@ -7509,8 +7543,11 @@ function buildModuleFrontPreviewHtml({
     componentSummary && componentSummary !== "-" ? componentSummary : "없음";
   const safeFurnitureSummary =
     furnitureSummary && furnitureSummary !== "-" ? furnitureSummary : "없음";
-  const avgHeight = Math.max(0, Math.round(Number(averageHeightMm || 0)));
-  const geometry = buildModuleFrontPreviewGeometry({ shelfWidthMm, averageHeightMm: avgHeight });
+  const previewHeightMm = MODULE_FRONT_PREVIEW_REFERENCE_HEIGHT_MM;
+  const geometry = buildModuleFrontPreviewGeometry({
+    shelfWidthMm,
+    averageHeightMm: previewHeightMm,
+  });
   const layout = buildModuleFrontPreviewLayout({
     shelfCount: normalizedShelfCount,
     rodCount: normalizedRodCount,
@@ -7629,6 +7666,44 @@ function buildModuleFrontPreviewHtml({
       </div>
     `;
   }
+  const dimensionEntries = [];
+  if (layout.shelfTopPositionsMm.length) {
+    const topShelfTopMm = Number(layout.shelfTopPositionsMm[0] || 0);
+    if (topShelfTopMm > 0) {
+      dimensionEntries.push({
+        key: "top-remainder",
+        label: "나머지",
+        centerMm: topShelfTopMm / 2,
+      });
+    }
+  }
+  for (let index = 0; index < layout.shelfTopPositionsMm.length - 1; index += 1) {
+    const upperShelfTopMm = Number(layout.shelfTopPositionsMm[index] || 0);
+    const lowerShelfTopMm = Number(layout.shelfTopPositionsMm[index + 1] || 0);
+    const clearMm = Math.max(0, lowerShelfTopMm - (upperShelfTopMm + geometry.shelfThicknessMm));
+    const centerMm = upperShelfTopMm + geometry.shelfThicknessMm + clearMm / 2;
+    const roundedClearMm = Math.max(0, Math.round(clearMm / 10) * 10);
+    dimensionEntries.push({
+      key: `clear-${index}`,
+      label: `${roundedClearMm}mm`,
+      centerMm,
+    });
+  }
+  const dimensionAnchorLeftPx = Math.round(geometry.totalWidthPx / 2);
+  const dimensionEntriesHtml = dimensionEntries
+    .map((entry) => {
+      const topPx = clampModuleFrontPreviewValue(mmToPx(entry.centerMm), 6, frameHeightPx - 6);
+      return `
+        <div
+          class="module-front-preview-dimension"
+          style="top:${topPx}px; left:${dimensionAnchorLeftPx}px;"
+        >
+          <span class="module-front-preview-dimension-label">${escapeHtml(entry.label)}</span>
+        </div>
+      `;
+    })
+    .join("");
+  const dimensionGutterPx = 0;
   const overflowChips = [];
   if (layout.shelfOverflowCount > 0) overflowChips.push(`+${layout.shelfOverflowCount} 선반`);
   if (layout.rodOverflowCount > 0) overflowChips.push(`+${layout.rodOverflowCount} 행거`);
@@ -7651,13 +7726,14 @@ function buildModuleFrontPreviewHtml({
       <div class="module-front-preview-canvas" aria-hidden="true">
         <div
           class="module-front-preview-box module-front-preview-box--${escapeHtml(type)}"
-          style="width:${geometry.totalWidthPx}px; height:${geometry.heightPx}px;"
+          style="width:${geometry.totalWidthPx}px; height:${geometry.heightPx}px; margin-left:${dimensionGutterPx}px;"
         >
           <div class="module-front-preview-side module-front-preview-side--left" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
           <div class="module-front-preview-side module-front-preview-side--right" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
           ${furnitureHtml}
           ${shelfLinesHtml}
           ${hangerLinesHtml}
+          ${dimensionEntriesHtml}
         </div>
         ${overflowChipsHtml}
       </div>
