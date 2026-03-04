@@ -2006,6 +2006,11 @@ th, td {
   margin-bottom: 2px;
 }
 
+.card-base .price.is-consult {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
 .card-base .material-tier-heading {
   font-size: var(--font-size-xs);
   font-weight: 700;

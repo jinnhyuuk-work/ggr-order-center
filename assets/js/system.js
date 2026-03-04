@@ -9,6 +9,7 @@ import {
   SYSTEM_ADDON_ITEM_IDS,
   SYSTEM_ADDON_OPTION_CONFIG,
   SYSTEM_ADDON_ITEMS,
+  SYSTEM_FURNITURE_WIDTH_POLICY,
   SYSTEM_MODULE_OPTION_CONFIG,
   SYSTEM_MODULE_PRESETS,
   SYSTEM_MODULE_PRESET_CATEGORIES,
@@ -159,7 +160,23 @@ const SHELF_THICKNESS_MM = 18;
 const COLUMN_THICKNESS_MM = 18;
 // Module input width (shelf width only, without post bar).
 const MODULE_SHELF_WIDTH_LIMITS = Object.freeze({ min: 400, max: 1000 });
-const FURNITURE_ALLOWED_NORMAL_WIDTHS = Object.freeze([600, 800]);
+const FURNITURE_ALLOWED_NORMAL_WIDTHS = Object.freeze(
+  Array.isArray(SYSTEM_FURNITURE_WIDTH_POLICY?.standardWidths)
+    ? SYSTEM_FURNITURE_WIDTH_POLICY.standardWidths.map((width) => Math.round(Number(width || 0))).filter((width) => width > 0)
+    : [600, 800]
+);
+const FURNITURE_SELECTABLE_RANGE_MIN_MM = Math.max(
+  1,
+  Math.round(Number(SYSTEM_FURNITURE_WIDTH_POLICY?.selectableRange?.min || 600))
+);
+const FURNITURE_SELECTABLE_RANGE_MAX_MM = Math.max(
+  FURNITURE_SELECTABLE_RANGE_MIN_MM,
+  Math.round(Number(SYSTEM_FURNITURE_WIDTH_POLICY?.selectableRange?.max || 800))
+);
+const FURNITURE_DISABLED_AT_OR_BELOW_MM = Math.max(
+  0,
+  Math.round(Number(SYSTEM_FURNITURE_WIDTH_POLICY?.disabledAtOrBelow || 400))
+);
 const SUPPORT_BRACKET_WIDTH_MM = 15;
 const SUPPORT_BRACKET_INSERT_MM = 10;
 const SUPPORT_VISIBLE_MM = SUPPORT_BRACKET_WIDTH_MM - SUPPORT_BRACKET_INSERT_MM;
@@ -2437,6 +2454,12 @@ function renderPreviewPresetModuleCards() {
     .map((item) => {
       const type = previewPresetPickerFlowState.moduleType === "corner" ? "corner" : "normal";
       const selected = String(item.id) === String(previewPresetPickerFlowState.selectedPresetId);
+      const selectedFilterKey =
+        String(previewPresetPickerFlowState.filterKey || getPreviewPresetFilterKeyForItem(item, type) || "");
+      const priceInfo = resolvePresetModulePriceInfo(item, {
+        moduleType: type,
+        selectedFilterKey,
+      });
       const { componentSummary, furnitureSummary } = buildPresetAddonBreakdownFromPreset(item);
       const meta = `선반 ${Number(item.count || 1)}개 · 구성품 ${
         componentSummary === "-" ? "없음" : componentSummary
@@ -2451,6 +2474,7 @@ function renderPreviewPresetModuleCards() {
         >
           <div class="material-visual module_visual"></div>
           <span class="preset-title">${escapeHtml(item.label)}</span>
+          <span class="price${priceInfo.isConsult ? " is-consult" : ""}">${escapeHtml(priceInfo.label)}</span>
           <span class="preset-meta">${escapeHtml(meta)}</span>
           ${item.description ? `<span class="preset-desc">${escapeHtml(item.description)}</span>` : ""}
         </button>
@@ -3162,9 +3186,209 @@ function getEdgeModuleTypeById(edgeId) {
   return edge.type === "corner" ? "corner" : "normal";
 }
 
+function getNormalModuleShelfTierByWidth(widthMm) {
+  const width = Math.round(Number(widthMm || 0));
+  if (!Number.isFinite(width) || width <= 0) return null;
+  const tiers = Array.isArray(SYSTEM_SHELF_TIER_PRICING?.normal?.tiers)
+    ? SYSTEM_SHELF_TIER_PRICING.normal.tiers
+    : [];
+  return tiers.find((tier) => {
+    if (String(tier?.matchMode || "range") !== "range") return false;
+    const minExclusiveMm = Number(tier?.minWidthExclusiveMm);
+    const maxWidthMm = Number(tier?.maxWidthMm);
+    if (Number.isFinite(minExclusiveMm) && !(width > minExclusiveMm)) return false;
+    if (Number.isFinite(maxWidthMm) && maxWidthMm > 0 && !(width <= maxWidthMm)) return false;
+    return true;
+  }) || null;
+}
+
+function resolveNormalModuleShelfUnitPriceByWidth(widthMm) {
+  const tier = getNormalModuleShelfTierByWidth(widthMm);
+  const shelfMaterial = SYSTEM_SHELF_MATERIALS[materialPickers?.shelf?.selectedMaterialId];
+  const unitPrice = resolveTierUnitPrice(tier, shelfMaterial);
+  return {
+    tier,
+    unitPrice: unitPrice > 0 ? unitPrice : 0,
+    hasMaterial: Boolean(shelfMaterial),
+    isConsult: !tier || Boolean(tier?.isCustomPrice) || unitPrice <= 0,
+  };
+}
+
+function resolveFurnitureSelectionPolicyForNormalWidth(widthMm) {
+  const normalizedWidth = Math.round(Number(widthMm || 0));
+  if (!Number.isFinite(normalizedWidth) || normalizedWidth <= 0) {
+    return {
+      widthMm: 0,
+      canSelect: false,
+      isStandardWidth: false,
+      isConsultPriceWidth: false,
+      blockedReason: "모듈 정보를 확인해주세요.",
+    };
+  }
+  const isStandardWidth = FURNITURE_ALLOWED_NORMAL_WIDTHS.includes(normalizedWidth);
+  const withinSelectableRange =
+    normalizedWidth >= FURNITURE_SELECTABLE_RANGE_MIN_MM &&
+    normalizedWidth <= FURNITURE_SELECTABLE_RANGE_MAX_MM;
+  const canSelect = isStandardWidth || (withinSelectableRange && !isStandardWidth);
+  const isConsultPriceWidth = canSelect && !isStandardWidth;
+  const blockedReason = canSelect
+    ? ""
+    : `가구는 일반모듈 폭 ${FURNITURE_SELECTABLE_RANGE_MIN_MM}~${FURNITURE_SELECTABLE_RANGE_MAX_MM}mm에서만 선택할 수 있습니다.`;
+  return {
+    widthMm: normalizedWidth,
+    canSelect,
+    isStandardWidth,
+    isConsultPriceWidth,
+    blockedReason,
+    isDisabledByLowerBound: normalizedWidth <= FURNITURE_DISABLED_AT_OR_BELOW_MM,
+  };
+}
+
+function resolveFurnitureSelectionPolicyForEdge(edgeOrId, { modalReturnTo = "" } = {}) {
+  const edge = getEdgeByIdOrInstance(edgeOrId);
+  if (!edge) {
+    return {
+      moduleType: "normal",
+      widthMm: 0,
+      canSelect: false,
+      isStandardWidth: false,
+      isConsultPriceWidth: false,
+      blockedReason: "모듈 정보를 확인해주세요.",
+    };
+  }
+  if (edge.type === "corner") {
+    return {
+      moduleType: "corner",
+      widthMm: Math.round(Number(edge.width || 0)),
+      canSelect: false,
+      isStandardWidth: false,
+      isConsultPriceWidth: false,
+      blockedReason: "코너 모듈에는 가구를 적용할 수 없습니다.",
+    };
+  }
+  const widthMm = getFurnitureSelectionWidthMmForEdge(edge, { modalReturnTo });
+  const policy = resolveFurnitureSelectionPolicyForNormalWidth(widthMm);
+  return {
+    ...policy,
+    moduleType: "normal",
+  };
+}
+
+function resolveFurnitureAddonUnitPriceByWidth(addonItem, widthMm) {
+  const addon = addonItem && typeof addonItem === "object" ? addonItem : null;
+  if (!addon) return 0;
+  const normalizedWidth = Math.round(Number(widthMm || 0));
+  const priceByWidth =
+    addon?.priceByWidth && typeof addon.priceByWidth === "object" ? addon.priceByWidth : null;
+  if (priceByWidth && Number.isFinite(normalizedWidth) && normalizedWidth > 0) {
+    const explicit = Number(priceByWidth[String(normalizedWidth)] || priceByWidth[normalizedWidth] || 0);
+    if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit);
+  }
+  const basePrice = Number(addon?.price || 0);
+  if (Number.isFinite(basePrice) && basePrice > 0) return Math.round(basePrice);
+  return 0;
+}
+
+function resolveFurnitureAddonDisplayPriceInfo(addonItem, { widthPolicy = null, widthMm = 0 } = {}) {
+  const policy =
+    widthPolicy && typeof widthPolicy === "object"
+      ? widthPolicy
+      : resolveFurnitureSelectionPolicyForNormalWidth(widthMm);
+  if (!policy.canSelect) {
+    return {
+      isConsult: true,
+      unitPrice: 0,
+      label: "선택 불가",
+    };
+  }
+  if (policy.isConsultPriceWidth) {
+    return {
+      isConsult: true,
+      unitPrice: 0,
+      label: "상담 안내",
+    };
+  }
+  const unitPrice = resolveFurnitureAddonUnitPriceByWidth(addonItem, policy.widthMm);
+  if (unitPrice <= 0) {
+    return {
+      isConsult: true,
+      unitPrice: 0,
+      label: "상담 안내",
+    };
+  }
+  return {
+    isConsult: false,
+    unitPrice,
+    label: formatWon(unitPrice),
+  };
+}
+
+function resolvePresetModuleFilterWidthMm(item, moduleType, selectedFilterKey = "") {
+  const normalizedType = moduleType === "corner" ? "corner" : "normal";
+  const key = String(selectedFilterKey || "");
+  if (normalizedType === "corner") {
+    if (key.includes("x")) {
+      const [rawPrimary = "0", rawSecondary = "0"] = key.toLowerCase().split("x");
+      const primaryMm = Math.round(Number(rawPrimary || 0));
+      const secondaryMm = Math.round(Number(rawSecondary || 0));
+      return Math.max(primaryMm, secondaryMm, 0);
+    }
+    return 800;
+  }
+  const keyWidth = Math.round(Number(key || 0));
+  if (Number.isFinite(keyWidth) && keyWidth > 0) return keyWidth;
+  const fallbackWidth = Math.round(Number(item?.width || 0));
+  return fallbackWidth > 0 ? fallbackWidth : 0;
+}
+
+function resolvePresetModulePriceInfo(item, { moduleType = "normal", selectedFilterKey = "" } = {}) {
+  const normalizedType = moduleType === "corner" ? "corner" : "normal";
+  const shelfCount = Math.max(1, Math.floor(Number(item?.count || 1)));
+  const rodCount = Math.max(0, Math.floor(Number(item?.rodCount || 0)));
+  const shelfWidthMm = resolvePresetModuleFilterWidthMm(item, normalizedType, selectedFilterKey);
+  const shelfPricing = resolveNormalModuleShelfUnitPriceByWidth(shelfWidthMm);
+  if (normalizedType === "corner") {
+    const cornerTier = Array.isArray(SYSTEM_SHELF_TIER_PRICING?.corner?.tiers)
+      ? SYSTEM_SHELF_TIER_PRICING.corner.tiers.find((tier) => !Boolean(tier?.isCustomPrice))
+      : null;
+    const shelfMaterial = SYSTEM_SHELF_MATERIALS[materialPickers?.shelf?.selectedMaterialId];
+    const cornerUnitPrice = resolveTierUnitPrice(cornerTier, shelfMaterial);
+    const rodUnitPrice = resolveFurnitureAddonUnitPriceByWidth(getAddonItemById(ADDON_CLOTHES_ROD_ID), shelfWidthMm);
+    if (!cornerTier || cornerUnitPrice <= 0) {
+      return { isConsult: true, total: 0, label: "상담 안내" };
+    }
+    const total = Math.round(cornerUnitPrice * shelfCount + rodUnitPrice * rodCount);
+    return total > 0
+      ? { isConsult: false, total, label: formatWon(total) }
+      : { isConsult: true, total: 0, label: "상담 안내" };
+  }
+
+  if (shelfPricing.isConsult || shelfPricing.unitPrice <= 0) {
+    return { isConsult: true, total: 0, label: "상담 안내" };
+  }
+  const rodUnitPrice = resolveFurnitureAddonUnitPriceByWidth(getAddonItemById(ADDON_CLOTHES_ROD_ID), shelfWidthMm);
+  const furnitureAddonIds = getPresetFurnitureAddonIds(item);
+  let furnitureTotal = 0;
+  for (const addonId of furnitureAddonIds) {
+    const addon = getAddonItemById(addonId);
+    const addonPriceInfo = resolveFurnitureAddonDisplayPriceInfo(addon, {
+      widthPolicy: resolveFurnitureSelectionPolicyForNormalWidth(shelfWidthMm),
+      widthMm: shelfWidthMm,
+    });
+    if (addonPriceInfo.isConsult) {
+      return { isConsult: true, total: 0, label: "상담 안내" };
+    }
+    furnitureTotal += Number(addonPriceInfo.unitPrice || 0);
+  }
+  const total = Math.round(shelfPricing.unitPrice * shelfCount + rodUnitPrice * rodCount + furnitureTotal);
+  return total > 0
+    ? { isConsult: false, total, label: formatWon(total) }
+    : { isConsult: true, total: 0, label: "상담 안내" };
+}
+
 function isFurnitureSelectableForNormalModuleWidth(widthMm) {
-  const normalized = Math.round(Number(widthMm || 0));
-  return FURNITURE_ALLOWED_NORMAL_WIDTHS.includes(normalized);
+  const policy = resolveFurnitureSelectionPolicyForNormalWidth(widthMm);
+  return policy.canSelect;
 }
 
 function getEdgeByIdOrInstance(edgeOrId) {
@@ -3187,21 +3411,26 @@ function getFurnitureSelectionWidthMmForEdge(edgeOrId, { modalReturnTo = "" } = 
 }
 
 function canSelectFurnitureForEdge(edgeOrId, { modalReturnTo = "" } = {}) {
-  const edge = getEdgeByIdOrInstance(edgeOrId);
-  if (!edge) return false;
-  if (edge.type === "corner") return false;
-  const widthMm = getFurnitureSelectionWidthMmForEdge(edge, { modalReturnTo });
-  return isFurnitureSelectableForNormalModuleWidth(widthMm);
+  const policy = resolveFurnitureSelectionPolicyForEdge(edgeOrId, { modalReturnTo });
+  return policy.canSelect;
 }
 
 function getFurnitureAddonBlockedReason(edgeOrId, { modalReturnTo = "" } = {}) {
-  const edge = getEdgeByIdOrInstance(edgeOrId);
-  if (!edge) return "모듈 정보를 확인해주세요.";
-  if (edge.type === "corner") return "코너 모듈에는 가구를 적용할 수 없습니다.";
-  if (!canSelectFurnitureForEdge(edge, { modalReturnTo })) {
-    return "가구는 일반모듈 폭 600mm 또는 800mm에서만 선택할 수 있습니다.";
-  }
-  return "";
+  const policy = resolveFurnitureSelectionPolicyForEdge(edgeOrId, { modalReturnTo });
+  return policy.canSelect ? "" : String(policy.blockedReason || "가구 선택이 불가능합니다.");
+}
+
+function hasFurnitureAddonSelection(addons = []) {
+  return (Array.isArray(addons) ? addons : []).some(
+    (addonId) => String(addonId || "") !== ADDON_CLOTHES_ROD_ID
+  );
+}
+
+function shouldTreatBayFurniturePriceAsConsult(bay = {}) {
+  if (Boolean(bay?.isCorner)) return false;
+  if (!hasFurnitureAddonSelection(bay?.addons)) return false;
+  const policy = resolveFurnitureSelectionPolicyForNormalWidth(Number(bay?.width || 0));
+  return !policy.canSelect || policy.isConsultPriceWidth;
 }
 
 function clearFurnitureAddonsForEdge(edgeId) {
@@ -3624,6 +3853,7 @@ function setPreviewInfoMode(mode, { rerender = true } = {}) {
 
 function buildShelfAddonChipsHtml(id, emptyText = "선택된 가구 없음") {
   const quantities = enforceSingleSelectableAddon(id);
+  const widthPolicy = resolveFurnitureSelectionPolicyForEdge(id);
   const rows = sortAddonEntriesWithRodFirst(Object.entries(quantities))
     .map(([addonId, qty]) => {
       if (addonId === ADDON_CLOTHES_ROD_ID) return "";
@@ -3631,13 +3861,19 @@ function buildShelfAddonChipsHtml(id, emptyText = "선택된 가구 없음") {
       const count = Math.max(0, Math.floor(Number(qty || 0)));
       if (!addon || count < 1) return "";
       const name = `${addon.name}${count > 1 ? ` x${count}` : ""}`;
-      const totalPrice = (addon.price || 0) * count;
+      const priceInfo = resolveFurnitureAddonDisplayPriceInfo(addon, {
+        widthPolicy,
+        widthMm: Number(widthPolicy?.widthMm || 0),
+      });
+      const totalPriceLabel = priceInfo.isConsult
+        ? "상담 안내"
+        : formatWon(Math.max(0, Number(priceInfo.unitPrice || 0)) * count);
       return `
         <div class="addon-chip">
           <div class="material-visual" style="background:#ddd;"></div>
           <div class="info">
             <div class="name">${escapeHtml(name)}</div>
-            <div class="meta">${totalPrice.toLocaleString()}원</div>
+            <div class="meta">${escapeHtml(totalPriceLabel)}</div>
           </div>
         </div>
       `;
@@ -6434,13 +6670,18 @@ function autoCalculatePrice() {
         customPrimaryMm: bay.customPrimaryMm,
         customSecondaryMm: bay.customSecondaryMm,
       };
-      const detail = calcBayDetail({
+      let detail = calcBayDetail({
         shelf,
         addons: bay.addons,
         quantity: 1,
         isCorner: Boolean(bay.isCorner),
       });
-      const addonCost = calcAddonCostBreakdown(bay.addons, 1);
+      if (shouldTreatBayFurniturePriceAsConsult(bay)) {
+        detail = applyConsultPriceToDetail(detail);
+      }
+      const addonCost = detail.isCustomPrice
+        ? { componentCost: 0, furnitureCost: 0 }
+        : calcAddonCostBreakdown(bay.addons, 1);
       return {
         materialCost: acc.materialCost + detail.materialCost,
         processingCost: acc.processingCost + detail.processingCost,
@@ -7039,14 +7280,15 @@ function syncBayOptionFurnitureSelectionAvailability(fallbackWidth = 0) {
   const addonBtn = $("#bayAddonBtn");
   if (!addonBtn) return false;
   const widthMm = getBayOptionModalWidthMm(fallbackWidth);
-  const canSelect = isFurnitureSelectableForNormalModuleWidth(widthMm);
+  const policy = resolveFurnitureSelectionPolicyForNormalWidth(widthMm);
+  const canSelect = policy.canSelect;
   addonBtn.disabled = !canSelect;
   addonBtn.classList.toggle("btn-disabled", !canSelect);
   addonBtn.setAttribute("aria-disabled", canSelect ? "false" : "true");
   if (canSelect) {
     addonBtn.removeAttribute("title");
   } else {
-    addonBtn.title = "가구는 일반모듈 폭 600mm 또는 800mm에서만 선택할 수 있습니다.";
+    addonBtn.title = policy.blockedReason || "가구 선택이 불가능합니다.";
   }
   return canSelect;
 }
@@ -8231,6 +8473,9 @@ function renderSystemAddonModalCards() {
   if (!container) return;
   container.innerHTML = "";
   const allSelectableItems = getSelectableSystemAddonItems();
+  const widthPolicy = resolveFurnitureSelectionPolicyForEdge(activeShelfAddonId, {
+    modalReturnTo: shelfAddonModalReturnTo,
+  });
   renderSystemAddonModalCategoryFilterTabs(allSelectableItems);
   const selectableItems = getFilteredSystemAddonModalItems(allSelectableItems);
   if (!selectableItems.length) {
@@ -8239,13 +8484,17 @@ function renderSystemAddonModalCards() {
     return;
   }
   selectableItems.forEach((item) => {
+    const priceInfo = resolveFurnitureAddonDisplayPriceInfo(item, {
+      widthPolicy,
+      widthMm: Number(widthPolicy?.widthMm || 0),
+    });
     const label = document.createElement("label");
     label.className = "card-base option-card";
     label.innerHTML = `
       <input type="checkbox" value="${item.id}" />
       <div class="material-visual"></div>
       <div class="name">${item.name}</div>
-      <div class="price">${item.price.toLocaleString()}원</div>
+      <div class="price${priceInfo.isConsult ? " is-consult" : ""}">${escapeHtml(priceInfo.label)}</div>
       ${item.description ? `<div class="description">${item.description}</div>` : ""}
     `;
     container.appendChild(label);
@@ -8380,6 +8629,9 @@ function commitBaysToEstimate() {
       quantity: 1,
       isCorner: Boolean(bay.isCorner),
     });
+    if (shouldTreatBayFurniturePriceAsConsult(bay)) {
+      detail = applyConsultPriceToDetail(detail);
+    }
     if (isLayoutConsultStatus(layoutConsult)) {
       detail = applyConsultPriceToDetail(detail);
     }
@@ -8655,6 +8907,13 @@ function updateSystemGroupQuantity(groupId, quantity) {
         quantity: nextQty,
         isCorner: Boolean(item.isCorner),
       });
+      if (shouldTreatBayFurniturePriceAsConsult({
+        width: Number(item?.shelf?.width || 0),
+        addons: item?.addons,
+        isCorner: Boolean(item?.isCorner),
+      })) {
+        detail = applyConsultPriceToDetail(detail);
+      }
       if (isLayoutConsultStatus(item.layoutConsult)) {
         detail = applyConsultPriceToDetail(detail);
       }
@@ -8728,6 +8987,13 @@ function updateItemQuantity(id, quantity) {
       quantity,
       isCorner: Boolean(item.isCorner),
     });
+    if (shouldTreatBayFurniturePriceAsConsult({
+      width: Number(item?.shelf?.width || 0),
+      addons: item?.addons,
+      isCorner: Boolean(item?.isCorner),
+    })) {
+      detail = applyConsultPriceToDetail(detail);
+    }
     if (isLayoutConsultStatus(item.layoutConsult)) {
       detail = applyConsultPriceToDetail(detail);
     }
