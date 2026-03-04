@@ -2329,6 +2329,14 @@ th, td {
 
 .module-front-preview-furniture {
   position: absolute;
+  overflow: visible;
+}
+
+.module-front-preview-furniture-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  min-height: 16px;
   border: 1px solid var(--module-front-furniture-border, rgba(0, 0, 0, 0.24));
   border-radius: 8px;
   background: var(--module-front-furniture-fill, rgba(0, 0, 0, 0.08));
@@ -2346,6 +2354,32 @@ th, td {
   border: 1px solid var(--module-front-furniture-tier-border, rgba(0, 0, 0, 0.28));
   border-radius: 5px;
   background: var(--module-front-furniture-tier-fill, rgba(255, 255, 255, 0.78));
+}
+
+.module-front-preview-furniture-legs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--module-front-furniture-leg-height, 0px);
+}
+
+.module-front-preview-furniture-leg {
+  position: absolute;
+  bottom: 0;
+  width: 14px;
+  height: 100%;
+  border: 1px solid var(--module-front-furniture-leg-border, rgba(0, 0, 0, 0.3));
+  border-radius: 4px 4px 2px 2px;
+  background: var(--module-front-furniture-leg-fill, rgba(0, 0, 0, 0.1));
+}
+
+.module-front-preview-furniture-leg--left {
+  left: 12%;
+}
+
+.module-front-preview-furniture-leg--right {
+  right: 12%;
 }
 
 .module-front-preview-chip-stack {

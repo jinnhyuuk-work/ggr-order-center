@@ -528,10 +528,11 @@ export const SYSTEM_MODULE_PRESETS = Object.freeze({
 export const SYSTEM_FURNITURE_WIDTH_POLICY = Object.freeze({
   selectableRange: Object.freeze({
     min: 401,
-    max: 800,
+    max: 1000,
   }),
   standardWidths: Object.freeze([600, 800]),
   disabledAtOrBelow: 400,
+  consultPriceAbove: 800,
 });
 
 const SYSTEM_FURNITURE_ITEMS = [
