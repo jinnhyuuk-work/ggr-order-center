@@ -151,6 +151,7 @@ const LIMITS = {
 };
 
 const COLUMN_WIDTH_MM = 30;
+const COLUMN_ENDPOINT_WIDTH_MM = 25;
 const COLUMN_DEPTH_MM = 75;
 const COLUMN_EXTRA_LENGTH_THRESHOLD = 2400;
 const SHELF_LENGTH_MM = 600;
@@ -163,6 +164,7 @@ const SUPPORT_BRACKET_WIDTH_MM = 15;
 const SUPPORT_BRACKET_INSERT_MM = 10;
 const SUPPORT_VISIBLE_MM = SUPPORT_BRACKET_WIDTH_MM - SUPPORT_BRACKET_INSERT_MM;
 const ADDON_CLOTHES_ROD_ID = SYSTEM_ADDON_ITEM_IDS.CLOTHES_ROD || "clothes_rod";
+const COLUMN_ENDPOINT_HALF_MM = COLUMN_ENDPOINT_WIDTH_MM / 2;
 const SYSTEM_SHAPE_DEFAULT = "i_single";
 const SYSTEM_SHAPE_KEYS = Object.freeze(["i_single", "l_shape", "rl_shape", "u_shape", "box_shape"]);
 const SYSTEM_LAYOUT_TYPE_LABELS = Object.freeze({
@@ -1952,11 +1954,26 @@ function syncPresetModuleOptionModal() {
 
 function setPresetModuleOptionModalTab(nextTab = "preset") {
   if (!presetModuleOptionFlowState.draft) return;
+  const normalizedNextTab = normalizePresetModuleOptionTab(nextTab);
+  const currentTab = normalizePresetModuleOptionTab(
+    String(presetModuleOptionFlowState.draft?.activeTab || "preset")
+  );
+  let nextDraft = buildPresetModuleOptionDraftAfterTabChange(
+    presetModuleOptionFlowState.draft,
+    normalizedNextTab
+  );
+  if (!nextDraft) return;
+  if (currentTab !== normalizedNextTab) {
+    bayDirectComposeDraft = null;
+    cornerDirectComposeDraft = null;
+    nextDraft = {
+      ...nextDraft,
+      // Reset selected preset whenever user switches compose mode.
+      presetId: "",
+    };
+  }
   patchPresetModuleOptionFlowState(presetModuleOptionFlowState, {
-    draft: buildPresetModuleOptionDraftAfterTabChange(
-      presetModuleOptionFlowState.draft,
-      nextTab
-    ),
+    draft: nextDraft,
   });
   syncPresetModuleOptionModal();
 }
@@ -1964,6 +1981,19 @@ function setPresetModuleOptionModalTab(nextTab = "preset") {
 function handlePresetModuleOptionModalTabClick(nextTab = "preset") {
   if (!presetModuleOptionFlowState.modalState) return;
   setPresetModuleOptionModalTab(nextTab);
+}
+
+function resetBayComposeInputsOnWidthChange() {
+  if (!activeBayOptionId) return;
+  const countInput = $("#bayCountInput");
+  const rodCountInput = $("#bayRodCountInput");
+  if (countInput) countInput.value = "0";
+  if (rodCountInput) rodCountInput.value = "0";
+  clearFurnitureAddonsForEdge(activeBayOptionId);
+  renderShelfAddonSelectionToTarget(activeBayOptionId, "selectedBayOptionAddon");
+  renderShelfAddonSelection(activeBayOptionId);
+  setFieldError(countInput, $("#bayCountError"), "");
+  bayDirectComposeDraft = captureBayOptionModalDraft();
 }
 
 function applyDirectComposePendingActivationStateToRuntime(activationState) {
@@ -2144,15 +2174,22 @@ function handlePresetModuleOptionFilterChange() {
   const modalState = presetModuleOptionFlowState.modalState;
   const filterSelectEl = $("#presetModuleOptionFilterSelect");
   if (!modalState || !filterSelectEl) return;
+  const nextFilterKey = String(filterSelectEl.value || "");
   const preset = getPresetModuleOptionSelectedPreset();
+  const nextDraft = buildPresetModuleOptionDraftAfterFilterChange({
+    modalState,
+    currentDraft: presetModuleOptionFlowState.draft,
+    nextFilterKey,
+    selectedPreset: preset,
+    isPresetAvailableForFilter: isPreviewPresetAvailableForFilter,
+  });
+  if (!nextDraft) return;
   patchPresetModuleOptionFlowState(presetModuleOptionFlowState, {
-    draft: buildPresetModuleOptionDraftAfterFilterChange({
-      modalState,
-      currentDraft: presetModuleOptionFlowState.draft,
-      nextFilterKey: String(filterSelectEl.value || ""),
-      selectedPreset: preset,
-      isPresetAvailableForFilter: isPreviewPresetAvailableForFilter,
-    }),
+    draft: {
+      ...nextDraft,
+      // Width/filter change should always reset selected module.
+      presetId: "",
+    },
   });
   syncPresetModuleOptionModal();
 }
@@ -4042,6 +4079,7 @@ function pushPreviewAddButton(list, entry) {
 
 function pushUniquePoint(list, entry, threshold = 8) {
   const edgeHint = entry.edgeHint || "";
+  const entryIsStructural = entry.isStructuralColumn !== false;
   const exists = list.find((it) => {
     const dx = Math.abs((it.x || 0) - (entry.x || 0));
     const dy = Math.abs((it.y || 0) - (entry.y || 0));
@@ -4050,7 +4088,23 @@ function pushUniquePoint(list, entry, threshold = 8) {
   if (exists) {
     exists.inwardX = Number(exists.inwardX || 0) + Number(entry.inwardX || 0);
     exists.inwardY = Number(exists.inwardY || 0) + Number(entry.inwardY || 0);
-    exists.count = Number(exists.count || 1) + 1;
+    const nextCount = Number(exists.count || 1) + 1;
+    exists.count = nextCount;
+    const prevStructuralCount = Math.max(0, Number(exists.structuralCount || 0));
+    const structuralCount = prevStructuralCount + (entryIsStructural ? 1 : 0);
+    exists.structuralCount = structuralCount;
+    const existsWidthMm = Number(exists.columnWidthMm || 0);
+    const entryWidthMm = Number(entry.columnWidthMm || 0);
+    const shouldPromoteInner = structuralCount > 1;
+    if (Number.isFinite(entryWidthMm) && entryWidthMm > 0) {
+      const baseWidthMm = Number.isFinite(existsWidthMm) && existsWidthMm > 0 ? existsWidthMm : entryWidthMm;
+      // Shared structural columns are treated as inner columns.
+      exists.columnWidthMm = shouldPromoteInner
+        ? Math.max(COLUMN_WIDTH_MM, baseWidthMm, entryWidthMm)
+        : baseWidthMm;
+    } else if (shouldPromoteInner) {
+      exists.columnWidthMm = Math.max(COLUMN_WIDTH_MM, Number(exists.columnWidthMm || 0));
+    }
     if (Number.isFinite(Number(entry.rotationDeg)) && !Number.isFinite(Number(exists.rotationDeg))) {
       exists.rotationDeg = Number(entry.rotationDeg);
     }
@@ -4068,6 +4122,8 @@ function pushUniquePoint(list, entry, threshold = 8) {
     inwardX: Number(entry.inwardX || 0),
     inwardY: Number(entry.inwardY || 0),
     count: 1,
+    columnWidthMm: Number(entry.columnWidthMm || 0),
+    structuralCount: entryIsStructural ? 1 : 0,
     edgeVotes: edgeHint ? { [edgeHint]: 1 } : {},
   });
 }
@@ -4103,9 +4159,13 @@ function buildPlacementFromEndpoint(endpoint) {
     inwardX = -dirDy;
     inwardY = dirDx;
   }
+  const endpointPostBarWidthMm = Math.max(
+    1,
+    Number(endpoint.postBarWidthMm || COLUMN_WIDTH_MM)
+  );
   return {
-    startX: centerX + dirDx * (COLUMN_WIDTH_MM / 2),
-    startY: centerY + dirDy * (COLUMN_WIDTH_MM / 2),
+    startX: centerX + dirDx * (endpointPostBarWidthMm / 2),
+    startY: centerY + dirDy * (endpointPostBarWidthMm / 2),
     dirDx,
     dirDy,
     inwardX,
@@ -4722,6 +4782,7 @@ function collectOpenEndpointsFromCandidates(candidates = []) {
         extendDy: Number(src.extendDy || 0),
         inwardX: Number(src.inwardX || 0),
         inwardY: Number(src.inwardY || 0),
+        postBarWidthMm: Math.max(1, Number(src.postBarWidthMm || COLUMN_ENDPOINT_WIDTH_MM)),
         allowedTypes: Array.isArray(src.allowedTypes) ? src.allowedTypes : ["normal", "corner"],
       };
       endpoints.push({
@@ -4747,6 +4808,7 @@ function buildRootEndpoint() {
     extendDy: 0,
     inwardX: 0,
     inwardY: 1,
+    postBarWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
     allowedTypes: ["normal", "corner"],
   };
 }
@@ -4770,10 +4832,10 @@ function getEdgeEndpointAliasSets(edge) {
 
   if (edge.type !== "corner") {
     const widthMm = (Number(edge.width || 0) || 0) + SUPPORT_VISIBLE_MM * 2;
-    const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
-    const startCenterY = py + drawDir.dy * (-COLUMN_WIDTH_MM / 2);
-    const endCenterX = px + drawDir.dx * (widthMm + COLUMN_WIDTH_MM / 2);
-    const endCenterY = py + drawDir.dy * (widthMm + COLUMN_WIDTH_MM / 2);
+    const startCenterX = px + drawDir.dx * (-COLUMN_ENDPOINT_HALF_MM);
+    const startCenterY = py + drawDir.dy * (-COLUMN_ENDPOINT_HALF_MM);
+    const endCenterX = px + drawDir.dx * (widthMm + COLUMN_ENDPOINT_HALF_MM);
+    const endCenterY = py + drawDir.dy * (widthMm + COLUMN_ENDPOINT_HALF_MM);
     startAliases.add(
       buildEndpointStableId({
         x: startCenterX,
@@ -4808,10 +4870,10 @@ function getEdgeEndpointAliasSets(edge) {
   const secondInward = { x: -drawDir.dx, y: -drawDir.dy };
   const secondStartX = px + drawDir.dx * primaryLen;
   const secondStartY = py + drawDir.dy * primaryLen;
-  const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
-  const startCenterY = py + drawDir.dy * (-COLUMN_WIDTH_MM / 2);
-  const secondEndCenterX = secondStartX + secondDir.dx * (secondLen + COLUMN_WIDTH_MM / 2);
-  const secondEndCenterY = secondStartY + secondDir.dy * (secondLen + COLUMN_WIDTH_MM / 2);
+  const startCenterX = px + drawDir.dx * (-COLUMN_ENDPOINT_HALF_MM);
+  const startCenterY = py + drawDir.dy * (-COLUMN_ENDPOINT_HALF_MM);
+  const secondEndCenterX = secondStartX + secondDir.dx * (secondLen + COLUMN_ENDPOINT_HALF_MM);
+  const secondEndCenterY = secondStartY + secondDir.dy * (secondLen + COLUMN_ENDPOINT_HALF_MM);
 
   startAliases.add(
     buildEndpointStableId({
@@ -5027,11 +5089,23 @@ function buildSectionRunsFromSegments(segments = []) {
   return runs;
 }
 
-function calcSectionUsedWidthWithPostBarsMm({ shelfTotalMm = 0, postBarCount = 0 } = {}) {
+function calcSectionUsedWidthWithPostBarsMm({
+  shelfTotalMm = 0,
+  postBarCount = 0,
+  postBarTotalMm = NaN,
+} = {}) {
   // Section usage is measured with post bars included.
   const safeShelfMm = Math.max(0, Number(shelfTotalMm || 0));
+  const explicitPostBarTotalMm = Number(postBarTotalMm);
+  if (Number.isFinite(explicitPostBarTotalMm) && explicitPostBarTotalMm >= 0) {
+    return safeShelfMm + explicitPostBarTotalMm;
+  }
   const safePostBarCount = Math.max(0, Math.floor(Number(postBarCount || 0)));
-  return safeShelfMm + safePostBarCount * COLUMN_WIDTH_MM;
+  if (safePostBarCount <= 0) return safeShelfMm;
+  const endpointCount = Math.min(2, safePostBarCount);
+  const innerCount = Math.max(0, safePostBarCount - endpointCount);
+  const postBarsTotalMm = endpointCount * COLUMN_ENDPOINT_WIDTH_MM + innerCount * COLUMN_WIDTH_MM;
+  return safeShelfMm + postBarsTotalMm;
 }
 
 function buildOuterSectionLabels(sectionRuns = [], columnMarksByHint = {}) {
@@ -5055,12 +5129,23 @@ function buildOuterSectionLabels(sectionRuns = [], columnMarksByHint = {}) {
     const runs = buckets[edgeHint] || [];
     if (!runs.length) return;
     const shelfTotalMm = runs.reduce((sum, run) => sum + Math.max(0, Number(run.totalMm || 0)), 0);
-    const columnSet = columnMarksByHint?.[edgeHint];
+    const columnMarks = columnMarksByHint?.[edgeHint];
     const columnCount =
-      columnSet && typeof columnSet.size === "number" ? Number(columnSet.size || 0) : 0;
+      columnMarks && typeof columnMarks.size === "number" ? Number(columnMarks.size || 0) : 0;
+    let postBarTotalMm = NaN;
+    if (columnMarks instanceof Map) {
+      postBarTotalMm = Array.from(columnMarks.values()).reduce((sum, entry) => {
+        const widthMm =
+          entry && typeof entry === "object"
+            ? Number(entry.widthMm || 0)
+            : Number(entry || 0);
+        return sum + Math.max(0, widthMm);
+      }, 0);
+    }
     const totalMm = calcSectionUsedWidthWithPostBarsMm({
       shelfTotalMm,
       postBarCount: columnCount,
+      postBarTotalMm,
     });
     const axisStart = Math.min(...runs.map((run) => Number(run.axisStart || 0)));
     const axisEnd = Math.max(...runs.map((run) => Number(run.axisEnd || 0)));
@@ -5116,7 +5201,7 @@ function updatePreviewWidthSummary(input, sectionRuns = null) {
   });
   const segments = [];
   ordered.forEach((run, idx) => {
-    const used = Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0)));
+    const used = Math.round(Math.max(COLUMN_ENDPOINT_WIDTH_MM, Number(run.totalMm || 0)));
     const targetLength = Number(targetSections[idx]?.lengthMm || 0);
     if (targetLength > 0) {
       segments.push(`섹션${idx + 1} ${used}/${targetLength}mm`);
@@ -5219,10 +5304,10 @@ function updatePreview() {
   const columnCenters = [];
   const endpointCandidates = [];
   const sectionColumnMarks = {
-    top: new Set(),
-    right: new Set(),
-    bottom: new Set(),
-    left: new Set(),
+    top: new Map(),
+    right: new Map(),
+    bottom: new Map(),
+    left: new Map(),
   };
   const toSectionAxisKey = (value) => {
     const n = Number(value || 0);
@@ -5230,13 +5315,26 @@ function updatePreview() {
     const rounded = Math.round(n * 10) / 10;
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
   };
-  const markSectionColumn = (edgeHint, centerX, centerY) => {
+  const markSectionColumn = (edgeHint, centerX, centerY, widthMm = COLUMN_ENDPOINT_WIDTH_MM) => {
     const hint = String(edgeHint || "");
     const bucket = sectionColumnMarks[hint];
     if (!bucket) return;
     const axisValue =
       hint === "top" || hint === "bottom" ? Number(centerX || 0) : Number(centerY || 0);
-    bucket.add(toSectionAxisKey(axisValue));
+    const axisKey = toSectionAxisKey(axisValue);
+    const normalizedWidthMm = Math.max(1, Number(widthMm || COLUMN_ENDPOINT_WIDTH_MM));
+    const prev = bucket.get(axisKey);
+    if (!prev) {
+      bucket.set(axisKey, { count: 1, widthMm: normalizedWidthMm });
+      return;
+    }
+    const nextCount = Math.max(1, Number(prev.count || 0)) + 1;
+    // Shared posts in the same section line are treated as inner posts(30mm).
+    const nextWidthMm =
+      nextCount > 1
+        ? Math.max(COLUMN_WIDTH_MM, Number(prev.widthMm || 0), normalizedWidthMm)
+        : Math.max(1, Number(prev.widthMm || 0), normalizedWidthMm);
+    bucket.set(axisKey, { count: nextCount, widthMm: nextWidthMm });
   };
   const sectionLengthSegments = [];
   const recordSectionSegment = ({
@@ -5392,10 +5490,10 @@ function updatePreview() {
         inwardX: drawInward.x,
         inwardY: drawInward.y,
       });
-      const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
-      const startCenterY = py + drawDir.dy * (-COLUMN_WIDTH_MM / 2);
-      const endCenterX = px + drawDir.dx * (widthMm + COLUMN_WIDTH_MM / 2);
-      const endCenterY = py + drawDir.dy * (widthMm + COLUMN_WIDTH_MM / 2);
+      const startCenterX = px + drawDir.dx * (-COLUMN_ENDPOINT_HALF_MM);
+      const startCenterY = py + drawDir.dy * (-COLUMN_ENDPOINT_HALF_MM);
+      const endCenterX = px + drawDir.dx * (widthMm + COLUMN_ENDPOINT_HALF_MM);
+      const endCenterY = py + drawDir.dy * (widthMm + COLUMN_ENDPOINT_HALF_MM);
       markSectionColumn(primarySegmentHint, startCenterX, startCenterY);
       markSectionColumn(primarySegmentHint, endCenterX, endCenterY);
       pushUniquePoint(columnCenters, {
@@ -5404,6 +5502,7 @@ function updatePreview() {
         inwardX: drawInward.x,
         inwardY: drawInward.y,
         edgeHint,
+        columnWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
       });
       pushUniquePoint(columnCenters, {
         x: endCenterX,
@@ -5411,6 +5510,7 @@ function updatePreview() {
         inwardX: drawInward.x,
         inwardY: drawInward.y,
         edgeHint,
+        columnWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
       });
       const startSideIndex = directionToSideIndex(-drawDir.dx, -drawDir.dy);
       const endSideIndex = directionToSideIndex(drawDir.dx, drawDir.dy);
@@ -5424,6 +5524,7 @@ function updatePreview() {
         extendDy: -drawDir.dy,
         inwardX: drawInward.x,
         inwardY: drawInward.y,
+        postBarWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
         allowedTypes: ["normal", "corner"],
       };
       startCandidate.endpointId = `${edge.id}:start`;
@@ -5439,6 +5540,7 @@ function updatePreview() {
         extendDy: drawDir.dy,
         inwardX: drawInward.x,
         inwardY: drawInward.y,
+        postBarWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
         allowedTypes: ["normal", "corner"],
         endpointId: `${edge.id}:end`,
       };
@@ -5491,11 +5593,11 @@ function updatePreview() {
       inwardY: secondInward.y,
     });
 
-    const startCenterX = px + drawDir.dx * (-COLUMN_WIDTH_MM / 2);
-    const startCenterY = py + drawDir.dy * (-COLUMN_WIDTH_MM / 2);
+    const startCenterX = px + drawDir.dx * (-COLUMN_ENDPOINT_HALF_MM);
+    const startCenterY = py + drawDir.dy * (-COLUMN_ENDPOINT_HALF_MM);
     const secondEndCenter = {
-      x: secondStartX + secondDir.dx * (secondLen + COLUMN_WIDTH_MM / 2),
-      y: secondStartY + secondDir.dy * (secondLen + COLUMN_WIDTH_MM / 2),
+      x: secondStartX + secondDir.dx * (secondLen + COLUMN_ENDPOINT_HALF_MM),
+      y: secondStartY + secondDir.dy * (secondLen + COLUMN_ENDPOINT_HALF_MM),
     };
     markSectionColumn(primarySegmentHint, startCenterX, startCenterY);
     markSectionColumn(secondarySegmentHint, secondEndCenter.x, secondEndCenter.y);
@@ -5510,6 +5612,7 @@ function updatePreview() {
       extendDy: -drawDir.dy,
       inwardX: drawInward.x,
       inwardY: drawInward.y,
+      postBarWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
       allowedTypes: ["normal", "corner"],
     };
     startCandidate.endpointId = `${edge.id}:start`;
@@ -5525,6 +5628,7 @@ function updatePreview() {
       extendDy: secondDir.dy,
       inwardX: secondInward.x,
       inwardY: secondInward.y,
+      postBarWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
       allowedTypes: ["normal", "corner"],
     };
     secondEndCandidate.endpointId = `${edge.id}:end`;
@@ -5537,6 +5641,7 @@ function updatePreview() {
       inwardX: drawInward.x,
       inwardY: drawInward.y,
       edgeHint: getEdgeHintFromDir({ dx: -drawDir.dx, dy: -drawDir.dy }),
+      columnWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
     });
     pushUniquePoint(columnCenters, {
       x: secondEndCenter.x,
@@ -5544,6 +5649,7 @@ function updatePreview() {
       inwardX: secondInward.x,
       inwardY: secondInward.y,
       edgeHint: getEdgeHintFromDir(secondDir),
+      columnWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
     });
     const cornerPostAngleDeg = (Math.atan2(drawDir.dy - secondDir.dy, drawDir.dx - secondDir.dx) * 180) / Math.PI;
     pushUniquePoint(columnCenters, {
@@ -5594,9 +5700,9 @@ function updatePreview() {
     edgeHint: run.edgeHint,
     x: Number(run.x || 0),
     y: Number(run.y || 0),
-    totalMm: Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0))),
+    totalMm: Math.round(Math.max(COLUMN_ENDPOINT_WIDTH_MM, Number(run.totalMm || 0))),
     targetMm: 0,
-    text: `${Math.round(Math.max(COLUMN_WIDTH_MM, Number(run.totalMm || 0)))}mm`,
+    text: `${Math.round(Math.max(COLUMN_ENDPOINT_WIDTH_MM, Number(run.totalMm || 0)))}mm`,
     overflow: false,
   }));
   sideWidthLabels.forEach((label, idx) => {
@@ -5627,6 +5733,8 @@ function updatePreview() {
       inwardX: Number(point.inwardX || 0),
       inwardY: Number(point.inwardY || 0),
       edgeHint,
+      columnWidthMm: Math.max(1, Number(point.postBarWidthMm || COLUMN_ENDPOINT_WIDTH_MM)),
+      isStructuralColumn: false,
     });
   });
   previewOpenEndpoints = new Map(
@@ -5746,7 +5854,6 @@ function updatePreview() {
       shelvesEl.appendChild(shelf);
   });
 
-  const columnWidthPx = Math.max(COLUMN_WIDTH_MM * scale, 4);
   const columnDepthPx = Math.max(COLUMN_DEPTH_MM * scale, 8);
   const columnLabelCenters = [];
   const columnBoxesPx = [];
@@ -5766,19 +5873,27 @@ function updatePreview() {
     const edgeRefY = point.y * scale + ty;
     const tangentX = -normalizedInwardY;
     const tangentY = normalizedInwardX;
+    const pointColumnWidthMm = Math.max(
+      1,
+      Number(
+        point.columnWidthMm ||
+          (isCornerPostBar || Number(point.count || 1) > 1 ? COLUMN_WIDTH_MM : COLUMN_ENDPOINT_WIDTH_MM)
+      )
+    );
+    const pointColumnWidthPx = Math.max(pointColumnWidthMm * scale, 4);
     const angleDeg = Number.isFinite(Number(point.rotationDeg))
       ? Number(point.rotationDeg)
       : (Math.atan2(tangentY, tangentX) * 180) / Math.PI;
     const columnEl = document.createElement("div");
     columnEl.className = "system-column system-preview-column-box";
-    columnEl.style.width = `${columnWidthPx}px`;
+    columnEl.style.width = `${pointColumnWidthPx}px`;
     columnEl.style.height = `${columnDepthPx}px`;
     columnEl.style.left = `${renderX}px`;
     columnEl.style.top = `${renderY}px`;
     columnEl.style.transform = `translate(-50%, -50%) rotate(${angleDeg.toFixed(2)}deg)`;
     columnEl.style.background = columnMat?.swatch || "#d9d9d9";
     shelvesEl.appendChild(columnEl);
-    const halfDiag = Math.hypot(columnWidthPx, columnDepthPx) / 2;
+    const halfDiag = Math.hypot(pointColumnWidthPx, columnDepthPx) / 2;
     columnBoxesPx.push({
       left: renderX - halfDiag,
       right: renderX + halfDiag,
@@ -5790,6 +5905,8 @@ function updatePreview() {
       y: renderY,
       edgeRefX,
       edgeRefY,
+      widthMm: pointColumnWidthMm,
+      showDimensionLabel: !isCornerPostBar,
     });
   });
 
@@ -5977,6 +6094,7 @@ function updatePreview() {
 
   if (showSizeInfo) {
     columnLabelCenters.forEach((point) => {
+      if (point.showDimensionLabel === false) return;
       const anchorX = Number(point.x || 0);
       const anchorY = Number(point.y || 0);
       const edgeRefX = Number(point.edgeRefX || anchorX);
@@ -6020,7 +6138,8 @@ function updatePreview() {
       if (nearest === "left" || nearest === "right") {
         labelEl.classList.add("system-dimension-label--vertical");
       }
-      labelEl.textContent = `${COLUMN_WIDTH_MM}mm`;
+      const labelWidthMm = Math.max(1, Math.round(Number(point.widthMm || COLUMN_WIDTH_MM)));
+      labelEl.textContent = `${labelWidthMm}mm`;
       labelEl.style.left = `${placedX}px`;
       labelEl.style.top = `${placedY}px`;
       shelvesEl.appendChild(labelEl);
@@ -9008,7 +9127,34 @@ function init() {
     customInput.disabled = !isCustom;
     if (isCustom) customInput.focus();
     setFieldError(customInput, $("#bayWidthError"), "");
+    if (
+      isPresetModuleOptionCustomTabActive(
+        presetModuleOptionFlowState.modalState,
+        presetModuleOptionFlowState.draft,
+        "normal"
+      )
+    ) {
+      resetBayComposeInputsOnWidthChange();
+    }
+    updateBayOptionModalApplyButtonState();
     renderBayOptionFrontPreview();
+    autoCalculatePrice();
+  });
+  $("#bayWidthCustomInput")?.addEventListener("change", () => {
+    const presetSelect = $("#bayWidthPresetSelect");
+    if (String(presetSelect?.value || "") !== "custom") return;
+    if (
+      isPresetModuleOptionCustomTabActive(
+        presetModuleOptionFlowState.modalState,
+        presetModuleOptionFlowState.draft,
+        "normal"
+      )
+    ) {
+      resetBayComposeInputsOnWidthChange();
+      updateBayOptionModalApplyButtonState();
+      renderBayOptionFrontPreview();
+      autoCalculatePrice();
+    }
   });
   $("#bayAddonBtn")?.addEventListener("click", () => {
     if (!activeBayOptionId) return;
