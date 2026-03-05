@@ -7674,6 +7674,34 @@ function buildModuleFrontPreviewInteriorPositionsMm(count, startMm, endMm) {
   );
 }
 
+function buildModuleFrontPreviewInteriorSteppedShelfTopPositionsMm({
+  shelfCount = 0,
+  startUndersideMm = 0,
+  endTopMm = 0,
+  shelfThicknessMm = 20,
+} = {}) {
+  const normalizedShelfCount = Math.max(0, Math.floor(Number(shelfCount || 0)));
+  if (normalizedShelfCount <= 0) return [];
+  const safeStartUndersideMm = Number(startUndersideMm || 0);
+  const safeEndTopMm = Number(endTopMm || 0);
+  const safeShelfThicknessMm = Math.max(1, Number(shelfThicknessMm || 20));
+  const clearSpanMm = Math.max(0, safeEndTopMm - safeStartUndersideMm);
+  const gapCount = normalizedShelfCount + 1;
+  const gapMm = Math.max(
+    0,
+    (clearSpanMm - normalizedShelfCount * safeShelfThicknessMm) / gapCount
+  );
+  const topClampMin = safeStartUndersideMm;
+  const topClampMax = Math.max(topClampMin, safeEndTopMm - safeShelfThicknessMm);
+  const positions = [];
+  let nextTopMm = safeStartUndersideMm + gapMm;
+  for (let index = 0; index < normalizedShelfCount; index += 1) {
+    positions.push(clampModuleFrontPreviewValue(nextTopMm, topClampMin, topClampMax));
+    nextTopMm += safeShelfThicknessMm + gapMm;
+  }
+  return positions;
+}
+
 function buildModuleFrontPreviewSteppedShelfPositionsMm({
   shelfCount = 0,
   topShelfTopMm = 0,
@@ -7917,14 +7945,15 @@ function buildModuleFrontPreviewLayout({
     if (visibleShelfCount <= 1) {
       shelfTopPositionsMm = visibleShelfCount === 1 ? [topShelfTopMm] : [];
     } else {
-      // Floor drawer: place lower shelves by evenly splitting the interval between
-      // the top shelf underside and the furniture top surface.
+      // Floor drawer: evenly distribute lower shelves by equal clear gaps
+      // between top shelf underside and furniture top, accounting shelf thickness.
       const topShelfUndersideMm = topShelfTopMm + shelfThicknessMm;
-      const dividedPositionsMm = buildModuleFrontPreviewInteriorPositionsMm(
-        visibleShelfCount - 1,
-        topShelfUndersideMm,
-        drawerTopMm
-      );
+      const dividedPositionsMm = buildModuleFrontPreviewInteriorSteppedShelfTopPositionsMm({
+        shelfCount: visibleShelfCount - 1,
+        startUndersideMm: topShelfUndersideMm,
+        endTopMm: drawerTopMm,
+        shelfThicknessMm,
+      });
       shelfTopPositionsMm = [topShelfTopMm, ...dividedPositionsMm];
     }
     furnitureBox = {
@@ -8353,7 +8382,7 @@ function buildModuleFrontPreviewHtml({
           <span class="value">${escapeHtml(safeFurnitureSummary)}</span>
         </div>
       </div>
-      <div class="module-front-preview-note">미리보기는 참고용으로 차이가 있을 수 있습니다.</div>
+      <div class="module-front-preview-note">미리보기 이미지는 선반 균등 배치를 기준으로 한 예시입니다. 실제 설치 시 현장 상황과 간격 조정에 따라 일부 구성이 달라질 수 있습니다.</div>
     </div>
   `;
 }
