@@ -8163,6 +8163,8 @@ function buildModuleFrontPreviewHtml({
   const hangerWidthPx = Math.max(40, Math.round(geometry.shelfWidthPx));
   const hangerLeftPx = geometry.columnThicknessPx;
   const hangerThicknessPx = Math.max(3, Math.min(7, Math.round(geometry.shelfThicknessPx * 0.45)));
+  const hangerBorderColor = "rgba(0, 0, 0, 0.28)";
+  const hangerInnerStrokeColor = "rgba(255, 255, 255, 0.16)";
   const hangerLinesHtml = layout.hangerPositionsMm
     .map((hangerTopMm) => {
       const topPx = clampModuleFrontPreviewValue(mmToPx(hangerTopMm), 0, frameHeightPx - hangerThicknessPx);
@@ -8175,6 +8177,8 @@ function buildModuleFrontPreviewHtml({
             width:${hangerWidthPx}px;
             height:${hangerThicknessPx}px;
             background:${postBarColor};
+            --module-front-hanger-border:${hangerBorderColor};
+            --module-front-hanger-inner-stroke:${hangerInnerStrokeColor};
           "
         ></div>
       `;
@@ -8208,11 +8212,7 @@ function buildModuleFrontPreviewHtml({
       0.22,
       "rgba(0, 0, 0, 0.08)"
     );
-    const furnitureTierBorderColor = buildModuleFrontPreviewAlphaColor(
-      shelfColor,
-      0.5,
-      "rgba(0, 0, 0, 0.28)"
-    );
+    const furnitureTierBorderColor = furnitureBorderColor;
     const furnitureTierFillColor = buildModuleFrontPreviewAlphaColor(
       shelfColor,
       0.12,
