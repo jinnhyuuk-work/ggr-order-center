@@ -7623,6 +7623,7 @@ const MODULE_FRONT_PREVIEW_DRAWER_TIER_HEIGHT_MM = 200;
 const MODULE_FRONT_PREVIEW_FLOOR_FURNITURE_LEG_HEIGHT_MM = 35;
 const MODULE_FRONT_PREVIEW_MIN_GAP_MM = 80;
 const MODULE_FRONT_PREVIEW_MIN_DRAWER_HEIGHT_MM = 180;
+const MODULE_FRONT_PREVIEW_GSH1_LOWER_CLEAR_MM = 370;
 
 function getAddonItemById(addonId) {
   const key = String(addonId || "");
@@ -7903,6 +7904,7 @@ function buildModuleFrontPreviewLayout({
   shelfCount = 0,
   rodCount = 0,
   furnitureAddonId = "",
+  moduleType = "bay",
   geometry,
 } = {}) {
   const heightMm = Math.max(0, Number(geometry?.heightMm || 0));
@@ -8027,6 +8029,24 @@ function buildModuleFrontPreviewLayout({
       bottomShelfTopMm,
       shelfThicknessMm,
     });
+    if (
+      String(moduleType || "bay") === "bay" &&
+      visibleShelfCount === 3 &&
+      normalizedRodCount === 1
+    ) {
+      const targetMiddleTopMm =
+        bottomShelfTopMm - shelfThicknessMm - MODULE_FRONT_PREVIEW_GSH1_LOWER_CLEAR_MM;
+      const minMiddleTopMm =
+        topShelfTopMm + shelfThicknessMm + MODULE_FRONT_PREVIEW_MIN_GAP_MM;
+      const maxMiddleTopMm =
+        bottomShelfTopMm - shelfThicknessMm - MODULE_FRONT_PREVIEW_MIN_GAP_MM;
+      const middleTopMm = clampModuleFrontPreviewValue(
+        targetMiddleTopMm,
+        minMiddleTopMm,
+        Math.max(minMiddleTopMm, maxMiddleTopMm)
+      );
+      shelfTopPositionsMm = [topShelfTopMm, middleTopMm, bottomShelfTopMm];
+    }
   }
 
   const normalizedShelfTopPositionsMm = shelfTopPositionsMm
@@ -8109,6 +8129,7 @@ function buildModuleFrontPreviewHtml({
     shelfCount: normalizedShelfCount,
     rodCount: normalizedRodCount,
     furnitureAddonId,
+    moduleType: type,
     geometry,
   });
   const frameHeightPx = Math.max(1, Number(geometry.heightPx || 1));
