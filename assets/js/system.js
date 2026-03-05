@@ -122,6 +122,7 @@ import {
   getEmailJSInstance,
   renderEstimateTable,
   renderSelectedCard,
+  buildMaterialVisualInlineStyle,
   initCollapsibleSections,
 } from "./shared.js";
 
@@ -715,6 +716,7 @@ const materialPickers = {
     emptyMeta: "선반 컬러를 선택해주세요.",
     selectedCategory: "",
     selectedMaterialId: "",
+    visualModifierClass: "",
   },
   column: {
     key: "column",
@@ -734,6 +736,7 @@ const materialPickers = {
     emptyMeta: "포스트바 컬러를 선택해주세요.",
     selectedCategory: "",
     selectedMaterialId: "",
+    visualModifierClass: "material-visual--square",
   },
 };
 
@@ -914,9 +917,17 @@ function renderMaterialCards(picker) {
 
   list.forEach((mat) => {
     const label = document.createElement("label");
+    const visualModifierClass = String(picker.visualModifierClass || "").trim();
+    const visualClassName = visualModifierClass
+      ? `material-visual ${visualModifierClass}`
+      : "material-visual";
     label.className = `card-base material-card${
       picker.selectedMaterialId === mat.id ? " selected" : ""
     }`;
+    const visualStyle = buildMaterialVisualInlineStyle({
+      swatch: mat.swatch || "#ddd",
+      imageUrl: mat.thumbnail || "",
+    });
     const limits = LIMITS[picker.key];
     const heightLine = `가능 높이: ${limits.minLength}~${limits.maxLength}mm`;
     const tierPriceHtml = buildMaterialTierPriceHtml(picker, mat);
@@ -940,7 +951,7 @@ function renderMaterialCards(picker) {
       <input type="radio" name="${picker.inputName}" value="${mat.id}" ${
         picker.selectedMaterialId === mat.id ? "checked" : ""
       } />
-      <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
+      <div class="${visualClassName}" style="${visualStyle}"></div>
       <div class="name">${mat.name}</div>
       ${tierPriceHtml}
       ${sizeInfoHtml}
@@ -980,6 +991,7 @@ function updateSelectedMaterialCard(picker) {
     emptyTitle: picker.emptyTitle,
     emptyMeta: picker.emptyMeta,
     swatch: mat?.swatch,
+    imageUrl: mat?.thumbnail,
     name: mat ? escapeHtml(mat.name) : "",
     metaLines,
   });

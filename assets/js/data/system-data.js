@@ -65,6 +65,7 @@ const COLUMN_ITEMS = [
     pricePerM2: 45000,
     density: 720,
     swatch: "#f6f6f6",
+    thumbnail: "assets/img/product/system/post-bar/post-bar-white.jpg",
   },
   {
     id: "column_silver",
@@ -74,6 +75,7 @@ const COLUMN_ITEMS = [
     pricePerM2: 45000,
     density: 720,
     swatch: "#b7bcc6",
+    thumbnail: "assets/img/product/system/post-bar/post-bar-silver.jpg",
   },
   {
     id: "column_black",
@@ -83,6 +85,7 @@ const COLUMN_ITEMS = [
     pricePerM2: 45000,
     density: 720,
     swatch: "#2a2a2a",
+    thumbnail: "assets/img/product/system/post-bar/post-bar-black.jpg",
   },
 ];
 

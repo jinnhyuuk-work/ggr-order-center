@@ -726,6 +726,7 @@ export function renderSelectedCard({
   emptyTitle,
   emptyMeta,
   swatch,
+  imageUrl,
   name,
   metaLines = [],
 } = {}) {
@@ -741,13 +742,28 @@ export function renderSelectedCard({
     `;
     return;
   }
+  const visualStyle = buildMaterialVisualInlineStyle({ swatch, imageUrl });
   cardEl.innerHTML = `
-    <div class="material-visual" style="background: ${swatch || "#ddd"}"></div>
+    <div class="material-visual" style="${visualStyle}"></div>
     <div class="info">
       <div class="name">${name}</div>
       ${metaLines.map((line) => `<div class="meta">${line}</div>`).join("")}
     </div>
   `;
+}
+
+export function buildMaterialVisualInlineStyle({ swatch = "#ddd", imageUrl = "" } = {}) {
+  const safeSwatch = String(swatch || "#ddd").trim() || "#ddd";
+  const safeImageUrl = String(imageUrl || "").trim();
+  if (!safeImageUrl) return `background: ${safeSwatch};`;
+  const encodedImageUrl = safeImageUrl.replace(/'/g, "%27");
+  return [
+    `background: ${safeSwatch};`,
+    `background-image: url('${encodedImageUrl}');`,
+    "background-size: cover;",
+    "background-position: center;",
+    "background-repeat: no-repeat;",
+  ].join(" ");
 }
 
 export function renderSelectedAddonChips({
