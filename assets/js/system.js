@@ -885,11 +885,12 @@ function buildPostBarTierPriceHtml() {
       return `
         <div class="material-tier-heading">${escapeHtml(group.title)}</div>
         ${rows}
+        <div class="material-tier-line">비규격 상담안내</div>
       `;
     })
     .filter(Boolean)
     .join("");
-  return `${groupHtml}<div class="material-tier-note">${SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM}mm 초과 상담 안내</div>`;
+  return groupHtml;
 }
 
 function buildMaterialTierPriceHtml(picker, material) {
@@ -917,18 +918,24 @@ function renderMaterialCards(picker) {
       picker.selectedMaterialId === mat.id ? " selected" : ""
     }`;
     const limits = LIMITS[picker.key];
-    const heightLine = `높이 ${limits.minLength}~${limits.maxLength}mm`;
+    const heightLine = `가능 높이: ${limits.minLength}~${limits.maxLength}mm`;
     const tierPriceHtml = buildMaterialTierPriceHtml(picker, mat);
-    const thicknessLineHtml =
-      picker.key === "column"
-        ? ""
-        : `<div class="size">가능 두께: ${(mat.availableThickness || [])
-            .map((t) => `${t}T`)
-            .join(", ")}</div>`;
-    const shelfWidthRangeText = getShelfDisplayWidthRangeText();
-    const widthLineHtml =
-      picker.key === "column" ? "" : `<div class="size">가능 폭: ${shelfWidthRangeText}</div>`;
-    const heightLineHtml = picker.key === "column" ? `<div class="size">${heightLine}</div>` : "";
+    const sizeLines = [];
+    if (picker.key === "column") {
+      sizeLines.push(heightLine);
+    } else {
+      const thicknessValues = (mat.availableThickness || [])
+        .map((t) => `${t}T`)
+        .join(", ");
+      if (thicknessValues) sizeLines.push(`가능 두께: ${thicknessValues}`);
+      sizeLines.push(`가능 폭: ${getShelfDisplayWidthRangeText()}`);
+    }
+    const sizeInfoHtml = sizeLines.length
+      ? `
+        <div class="size-heading">제작 가능 범위</div>
+        ${sizeLines.map((line) => `<div class="size">${escapeHtml(line)}</div>`).join("")}
+      `
+      : "";
     label.innerHTML = `
       <input type="radio" name="${picker.inputName}" value="${mat.id}" ${
         picker.selectedMaterialId === mat.id ? "checked" : ""
@@ -936,9 +943,7 @@ function renderMaterialCards(picker) {
       <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
       <div class="name">${mat.name}</div>
       ${tierPriceHtml}
-      ${thicknessLineHtml}
-      ${widthLineHtml}
-      ${heightLineHtml}
+      ${sizeInfoHtml}
     `;
     container.appendChild(label);
   });

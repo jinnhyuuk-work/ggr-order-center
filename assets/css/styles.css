@@ -2024,16 +2024,21 @@ th, td {
   line-height: 1.35;
 }
 
-.card-base .material-tier-note {
+.card-base .size-heading {
   font-size: var(--font-size-xs);
-  color: var(--color-text-meta);
-  line-height: 1.35;
-  margin-top: 2px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+  margin-top: 8px;
 }
 
 .card-base .size {
   color: var(--color-text-meta);
   font-size: var(--font-size-xs);
+  line-height: 1.35;
+}
+
+.card-base .size + .size {
+  margin-top: 1px;
 }
 
 .card-base .description {
