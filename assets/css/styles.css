@@ -2392,6 +2392,16 @@ th, td {
   right: 12%;
 }
 
+.module-front-preview-furniture-height-chip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: calc(100% - 12px);
+  pointer-events: none;
+  z-index: 3;
+}
+
 .module-front-preview-chip-stack {
   position: absolute;
   top: 14px;

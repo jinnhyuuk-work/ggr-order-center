@@ -8250,6 +8250,11 @@ function buildModuleFrontPreviewHtml({
         </div>
       `
       : "";
+    const furnitureHeightLabelMm = Math.max(0, Math.round(Number(layout.furnitureBox.heightMm || 0)));
+    const furnitureHeightChipHtml =
+      furnitureHeightLabelMm > 0
+        ? `<span class="module-front-preview-dimension-label module-front-preview-furniture-height-chip">${furnitureHeightLabelMm}mm</span>`
+        : "";
     furnitureHtml = `
       <div
         class="module-front-preview-furniture module-front-preview-furniture--${escapeHtml(layout.furnitureBox.kind)}"
@@ -8268,6 +8273,7 @@ function buildModuleFrontPreviewHtml({
         "
       >
         <div class="module-front-preview-furniture-body" style="height:${furnitureBodyHeightPx}px; bottom:${furnitureBodyBottomPx}px;">
+          ${furnitureHeightChipHtml}
           <div
             class="module-front-preview-furniture-grid"
             style="grid-template-rows:repeat(${layout.furnitureBox.tierCount}, minmax(0, 1fr));"
@@ -8403,7 +8409,7 @@ function buildModuleFrontPreviewHtml({
           <span class="value">${escapeHtml(safeFurnitureSummary)}</span>
         </div>
       </div>
-      <div class="module-front-preview-note">미리보기는 선반 균등 배치를 기준으로 한 예시입니다. 실제 설치 시 현장 상황과 간격 조정에 따라 일부 구성이 달라질 수 있습니다.</div>
+      <div class="module-front-preview-note">미리보기는 높이 2300을 기준으로 한 예시입니다. 실제 설치 시 현장 상황과 간격 조정에 따라 일부 구성이 달라질 수 있습니다.</div>
     </div>
   `;
 }
