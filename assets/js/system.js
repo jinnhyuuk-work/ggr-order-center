@@ -8403,7 +8403,7 @@ function buildModuleFrontPreviewHtml({
           <span class="value">${escapeHtml(safeFurnitureSummary)}</span>
         </div>
       </div>
-      <div class="module-front-preview-note">미리보기 이미지는 선반 균등 배치를 기준으로 한 예시입니다. 실제 설치 시 현장 상황과 간격 조정에 따라 일부 구성이 달라질 수 있습니다.</div>
+      <div class="module-front-preview-note">미리보기는 선반 균등 배치를 기준으로 한 예시입니다. 실제 설치 시 현장 상황과 간격 조정에 따라 일부 구성이 달라질 수 있습니다.</div>
     </div>
   `;
 }
