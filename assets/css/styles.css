@@ -2186,6 +2186,11 @@ th, td {
   display: contents;
 }
 
+#presetModuleOptionCustomBayPanel:not(.hidden) > .form-row + .form-row,
+#presetModuleOptionCustomCornerPanel:not(.hidden) > .form-row + .form-row {
+  margin-top: 10px;
+}
+
 #presetModuleOptionModal .modal-body > .module-option-front-preview {
   grid-column: 2;
   grid-row: 1 / span 8;
