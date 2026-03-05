@@ -1560,9 +1560,13 @@ function renderPresetModuleOptionSelectionSummary() {
   )}개 · 구성품 ${componentSummary === "-" ? "없음" : componentSummary} · 가구 ${
     furnitureSummary === "-" ? "없음" : furnitureSummary
   }`;
+  const visualStyle = buildMaterialVisualInlineStyle({
+    swatch: "#ddd",
+    imageUrl: preset?.thumbnail || "",
+  });
   target.innerHTML = `
     <div class="addon-chip">
-      <div class="material-visual" style="background:#ddd;"></div>
+      <div class="material-visual" style="${visualStyle}"></div>
       <div class="info">
         <div class="name">${escapeHtml(String(preset.label || "모듈"))}</div>
         <div class="meta">${escapeHtml(meta)}</div>
@@ -2485,6 +2489,10 @@ function renderPreviewPresetModuleCards() {
       const meta = `선반 ${Number(item.count || 1)}개 · 구성품 ${
         componentSummary === "-" ? "없음" : componentSummary
       } · 가구 ${furnitureSummary === "-" ? "없음" : furnitureSummary}`;
+      const visualStyle = buildMaterialVisualInlineStyle({
+        swatch: "#ddd",
+        imageUrl: item?.thumbnail || "",
+      });
       return `
         <button
           type="button"
@@ -2493,7 +2501,7 @@ function renderPreviewPresetModuleCards() {
           data-preview-preset-type="${escapeHtml(type)}"
           aria-pressed="${selected ? "true" : "false"}"
         >
-          <div class="material-visual module_visual"></div>
+          <div class="material-visual module_visual" style="${visualStyle}"></div>
           <span class="preset-title">${escapeHtml(item.label)}</span>
           <span class="price${priceInfo.isConsult ? " is-consult" : ""}">${escapeHtml(priceInfo.label)}</span>
           <span class="preset-meta">${escapeHtml(meta)}</span>
@@ -9499,7 +9507,7 @@ function updateStepVisibility(scrollTarget) {
 function goToNextStep() {
   if (currentPhase === 1) {
     if (!state.items.length) {
-      showInfoModal("견적 담기를 완료해주세요.");
+      showInfoModal("먼저 시스템 수납장을 구성해주세요.");
       return;
     }
     currentPhase = 2;

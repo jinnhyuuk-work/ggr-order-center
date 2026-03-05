@@ -508,6 +508,35 @@ const SYSTEM_MODULE_PRESET_ITEMS = [
   },
 ];
 
+const SYSTEM_MODULE_PRESET_THUMBNAILS = Object.freeze({
+  "GSH-1": "assets/img/product/system/1module/1module-gsh-1.jpg",
+  "GSH-2": "assets/img/product/system/1module/1module-gsh-2.jpg",
+  "GSH-3": "assets/img/product/system/1module/1module-gsh-3.jpg",
+  "GS-1": "assets/img/product/system/1module/1module-gs-1.jpg",
+  "GS-3": "assets/img/product/system/1module/1module-gs-3.jpg",
+  "GS-5": "assets/img/product/system/1module/1module-gs-5.jpg",
+  "GS-6": "assets/img/product/system/1module/1module-gs-6.jpg",
+  "GED-1": "assets/img/product/system/1module/1module-ged-1.jpg",
+  "GED-2": "assets/img/product/system/1module/1module-ged-2.jpg",
+  "GFD-2": "assets/img/product/system/1module/1module-gfd-2.jpg",
+  "GFD-3": "assets/img/product/system/1module/1module-gfd-3.jpg",
+  "GFD-4": "assets/img/product/system/1module/1module-gfd-4.jpg",
+  "GSC-1": "assets/img/product/system/1module/1module-gsc-1.jpg",
+  "GSC-2": "assets/img/product/system/1module/1module-gsc-2.jpg",
+  "GSC-3": "assets/img/product/system/1module/1module-gsc-3.jpg",
+  "GSC-5": "assets/img/product/system/1module/1module-gsc-5.jpg",
+  "GSC-6": "assets/img/product/system/1module/1module-gsc-6.jpg",
+});
+
+function withModulePresetThumbnail(item) {
+  const presetId = String(item?.id || "").toUpperCase();
+  const thumbnail = String(SYSTEM_MODULE_PRESET_THUMBNAILS[presetId] || "");
+  return {
+    ...item,
+    thumbnail,
+  };
+}
+
 const sortByOrderThenName = (a, b) => {
   const aOrder = Number(a?.sortOrder || 0);
   const bOrder = Number(b?.sortOrder || 0);
@@ -519,12 +548,12 @@ export const SYSTEM_MODULE_PRESETS = Object.freeze({
   normal: Object.freeze(
     SYSTEM_MODULE_PRESET_ITEMS.filter((item) => item.moduleType === "normal" && item.active !== false)
       .sort(sortByOrderThenName)
-      .map((item) => Object.freeze({ ...item }))
+      .map((item) => Object.freeze(withModulePresetThumbnail(item)))
   ),
   corner: Object.freeze(
     SYSTEM_MODULE_PRESET_ITEMS.filter((item) => item.moduleType === "corner" && item.active !== false)
       .sort(sortByOrderThenName)
-      .map((item) => Object.freeze({ ...item }))
+      .map((item) => Object.freeze(withModulePresetThumbnail(item)))
   ),
 });
 
