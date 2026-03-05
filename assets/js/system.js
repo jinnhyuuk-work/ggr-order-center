@@ -8405,9 +8405,25 @@ function renderBayOptionFrontPreview() {
   const countInput = $("#bayCountInput");
   const rodCountInput = $("#bayRodCountInput");
   const isCustom = presetSelect?.value === "custom";
+  const widthErrorEl = $("#bayWidthError");
   const widthValue = Number(
     (isCustom ? customInput?.value : presetSelect?.value) || Number(shelf.width || 0) || 0
   );
+  if (customInput && widthErrorEl) {
+    const rawCustomWidth = String(customInput.value || "").trim();
+    let widthMessage = "";
+    if (isCustom && rawCustomWidth) {
+      const numericWidth = Number(rawCustomWidth);
+      if (
+        !Number.isFinite(numericWidth) ||
+        numericWidth < MODULE_SHELF_WIDTH_LIMITS.min ||
+        numericWidth > MODULE_SHELF_WIDTH_LIMITS.max
+      ) {
+        widthMessage = `폭은 ${MODULE_SHELF_WIDTH_LIMITS.min}~${MODULE_SHELF_WIDTH_LIMITS.max}mm 범위 내로 입력해주세요.`;
+      }
+    }
+    setFieldError(customInput, widthErrorEl, widthMessage);
+  }
   syncBayOptionFurnitureSelectionAvailability(widthValue);
   const shelfCount = Number(countInput?.value ?? shelf.count ?? 0);
   const rodCount = Number(rodCountInput?.value || getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID) || 0);
