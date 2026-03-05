@@ -252,11 +252,11 @@ function createDefaultLayoutConfig(shape = SYSTEM_SHAPE_DEFAULT) {
   const sectionCount = getSectionCountForShape(normalizedShape);
   return {
     shapeType: normalizedShape,
-    // S-01: 신규 타입/섹션 기능을 위한 상태 모델만 먼저 준비한다.
+    // S-01: 신규 타입/설치공간 기능을 위한 상태 모델만 먼저 준비한다.
     sections: Array.from({ length: sectionCount }, (_, idx) => ({
       id: `section-${idx + 1}`,
       lengthMm: 0,
-      label: `섹션${idx + 1}`,
+      label: `설치공간${idx + 1}`,
     })),
     lowestHeightMm: 0,
     highestHeightMm: 0,
@@ -281,7 +281,7 @@ function syncLayoutConfigShape(nextShape) {
     return {
       id: prevSection?.id || `section-${idx + 1}`,
       lengthMm: Number(prevSection?.lengthMm || 0),
-      label: prevSection?.label || `섹션${idx + 1}`,
+      label: prevSection?.label || `설치공간${idx + 1}`,
     };
   });
   const nextSectionUsage =
@@ -363,7 +363,7 @@ function getLayoutConfigSnapshot(input = null) {
       Number.isFinite(highestHeightCandidate) && highestHeightCandidate > 0 ? highestHeightCandidate : 0,
     sections: (base.sections || []).map((section, idx) => ({
       id: String(section?.id || `section-${idx + 1}`),
-      label: String(section?.label || `섹션${idx + 1}`),
+      label: String(section?.label || `설치공간${idx + 1}`),
       lengthMm: Math.max(0, Number(section?.lengthMm || 0)),
     })),
     sectionUsage: Array.isArray(base.sectionUsage)
@@ -414,7 +414,7 @@ function evaluateLayoutConsultState(layout = getLayoutConfigSnapshot()) {
     (section) => Number(section?.lengthMm || 0) >= SYSTEM_SECTION_LENGTH_CONSULT_AT_MM
   );
   if (longSections.length) {
-    reasons.push(`섹션 길이 ${SYSTEM_SECTION_LENGTH_CONSULT_AT_MM}mm 이상`);
+    reasons.push(`설치공간 길이 ${SYSTEM_SECTION_LENGTH_CONSULT_AT_MM}mm 이상`);
   }
   return {
     status: reasons.length ? "consult" : "ok",
@@ -436,7 +436,7 @@ function buildLayoutSpecLines(input = null, { includeStatus = false, onlyWhenCon
 
   const lines = [`레이아웃 타입: ${layout.shapeLabel}`];
   if (sectionParts.length) {
-    lines.push(`섹션 길이: ${sectionParts.join(" | ")}`);
+    lines.push(`설치공간 길이: ${sectionParts.join(" | ")}`);
   }
   if (Number(layout.lowestHeightMm || 0) > 0) {
     lines.push(`가장 낮은 높이: ${layout.lowestHeightMm}mm`);
@@ -500,7 +500,7 @@ function buildLayoutSpecLinesFromSnapshot(layoutSpec, layoutConsult = null, { in
     .map((section, idx) => {
       const lengthMm = Number(section?.lengthMm || 0);
       if (!lengthMm) return "";
-      const label = String(section?.label || `섹션${idx + 1}`);
+      const label = String(section?.label || `설치공간${idx + 1}`);
       return `${label} ${lengthMm}mm`;
     })
     .filter(Boolean);
@@ -543,7 +543,7 @@ function evaluateLayoutValidationState(layout = getLayoutConfigSnapshot()) {
     }
     if (lengthMm < SYSTEM_SECTION_LENGTH_MIN_MM) {
       tooShortSections.push(idx);
-      sectionErrors[idx] = `섹션 길이는 최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm 이상 입력해주세요.`;
+      sectionErrors[idx] = `설치공간 길이는 최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm 이상 입력해주세요.`;
     }
   });
 
@@ -561,18 +561,18 @@ function evaluateLayoutValidationState(layout = getLayoutConfigSnapshot()) {
 
   if (missingSections.length) {
     status = "invalid";
-    messages.push("섹션 길이를 모두 입력해주세요.");
+    messages.push("설치공간 길이를 모두 입력해주세요.");
   }
 
   if (tooShortSections.length) {
     status = "invalid";
-    messages.push(`섹션 길이는 최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm 이상이어야 합니다.`);
+    messages.push(`설치공간 길이는 최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm 이상이어야 합니다.`);
   }
 
   if (overflowSections.length) {
     status = "invalid";
     const overflowNames = overflowSections
-      .map((entry) => `섹션${Number(entry.sectionIndex) + 1}`)
+      .map((entry) => `설치공간${Number(entry.sectionIndex) + 1}`)
       .join(", ");
     messages.push(`가용범위를 초과한 구간이 있습니다 (${overflowNames}). 폭을 조정해주세요.`);
   }
@@ -4684,7 +4684,7 @@ function getPreviewBuilderDisabledReason(input) {
   if (!input?.shelf?.materialId) return "선반 컬러를 먼저 선택해주세요.";
   const layoutValidation = evaluateLayoutValidationState(getLayoutConfigSnapshot(input));
   if (layoutValidation.status === "invalid") {
-    return layoutValidation.messages[0] || "레이아웃 섹션 입력값을 확인해주세요.";
+    return layoutValidation.messages[0] || "레이아웃 설치공간 입력값을 확인해주세요.";
   }
   const space = (input?.spaces || [])[0] || { min: 0, max: 0 };
   const min = Number(space.min || 0);
@@ -5431,7 +5431,7 @@ function updatePreviewWidthSummary(input, sectionRuns = null) {
   const targetSections = (layout.sections || [])
     .map((section, idx) => ({
       idx,
-      label: section.label || `섹션${idx + 1}`,
+      label: section.label || `설치공간${idx + 1}`,
       lengthMm: Math.max(0, Number(section.lengthMm || 0)),
     }))
     .filter((section) => section.lengthMm > 0);
@@ -5462,10 +5462,10 @@ function updatePreviewWidthSummary(input, sectionRuns = null) {
     const used = Math.round(Math.max(COLUMN_ENDPOINT_WIDTH_MM, Number(run.totalMm || 0)));
     const targetLength = Number(targetSections[idx]?.lengthMm || 0);
     if (targetLength > 0) {
-      segments.push(`섹션${idx + 1} ${used}/${targetLength}mm`);
+      segments.push(`설치공간${idx + 1} ${used}/${targetLength}mm`);
       return;
     }
-    segments.push(`섹션${idx + 1} ${used}mm`);
+    segments.push(`설치공간${idx + 1} ${used}mm`);
   });
   if (!segments.length) {
     widthSummaryEl.textContent = "적용 너비 합계: -";
@@ -6319,7 +6319,7 @@ function updatePreview() {
     const labelTextLength = String(labelEl.textContent || "").length;
     if (labelTextLength >= 11) labelEl.classList.add("system-section-width-label--compact");
     if (Number(info.targetMm || 0) > 0) {
-      labelEl.title = `섹션${Number(info.sectionIndex) + 1}: 사용 ${Number(info.totalMm || 0)}mm / 전체 ${Number(info.targetMm)}mm`;
+      labelEl.title = `설치공간${Number(info.sectionIndex) + 1}: 사용 ${Number(info.totalMm || 0)}mm / 전체 ${Number(info.targetMm)}mm`;
     }
     const dynamicSectionLabelOffset =
       sectionLabelOffset +
@@ -6813,7 +6813,7 @@ function renderShapeSizeInputs() {
   const layoutCard = document.createElement("div");
   layoutCard.className = "bay-input system-layout-config-card";
   layoutCard.innerHTML = `
-    <div class="bay-input-title">레이아웃 타입 및 섹션 설정</div>
+    <div class="bay-input-title">레이아웃 타입 및 설치공간 설정</div>
     <div class="layout-type-grid" role="group" aria-label="레이아웃 타입 선택">
       ${SYSTEM_SHAPE_KEYS.map((shapeKey) => {
         const sectionCount = getSectionCountForShape(shapeKey);
@@ -6826,7 +6826,7 @@ function renderShapeSizeInputs() {
             aria-pressed="${selected ? "true" : "false"}"
           >
             <span class="layout-type-btn-label">${escapeHtml(getLayoutTypeLabel(shapeKey))}</span>
-            <span class="layout-type-btn-meta">${sectionCount}섹션</span>
+            <span class="layout-type-btn-meta">${sectionCount}개 설치공간</span>
           </button>
         `;
       }).join("")}
@@ -6854,7 +6854,7 @@ function renderShapeSizeInputs() {
         })
         .join("")}
     </div>
-    <div class="field-note">섹션 길이는 최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm 이상 입력해주세요.</div>
+    <div class="field-note">설치공간 길이는 최소 ${SYSTEM_SECTION_LENGTH_MIN_MM}mm 이상 입력해주세요.</div>
   `;
   container.appendChild(layoutCard);
 
@@ -6892,7 +6892,7 @@ function renderShapeSizeInputs() {
   layoutStatusCard.innerHTML = `
     <div class="bay-input-title">레이아웃 상태 및 상담 안내</div>
     <div id="layoutConstraintStatus" class="layout-constraint-status" aria-live="polite"></div>
-    <div class="field-note">섹션 길이 ${SYSTEM_SECTION_LENGTH_CONSULT_AT_MM}mm 이상 또는 가장 높은 높이 ${SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM}mm 초과이면 상담 안내로 처리됩니다.</div>
+    <div class="field-note">설치공간 길이 ${SYSTEM_SECTION_LENGTH_CONSULT_AT_MM}mm 이상 또는 가장 높은 높이 ${SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM}mm 초과이면 상담 안내로 처리됩니다.</div>
   `;
   container.appendChild(layoutStatusCard);
 
