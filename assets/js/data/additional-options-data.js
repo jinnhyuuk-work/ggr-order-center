@@ -112,19 +112,6 @@ export const ADDITIONAL_OPTION_ITEMS = [
     description:
       "쿡탑의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다.",
   },
-  {
-    id: "top_back_shelf",
-    kind: "option",
-    name: "뒷턱/뒷선반 추가",
-    label: "뒷턱/뒷선반 추가",
-    price: 15000,
-    priceRule: { type: "fixed", value: 15000, unit: "item" },
-    required: false,
-    validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.TOP],
-    description:
-      "상판에 뒷선반을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다.",
-  },
 ];
 
 export function getAdditionalOptionsForPage(pageKey) {

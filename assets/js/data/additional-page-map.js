@@ -14,7 +14,7 @@ export const ADDITIONAL_SELECTION_PAGE_MAP = Object.freeze({
     processing: ["proc_hinge_hole", "proc_handle_hole"],
   },
   [ORDER_PAGE_KEYS.TOP]: {
-    options: ["top_sink_cut", "top_faucet_hole", "top_cooktop_cut", "top_back_shelf"],
-    processing: ["proc_hinge_hole", "proc_handle_hole"],
+    options: ["top_sink_cut", "top_faucet_hole", "top_cooktop_cut"],
+    processing: ["proc_hinge_hole", "proc_handle_hole", "top_back_shelf"],
   },
 });

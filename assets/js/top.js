@@ -185,6 +185,10 @@ function formatServiceDetail(serviceId, detail, { includeNote = false } = {}) {
   const srv = SERVICES[serviceId];
   const name = srv?.label || serviceId;
   if (!srv) return name;
+  if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
+    const height = getBackHeightFromServiceDetail(detail);
+    return height > 0 ? `${name} (${height}mm)` : name;
+  }
   if (!srv.hasDetail()) return name;
   return `${name} (${srv.formatDetail(detail, { includeNote })})`;
 }
@@ -200,6 +204,10 @@ function formatServiceList(services, serviceDetails = {}, opts = {}) {
 function formatServiceSummaryText(serviceId, detail) {
   const srv = SERVICES[serviceId];
   if (!srv) return "세부 옵션을 설정해주세요.";
+  if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
+    const height = getBackHeightFromServiceDetail(detail);
+    return height > 0 ? `높이 ${height}mm` : "높이를 입력해주세요.";
+  }
   if (!srv.hasDetail()) return "세부 옵션 없음";
   const formatted = srv.formatDetail(detail, { short: true });
   return formatted || "세부 옵션을 설정해주세요.";
@@ -238,11 +246,19 @@ let sendingEmail = false;
 let orderCompleted = false;
 let stickyOffsetTimer = null;
 const DEFAULT_TOP_THICKNESSES = [12, 24, 30, 40, 50];
-const TOP_CUSTOM_WIDTH_MAX = 800;
 const TOP_CUSTOM_LENGTH_MAX = 3000;
+const TOP_STANDARD_THICKNESS = 12;
+const TOP_STANDARD_WIDTH_MAX = 760;
+const TOP_BACK_HEIGHT_MAX = 100;
+const TOP_BACK_SHELF_SERVICE_ID = "top_back_shelf";
+const TOP_ROUNDING_UNIT = 10;
+const TOP_UNIT_PRICE_BY_CATEGORY = {
+  인조대리석: 147000,
+  하이막스: 210000,
+};
 const TOP_CATEGORY_DESC = {
-  인조대리석: "가성비 좋은 기본 상판 소재입니다.",
-  하이막스: "내구성과 균일한 표면감이 장점인 프리미엄 상판입니다.",
+  인조대리석: "12T·폭 760mm 이하 자동견적 (m당 147,000원), 초과는 비규격 상담 안내",
+  하이막스: "12T·폭 760mm 이하 자동견적 (m당 210,000원), 초과는 비규격 상담 안내",
 };
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
@@ -259,6 +275,71 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 function formatPrice(n) {
   return Number(n || 0).toLocaleString();
+}
+
+function ceilToUnit(value, unit = TOP_ROUNDING_UNIT) {
+  const safeValue = Number(value || 0);
+  if (safeValue <= 0) return 0;
+  return Math.ceil(safeValue / unit) * unit;
+}
+
+function needsSecondLength(shape) {
+  return shape === "l" || shape === "rl" || shape === "u";
+}
+
+function needsThirdLength(shape) {
+  return shape === "u";
+}
+
+function hasBackShelfService(services = []) {
+  return Array.isArray(services) && services.includes(TOP_BACK_SHELF_SERVICE_ID);
+}
+
+function getBackHeightFromServiceDetail(detail) {
+  const height = Number(detail?.height || 0);
+  if (!Number.isFinite(height) || height <= 0) return 0;
+  return height;
+}
+
+function validateBackHeightValue(backHeight) {
+  const height = Number(backHeight);
+  if (!Number.isFinite(height) || height <= 0) {
+    return { ok: false, message: "뒷턱 높이를 입력해주세요." };
+  }
+  if (height > TOP_BACK_HEIGHT_MAX) {
+    return {
+      ok: false,
+      message: `뒷턱 높이는 최대 ${TOP_BACK_HEIGHT_MAX}mm까지 입력 가능합니다.`,
+    };
+  }
+  return { ok: true, height, message: "" };
+}
+
+function getBackHeightLimit(width) {
+  return Math.max(0, TOP_STANDARD_WIDTH_MAX - Number(width || 0));
+}
+
+function getEffectiveWidth(width, backHeight = 0, useBackHeight = false) {
+  return Number(width || 0) + (useBackHeight ? Number(backHeight || 0) : 0);
+}
+
+function getTopUnitPrice(type) {
+  if (!type) return 0;
+  return TOP_UNIT_PRICE_BY_CATEGORY[type.category] || 0;
+}
+
+function getChargeableLengthMm({ shape, width, length, length2 = 0, length3 = 0 }) {
+  const safeWidth = Number(width || 0);
+  const safeLength = Number(length || 0);
+  const safeLength2 = Number(length2 || 0);
+  const safeLength3 = Number(length3 || 0);
+  if (shape === "u") {
+    return Math.max(0, safeLength + safeLength2 + safeLength3 - safeWidth * 2);
+  }
+  if (shape === "l" || shape === "rl") {
+    return Math.max(0, safeLength + safeLength2 - safeWidth);
+  }
+  return Math.max(0, safeLength);
 }
 
 function descriptionHTML(desc) {
@@ -281,6 +362,7 @@ function readTopInputs() {
   const width = Number($("#topWidth")?.value || 0);
   const length = Number($("#topLength")?.value || 0);
   const length2 = Number($("#topLength2")?.value || 0);
+  const length3 = Number($("#topLength3")?.value || 0);
   const thickness = Number($("#topThickness")?.value || 0);
   const options = Array.from(document.querySelectorAll("#topOptionCards input:checked")).map(
     (el) => el.value
@@ -289,48 +371,104 @@ function readTopInputs() {
     (el) => el.value
   );
   const serviceDetails = cloneServiceDetails(state.serviceDetails);
-  return { typeId, shape, width, length, length2, thickness, options, services, serviceDetails };
+  const useBackHeight = hasBackShelfService(services);
+  const backHeight = useBackHeight
+    ? getBackHeightFromServiceDetail(serviceDetails?.[TOP_BACK_SHELF_SERVICE_ID])
+    : 0;
+  return {
+    typeId,
+    shape,
+    width,
+    length,
+    length2,
+    length3,
+    thickness,
+    options,
+    backHeight,
+    useBackHeight,
+    services,
+    serviceDetails,
+  };
 }
 
-function validateTopInputs({ typeId, shape, width, length, length2, thickness }) {
+function validateTopInputs({
+  typeId,
+  shape,
+  width,
+  length,
+  length2,
+  length3,
+  thickness,
+  backHeight,
+  useBackHeight,
+}) {
   if (!typeId) return "상판 타입을 선택해주세요.";
   if (!shape) return "주방 형태를 선택해주세요.";
   if (!width) return "폭을 입력해주세요.";
   if (!length) return "길이를 입력해주세요.";
-  const needsSecond = shape === "l" || shape === "rl";
-  if (needsSecond && !length2) return "ㄱ자 형태일 때 길이2를 입력해주세요.";
+  if (needsSecondLength(shape) && !length2) {
+    return shape === "u" ? "ㄷ자 형태일 때 길이2를 입력해주세요." : "ㄱ자 형태일 때 길이2를 입력해주세요.";
+  }
+  if (needsThirdLength(shape) && !length3) return "ㄷ자 형태일 때 길이3을 입력해주세요.";
   if (!thickness) return "두께를 입력해주세요.";
   const type = TOP_TYPES.find((t) => t.id === typeId);
   if (type?.minWidth && width < type.minWidth) return `폭은 최소 ${type.minWidth}mm 입니다.`;
   if (type?.minLength && length < type.minLength) return `길이는 최소 ${type.minLength}mm 입니다.`;
-  if (needsSecond) {
+  if (needsSecondLength(shape)) {
     if (type?.minLength && length2 < type.minLength) return `길이2는 최소 ${type.minLength}mm 입니다.`;
+  }
+  if (needsThirdLength(shape)) {
+    if (type?.minLength && length3 < type.minLength) return `길이3은 최소 ${type.minLength}mm 입니다.`;
+  }
+  if (useBackHeight) {
+    const validation = validateBackHeightValue(backHeight);
+    if (!validation.ok) return validation.message;
   }
   return null;
 }
 
-function isTopCustomSize({ width, length, length2 = 0, shape }) {
-  if (width > TOP_CUSTOM_WIDTH_MAX) return true;
+function isTopCustomSize({ type, shape, thickness, width, length, length2 = 0, length3 = 0, backHeight = 0, useBackHeight = false }) {
+  if (Number(thickness) !== TOP_STANDARD_THICKNESS) return true;
+  const effectiveWidth = getEffectiveWidth(width, backHeight, useBackHeight);
+  if (effectiveWidth > TOP_STANDARD_WIDTH_MAX) return true;
   if (length > TOP_CUSTOM_LENGTH_MAX) return true;
-  const needsSecond = shape === "l" || shape === "rl";
-  if (needsSecond && length2 > TOP_CUSTOM_LENGTH_MAX) return true;
+  if (needsSecondLength(shape) && length2 > TOP_CUSTOM_LENGTH_MAX) return true;
+  if (needsThirdLength(shape) && length3 > TOP_CUSTOM_LENGTH_MAX) return true;
+  if (!getTopUnitPrice(type)) return true;
   return false;
 }
 
 function calcTopDetail(input) {
-  const { typeId, shape, width, length, length2, thickness, options, services = [], serviceDetails = {} } = input;
+  const {
+    typeId,
+    shape,
+    width,
+    length,
+    length2,
+    length3,
+    thickness,
+    options,
+    backHeight = 0,
+    useBackHeight = false,
+    services = [],
+    serviceDetails = {},
+  } = input;
   const type = TOP_TYPES.find((t) => t.id === typeId);
   const err = validateTopInputs(input);
   if (!type || err) return { error: err || "필수 정보를 입력해주세요." };
 
-  const isCustomPrice = isTopCustomSize({ width, length, length2, shape });
+  const isCustomPrice = isTopCustomSize({
+    type,
+    shape,
+    thickness,
+    width,
+    length,
+    length2,
+    length3,
+    backHeight,
+    useBackHeight,
+  });
 
-  const needsSecond = shape === "l" || shape === "rl";
-  const areaM2 =
-    needsSecond
-      ? (width / 1000) * (length / 1000) + (width / 1000) * (length2 / 1000)
-      : (width / 1000) * (length / 1000);
-  const base = type.basePrice + areaM2 * 120000;
   const optionPrice = options.reduce((sum, id) => {
     const opt = TOP_OPTIONS.find((o) => o.id === id);
     return sum + (opt?.price || 0);
@@ -340,34 +478,48 @@ function calcTopDetail(input) {
     serviceDetails,
     quantity: 1,
   });
-  const shapeFee = needsSecond ? 30000 : 0;
+  const shapeFee = shape === "l" || shape === "rl" ? 30000 : 0;
   const processingCost = optionPrice + shapeFee + serviceProcessingCost;
-  const materialCost = isCustomPrice ? 0 : base + processingCost;
+  const chargeableLengthMm = getChargeableLengthMm({ shape, width, length, length2, length3 });
+  const unitPrice = getTopUnitPrice(type);
+  const materialBaseCost = ceilToUnit((chargeableLengthMm / 1000) * unitPrice);
+  const materialCost = isCustomPrice ? 0 : materialBaseCost + processingCost;
   const appliedProcessingCost = isCustomPrice ? 0 : processingCost;
   const subtotal = materialCost;
   const vat = 0;
-  const total = Math.round(subtotal);
+  const total = isCustomPrice ? 0 : ceilToUnit(subtotal);
+
+  const displaySize = (() => {
+    if (shape === "u") {
+      return `${width}×${length} / ${width}×${length2} / ${width}×${length3}×${thickness}mm${
+        useBackHeight ? ` · 뒷턱 ${backHeight}mm` : ""
+      }`;
+    }
+    if (shape === "l" || shape === "rl") {
+      return `${width}×${length} / ${width}×${length2}×${thickness}mm${
+        useBackHeight ? ` · 뒷턱 ${backHeight}mm` : ""
+      }`;
+    }
+    return `${width}×${length}×${thickness}mm${useBackHeight ? ` · 뒷턱 ${backHeight}mm` : ""}`;
+  })();
+
+  const optionLabels = options
+    .map((id) => TOP_OPTIONS.find((o) => o.id === id)?.name || id)
+    .filter(Boolean);
 
   return {
     materialCost,
-    processingCost,
     subtotal,
     vat,
     total,
-    displaySize:
-      needsSecond
-        ? `${width}×${length} / ${width}×${length2}×${thickness}mm`
-        : `${width}×${length}×${thickness}mm`,
-    optionsLabel:
-      options.length === 0
-        ? "-"
-        : options
-            .map((id) => TOP_OPTIONS.find((o) => o.id === id)?.name || id)
-            .join(", "),
+    displaySize,
+    optionsLabel: optionLabels.length === 0 ? "-" : optionLabels.join(", "),
     servicesLabel: formatServiceList(services, serviceDetails, { includeNote: true }),
     serviceDetails,
     services,
     isCustomPrice,
+    useBackHeight,
+    backHeight,
     processingCost: appliedProcessingCost,
   };
 }
@@ -387,13 +539,21 @@ function calcAddonDetail(price) {
 
 function updateSelectedTopTypeCard() {
   const type = TOP_TYPES.find((t) => t.id === selectedTopType);
+  const unitPrice = getTopUnitPrice(type);
   renderSelectedCard({
     cardId: "#selectedTopTypeCard",
     emptyTitle: "선택된 상판 없음",
     emptyMeta: "상판을 선택해주세요.",
     swatch: type?.swatch,
     name: type ? escapeHtml(type.name) : "",
-    metaLines: type ? [`기본가 ${formatPrice(type.basePrice)}원`] : [],
+    metaLines: type
+      ? [
+          unitPrice
+            ? `12T · 폭 760mm 이하 m당 ${formatPrice(unitPrice)}원`
+            : "비규격 상담 안내",
+          "폭 760mm 초과 또는 12T 외 두께는 상담 안내",
+        ]
+      : [],
   });
 }
 
@@ -421,17 +581,20 @@ function updateTopSizePlaceholders(typeId) {
   const widthEl = $("#topWidth");
   const lengthEl = $("#topLength");
   const length2El = $("#topLength2");
+  const length3El = $("#topLength3");
   if (!widthEl || !lengthEl) return;
   const type = TOP_TYPES.find((t) => t.id === typeId);
   if (!type?.minWidth || !type?.maxWidth || !type?.minLength || !type?.maxLength) {
     widthEl.placeholder = "상판 타입을 선택해주세요.";
     lengthEl.placeholder = "상판 타입을 선택해주세요.";
     if (length2El) length2El.placeholder = "상판 타입을 선택해주세요.";
+    if (length3El) length3El.placeholder = "상판 타입을 선택해주세요.";
     return;
   }
   widthEl.placeholder = `폭 ${type.minWidth}~${type.maxWidth}mm`;
   lengthEl.placeholder = `길이 ${type.minLength}~${type.maxLength}mm`;
   if (length2El) length2El.placeholder = `길이2 ${type.minLength}~${type.maxLength}mm`;
+  if (length3El) length3El.placeholder = `길이3 ${type.minLength}~${type.maxLength}mm`;
 }
 
 function renderTopTypeTabs() {
@@ -474,19 +637,25 @@ function renderTopTypeCards() {
   container.innerHTML = "";
   const list = TOP_TYPES.filter((t) => (t.category || "기타") === selectedTopCategory);
   list.forEach((t) => {
+    const unitPrice = getTopUnitPrice(t);
     const thicknessText = (t.availableThickness || DEFAULT_TOP_THICKNESSES)
       .map((v) => `${v}T`)
       .join(", ");
+    const priceText = unitPrice
+      ? `12T · 폭 760mm 이하 m당 ${formatPrice(unitPrice)}원`
+      : "비규격 상담 안내";
+    const description = t.description || "폭 760mm 초과 또는 12T 외 두께는 상담 안내";
     const label = document.createElement("label");
     label.className = `card-base material-card${selectedTopType === t.id ? " selected" : ""}`;
     label.innerHTML = `
       <input type="radio" name="topType" value="${t.id}" ${selectedTopType === t.id ? "checked" : ""} />
       <div class="material-visual" style="background: ${t.swatch || "#ddd"}"></div>
       <div class="name">${t.name}</div>
-      <div class="price">㎡당 ${formatPrice(t.basePrice)}원</div>
+      <div class="price">${priceText}</div>
+      <div class="size">자동견적 기준: 12T / 폭 760mm 이하</div>
       <div class="size">가능 두께: ${thicknessText}</div>
       <div class="size">폭 ${t.minWidth}~${t.maxWidth}mm / 길이 ${t.minLength}~${t.maxLength}mm</div>
-      ${descriptionHTML(t.description)}
+      ${descriptionHTML(description)}
     `;
     container.appendChild(label);
   });
@@ -656,7 +825,7 @@ function renderServiceCards() {
       ? `m당 ${srv.pricePerMeter.toLocaleString()}원`
       : srv.pricePerCorner
       ? `모서리당 ${srv.pricePerCorner.toLocaleString()}원`
-      : "";
+      : srv.displayPriceText || "";
     label.innerHTML = `
       <input type="checkbox" name="service" value="${srv.id}" />
       <div class="material-visual" style="background: ${srv.swatch || "#eee"}"></div>
@@ -682,6 +851,11 @@ function renderServiceCards() {
       const card = e.target.closest(".service-card");
       if (e.target.checked) {
         card?.classList.add("selected");
+        if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
+          openServiceModal(serviceId, e.target, "change");
+          updatePreviewSummary(previewSummaryConfig);
+          return;
+        }
         if (srv?.hasDetail()) {
           openServiceModal(serviceId, e.target, "change");
         } else {
@@ -711,6 +885,17 @@ function renderServiceCards() {
     const checkbox = card.querySelector('input[name="service"]');
     if (!checkbox) return;
     const serviceId = checkbox.value;
+    if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
+      e.preventDefault();
+      e.stopPropagation();
+      const wasChecked = checkbox.checked;
+      if (!checkbox.checked) {
+        checkbox.checked = true;
+        card.classList.add("selected");
+      }
+      openServiceModal(serviceId, checkbox, wasChecked ? "edit" : "change");
+      return;
+    }
     const srv = SERVICES[serviceId];
     if (!srv?.hasDetail()) return;
     e.preventDefault();
@@ -832,6 +1017,46 @@ function renderOrderCompleteDetails() {
   `;
 }
 
+function setInlineFieldError({ fieldId, errorId, message = "", isError = false }) {
+  const fieldEl = fieldId ? document.getElementById(fieldId) : null;
+  const errorEl = errorId ? document.getElementById(errorId) : null;
+  if (errorEl) {
+    errorEl.textContent = message || "";
+    errorEl.classList.toggle("error", Boolean(isError && message));
+  }
+  if (fieldEl) {
+    fieldEl.classList.toggle("input-error", Boolean(isError && message));
+  }
+}
+
+function updateLength3InputError({ shape, length3, type }) {
+  if (!needsThirdLength(shape)) {
+    setInlineFieldError({ fieldId: "topLength3", errorId: "topLength3Error" });
+    return;
+  }
+  if (!length3) {
+    setInlineFieldError({ fieldId: "topLength3", errorId: "topLength3Error" });
+    return;
+  }
+  if (type?.minLength && length3 < type.minLength) {
+    setInlineFieldError({
+      fieldId: "topLength3",
+      errorId: "topLength3Error",
+      message: `길이3은 ${type.minLength}mm 이상으로 입력해주세요.`,
+      isError: true,
+    });
+    return;
+  }
+  setInlineFieldError({ fieldId: "topLength3", errorId: "topLength3Error" });
+}
+
+function getBackHeightGuidanceText(width) {
+  const availableHeight = getBackHeightLimit(width);
+  return availableHeight > 0
+    ? `가용높이 ${availableHeight}mm (상판 폭 + 뒷턱 높이 ≤ ${TOP_STANDARD_WIDTH_MAX}mm, 초과 시 상담안내)`
+    : `가용높이 0mm (현재 폭 기준 무료 적용 불가, 상담안내)`;
+}
+
 function updateAddButtonState() {
   const btn = $("#calcTopBtn");
   if (!btn) return;
@@ -844,7 +1069,7 @@ function refreshTopEstimate() {
   const priceEl = $("#topEstimateText");
   const input = readTopInputs();
   const type = TOP_TYPES.find((t) => t.id === input.typeId);
-  const needsSecond = input.shape === "l" || input.shape === "rl";
+  const needsSecond = needsSecondLength(input.shape);
   updateSizeErrors({
     widthId: "topWidth",
     lengthId: "topLength",
@@ -860,6 +1085,7 @@ function refreshTopEstimate() {
     length2Max: null,
     enableLength2: needsSecond,
   });
+  updateLength3InputError({ shape: input.shape, length3: input.length3, type });
   const detail = calcTopDetail(input);
   if (detail.error) {
     priceEl.textContent = detail.error;
@@ -899,8 +1125,11 @@ function addTopItem() {
     width: input.width,
     length: input.length,
     length2: input.length2,
+    length3: input.length3,
     thickness: input.thickness,
     options: input.options,
+    backHeight: input.backHeight,
+    useBackHeight: input.useBackHeight,
     services: input.services,
     serviceDetails: cloneServiceDetails(input.serviceDetails),
     quantity: 1,
@@ -925,7 +1154,9 @@ function resetSelections() {
   $("#topWidth").value = "";
   $("#topLength").value = "";
   $("#topLength2").value = "";
+  $("#topLength3").value = "";
   $("#topThickness").value = "";
+  setInlineFieldError({ fieldId: "topLength3", errorId: "topLength3Error" });
   document.querySelectorAll("#topOptionCards input[type='checkbox']").forEach((el) => {
     el.checked = false;
     el.closest(".option-card")?.classList.remove("selected");
@@ -945,10 +1176,22 @@ function resetSelections() {
 
 function updateLength2Visibility() {
   const shape = $("#kitchenShape")?.value;
-  const row = $("#topLength2Row");
-  if (!row) return;
-  const needsSecond = shape === "l" || shape === "rl";
-  row.classList.toggle("hidden-step", !needsSecond);
+  const row2 = $("#topLength2Row");
+  const row3 = $("#topLength3Row");
+  const showLength2 = needsSecondLength(shape);
+  const showLength3 = needsThirdLength(shape);
+  if (row2) row2.classList.toggle("hidden-step", !showLength2);
+  if (row3) row3.classList.toggle("hidden-step", !showLength3);
+  if (!showLength2) {
+    const length2El = $("#topLength2");
+    if (length2El) length2El.value = "";
+  }
+  if (!showLength3) {
+    const length3El = $("#topLength3");
+    if (length3El) length3El.value = "";
+    setInlineFieldError({ fieldId: "topLength3", errorId: "topLength3Error" });
+  }
+  refreshTopEstimate();
 }
 
 function updateStickyOffset() {
@@ -973,13 +1216,18 @@ function updateTopPreview(input, detail) {
   if (!colorEl || !textEl) return;
 
   const type = TOP_TYPES.find((t) => t.id === input.typeId);
-  const needsSecond = input.shape === "l" || input.shape === "rl";
+  const needsSecond = needsSecondLength(input.shape);
+  const needsThird = needsThirdLength(input.shape);
   const hasSize =
-    input.width && input.length && input.thickness && (!needsSecond || input.length2);
+    input.width &&
+    input.length &&
+    input.thickness &&
+    (!needsSecond || input.length2) &&
+    (!needsThird || input.length3);
 
   // reset shape container
   colorEl.innerHTML = "";
-  colorEl.classList.remove("l-shape-preview");
+  colorEl.classList.remove("l-shape-preview", "u-shape-preview");
   colorEl.style.clipPath = "none";
 
   if (!type || !hasSize || !detail) {
@@ -1001,14 +1249,42 @@ function updateTopPreview(input, detail) {
   };
   const swatch = type.swatch || swatchMap[type.id] || "#ddd";
 
-  if (needsSecond) {
+  if (input.shape === "u") {
+    const maxPx = 180;
+    const minPx = 40;
+    const overallWidthMm = input.length;
+    const overallHeightMm = Math.max(input.length2, input.length3, input.width);
+    const scale = Math.min(maxPx / Math.max(overallWidthMm, overallHeightMm), 1);
+    const widthPx = Math.max(12, input.width * scale);
+    const length2Px = Math.max(widthPx, Math.max(minPx, input.length2 * scale));
+    const length3Px = Math.max(widthPx, Math.max(minPx, input.length3 * scale));
+    const overallPxW = Math.max(minPx, overallWidthMm * scale);
+    const overallPxH = Math.max(length2Px, length3Px);
+
+    colorEl.classList.add("u-shape-preview");
+    colorEl.style.background = swatch;
+    colorEl.style.width = `${overallPxW}px`;
+    colorEl.style.height = `${overallPxH}px`;
+    colorEl.style.clipPath = `polygon(
+      0px 0px,
+      ${overallPxW}px 0px,
+      ${overallPxW}px ${length3Px}px,
+      ${overallPxW - widthPx}px ${length3Px}px,
+      ${overallPxW - widthPx}px ${widthPx}px,
+      ${widthPx}px ${widthPx}px,
+      ${widthPx}px ${length2Px}px,
+      0px ${length2Px}px
+    )`;
+    colorEl.style.setProperty("--cutout-alpha", "0");
+    colorEl.style.setProperty("--cutout-w", "0px");
+    colorEl.style.setProperty("--cutout-h", "0px");
+  } else if (needsSecond) {
     const maxPx = 180;
     const minPx = 40;
     const overallWidthMm = input.length;
     const overallHeightMm = Math.max(input.width, input.length2);
     const scale = Math.min(maxPx / Math.max(overallWidthMm, overallHeightMm), 1);
     const widthPx = Math.max(12, input.width * scale);
-    const lengthPx = Math.max(minPx, input.length * scale);
     const length2Px = Math.max(minPx, input.length2 * scale);
     const overallPxW = Math.max(minPx, overallWidthMm * scale);
     const overallPxH = Math.max(widthPx, length2Px);
@@ -1064,6 +1340,10 @@ function updateTopPreview(input, detail) {
     colorEl.style.height = `${h}px`;
   }
 
+  if (input.shape === "u") {
+    textEl.textContent = `${type.name} / ${input.width}×${input.length} & ${input.width}×${input.length2} & ${input.width}×${input.length3}×${input.thickness}mm`;
+    return;
+  }
   textEl.textContent = needsSecond
     ? `${type.name} / ${input.width}×${input.length} & ${input.width}×${input.length2}×${input.thickness}mm`
     : `${type.name} / ${input.width}×${input.length}×${input.thickness}mm`;
@@ -1097,19 +1377,169 @@ const serviceModalController = createServiceModalController({
   },
 });
 
+let activeCustomServiceModalId = null;
+let backHeightModalContext = { triggerCheckbox: null, mode: null };
+
+function setServiceModalError(message = "") {
+  const errEl = $("#topServiceModalError");
+  if (errEl) errEl.textContent = message || "";
+}
+
+function updateBackHeightModalGuidance() {
+  const width = Number($("#topWidth")?.value || 0);
+  const availableHeight = getBackHeightLimit(width);
+  const hintEl = $("#topBackHeightModalHint");
+  const statusEl = $("#topBackHeightModalStatus");
+  const heightInput = Number($("#topBackHeightModalInput")?.value || 0);
+
+  if (hintEl) {
+    hintEl.textContent = getBackHeightGuidanceText(width);
+  }
+  if (!statusEl) return;
+
+  statusEl.classList.remove("error");
+
+  if (!heightInput) {
+    statusEl.textContent = "높이를 입력하면 무료 범위/상담 안내 여부가 자동 계산됩니다.";
+    return;
+  }
+  if (heightInput > TOP_BACK_HEIGHT_MAX) {
+    statusEl.textContent = `입력값이 최대 ${TOP_BACK_HEIGHT_MAX}mm를 초과했습니다.`;
+    statusEl.classList.add("error");
+    return;
+  }
+  if (availableHeight <= 0) {
+    statusEl.textContent = `현재 폭 ${width}mm 기준 무료 뒷턱 불가 (저장 시 상담안내).`;
+    return;
+  }
+  if (heightInput <= availableHeight) {
+    statusEl.textContent = `입력 높이 ${heightInput}mm는 무료 범위입니다.`;
+    return;
+  }
+  statusEl.textContent = `입력 높이 ${heightInput}mm는 가용높이 ${availableHeight}mm를 초과하여 상담안내 대상입니다.`;
+}
+
+function renderBackHeightModalBody() {
+  const bodyEl = $("#topServiceModalBody");
+  if (!bodyEl) return;
+  const savedHeight = getBackHeightFromServiceDetail(state.serviceDetails?.[TOP_BACK_SHELF_SERVICE_ID]);
+  bodyEl.innerHTML = `
+    <p class="service-option-tip">뒷턱 높이를 입력해주세요. 높이는 최대 ${TOP_BACK_HEIGHT_MAX}mm까지 가능합니다.</p>
+    <div class="form-row">
+      <label for="topBackHeightModalInput">뒷턱 높이 (mm)</label>
+      <div class="field-col">
+        <input
+          type="number"
+          class="service-input"
+          id="topBackHeightModalInput"
+          placeholder="예: 40"
+          min="0"
+          max="${TOP_BACK_HEIGHT_MAX}"
+          value="${savedHeight > 0 ? savedHeight : ""}"
+        />
+        <div class="error-msg" id="topBackHeightModalHint"></div>
+        <div class="error-msg" id="topBackHeightModalStatus"></div>
+      </div>
+    </div>
+  `;
+  const modalInput = $("#topBackHeightModalInput");
+  updateBackHeightModalGuidance();
+  modalInput?.addEventListener("input", () => {
+    setServiceModalError("");
+    updateBackHeightModalGuidance();
+  });
+}
+
+function openBackHeightServiceModal(triggerCheckbox, mode = "change") {
+  activeCustomServiceModalId = TOP_BACK_SHELF_SERVICE_ID;
+  backHeightModalContext = { triggerCheckbox, mode };
+  const titleEl = $("#topServiceModalTitle");
+  if (titleEl) {
+    titleEl.textContent = SERVICES[TOP_BACK_SHELF_SERVICE_ID]?.label || "뒷턱/뒷선반 추가";
+  }
+  setServiceModalError("");
+  renderBackHeightModalBody();
+  openModal("#topServiceModal", { focusTarget: "#topServiceModalTitle" });
+}
+
+function closeBackHeightServiceModal(revertSelection = true) {
+  closeModal("#topServiceModal");
+  setServiceModalError("");
+  if (revertSelection && backHeightModalContext.mode === "change" && backHeightModalContext.triggerCheckbox) {
+    backHeightModalContext.triggerCheckbox.checked = false;
+    backHeightModalContext.triggerCheckbox.closest(".service-card")?.classList.remove("selected");
+    delete state.serviceDetails[TOP_BACK_SHELF_SERVICE_ID];
+    updateServiceSummary(TOP_BACK_SHELF_SERVICE_ID);
+    updatePreviewSummary(previewSummaryConfig);
+    refreshTopEstimate();
+    updateAddButtonState();
+  }
+  activeCustomServiceModalId = null;
+  backHeightModalContext = { triggerCheckbox: null, mode: null };
+}
+
+function saveBackHeightServiceModal() {
+  const heightInput = Number($("#topBackHeightModalInput")?.value || 0);
+  const validation = validateBackHeightValue(heightInput);
+  if (!validation.ok) {
+    setServiceModalError(validation.message);
+    return;
+  }
+  state.serviceDetails[TOP_BACK_SHELF_SERVICE_ID] = { height: validation.height };
+  updateServiceSummary(TOP_BACK_SHELF_SERVICE_ID);
+  refreshTopEstimate();
+  updateAddButtonState();
+  closeBackHeightServiceModal(false);
+}
+
+function removeBackHeightServiceModal() {
+  const checkbox =
+    backHeightModalContext.triggerCheckbox ||
+    document.querySelector(
+      `#topServiceCards input[name="service"][value="${TOP_BACK_SHELF_SERVICE_ID}"]`
+    );
+  if (checkbox) {
+    checkbox.checked = false;
+    checkbox.closest(".service-card")?.classList.remove("selected");
+  }
+  delete state.serviceDetails[TOP_BACK_SHELF_SERVICE_ID];
+  updateServiceSummary(TOP_BACK_SHELF_SERVICE_ID);
+  updatePreviewSummary(previewSummaryConfig);
+  refreshTopEstimate();
+  updateAddButtonState();
+  closeBackHeightServiceModal(false);
+}
+
 function openServiceModal(serviceId, triggerCheckbox, mode = "change") {
+  if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
+    openBackHeightServiceModal(triggerCheckbox, mode);
+    return;
+  }
+  activeCustomServiceModalId = null;
   serviceModalController.open(serviceId, triggerCheckbox, mode);
 }
 
 function closeServiceModal(revertSelection = true) {
+  if (activeCustomServiceModalId === TOP_BACK_SHELF_SERVICE_ID) {
+    closeBackHeightServiceModal(revertSelection);
+    return;
+  }
   serviceModalController.close(revertSelection);
 }
 
 function saveServiceModal() {
+  if (activeCustomServiceModalId === TOP_BACK_SHELF_SERVICE_ID) {
+    saveBackHeightServiceModal();
+    return;
+  }
   serviceModalController.save();
 }
 
 function removeServiceModal() {
+  if (activeCustomServiceModalId === TOP_BACK_SHELF_SERVICE_ID) {
+    removeBackHeightServiceModal();
+    return;
+  }
   serviceModalController.remove();
 }
 
@@ -1123,8 +1553,11 @@ function updateItemQuantity(id, quantity) {
     width: item.width,
     length: item.length,
     length2: item.length2,
+    length3: item.length3,
     thickness: item.thickness,
     options: item.options,
+    backHeight: item.backHeight,
+    useBackHeight: item.useBackHeight,
     services: item.services,
     serviceDetails: item.serviceDetails,
   });
@@ -1359,6 +1792,8 @@ function buildOrderPayload() {
               widthMm: Number(item.width || 0),
               lengthMm: Number(item.length || 0),
               length2Mm: Number(item.length2 || 0),
+              length3Mm: Number(item.length3 || 0),
+              backHeightMm: Number(item.backHeight || 0),
             },
         options: isAddon ? [] : Array.isArray(item.options) ? item.options : [],
         services: isAddon ? [] : Array.isArray(item.services) ? item.services : [],
@@ -1490,7 +1925,7 @@ function initTop() {
   $("#cancelTopServiceModal")?.addEventListener("click", () => closeServiceModal(true));
   $("#topServiceModalBackdrop")?.addEventListener("click", () => closeServiceModal(true));
 
-  ["topWidth", "topLength", "topLength2", "topThickness", "kitchenShape"].forEach((id) => {
+  ["topWidth", "topLength", "topLength2", "topLength3", "topThickness", "kitchenShape"].forEach((id) => {
     const el = document.getElementById(id);
     el?.addEventListener("input", refreshTopEstimate);
     el?.addEventListener("change", refreshTopEstimate);

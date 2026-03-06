@@ -37,6 +37,21 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     swatch: "linear-gradient(135deg, #fef4e6 0%, #ffd9a8 100%)",
     description: "피스 홀 1개당",
   },
+  {
+    id: "top_back_shelf",
+    kind: "processing",
+    label: "뒷턱/뒷선반 추가",
+    pricePerMeter: 0,
+    type: "simple",
+    requiresInput: false,
+    required: false,
+    validation: null,
+    visibleOn: [ORDER_PAGE_KEYS.TOP],
+    swatch: "linear-gradient(135deg, #f4f7e9 0%, #dce9c3 100%)",
+    description:
+      "뒷턱 높이를 입력할 수 있습니다. 가용높이(760 - 상판 폭) 내 무료, 초과 시 상담안내로 처리됩니다.",
+    displayPriceText: "가용높이 내 무료",
+  },
 ];
 
 export function getAdditionalProcessingServicesForPage(pageKey) {
