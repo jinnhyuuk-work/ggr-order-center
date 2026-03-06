@@ -2072,7 +2072,10 @@ th, td {
   font-size: var(--font-size-xs);
   font-weight: 700;
   color: var(--color-text-strong);
-  margin-top: 4px;
+  margin-top: 10px;
+  margin-bottom: 3px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border-faint);
 }
 
 .card-base .material-tier-line {
@@ -2081,11 +2084,30 @@ th, td {
   line-height: 1.35;
 }
 
+.card-base .material-tier-line + .material-tier-line {
+  margin-top: 1px;
+}
+
+.card-base .material-tier-line.is-consult {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
 .card-base .size-heading {
   font-size: var(--font-size-xs);
   font-weight: 700;
   color: var(--color-text-strong);
-  margin-top: 8px;
+  margin-top: 10px;
+  margin-bottom: 3px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border-faint);
+}
+
+.card-base .name + .material-tier-heading,
+.card-base .name + .size-heading {
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .card-base .size {

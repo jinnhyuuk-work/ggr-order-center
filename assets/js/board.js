@@ -640,11 +640,12 @@ function renderMaterialCards() {
       } />
       <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
       <div class="name">${mat.name}</div>
-      <div class="price">㎡당 ${getPricePerM2(mat).toLocaleString()}원</div>
-      <div class="size">가능 두께: ${(mat.availableThickness || [])
-        .map((t) => `${t}T`)
-        .join(", ")}</div>
-      <div class="size">폭 ${mat.minWidth}~${mat.maxWidth}mm / 길이 ${mat.minLength}~${mat.maxLength}mm</div>
+      <div class="material-tier-heading">가격 기준</div>
+      <div class="material-tier-line">㎡당 ${getPricePerM2(mat).toLocaleString()}원</div>
+      <div class="size-heading">제작 가능 범위</div>
+      <div class="size">두께 ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}</div>
+      <div class="size">폭 ${mat.minWidth}~${mat.maxWidth}mm</div>
+      <div class="size">길이 ${mat.minLength}~${mat.maxLength}mm</div>
       ${descriptionHTML(mat.description)}
     `;
     container.appendChild(label);
@@ -1540,8 +1541,10 @@ function updateSelectedMaterialLabel() {
     name: mat ? escapeHtml(mat.name) : "",
     metaLines: mat
       ? [
-          `가능 두께: ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`,
-          `폭 ${mat.minWidth}~${mat.maxWidth}mm / 길이 ${mat.minLength}~${mat.maxLength}mm`,
+          `㎡당 ${getPricePerM2(mat).toLocaleString()}원`,
+          `두께 ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`,
+          `폭 ${mat.minWidth}~${mat.maxWidth}mm`,
+          `길이 ${mat.minLength}~${mat.maxLength}mm`,
         ]
       : [],
   });

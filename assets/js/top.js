@@ -257,8 +257,8 @@ const TOP_UNIT_PRICE_BY_CATEGORY = {
   하이막스: 210000,
 };
 const TOP_CATEGORY_DESC = {
-  인조대리석: "12T·폭 760mm 이하 자동견적 (m당 147,000원), 초과는 비규격 상담 안내",
-  하이막스: "12T·폭 760mm 이하 자동견적 (m당 210,000원), 초과는 비규격 상담 안내",
+  인조대리석: "12T 기준 · 깊이 760mm 이하 m당 147,000원",
+  하이막스: "12T 기준 · 깊이 760mm 이하 m당 210,000원",
 };
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
@@ -328,6 +328,16 @@ function getTopUnitPrice(type) {
   return TOP_UNIT_PRICE_BY_CATEGORY[type.category] || 0;
 }
 
+function getTopStandardPriceLine(type) {
+  const unitPrice = getTopUnitPrice(type);
+  return unitPrice ? `깊이 760mm 이하 m당 ${formatPrice(unitPrice)}원` : "가격 정보 준비중";
+}
+
+function getTopAvailableThicknessText(type) {
+  const thicknesses = type?.availableThickness?.length ? type.availableThickness : DEFAULT_TOP_THICKNESSES;
+  return thicknesses.map((t) => `${t}T`).join("/");
+}
+
 function getChargeableLengthMm({ shape, width, length, length2 = 0, length3 = 0 }) {
   const safeWidth = Number(width || 0);
   const safeLength = Number(length || 0);
@@ -359,7 +369,7 @@ function escapeHtml(value) {
 function readTopInputs() {
   const typeId = selectedTopType;
   const shape = $("#kitchenShape")?.value || "";
-  const width = Number($("#topWidth")?.value || 0);
+  const width = Number($("#topDepth")?.value || 0);
   const length = Number($("#topLength")?.value || 0);
   const length2 = Number($("#topLength2")?.value || 0);
   const length3 = Number($("#topLength3")?.value || 0);
@@ -404,7 +414,7 @@ function validateTopInputs({
 }) {
   if (!typeId) return "상판 타입을 선택해주세요.";
   if (!shape) return "주방 형태를 선택해주세요.";
-  if (!width) return "폭을 입력해주세요.";
+  if (!width) return "깊이를 입력해주세요.";
   if (!length) return "길이를 입력해주세요.";
   if (needsSecondLength(shape) && !length2) {
     return shape === "u" ? "ㄷ자 형태일 때 길이2를 입력해주세요." : "ㄱ자 형태일 때 길이2를 입력해주세요.";
@@ -412,7 +422,7 @@ function validateTopInputs({
   if (needsThirdLength(shape) && !length3) return "ㄷ자 형태일 때 길이3을 입력해주세요.";
   if (!thickness) return "두께를 입력해주세요.";
   const type = TOP_TYPES.find((t) => t.id === typeId);
-  if (type?.minWidth && width < type.minWidth) return `폭은 최소 ${type.minWidth}mm 입니다.`;
+  if (type?.minWidth && width < type.minWidth) return `깊이는 최소 ${type.minWidth}mm 입니다.`;
   if (type?.minLength && length < type.minLength) return `길이는 최소 ${type.minLength}mm 입니다.`;
   if (needsSecondLength(shape)) {
     if (type?.minLength && length2 < type.minLength) return `길이2는 최소 ${type.minLength}mm 입니다.`;
@@ -539,7 +549,6 @@ function calcAddonDetail(price) {
 
 function updateSelectedTopTypeCard() {
   const type = TOP_TYPES.find((t) => t.id === selectedTopType);
-  const unitPrice = getTopUnitPrice(type);
   renderSelectedCard({
     cardId: "#selectedTopTypeCard",
     emptyTitle: "선택된 상판 없음",
@@ -548,10 +557,10 @@ function updateSelectedTopTypeCard() {
     name: type ? escapeHtml(type.name) : "",
     metaLines: type
       ? [
-          unitPrice
-            ? `12T · 폭 760mm 이하 m당 ${formatPrice(unitPrice)}원`
-            : "비규격 상담 안내",
-          "폭 760mm 초과 또는 12T 외 두께는 상담 안내",
+          `12T 기준: ${getTopStandardPriceLine(type)}`,
+          "비규격 상담안내",
+          `두께 ${getTopAvailableThicknessText(type)}`,
+          "12T 외 상담안내",
         ]
       : [],
   });
@@ -578,7 +587,7 @@ function updateTopThicknessOptions(typeId) {
 }
 
 function updateTopSizePlaceholders(typeId) {
-  const widthEl = $("#topWidth");
+  const widthEl = $("#topDepth");
   const lengthEl = $("#topLength");
   const length2El = $("#topLength2");
   const length3El = $("#topLength3");
@@ -591,7 +600,7 @@ function updateTopSizePlaceholders(typeId) {
     if (length3El) length3El.placeholder = "상판 타입을 선택해주세요.";
     return;
   }
-  widthEl.placeholder = `폭 ${type.minWidth}~${type.maxWidth}mm`;
+  widthEl.placeholder = `깊이 ${type.minWidth}~${type.maxWidth}mm`;
   lengthEl.placeholder = `길이 ${type.minLength}~${type.maxLength}mm`;
   if (length2El) length2El.placeholder = `길이2 ${type.minLength}~${type.maxLength}mm`;
   if (length3El) length3El.placeholder = `길이3 ${type.minLength}~${type.maxLength}mm`;
@@ -637,25 +646,20 @@ function renderTopTypeCards() {
   container.innerHTML = "";
   const list = TOP_TYPES.filter((t) => (t.category || "기타") === selectedTopCategory);
   list.forEach((t) => {
-    const unitPrice = getTopUnitPrice(t);
-    const thicknessText = (t.availableThickness || DEFAULT_TOP_THICKNESSES)
-      .map((v) => `${v}T`)
-      .join(", ");
-    const priceText = unitPrice
-      ? `12T · 폭 760mm 이하 m당 ${formatPrice(unitPrice)}원`
-      : "비규격 상담 안내";
-    const description = t.description || "폭 760mm 초과 또는 12T 외 두께는 상담 안내";
+    const standardPriceLine = getTopStandardPriceLine(t);
+    const thicknessText = getTopAvailableThicknessText(t);
     const label = document.createElement("label");
     label.className = `card-base material-card${selectedTopType === t.id ? " selected" : ""}`;
     label.innerHTML = `
       <input type="radio" name="topType" value="${t.id}" ${selectedTopType === t.id ? "checked" : ""} />
       <div class="material-visual" style="background: ${t.swatch || "#ddd"}"></div>
       <div class="name">${t.name}</div>
-      <div class="price">${priceText}</div>
-      <div class="size">자동견적 기준: 12T / 폭 760mm 이하</div>
-      <div class="size">가능 두께: ${thicknessText}</div>
-      <div class="size">폭 ${t.minWidth}~${t.maxWidth}mm / 길이 ${t.minLength}~${t.maxLength}mm</div>
-      ${descriptionHTML(description)}
+      <div class="material-tier-heading">12T 기준</div>
+      <div class="material-tier-line">${standardPriceLine}</div>
+      <div class="material-tier-line is-consult">비규격 상담안내</div>
+      <div class="size-heading">제작 가능 범위</div>
+      <div class="size">두께 ${thicknessText}</div>
+      <div class="size">12T 외 상담안내</div>
     `;
     container.appendChild(label);
   });
@@ -1053,8 +1057,8 @@ function updateLength3InputError({ shape, length3, type }) {
 function getBackHeightGuidanceText(width) {
   const availableHeight = getBackHeightLimit(width);
   return availableHeight > 0
-    ? `가용높이 ${availableHeight}mm (상판 폭 + 뒷턱 높이 ≤ ${TOP_STANDARD_WIDTH_MAX}mm, 초과 시 상담안내)`
-    : `가용높이 0mm (현재 폭 기준 무료 적용 불가, 상담안내)`;
+    ? `가용높이 ${availableHeight}mm (상판 깊이 + 뒷턱 높이 ≤ ${TOP_STANDARD_WIDTH_MAX}mm, 초과 시 상담안내)`
+    : `가용높이 0mm (현재 깊이 기준 무료 적용 불가, 상담안내)`;
 }
 
 function updateAddButtonState() {
@@ -1071,10 +1075,10 @@ function refreshTopEstimate() {
   const type = TOP_TYPES.find((t) => t.id === input.typeId);
   const needsSecond = needsSecondLength(input.shape);
   updateSizeErrors({
-    widthId: "topWidth",
+    widthId: "topDepth",
     lengthId: "topLength",
     length2Id: "topLength2",
-    widthErrorId: "topWidthError",
+    widthErrorId: "topDepthError",
     lengthErrorId: "topLengthError",
     length2ErrorId: "topLength2Error",
     widthMin: type?.minWidth,
@@ -1151,7 +1155,7 @@ function resetSelections() {
     el.closest(".material-card")?.classList.remove("selected");
   });
   $("#kitchenShape").value = "";
-  $("#topWidth").value = "";
+  $("#topDepth").value = "";
   $("#topLength").value = "";
   $("#topLength2").value = "";
   $("#topLength3").value = "";
@@ -1386,7 +1390,7 @@ function setServiceModalError(message = "") {
 }
 
 function updateBackHeightModalGuidance() {
-  const width = Number($("#topWidth")?.value || 0);
+  const width = Number($("#topDepth")?.value || 0);
   const availableHeight = getBackHeightLimit(width);
   const hintEl = $("#topBackHeightModalHint");
   const statusEl = $("#topBackHeightModalStatus");
@@ -1409,7 +1413,7 @@ function updateBackHeightModalGuidance() {
     return;
   }
   if (availableHeight <= 0) {
-    statusEl.textContent = `현재 폭 ${width}mm 기준 무료 뒷턱 불가 (저장 시 상담안내).`;
+    statusEl.textContent = `현재 깊이 ${width}mm 기준 무료 뒷턱 불가 (저장 시 상담안내).`;
     return;
   }
   if (heightInput <= availableHeight) {
@@ -1925,7 +1929,7 @@ function initTop() {
   $("#cancelTopServiceModal")?.addEventListener("click", () => closeServiceModal(true));
   $("#topServiceModalBackdrop")?.addEventListener("click", () => closeServiceModal(true));
 
-  ["topWidth", "topLength", "topLength2", "topLength3", "topThickness", "kitchenShape"].forEach((id) => {
+  ["topDepth", "topLength", "topLength2", "topLength3", "topThickness", "kitchenShape"].forEach((id) => {
     const el = document.getElementById(id);
     el?.addEventListener("input", refreshTopEstimate);
     el?.addEventListener("change", refreshTopEstimate);

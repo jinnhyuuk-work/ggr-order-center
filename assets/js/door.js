@@ -171,7 +171,7 @@ const SERVICES = buildServiceModels(BOARD_PROCESSING_SERVICES);
 
 function getDoorTierPrice(material, width, length) {
   const tiers = DOOR_PRICE_TIERS_BY_CATEGORY[material.category] || [];
-  return getTieredPrice({ tiers, width, length, customLabel: "비규격 상담 안내" });
+  return getTieredPrice({ tiers, width, length, customLabel: "비규격 상담안내" });
 }
 
 function formatDoorPriceTierLines(category) {
@@ -179,7 +179,7 @@ function formatDoorPriceTierLines(category) {
   const tierLines = tiers.map(
     (tier) => `${tier.maxWidth}×${tier.maxLength} 이하 ${tier.price.toLocaleString()}원`
   );
-  return [...tierLines, "비규격 상담 안내"];
+  return [...tierLines, "비규격 상담안내"];
 }
 
 // 1) 도어 금액 계산
@@ -636,11 +636,19 @@ function renderMaterialCards() {
       } />
       <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
       <div class="name">${mat.name}</div>
-      ${priceLines.map((line) => `<div class="price">${line}</div>`).join("")}
-      <div class="size">가능 두께: ${(mat.availableThickness || [])
-        .map((t) => `${t}T`)
-        .join(", ")}</div>
-      <div class="size">폭 ${mat.minWidth}~${mat.maxWidth}mm / 길이 ${mat.minLength}~${mat.maxLength}mm</div>
+      <div class="material-tier-heading">가격 기준</div>
+      ${priceLines
+        .map(
+          (line) =>
+            `<div class="material-tier-line${
+              String(line).includes("상담안내") ? " is-consult" : ""
+            }">${line}</div>`
+        )
+        .join("")}
+      <div class="size-heading">제작 가능 범위</div>
+      <div class="size">두께 ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}</div>
+      <div class="size">폭 ${mat.minWidth}~${mat.maxWidth}mm</div>
+      <div class="size">길이 ${mat.minLength}~${mat.maxLength}mm</div>
       ${descriptionHTML(mat.description)}
     `;
     container.appendChild(label);
@@ -1556,8 +1564,9 @@ function updateSelectedMaterialLabel() {
     metaLines: mat
       ? [
           ...priceLines,
-          `가능 두께: ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`,
-          `폭 ${mat.minWidth}~${mat.maxWidth}mm / 길이 ${mat.minLength}~${mat.maxLength}mm`,
+          `두께 ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`,
+          `폭 ${mat.minWidth}~${mat.maxWidth}mm`,
+          `길이 ${mat.minLength}~${mat.maxLength}mm`,
         ]
       : [],
   });

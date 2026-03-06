@@ -820,6 +820,11 @@ function getShelfDisplayWidthRangeText() {
   return `${minWidthMm}~${maxWidthMm}mm`;
 }
 
+function getShelfDisplayDepthText() {
+  // System shelf depth is fixed to 400mm in current product spec.
+  return "400mm";
+}
+
 function buildShelfTierPriceHtml(material) {
   const groups = [
     { title: "일반 선반", tiers: SYSTEM_SHELF_TIER_PRICING?.normal?.tiers || [] },
@@ -834,9 +839,9 @@ function buildShelfTierPriceHtml(material) {
           const label = String(tier?.label || "-");
           if (Boolean(tier?.isCustomPrice)) {
             const consultLabel = String(label || "").includes("비규격")
-              ? "비규격 상담 안내"
-              : `${label} 상담 안내`;
-            return `<div class="material-tier-line">${escapeHtml(consultLabel)}</div>`;
+              ? "비규격 상담안내"
+              : `${label} 상담안내`;
+            return `<div class="material-tier-line is-consult">${escapeHtml(consultLabel)}</div>`;
           }
           return `<div class="material-tier-line">${escapeHtml(label)} ${formatWon(
             resolveTierUnitPrice(tier, material)
@@ -888,7 +893,7 @@ function buildPostBarTierPriceHtml() {
       return `
         <div class="material-tier-heading">${escapeHtml(group.title)}</div>
         ${rows}
-        <div class="material-tier-line">비규격 상담안내</div>
+        <div class="material-tier-line is-consult">비규격 상담안내</div>
       `;
     })
     .filter(Boolean)
@@ -929,7 +934,7 @@ function renderMaterialCards(picker) {
       imageUrl: mat.thumbnail || "",
     });
     const limits = LIMITS[picker.key];
-    const heightLine = `가능 높이: ${limits.minLength}~${limits.maxLength}mm`;
+    const heightLine = `높이 ${limits.minLength}~${limits.maxLength}mm`;
     const tierPriceHtml = buildMaterialTierPriceHtml(picker, mat);
     const sizeLines = [];
     if (picker.key === "column") {
@@ -938,8 +943,9 @@ function renderMaterialCards(picker) {
       const thicknessValues = (mat.availableThickness || [])
         .map((t) => `${t}T`)
         .join(", ");
-      if (thicknessValues) sizeLines.push(`가능 두께: ${thicknessValues}`);
-      sizeLines.push(`가능 폭: ${getShelfDisplayWidthRangeText()}`);
+      if (thicknessValues) sizeLines.push(`두께 ${thicknessValues}`);
+      sizeLines.push(`폭 ${getShelfDisplayWidthRangeText()}`);
+      sizeLines.push(`깊이 ${getShelfDisplayDepthText()}`);
     }
     const sizeInfoHtml = sizeLines.length
       ? `
@@ -982,8 +988,9 @@ function updateSelectedMaterialCard(picker) {
     if (picker.key === "column") {
       metaLines.push(`높이 ${limits.minLength}~${limits.maxLength}mm`);
     } else {
-      metaLines.push(`가능 두께: ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`);
-      metaLines.push(`가능 폭: ${getShelfDisplayWidthRangeText()}`);
+      metaLines.push(`두께 ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`);
+      metaLines.push(`폭 ${getShelfDisplayWidthRangeText()}`);
+      metaLines.push(`깊이 ${getShelfDisplayDepthText()}`);
     }
   }
   renderSelectedCard({
