@@ -5,16 +5,16 @@ export const arrayToMap = (list) =>
   }, {});
 
 export const COMMON_PROCESSING_SERVICES = {
-  hinge_hole: {
-    id: "hinge_hole",
+  proc_hinge_hole: {
+    id: "proc_hinge_hole",
     label: "경첩 홀 가공",
     pricePerHole: 1500,
     type: "detail",
     swatch: "linear-gradient(135deg, #f0f7ff 0%, #c1dbff 100%)",
     description: "경첩 홀 1개당",
   },
-  handle_hole: {
-    id: "handle_hole",
+  proc_handle_hole: {
+    id: "proc_handle_hole",
     label: "피스 홀 타공",
     pricePerHole: 1200,
     type: "detail",

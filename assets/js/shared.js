@@ -4,6 +4,9 @@ export const EMAILJS_CONFIG = {
   publicKey: "dUvt2iF9ciN8bvf6r",
 };
 
+export const ORDER_PAYLOAD_SCHEMA_VERSION = "v1";
+export const CONSULT_DISPLAY_PRICE_LABEL = "상담안내";
+
 const MODAL_FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -19,6 +22,30 @@ let autoModalTitleIdSeq = 0;
 
 export function formatPrice(value) {
   return Number(value || 0).toLocaleString();
+}
+
+export function buildConsultAwarePricing({
+  materialCost = 0,
+  processingCost = 0,
+  total = 0,
+  isCustomPrice = false,
+} = {}) {
+  if (isCustomPrice) {
+    return {
+      materialCost: null,
+      processingCost: null,
+      total: null,
+      isCustomPrice: true,
+      displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
+    };
+  }
+  return {
+    materialCost: Number(materialCost || 0),
+    processingCost: Number(processingCost || 0),
+    total: Number(total || 0),
+    isCustomPrice: false,
+    displayPriceLabel: null,
+  };
 }
 
 export function calcShippingCost(totalWeightKg) {

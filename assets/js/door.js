@@ -28,6 +28,8 @@ import {
   initCollapsibleSections,
   updatePreviewSummary,
   buildEstimateDetailLines,
+  ORDER_PAYLOAD_SCHEMA_VERSION,
+  buildConsultAwarePricing,
 } from "./shared.js";
 
 class BaseService {
@@ -357,6 +359,26 @@ const previewSummaryConfig = {
   optionSelector: 'input[name="doorOption"]:checked',
   serviceSelector: 'input[name="service"]:checked',
 };
+
+function clearProcessingServices() {
+  document.querySelectorAll('input[name="service"]').forEach((input) => {
+    input.checked = false;
+    input.closest(".service-card")?.classList.remove("selected");
+  });
+  state.serviceDetails = {};
+  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
+}
+
+function syncProcessingSectionVisibility() {
+  const container = $("#serviceCards");
+  if (!container) return;
+  container.classList.remove("hidden-step");
+  container.querySelectorAll('input[name="service"]').forEach((input) => {
+    input.disabled = false;
+  });
+  updatePreviewSummary(previewSummaryConfig);
+}
+
 let currentPhase = 1; // 1: 도어/가공, 2: 부자재, 3: 고객 정보
 let sendingEmail = false;
 let orderCompleted = false;
@@ -484,7 +506,7 @@ function renderServiceCards() {
   });
 
   Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
-  updatePreviewSummary(previewSummaryConfig);
+  syncProcessingSectionVisibility();
 
   container.addEventListener("change", (e) => {
     if (e.target.name === "service") {
@@ -862,12 +884,8 @@ function resetStepsAfterAdd() {
   });
 
   // 가공 서비스 초기화
-  document.querySelectorAll('input[name="service"]').forEach((input) => {
-    input.checked = false;
-    input.closest(".service-card")?.classList.remove("selected");
-  });
-  state.serviceDetails = {};
-  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
+  clearProcessingServices();
+  syncProcessingSectionVisibility();
 
   $("#itemPriceDisplay").textContent = "금액: 0원";
 
@@ -895,8 +913,7 @@ function updateStepVisibility(scrollTarget) {
   const step1 = document.getElementById("step1");
   const step2 = document.getElementById("step2");
   const stepPreview = document.getElementById("stepPreview");
-  const step3Options = document.getElementById("step3Options");
-  const step3 = document.getElementById("step3");
+  const step3Additional = document.getElementById("step3Additional");
   const actionCard = document.querySelector(".action-card");
   const step4 = document.getElementById("step4");
   const step5 = document.getElementById("step5");
@@ -912,7 +929,7 @@ function updateStepVisibility(scrollTarget) {
   const showPhase3 = currentPhase === 3;
 
   if (orderCompleted) {
-    [step1, step2, stepPreview, step3Options, step3, step4, step5, actionCard].forEach((el) =>
+    [step1, step2, stepPreview, step3Additional, step4, step5, actionCard].forEach((el) =>
       el?.classList.add("hidden-step")
     );
     navActions?.classList.add("hidden-step");
@@ -924,7 +941,7 @@ function updateStepVisibility(scrollTarget) {
     return;
   }
 
-  [step1, step2, stepPreview, step3Options, step3, actionCard].forEach((el) => {
+  [step1, step2, stepPreview, step3Additional, actionCard].forEach((el) => {
     if (el) el.classList.toggle("hidden-step", !showPhase1);
   });
   if (step4) step4.classList.toggle("hidden-step", !showPhase2);
@@ -1141,6 +1158,61 @@ function buildEmailContent() {
   };
 }
 
+function buildOrderPayload() {
+  const customer = getCustomerInfo();
+  const summary = calcOrderSummary(state.items);
+  const hasCustomPrice = state.items.some((item) => item.isCustomPrice);
+
+  return {
+    schemaVersion: ORDER_PAYLOAD_SCHEMA_VERSION,
+    pageKey: "door",
+    createdAt: new Date().toISOString(),
+    customer: {
+      name: customer.name || "",
+      phone: customer.phone || "",
+      email: customer.email || "",
+      postcode: customer.postcode || "",
+      address: customer.address || "",
+      detailAddress: customer.detailAddress || "",
+      memo: customer.memo || "",
+    },
+    totals: {
+      grandTotal: Number(summary.grandTotal || 0),
+      subtotal: Number(summary.subtotal || 0),
+      shippingCost: Number(summary.shippingCost || 0),
+      hasCustomPrice,
+      displayPriceLabel: hasCustomPrice ? "상담안내(상담 필요 품목 미포함)" : null,
+    },
+    items: state.items.map((item) => {
+      const isAddon = item.type === "addon";
+      const addon = isAddon ? BOARD_ADDON_ITEMS.find((candidate) => candidate.id === item.addonId) : null;
+      return {
+        lineId: item.id,
+        itemType: isAddon ? "addon" : "product",
+        name: isAddon ? addon?.name || "부자재" : MATERIALS[item.materialId]?.name || "",
+        quantity: Number(item.quantity || 1),
+        materialId: isAddon ? null : item.materialId,
+        dimensions: isAddon
+          ? null
+          : {
+              thicknessMm: Number(item.thickness || 0),
+              widthMm: Number(item.width || 0),
+              lengthMm: Number(item.length || 0),
+            },
+        options: isAddon ? [] : Array.isArray(item.options) ? item.options : [],
+        services: isAddon ? [] : Array.isArray(item.services) ? item.services : [],
+        serviceDetails: isAddon ? {} : item.serviceDetails || {},
+        pricing: buildConsultAwarePricing({
+          materialCost: item.materialCost,
+          processingCost: item.processingCost,
+          total: item.total,
+          isCustomPrice: Boolean(item.isCustomPrice),
+        }),
+      };
+    }),
+  };
+}
+
 function updateSendButtonEnabled() {
   const customer = getCustomerInfo();
   updateSendButtonEnabledShared({
@@ -1159,7 +1231,7 @@ function resetOrderCompleteUI() {
   const summaryCard = document.getElementById("stepFinal");
   const customerStep = document.getElementById("step5");
   const actionCard = document.querySelector(".action-card");
-  ["step1", "step2", "stepPreview", "step3Options", "step3", "step4"].forEach((id) =>
+  ["step1", "step2", "stepPreview", "step3Additional", "step4"].forEach((id) =>
     document.getElementById(id)?.classList.remove("hidden-step")
   );
   actionCard?.classList.remove("hidden-step");
@@ -1281,6 +1353,7 @@ async function sendQuote() {
   updateSendButtonEnabled();
 
   const { subject, body, lines } = buildEmailContent();
+  const payload = buildOrderPayload();
   const addressLine = `${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim();
   const templateParams = {
     subject,
@@ -1291,6 +1364,7 @@ async function sendQuote() {
     customer_address: addressLine || "-",
     customer_memo: customer.memo || "-",
     order_lines: lines.join("\n"),
+    order_payload_json: JSON.stringify(payload, null, 2),
   };
 
   try {
@@ -1411,13 +1485,7 @@ function resetServiceOptions() {
   const hasDetails = state.serviceDetails && Object.keys(state.serviceDetails).length > 0;
   if (!hasSelectedService && !hasDetails) return;
 
-  document.querySelectorAll('input[name="service"]').forEach((input) => {
-    input.checked = false;
-    input.closest(".service-card")?.classList.remove("selected");
-  });
-  state.serviceDetails = {};
-  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
-  updatePreviewSummary(previewSummaryConfig);
+  clearProcessingServices();
   clearPreviewHoles();
   autoCalculatePrice();
   updateAddItemState();
@@ -1427,17 +1495,17 @@ function renderPreviewHoles(input) {
   const colorEl = $("#previewColor");
   if (!colorEl) return;
   clearPreviewHoles();
-  const hasHinge = input?.services?.includes("hinge_hole");
-  const hasHandle = input?.services?.includes("handle_hole");
+  const hasHinge = input?.services?.includes("proc_hinge_hole");
+  const hasHandle = input?.services?.includes("proc_handle_hole");
   if (!hasHinge && !hasHandle) return;
   if (!input.width || !input.length) return;
   const hingeHoles =
-    hasHinge && Array.isArray(input.serviceDetails?.hinge_hole?.holes)
-      ? input.serviceDetails.hinge_hole.holes
+    hasHinge && Array.isArray(input.serviceDetails?.proc_hinge_hole?.holes)
+      ? input.serviceDetails.proc_hinge_hole.holes
       : [];
   const handleHoles =
-    hasHandle && Array.isArray(input.serviceDetails?.handle_hole?.holes)
-      ? input.serviceDetails.handle_hole.holes
+    hasHandle && Array.isArray(input.serviceDetails?.proc_handle_hole?.holes)
+      ? input.serviceDetails.proc_handle_hole.holes
       : [];
   const holes = [
     ...hingeHoles.map((h) => ({ ...h, _type: "hinge" })),
@@ -1621,6 +1689,7 @@ function init() {
   renderMaterialCards();
   renderOptionCards();
   renderServiceCards();
+  syncProcessingSectionVisibility();
   initCollapsibleSections();
   renderAddonCards();
   renderTable();

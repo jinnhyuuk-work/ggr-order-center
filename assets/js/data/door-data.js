@@ -1,4 +1,7 @@
-import { arrayToMap, COMMON_PROCESSING_SERVICES, COMMON_ADDON_ITEMS } from "./common-data.js";
+import { arrayToMap, COMMON_ADDON_ITEMS } from "./common-data.js";
+import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
+import { getAdditionalOptionsForPage } from "./additional-options-data.js";
+import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
 
 const LX_SMR_PET_ITEMS = [
   {
@@ -1202,28 +1205,9 @@ export const DOOR_PRICE_TIERS_BY_CATEGORY = {
 };
 
 export const DOOR_PROCESSING_SERVICES = {
-  ...COMMON_PROCESSING_SERVICES,
+  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.DOOR),
 };
 
-export const DOOR_OPTIONS = [
-  {
-    id: "edge_finish",
-    name: "엣지 마감",
-    price: 5000,
-    description: "절단면에 엣지 마감을 추가합니다.",
-  },
-  {
-    id: "surface_coating",
-    name: "표면 코팅",
-    price: 7000,
-    description: "표면 보호를 위한 코팅 옵션입니다.",
-  },
-  {
-    id: "anti_scratch",
-    name: "스크래치 보호",
-    price: 4000,
-    description: "스크래치 보호 필름을 추가합니다.",
-  },
-];
+export const DOOR_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.DOOR);
 
 export const DOOR_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];

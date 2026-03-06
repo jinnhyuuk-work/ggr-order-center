@@ -89,28 +89,30 @@
           </div>
         </section>
 
-        <section id="step3Options" class="step-card is-accordion is-collapsed">
+        <section id="step3Additional" class="step-card is-accordion is-collapsed">
           <div class="step-card-header">
-            <h2>옵션을 선택해주세요.</h2>
+            <h2>추가 선택사항을 설정해주세요.</h2>
             <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step3Options" aria-expanded="false">열기</button>
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step3Additional" aria-expanded="false">열기</button>
             </div>
           </div>
-          <div class="accordion-body" id="step3OptionsBody">
-            <div id="boardOptionCards" class="grid-cards grid-cards--2 grid-cards--keep-2"></div>
-          </div>
-        </section>
+          <div class="accordion-body" id="step3AdditionalBody">
+            <div class="additional-selection-block">
+              <div class="additional-selection-head">
+                <h3>추가옵션</h3>
+                <span class="additional-selection-badge">선택만</span>
+              </div>
+              <div id="boardOptionCards" class="grid-cards grid-cards--2 grid-cards--keep-2"></div>
+            </div>
 
-        <!-- STEP 03: 가공 서비스 선택 -->
-        <section id="step3" class="step-card is-accordion is-collapsed">
-          <div class="step-card-header">
-            <h2>가공 서비스를 선택해주세요.</h2>
-            <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step3" aria-expanded="false">열기</button>
+            <div class="additional-selection-block additional-selection-block--processing">
+              <div class="additional-selection-head">
+                <h3>가공서비스</h3>
+                <span class="additional-selection-badge additional-selection-badge--input">입력 필요</span>
+              </div>
+              <p class="additional-selection-hint">가공서비스는 선택 후 위치/치수 입력이 필요합니다.</p>
+              <div id="serviceCards" class="grid-cards grid-cards--2 grid-cards--keep-2"></div>
             </div>
-          </div>
-          <div class="accordion-body" id="step3Body">
-            <div id="serviceCards" class="grid-cards grid-cards--2 grid-cards--keep-2"></div>
           </div>
         </section>
 

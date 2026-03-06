@@ -17,6 +17,8 @@ import {
   initCollapsibleSections,
   updatePreviewSummary,
   buildEstimateDetailLines,
+  ORDER_PAYLOAD_SCHEMA_VERSION,
+  buildConsultAwarePricing,
 } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
 
@@ -212,6 +214,26 @@ const previewSummaryConfig = {
   optionSelector: "#topOptionCards input:checked",
   serviceSelector: 'input[name="service"]:checked',
 };
+
+function clearProcessingServices() {
+  document.querySelectorAll('#topServiceCards input[name="service"]').forEach((input) => {
+    input.checked = false;
+    input.closest(".service-card")?.classList.remove("selected");
+  });
+  state.serviceDetails = {};
+  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
+}
+
+function syncProcessingSectionVisibility() {
+  const container = $("#topServiceCards");
+  if (!container) return;
+  container.classList.remove("hidden-step");
+  container.querySelectorAll('input[name="service"]').forEach((input) => {
+    input.disabled = false;
+  });
+  updatePreviewSummary(previewSummaryConfig);
+}
+
 let sendingEmail = false;
 let orderCompleted = false;
 let stickyOffsetTimer = null;
@@ -651,7 +673,7 @@ function renderServiceCards() {
   });
 
   Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
-  updatePreviewSummary(previewSummaryConfig);
+  syncProcessingSectionVisibility();
 
   container.addEventListener("change", (e) => {
     if (e.target.name === "service") {
@@ -908,16 +930,12 @@ function resetSelections() {
     el.checked = false;
     el.closest(".option-card")?.classList.remove("selected");
   });
-  document.querySelectorAll("#topServiceCards input[type='checkbox']").forEach((el) => {
-    el.checked = false;
-    el.closest(".service-card")?.classList.remove("selected");
-  });
+  clearProcessingServices();
+  syncProcessingSectionVisibility();
   document.querySelectorAll("#topAddonCards input[type='checkbox']").forEach((el) => {
     el.checked = false;
     el.closest(".addon-card")?.classList.remove("selected");
   });
-  state.serviceDetails = {};
-  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
   updatePreviewSummary(previewSummaryConfig);
   updateSelectedTopTypeCard();
   updateSelectedTopAddonsDisplay();
@@ -1135,12 +1153,11 @@ function closeInfoModal() {
   closeModal("#infoModal");
 }
 
-function updateStepVisibility() {
+function updateStepVisibility(scrollTarget) {
   const step1 = $("#step1");
   const step2 = $("#step2");
   const stepPreview = $("#stepPreview");
-  const step3Options = $("#step3Options");
-  const step3Services = $("#step3Services");
+  const step3Additional = $("#step3Additional");
   const step4 = $("#step4");
   const step5 = $("#step5");
   const actionCard = document.querySelector(".action-card");
@@ -1161,8 +1178,7 @@ function updateStepVisibility() {
       step1,
       step2,
       stepPreview,
-      step3Options,
-      step3Services,
+      step3Additional,
       step4,
       step5,
       actionCard,
@@ -1173,7 +1189,7 @@ function updateStepVisibility() {
     return;
   }
 
-  [step1, step2, stepPreview, step3Options, step3Services, actionCard].forEach((el) => {
+  [step1, step2, stepPreview, step3Additional, actionCard].forEach((el) => {
     el?.classList.toggle("hidden-step", !showPhase1);
   });
   step4?.classList.toggle("hidden-step", !showPhase2);
@@ -1194,6 +1210,10 @@ function updateStepVisibility() {
   if (navNext) {
     navNext.classList.toggle("hidden-step", showPhase3);
     navNext.style.display = showPhase3 ? "none" : "";
+  }
+
+  if (scrollTarget) {
+    scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
@@ -1227,7 +1247,7 @@ function resetOrderCompleteUI() {
   orderCompleted = false;
   const orderComplete = $("#orderComplete");
   const navActions = document.querySelector(".nav-actions");
-  ["step1", "step2", "stepPreview", "step3Options", "step3Services", "step4", "step5", "stepFinal"].forEach(
+  ["step1", "step2", "stepPreview", "step3Additional", "step4", "step5", "stepFinal"].forEach(
     (id) => document.getElementById(id)?.classList.remove("hidden-step")
   );
   navActions?.classList.remove("hidden-step");
@@ -1296,6 +1316,64 @@ function buildEmailContent() {
   };
 }
 
+function buildOrderPayload() {
+  const customer = getCustomerInfo();
+  const grandTotal = state.items.reduce((sum, it) => sum + Number(it.total || 0), 0);
+  const subtotal = state.items.reduce((sum, it) => sum + Number(it.subtotal || 0), 0);
+  const hasCustomPrice = state.items.some((item) => item.isCustomPrice);
+
+  return {
+    schemaVersion: ORDER_PAYLOAD_SCHEMA_VERSION,
+    pageKey: "top",
+    createdAt: new Date().toISOString(),
+    customer: {
+      name: customer.name || "",
+      phone: customer.phone || "",
+      email: customer.email || "",
+      postcode: customer.postcode || "",
+      address: customer.address || "",
+      detailAddress: customer.detailAddress || "",
+      memo: customer.memo || "",
+    },
+    totals: {
+      grandTotal: Number(grandTotal || 0),
+      subtotal: Number(subtotal || 0),
+      shippingCost: 0,
+      hasCustomPrice,
+      displayPriceLabel: hasCustomPrice ? "상담안내(상담 필요 품목 미포함)" : null,
+    },
+    items: state.items.map((item) => {
+      const isAddon = item.type === "addon";
+      const addon = isAddon ? TOP_ADDON_ITEMS.find((candidate) => candidate.id === item.addonId) : null;
+      return {
+        lineId: item.id,
+        itemType: isAddon ? "addon" : "product",
+        name: isAddon ? addon?.name || "부자재" : item.typeName || "",
+        quantity: Number(item.quantity || 1),
+        typeId: isAddon ? null : item.typeId,
+        dimensions: isAddon
+          ? null
+          : {
+              shape: item.shape || "",
+              thicknessMm: Number(item.thickness || 0),
+              widthMm: Number(item.width || 0),
+              lengthMm: Number(item.length || 0),
+              length2Mm: Number(item.length2 || 0),
+            },
+        options: isAddon ? [] : Array.isArray(item.options) ? item.options : [],
+        services: isAddon ? [] : Array.isArray(item.services) ? item.services : [],
+        serviceDetails: isAddon ? {} : item.serviceDetails || {},
+        pricing: buildConsultAwarePricing({
+          materialCost: item.materialCost,
+          processingCost: item.processingCost,
+          total: item.total,
+          isCustomPrice: Boolean(item.isCustomPrice),
+        }),
+      };
+    }),
+  };
+}
+
 async function sendQuote() {
   if (state.items.length === 0) {
     showInfoModal("담긴 항목이 없습니다. 상판을 담아주세요.");
@@ -1314,6 +1392,7 @@ async function sendQuote() {
   updateSendButtonEnabled();
 
   const { subject, body, lines } = buildEmailContent();
+  const payload = buildOrderPayload();
   const addressLine = `${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim();
   const templateParams = {
     subject,
@@ -1324,6 +1403,7 @@ async function sendQuote() {
     customer_address: addressLine || "-",
     customer_memo: customer.memo || "-",
     order_lines: lines.join("\n"),
+    order_payload_json: JSON.stringify(payload, null, 2),
   };
 
   try {
@@ -1375,6 +1455,7 @@ function initTop() {
   renderOptions();
   renderTopAddonCards();
   renderServiceCards();
+  syncProcessingSectionVisibility();
   initCollapsibleSections();
   renderTable();
   renderSummary();

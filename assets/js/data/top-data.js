@@ -1,7 +1,10 @@
-import { COMMON_PROCESSING_SERVICES, COMMON_ADDON_ITEMS } from "./common-data.js";
+import { COMMON_ADDON_ITEMS } from "./common-data.js";
+import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
+import { getAdditionalOptionsForPage } from "./additional-options-data.js";
+import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
 
 export const TOP_PROCESSING_SERVICES = {
-  ...COMMON_PROCESSING_SERVICES,
+  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.TOP),
 };
 
 export const TOP_TYPES = [
@@ -583,11 +586,6 @@ export const TOP_TYPES = [
   },
 ];
 
-export const TOP_OPTIONS = [
-  { id: "sink_cut", name: "싱크볼 타공", price: 30000, description: "싱크볼의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
-  { id: "faucet_hole", name: "수전 타공", price: 10000, description: "싱크볼에 수전 타공을 추가합니다.<br>정확한 사이즈를 위해 상담이 필요합니다."},
-  { id: "cooktop_cut", name: "쿡탑 타공", price: 20000, description: "쿡탑의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
-  { id: "edge_finish", name: "뒷턱/뒷선반 추가", price: 15000, description: "상판에 뒷선반을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다."},
-];
+export const TOP_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.TOP);
 
 export const TOP_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
