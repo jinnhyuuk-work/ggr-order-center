@@ -23,12 +23,12 @@ export const ADDITIONAL_SELECTION_PAGE_CONFIG = Object.freeze({
     processingIds: ["proc_hinge_hole", "proc_handle_hole"],
   }),
   [ORDER_PAGE_KEYS.DOOR]: freezePageConfig({
-    optionIds: [""],
+    optionIds: [],
     processingIds: ["proc_hinge_hole", "proc_handle_hole"],
   }),
   [ORDER_PAGE_KEYS.TOP]: freezePageConfig({
-    optionIds: ["top_sink_cut", "top_faucet_hole", "top_cooktop_cut"],
-    processingIds: ["proc_hinge_hole", "proc_handle_hole", "top_back_shelf"],
+    optionIds: ["top_sink_cut", "top_faucet_hole", "top_cooktop_cut", "top_back_add"],
+    processingIds: [],
   }),
 });
 

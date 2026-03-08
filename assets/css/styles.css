@@ -310,7 +310,7 @@ section {
 .step-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  padding: 20px;
+  padding: 22px;
   background: var(--color-surface-alt);
   box-shadow: var(--shadow-panel);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
@@ -322,7 +322,9 @@ section {
 }
 
 .step-card h2 {
-  margin: 4px 0 20px;
+  margin: 4px 0 18px;
+  font-size: var(--font-size-lg);
+  line-height: 1.35;
 }
 
 .step-card-header {
@@ -330,17 +332,19 @@ section {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .step-card-header h2 {
   margin: 0;
+  font-weight: 700;
 }
 
 .step-card-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  color: var(--color-text-sub);
 }
 
 .accordion-toggle::after {
@@ -1479,8 +1483,27 @@ input[type="number"]::-webkit-outer-spin-button {
 .step-card-actions {
   display: flex;
   justify-content: flex-start;
-  margin-top: 12px;
-  gap: 8px;
+  margin-top: 14px;
+  gap: 10px;
+}
+
+.action-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  background: #fff;
+}
+
+.action-card :where(button, .btn) {
+  width: 100%;
+  min-height: 46px;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+}
+
+.action-card #itemPriceDisplay,
+.action-card #topEstimateText {
+  margin: 0;
 }
 
 .bay-addon-group {
@@ -1529,14 +1552,68 @@ input[type="number"]::-webkit-outer-spin-button {
 
 #itemPriceDisplay {
   margin: 15px 0;
-  font-weight: bold;
-  font-size: var(--font-size-lg);
 }
 
 .item-price-display {
-  margin: 15px 0;
-  font-weight: bold;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.item-price-total {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  line-height: 1.4;
+}
+
+.item-price-total-label {
+  font-weight: 700;
   font-size: var(--font-size-lg);
+}
+
+.item-price-total-value {
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+}
+
+.item-price-suffix {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.item-price-breakdown {
+  display: grid;
+  gap: 6px;
+  padding-top: 9px;
+  border-top: 1px solid var(--color-border-faint);
+}
+
+.item-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  font-size: var(--font-size-md);
+  line-height: 1.45;
+  color: var(--color-text-sub);
+}
+
+.item-price-label {
+  font-weight: 600;
+  color: var(--color-text-sub);
+}
+
+.item-price-value {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.item-price-value.is-consult {
+  color: var(--color-error);
+  font-weight: 700;
 }
 
 :where(button, .btn) {
@@ -2913,6 +2990,23 @@ th, td {
     max-height: 75vh;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     overflow: hidden;
+  }
+
+  .step-card {
+    padding: 18px;
+  }
+
+  .step-card-header {
+    margin-bottom: 14px;
+  }
+
+  .action-card {
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .action-card :where(button, .btn) {
+    min-height: 44px;
   }
 
   .estimate-toggle {

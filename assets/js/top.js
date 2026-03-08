@@ -19,6 +19,13 @@ import {
   buildEstimateDetailLines,
   ORDER_PAYLOAD_SCHEMA_VERSION,
   buildConsultAwarePricing,
+  CONSULT_EXCLUDED_SUFFIX,
+  getPricingDisplayMeta,
+  evaluateSelectionPricing,
+  resolveAmountFromPriceRule,
+  hasConsultLineItem,
+  buildStandardPriceBreakdownRows,
+  renderItemPriceDisplay,
 } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
 
@@ -30,6 +37,14 @@ class BaseService {
     this.pricePerHole = cfg.pricePerHole;
     this.pricePerMeter = cfg.pricePerMeter;
     this.pricePerCorner = cfg.pricePerCorner;
+    this.priceRule = cfg.priceRule;
+    this.availabilityRule = cfg.availabilityRule;
+    this.pricingMode = cfg.pricingMode;
+    this.consultOnly = cfg.consultOnly;
+    this.forceConsult = cfg.forceConsult;
+    this.isConsult = cfg.isConsult;
+    this.priceLabel = cfg.priceLabel;
+    this.displayPriceText = cfg.displayPriceText;
     this.swatch = cfg.swatch;
     this.description = cfg.description;
   }
@@ -54,15 +69,12 @@ class BaseService {
     return `세부 옵션 저장됨${note}`;
   }
   calcProcessingCost(quantity, detail) {
-    let unitCost = 0;
-    if (this.pricePerHole) {
-      unitCost = this.pricePerHole * this.getCount(detail);
-    } else if (this.pricePerMeter) {
-      unitCost = this.pricePerMeter;
-    } else if (this.pricePerCorner) {
-      unitCost = this.pricePerCorner;
-    }
-    return unitCost * quantity;
+    return resolveAmountFromPriceRule({
+      config: this,
+      quantity,
+      detail,
+      metrics: { holeCount: this.getCount(detail) },
+    });
   }
 }
 
@@ -158,6 +170,11 @@ function buildServiceModels(configs) {
 }
 
 const SERVICES = buildServiceModels(TOP_PROCESSING_SERVICES);
+const OPTION_CATALOG = TOP_OPTIONS.reduce((acc, option) => {
+  if (!option?.id) return acc;
+  acc[option.id] = option;
+  return acc;
+}, {});
 
 function cloneServiceDetails(details) {
   return JSON.parse(JSON.stringify(details || {}));
@@ -170,15 +187,41 @@ function getDefaultServiceDetail(serviceId) {
   return cloneServiceDetails(srv.defaultDetail ? srv.defaultDetail() : { note: "" });
 }
 
-function calcServiceProcessingCost({ services = [], serviceDetails = {}, quantity = 1 }) {
-  let processingCost = 0;
-  services.forEach((id) => {
-    const srv = SERVICES[id];
-    if (!srv) return;
-    const detail = serviceDetails?.[id];
-    processingCost += srv.calcProcessingCost(quantity, detail);
+function isBackShelfConsult({ serviceId, detail, width }) {
+  if (serviceId !== TOP_BACK_SHELF_SERVICE_ID) return false;
+  const height = getBackHeightFromServiceDetail(detail);
+  if (height <= 0) return false;
+  return height > getBackHeightLimit(width);
+}
+
+function calcServiceProcessingCost({ services = [], serviceDetails = {}, quantity = 1, width = 0 }) {
+  const { amount, hasConsult } = evaluateSelectionPricing({
+    selectedIds: services,
+    resolveById: (id) => SERVICES[id],
+    quantity,
+    availabilityContext: ({ id }) => ({
+      serviceId: id,
+      detail: serviceDetails?.[id],
+      width,
+    }),
+    resolveAvailability: ({ rule, context }) => {
+      if (rule?.ruleKey === "top_back_height_limit") {
+        return isBackShelfConsult({
+          serviceId: context?.serviceId,
+          detail: context?.detail,
+          width: context?.width,
+        })
+          ? "consult"
+          : "ok";
+      }
+      return rule?.defaultStatus || "ok";
+    },
+    getAmount: ({ id, item, quantity: qty }) => {
+      const detail = serviceDetails?.[id];
+      return item.calcProcessingCost(qty, detail);
+    },
   });
-  return { processingCost };
+  return { processingCost: amount, hasConsult };
 }
 
 function formatServiceDetail(serviceId, detail, { includeNote = false } = {}) {
@@ -348,10 +391,6 @@ function getBackHeightLimit(width) {
   return Math.max(0, TOP_STANDARD_WIDTH_MAX - Number(width || 0));
 }
 
-function getEffectiveWidth(width, backHeight = 0, useBackHeight = false) {
-  return Number(width || 0) + (useBackHeight ? Number(backHeight || 0) : 0);
-}
-
 function getTopUnitPrice(type) {
   if (!type) return 0;
   return TOP_UNIT_PRICE_BY_CATEGORY[type.category] || 0;
@@ -466,10 +505,9 @@ function validateTopInputs({
   return null;
 }
 
-function isTopCustomSize({ type, shape, thickness, width, length, length2 = 0, length3 = 0, backHeight = 0, useBackHeight = false }) {
+function isTopCustomSize({ type, shape, thickness, width, length, length2 = 0, length3 = 0 }) {
   if (Number(thickness) !== TOP_STANDARD_THICKNESS) return true;
-  const effectiveWidth = getEffectiveWidth(width, backHeight, useBackHeight);
-  if (effectiveWidth > TOP_STANDARD_WIDTH_MAX) return true;
+  if (Number(width) > TOP_STANDARD_WIDTH_MAX) return true;
   if (length > TOP_CUSTOM_LENGTH_MAX) return true;
   if (needsSecondLength(shape) && length2 > TOP_CUSTOM_LENGTH_MAX) return true;
   if (needsThirdLength(shape) && length3 > TOP_CUSTOM_LENGTH_MAX) return true;
@@ -504,29 +542,31 @@ function calcTopDetail(input) {
     length,
     length2,
     length3,
-    backHeight,
-    useBackHeight,
   });
 
-  const optionPrice = options.reduce((sum, id) => {
-    const opt = TOP_OPTIONS.find((o) => o.id === id);
-    return sum + (opt?.price || 0);
-  }, 0);
-  const { processingCost: serviceProcessingCost } = calcServiceProcessingCost({
+  const { amount: optionPrice, hasConsult: hasConsultOption } = evaluateSelectionPricing({
+    selectedIds: options,
+    resolveById: (id) => OPTION_CATALOG[id],
+  });
+  const { processingCost: serviceProcessingCost, hasConsult: hasConsultService } = calcServiceProcessingCost({
     services,
     serviceDetails,
     quantity: 1,
+    width,
   });
+  const itemCost = ceilToUnit((getChargeableLengthMm({ shape, width, length, length2, length3 }) / 1000) * getTopUnitPrice(type));
   const shapeFee = shape === "l" || shape === "rl" ? 30000 : 0;
-  const processingCost = optionPrice + shapeFee + serviceProcessingCost;
-  const chargeableLengthMm = getChargeableLengthMm({ shape, width, length, length2, length3 });
-  const unitPrice = getTopUnitPrice(type);
-  const materialBaseCost = ceilToUnit((chargeableLengthMm / 1000) * unitPrice);
-  const materialCost = isCustomPrice ? 0 : materialBaseCost + processingCost;
-  const appliedProcessingCost = isCustomPrice ? 0 : processingCost;
+  const serviceCostRaw = shapeFee + serviceProcessingCost;
+  const optionHasConsult = Boolean(isCustomPrice || hasConsultOption);
+  const serviceHasConsult = Boolean(isCustomPrice || hasConsultService);
+  const appliedOptionCost = optionHasConsult ? 0 : optionPrice;
+  const appliedServiceCost = serviceHasConsult ? 0 : serviceCostRaw;
+  const appliedProcessingCost = appliedOptionCost + appliedServiceCost;
+  const materialCost = isCustomPrice ? 0 : itemCost + appliedProcessingCost;
   const subtotal = materialCost;
   const vat = 0;
   const total = isCustomPrice ? 0 : ceilToUnit(subtotal);
+  const hasConsultItems = Boolean(isCustomPrice || optionHasConsult || serviceHasConsult);
 
   const displaySize = (() => {
     if (shape === "u") {
@@ -543,7 +583,7 @@ function calcTopDetail(input) {
   })();
 
   const optionLabels = options
-    .map((id) => TOP_OPTIONS.find((o) => o.id === id)?.name || id)
+    .map((id) => OPTION_CATALOG[id]?.name || id)
     .filter(Boolean);
 
   return {
@@ -557,6 +597,13 @@ function calcTopDetail(input) {
     serviceDetails,
     services,
     isCustomPrice,
+    hasConsultItems,
+    itemCost: isCustomPrice ? 0 : itemCost,
+    optionCost: appliedOptionCost,
+    serviceCost: appliedServiceCost,
+    itemHasConsult: Boolean(isCustomPrice),
+    optionHasConsult,
+    serviceHasConsult,
     useBackHeight,
     backHeight,
     processingCost: appliedProcessingCost,
@@ -718,11 +765,14 @@ function renderOptions() {
   TOP_OPTIONS.forEach((opt) => {
     const label = document.createElement("label");
     label.className = "card-base option-card";
+    const { text: priceText, isConsult: isConsultOption } = getPricingDisplayMeta({
+      config: opt,
+    });
     label.innerHTML = `
       <input type="checkbox" value="${opt.id}" />
       <div class="material-visual"></div>
       <div class="name">${opt.name}</div>
-      <div class="price">+${formatPrice(opt.price)}원</div>
+      <div class="price${isConsultOption ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(opt.description)}
     `;
     container.appendChild(label);
@@ -858,18 +908,22 @@ function renderServiceCards() {
   Object.values(SERVICES).forEach((srv) => {
     const label = document.createElement("label");
     label.className = "card-base service-card";
-    const priceText = srv.pricePerHole
+    const fallbackPriceText = srv.pricePerHole
       ? `개당 ${srv.pricePerHole.toLocaleString()}원`
       : srv.pricePerMeter
       ? `m당 ${srv.pricePerMeter.toLocaleString()}원`
       : srv.pricePerCorner
       ? `모서리당 ${srv.pricePerCorner.toLocaleString()}원`
       : srv.displayPriceText || "";
+    const { text: priceText, isConsult: isConsultService } = getPricingDisplayMeta({
+      config: srv,
+      fallbackText: fallbackPriceText,
+    });
     label.innerHTML = `
       <input type="checkbox" name="service" value="${srv.id}" />
       <div class="material-visual" style="background: ${srv.swatch || "#eee"}"></div>
       <div class="name">${srv.label}</div>
-      <div class="price">${priceText}</div>
+      <div class="price${isConsultService ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(srv.description)}
       <div class="service-actions">
         <div class="service-detail-chip" data-service-summary="${srv.id}">
@@ -1003,8 +1057,8 @@ function renderTable() {
 function renderSummary() {
   const materialsTotal = state.items.reduce((sum, it) => sum + it.subtotal, 0);
   const grandTotal = state.items.reduce((sum, it) => sum + it.total, 0);
-  const hasCustom = state.items.some((item) => item.isCustomPrice);
-  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
+  const hasConsult = hasConsultLineItem(state.items);
+  const suffix = hasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
   const grandEl = $("#grandTotal");
   if (grandEl) grandEl.textContent = `${grandTotal.toLocaleString()}${suffix}`;
   const naverUnits = Math.ceil(grandTotal / 1000) || 0;
@@ -1051,7 +1105,7 @@ function renderOrderCompleteDetails() {
     <div class="complete-section">
       <h4>합계</h4>
       <p>예상 결제금액: ${grandTotal.toLocaleString()}원${
-        state.items.some((item) => item.isCustomPrice) ? "(상담 필요 품목 미포함)" : ""
+        hasConsultLineItem(state.items) ? CONSULT_EXCLUDED_SUFFIX : ""
       }</p>
     </div>
   `;
@@ -1134,15 +1188,34 @@ function refreshTopEstimate() {
     return;
   }
   if (detail.isCustomPrice) {
-    priceEl.textContent = "금액: 상담 안내";
+    renderItemPriceDisplay({
+      target: priceEl,
+      totalLabel: "예상금액",
+      totalText: "상담 안내",
+      breakdownRows: buildStandardPriceBreakdownRows({
+        itemHasConsult: true,
+        optionHasConsult: true,
+        serviceHasConsult: true,
+      }),
+    });
     updateAddButtonState();
     updateTopPreview(input, detail);
     return;
   }
-  const baseCost = Math.max(0, detail.materialCost - detail.processingCost);
-  priceEl.textContent = `금액: ${formatPrice(detail.total)}원 (상판비 ${formatPrice(
-    baseCost
-  )} + 가공비 ${formatPrice(detail.processingCost)})`;
+  renderItemPriceDisplay({
+    target: priceEl,
+    totalLabel: "예상금액",
+    totalAmount: detail.total,
+    showConsultSuffix: detail.hasConsultItems,
+    breakdownRows: buildStandardPriceBreakdownRows({
+      itemCost: detail.itemCost,
+      optionCost: detail.optionCost,
+      serviceCost: detail.serviceCost,
+      itemHasConsult: detail.itemHasConsult,
+      optionHasConsult: detail.optionHasConsult,
+      serviceHasConsult: detail.serviceHasConsult,
+    }),
+  });
   updateAddButtonState();
   updateTopPreview(input, detail);
 }
@@ -1177,7 +1250,12 @@ function addTopItem() {
   });
   renderTable();
   renderSummary();
-  $("#topEstimateText").textContent = "금액: 0원";
+  renderItemPriceDisplay({
+    target: "#topEstimateText",
+    totalLabel: "예상금액",
+    totalAmount: 0,
+    breakdownRows: buildStandardPriceBreakdownRows(),
+  });
   resetSelections();
   updateStepVisibility();
 }
@@ -1781,8 +1859,8 @@ function buildEmailContent() {
 
   lines.push("");
   lines.push("[합계]");
-  const hasCustom = state.items.some((item) => item.isCustomPrice);
-  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
+  const hasConsult = hasConsultLineItem(state.items);
+  const suffix = hasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
   const naverUnits = Math.ceil(grandTotal / 1000) || 0;
   lines.push(`예상 결제금액: ${grandTotal.toLocaleString()}원${suffix}`);
   lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
@@ -1799,7 +1877,7 @@ function buildOrderPayload() {
   const customer = getCustomerInfo();
   const grandTotal = state.items.reduce((sum, it) => sum + Number(it.total || 0), 0);
   const subtotal = state.items.reduce((sum, it) => sum + Number(it.subtotal || 0), 0);
-  const hasCustomPrice = state.items.some((item) => item.isCustomPrice);
+  const hasCustomPrice = hasConsultLineItem(state.items);
 
   return {
     schemaVersion: ORDER_PAYLOAD_SCHEMA_VERSION,
@@ -1819,7 +1897,7 @@ function buildOrderPayload() {
       subtotal: Number(subtotal || 0),
       shippingCost: 0,
       hasCustomPrice,
-      displayPriceLabel: hasCustomPrice ? "상담안내(상담 필요 품목 미포함)" : null,
+      displayPriceLabel: hasCustomPrice ? `상담안내${CONSULT_EXCLUDED_SUFFIX}` : null,
     },
     items: state.items.map((item) => {
       const isAddon = item.type === "addon";

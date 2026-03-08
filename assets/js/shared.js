@@ -6,6 +6,7 @@ export const EMAILJS_CONFIG = {
 
 export const ORDER_PAYLOAD_SCHEMA_VERSION = "v1";
 export const CONSULT_DISPLAY_PRICE_LABEL = "상담안내";
+export const CONSULT_EXCLUDED_SUFFIX = "(상담 필요 항목 미포함)";
 
 const MODAL_FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -22,6 +23,293 @@ let autoModalTitleIdSeq = 0;
 
 export function formatPrice(value) {
   return Number(value || 0).toLocaleString();
+}
+
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeCompactText(value) {
+  return String(value || "").replace(/\s+/g, "");
+}
+
+function normalizeRuleToken(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+}
+
+function buildAvailabilityResult(status = "ok") {
+  const normalizedStatus = normalizeRuleToken(status) === "consult"
+    ? "consult"
+    : normalizeRuleToken(status) === "free"
+    ? "free"
+    : "ok";
+  return {
+    status: normalizedStatus,
+    isConsult: normalizedStatus === "consult",
+    isFree: normalizedStatus === "free",
+  };
+}
+
+function getConfiguredPriceText(config = {}) {
+  if (!config || typeof config !== "object") return "";
+  return String(
+    config.priceLabel ||
+      config.displayPriceText ||
+      config.displayPriceLabel ||
+      config?.priceRule?.label ||
+      ""
+  ).trim();
+}
+
+function toFiniteNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+export function getPriceRule(config = {}) {
+  if (!config || typeof config !== "object") return null;
+  if (config.priceRule && typeof config.priceRule === "object") return config.priceRule;
+
+  if (Number.isFinite(Number(config.price))) {
+    return { type: "fixed", value: Number(config.price), unit: "item" };
+  }
+  if (Number.isFinite(Number(config.pricePerHole))) {
+    return { type: "perHole", value: Number(config.pricePerHole), unit: "hole" };
+  }
+  if (Number.isFinite(Number(config.pricePerMeter))) {
+    return { type: "perMeter", value: Number(config.pricePerMeter), unit: "meter" };
+  }
+  if (Number.isFinite(Number(config.pricePerCorner))) {
+    return { type: "perCorner", value: Number(config.pricePerCorner), unit: "corner" };
+  }
+  return null;
+}
+
+function getDefaultPriceRuleDisplayText(rule) {
+  if (!rule || typeof rule !== "object") return "";
+  const typeToken = normalizeRuleToken(rule.type);
+  const unitToken = normalizeRuleToken(rule.unit);
+  const value = toFiniteNumber(rule.value, NaN);
+  const hasValue = Number.isFinite(value) && value >= 0;
+
+  if (typeToken === "consult") return "상담 안내";
+  if (typeToken === "free") return "무료";
+  if (!hasValue) return "";
+
+  if (typeToken === "fixed" || unitToken === "item") return `${formatPrice(value)}원`;
+  if (typeToken === "perhole" || unitToken === "hole") return `개당 ${formatPrice(value)}원`;
+  if (typeToken === "permeter" || unitToken === "meter") return `m당 ${formatPrice(value)}원`;
+  if (typeToken === "percorner" || unitToken === "corner") return `모서리당 ${formatPrice(value)}원`;
+  return `${formatPrice(value)}원`;
+}
+
+function normalizeAvailabilityResolverResult(result, fallbackStatus = "ok") {
+  if (typeof result === "boolean") return result ? "consult" : "ok";
+  if (typeof result === "string") return result;
+  if (result && typeof result === "object") {
+    if (typeof result.status === "string") return result.status;
+    if (typeof result.isConsult === "boolean") return result.isConsult ? "consult" : "ok";
+    if (typeof result.consult === "boolean") return result.consult ? "consult" : "ok";
+  }
+  return fallbackStatus;
+}
+
+export function resolveAvailabilityStatus({
+  config = {},
+  context = {},
+  resolveAvailability,
+} = {}) {
+  if (!config || typeof config !== "object") return buildAvailabilityResult("ok");
+
+  const availabilityRule = config.availabilityRule;
+  if (availabilityRule && typeof availabilityRule === "object") {
+    const ruleType = normalizeRuleToken(availabilityRule.type);
+    if (ruleType === "consult") return buildAvailabilityResult("consult");
+    if (ruleType === "free") return buildAvailabilityResult("free");
+    if (ruleType === "ok" || ruleType === "available") return buildAvailabilityResult("ok");
+    if (ruleType === "conditional") {
+      const fallbackStatus = availabilityRule.defaultStatus || "ok";
+      if (typeof resolveAvailability === "function") {
+        const resolved = resolveAvailability({
+          rule: availabilityRule,
+          config,
+          context,
+        });
+        return buildAvailabilityResult(normalizeAvailabilityResolverResult(resolved, fallbackStatus));
+      }
+      return buildAvailabilityResult(fallbackStatus);
+    }
+  }
+
+  // Backward compatibility with legacy consult flags/labels.
+  const pricingMode = String(
+    config.pricingMode ||
+      config.pricingType ||
+      config.priceType ||
+      config?.priceRule?.type ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+  if (pricingMode === "consult") return buildAvailabilityResult("consult");
+  if (config.consultOnly === true || config.forceConsult === true || config.isConsult === true) {
+    return buildAvailabilityResult("consult");
+  }
+  const labelToken = normalizeCompactText(getConfiguredPriceText(config));
+  if (labelToken.startsWith(CONSULT_DISPLAY_PRICE_LABEL)) return buildAvailabilityResult("consult");
+  return buildAvailabilityResult("ok");
+}
+
+export function resolveAmountFromPriceRule({
+  config = {},
+  quantity = 1,
+  detail = null,
+  metrics = {},
+} = {}) {
+  const rule = getPriceRule(config);
+  if (!rule || typeof rule !== "object") return 0;
+
+  const typeToken = normalizeRuleToken(rule.type);
+  const unitToken = normalizeRuleToken(rule.unit);
+  const value = toFiniteNumber(rule.value, NaN);
+  if (!Number.isFinite(value) || value < 0) return 0;
+
+  const qty = (() => {
+    const normalized = Number(quantity);
+    return Number.isFinite(normalized) && normalized > 0 ? normalized : 1;
+  })();
+
+  const detailHoleCount = Math.max(
+    0,
+    Number(Array.isArray(detail?.holes) ? detail.holes.length : detail?.count || 0) || 0
+  );
+  const holeCount = Math.max(0, Number(metrics?.holeCount || detailHoleCount || 0));
+  const meterCount = Math.max(
+    0,
+    Number(
+      metrics?.meterCount ||
+        detail?.meters ||
+        detail?.meter ||
+        detail?.lengthMeter ||
+        detail?.lengthMeters ||
+        1
+    )
+  );
+  const cornerCount = Math.max(0, Number(metrics?.cornerCount || detail?.corners || 1));
+
+  if (typeToken === "consult") return 0;
+  if (typeToken === "free") return 0;
+  if (typeToken === "fixed" || unitToken === "item") return value * qty;
+  if (typeToken === "perhole" || unitToken === "hole") return value * holeCount * qty;
+  if (typeToken === "permeter" || unitToken === "meter") return value * meterCount * qty;
+  if (typeToken === "percorner" || unitToken === "corner") return value * cornerCount * qty;
+  return value * qty;
+}
+
+export function isConsultPricingConfig(config = {}) {
+  return resolveAvailabilityStatus({ config }).isConsult;
+}
+
+export function getPricingDisplayMeta({
+  config,
+  fallbackText = "",
+  availabilityContext = {},
+  resolveAvailability,
+} = {}) {
+  const availability = resolveAvailabilityStatus({
+    config,
+    context: availabilityContext,
+    resolveAvailability,
+  });
+  if (availability.isConsult) {
+    return { text: "상담 안내", isConsult: true, status: availability.status };
+  }
+
+  const configuredText = getConfiguredPriceText(config);
+  const derivedRuleText = getDefaultPriceRuleDisplayText(getPriceRule(config));
+  const fallback = String(fallbackText || "").trim();
+  const text = configuredText || derivedRuleText || fallback || (availability.isFree ? "무료" : "");
+  return { text, isConsult: false, status: availability.status };
+}
+
+export function evaluateSelectionPricing({
+  selectedIds = [],
+  resolveById,
+  getAmount,
+  isConsult,
+  quantity = 1,
+  availabilityContext,
+  resolveAvailability,
+} = {}) {
+  const ids = Array.isArray(selectedIds) ? selectedIds : [];
+  let amount = 0;
+  let hasConsult = false;
+
+  ids.forEach((id) => {
+    const item = typeof resolveById === "function" ? resolveById(id) : resolveById?.[id];
+    if (!item) return;
+    const contextForItem =
+      typeof availabilityContext === "function"
+        ? availabilityContext({ id, item })
+        : availabilityContext || {};
+    const availability = resolveAvailabilityStatus({
+      config: item,
+      context: contextForItem,
+      resolveAvailability:
+        typeof resolveAvailability === "function"
+          ? (params) => resolveAvailability({ ...params, id, item, context: contextForItem })
+          : undefined,
+    });
+    const consult =
+      typeof isConsult === "function"
+        ? Boolean(isConsult({ id, item, context: contextForItem, availability }))
+        : availability.isConsult;
+    if (consult) {
+      hasConsult = true;
+      return;
+    }
+    const value = Number(
+      typeof getAmount === "function"
+        ? getAmount({ id, item, quantity, context: contextForItem, availability })
+        : resolveAmountFromPriceRule({
+            config: item,
+            quantity,
+            detail: contextForItem?.detail,
+            metrics: contextForItem?.metrics,
+          })
+    );
+    if (Number.isFinite(value) && value > 0) amount += value;
+  });
+
+  return { amount, hasConsult };
+}
+
+export function hasConsultLineItem(items = []) {
+  return Array.isArray(items) && items.some((item) => Boolean(item?.isCustomPrice || item?.hasConsultItems));
+}
+
+export function buildStandardPriceBreakdownRows({
+  itemCost = 0,
+  optionCost = 0,
+  serviceCost = 0,
+  itemHasConsult = false,
+  optionHasConsult = false,
+  serviceHasConsult = false,
+} = {}) {
+  return [
+    { label: "품목", amount: itemCost, isConsult: itemHasConsult },
+    { label: "옵션", amount: optionCost, isConsult: optionHasConsult },
+    { label: "가공서비스", amount: serviceCost, isConsult: serviceHasConsult },
+  ];
 }
 
 export function buildConsultAwarePricing({
@@ -924,4 +1212,44 @@ export function buildEstimateDetailLines({
     lines.push(`가공비 ${processingCost.toLocaleString()}원`);
   }
   return lines;
+}
+
+export function renderItemPriceDisplay({
+  target,
+  totalLabel = "예상금액",
+  totalAmount = 0,
+  totalText = "",
+  showConsultSuffix = false,
+  breakdownRows = [],
+} = {}) {
+  const targetEl = resolveElement(target);
+  if (!targetEl) return;
+
+  const resolvedTotalText = String(totalText || `${formatPrice(totalAmount)}원`);
+  const rows = Array.isArray(breakdownRows) ? breakdownRows.filter((row) => row?.label) : [];
+
+  const rowsHtml = rows
+    .map((row) => {
+      const isConsult = Boolean(row.isConsult);
+      const resolvedValueText = isConsult
+        ? "상담 안내"
+        : String(row.valueText || `${formatPrice(row.amount)}원`);
+      return `
+        <div class="item-price-row">
+          <span class="item-price-label">${escapeHtml(row.label)}</span>
+          <span class="item-price-value${isConsult ? " is-consult" : ""}">${escapeHtml(resolvedValueText)}</span>
+        </div>
+      `;
+    })
+    .join("");
+
+  targetEl.classList.add("item-price-display");
+  targetEl.innerHTML = `
+    <div class="item-price-total">
+      <span class="item-price-total-label">${escapeHtml(totalLabel)}:</span>
+      <strong class="item-price-total-value">${escapeHtml(resolvedTotalText)}</strong>
+      ${showConsultSuffix ? `<span class="item-price-suffix">${escapeHtml(CONSULT_EXCLUDED_SUFFIX)}</span>` : ""}
+    </div>
+    ${rowsHtml ? `<div class="item-price-breakdown">${rowsHtml}</div>` : ""}
+  `;
 }

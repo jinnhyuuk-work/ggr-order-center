@@ -30,6 +30,13 @@ import {
   buildEstimateDetailLines,
   ORDER_PAYLOAD_SCHEMA_VERSION,
   buildConsultAwarePricing,
+  CONSULT_EXCLUDED_SUFFIX,
+  getPricingDisplayMeta,
+  evaluateSelectionPricing,
+  resolveAmountFromPriceRule,
+  hasConsultLineItem,
+  buildStandardPriceBreakdownRows,
+  renderItemPriceDisplay,
 } from "./shared.js";
 
 class BaseService {
@@ -40,6 +47,14 @@ class BaseService {
     this.pricePerHole = cfg.pricePerHole;
     this.pricePerMeter = cfg.pricePerMeter;
     this.pricePerCorner = cfg.pricePerCorner;
+    this.priceRule = cfg.priceRule;
+    this.availabilityRule = cfg.availabilityRule;
+    this.pricingMode = cfg.pricingMode;
+    this.consultOnly = cfg.consultOnly;
+    this.forceConsult = cfg.forceConsult;
+    this.isConsult = cfg.isConsult;
+    this.priceLabel = cfg.priceLabel;
+    this.displayPriceText = cfg.displayPriceText;
     this.swatch = cfg.swatch;
     this.description = cfg.description;
   }
@@ -64,15 +79,12 @@ class BaseService {
     return `세부 옵션 저장됨${note}`;
   }
   calcProcessingCost(quantity, detail) {
-    let unitCost = 0;
-    if (this.pricePerHole) {
-      unitCost = this.pricePerHole * this.getCount(detail);
-    } else if (this.pricePerMeter) {
-      unitCost = this.pricePerMeter;
-    } else if (this.pricePerCorner) {
-      unitCost = this.pricePerCorner;
-    }
-    return unitCost * quantity;
+    return resolveAmountFromPriceRule({
+      config: this,
+      quantity,
+      detail,
+      metrics: { holeCount: this.getCount(detail) },
+    });
   }
 }
 
@@ -168,6 +180,11 @@ function buildServiceModels(configs) {
 }
 
 const SERVICES = buildServiceModels(BOARD_PROCESSING_SERVICES);
+const OPTION_CATALOG = DOOR_OPTIONS.reduce((acc, option) => {
+  if (!option?.id) return acc;
+  acc[option.id] = option;
+  return acc;
+}, {});
 
 function getDoorTierPrice(material, width, length) {
   const tiers = DOOR_PRICE_TIERS_BY_CATEGORY[material.category] || [];
@@ -222,31 +239,22 @@ function getPreviewScaleBounds(colorEl, { fallbackMax = 180, fallbackMin = 40 } 
   };
 }
 
-function getHoleCountForService(serviceId, serviceDetails) {
-  const srv = SERVICES[serviceId];
-  if (!srv) return 1;
-  return srv.getCount(serviceDetails?.[serviceId]);
-}
-
 // 2) 가공비 계산
 function calcProcessingCost({
-  materialId,
-  width,
-  length,
   quantity,
   services = [],
   serviceDetails = {},
 }) {
-  let processingCost = 0;
-
-  services.forEach((id) => {
-    const srv = SERVICES[id];
-    if (!srv) return;
-    const detail = serviceDetails?.[id];
-    processingCost += srv.calcProcessingCost(quantity, detail);
+  const { amount, hasConsult } = evaluateSelectionPricing({
+    selectedIds: services,
+    resolveById: (id) => SERVICES[id],
+    quantity,
+    getAmount: ({ id, item, quantity: qty }) => {
+      const detail = serviceDetails?.[id];
+      return item.calcProcessingCost(qty, detail);
+    },
   });
-
-  return { processingCost };
+  return { processingCost: amount, hasConsult };
 }
 
 // 3) 무게 계산
@@ -284,15 +292,8 @@ function calcItemDetail(input) {
     return { error: "금액 계산에 실패했습니다. 입력값을 확인해주세요." };
   }
 
-  const { processingCost } = calcProcessingCost({
-    materialId,
-    width,
-    length,
-    quantity,
-    services,
-    serviceDetails,
-  });
-  const optionPrice = calcOptionsPrice(options);
+  const { processingCost, hasConsult: hasConsultService } = calcProcessingCost({ quantity, services, serviceDetails });
+  const { optionPrice, hasConsult: hasConsultOption } = calcOptionsPrice(options);
 
   const { weightKg } = calcWeightKg({
     materialId,
@@ -303,20 +304,29 @@ function calcItemDetail(input) {
   });
 
   const appliedMaterialCost = isCustom ? 0 : materialCost;
-  const appliedProcessingCost = isCustom ? 0 : processingCost + optionPrice;
+  const appliedOptionCost = isCustom || hasConsultOption ? 0 : optionPrice;
+  const appliedServiceCost = isCustom || hasConsultService ? 0 : processingCost;
+  const appliedProcessingCost = appliedServiceCost + appliedOptionCost;
   const subtotal = appliedMaterialCost + appliedProcessingCost;
   const vat = 0;
   const total = Math.round(subtotal);
+  const hasConsultItems = Boolean(isCustom || hasConsultOption || hasConsultService);
 
   return {
     areaM2,
     materialCost: appliedMaterialCost,
     processingCost: appliedProcessingCost,
+    optionCost: appliedOptionCost,
+    serviceCost: appliedServiceCost,
     subtotal,
     vat,
     total,
     weightKg,
     isCustomPrice: isCustom,
+    hasConsultItems,
+    itemHasConsult: Boolean(isCustom),
+    optionHasConsult: Boolean(isCustom || hasConsultOption),
+    serviceHasConsult: Boolean(isCustom || hasConsultService),
     optionsLabel: formatOptionsLabel(options),
     options,
   };
@@ -474,16 +484,16 @@ function formatServiceList(services, serviceDetails = {}, opts = {}) {
 function formatOptionsLabel(options = []) {
   if (!options || options.length === 0) return "-";
   return options
-    .map((id) => DOOR_OPTIONS.find((o) => o.id === id)?.name || id)
+    .map((id) => OPTION_CATALOG[id]?.name || id)
     .join(", ");
 }
 
 function calcOptionsPrice(options = []) {
-  if (!options || options.length === 0) return 0;
-  return options.reduce((sum, id) => {
-    const opt = DOOR_OPTIONS.find((o) => o.id === id);
-    return sum + (opt?.price || 0);
-  }, 0);
+  const { amount, hasConsult } = evaluateSelectionPricing({
+    selectedIds: options,
+    resolveById: (id) => OPTION_CATALOG[id],
+  });
+  return { optionPrice: amount, hasConsult };
 }
 
 function formatServiceSummaryText(serviceId, detail) {
@@ -512,18 +522,22 @@ function renderServiceCards() {
   Object.values(SERVICES).forEach((srv) => {
     const label = document.createElement("label");
     label.className = "card-base service-card";
-    const priceText = srv.pricePerMeter
+    const fallbackPriceText = srv.pricePerMeter
       ? `m당 ${srv.pricePerMeter.toLocaleString()}원`
       : srv.pricePerCorner
       ? `모서리당 ${srv.pricePerCorner.toLocaleString()}원`
       : srv.pricePerHole
       ? `개당 ${srv.pricePerHole.toLocaleString()}원`
-      : "";
+      : srv.displayPriceText || "";
+    const { text: priceText, isConsult: isConsultService } = getPricingDisplayMeta({
+      config: srv,
+      fallbackText: fallbackPriceText,
+    });
     label.innerHTML = `
       <input type="checkbox" name="service" value="${srv.id}" />
       <div class="material-visual" style="background: ${srv.swatch || "#eee"}"></div>
       <div class="name">${srv.label}</div>
-      <div class="price">${priceText}</div>
+      <div class="price${isConsultService ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(srv.description)}
       <div class="service-actions">
         <div class="service-detail-chip" data-service-summary="${srv.id}">
@@ -603,11 +617,14 @@ function renderOptionCards() {
   DOOR_OPTIONS.forEach((opt) => {
     const label = document.createElement("label");
     label.className = "card-base option-card";
+    const { text: priceText, isConsult: isConsultOption } = getPricingDisplayMeta({
+      config: opt,
+    });
     label.innerHTML = `
       <input type="checkbox" name="doorOption" value="${opt.id}" />
       <div class="material-visual" style="background: #eee"></div>
       <div class="name">${opt.name}</div>
-      <div class="price">${opt.price.toLocaleString()}원</div>
+      <div class="price${isConsultOption ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(opt.description)}
     `;
     container.appendChild(label);
@@ -893,7 +910,12 @@ if (addItemBtn) {
 
     renderTable();
     renderSummary();
-    $("#itemPriceDisplay").textContent = "예상금액: 0원";
+    renderItemPriceDisplay({
+      target: "#itemPriceDisplay",
+      totalLabel: "예상금액",
+      totalAmount: 0,
+      breakdownRows: buildStandardPriceBreakdownRows(),
+    });
     resetStepsAfterAdd();
   });
 }
@@ -931,7 +953,12 @@ function resetStepsAfterAdd() {
   clearProcessingServices();
   syncProcessingSectionVisibility();
 
-  $("#itemPriceDisplay").textContent = "예상금액: 0원";
+  renderItemPriceDisplay({
+    target: "#itemPriceDisplay",
+    totalLabel: "예상금액",
+    totalAmount: 0,
+    breakdownRows: buildStandardPriceBreakdownRows(),
+  });
 
   validateSizeFields();
   updatePreview();
@@ -1139,8 +1166,8 @@ function updateItemQuantity(id, quantity) {
 }
 function renderSummary() {
   const summary = calcOrderSummary(state.items);
-  const hasCustom = state.items.some((item) => item.isCustomPrice);
-  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
+  const hasConsult = hasConsultLineItem(state.items);
+  const suffix = hasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
 
   const materialsTotalEl = $("#materialsTotal");
   if (materialsTotalEl) materialsTotalEl.textContent = summary.materialsTotal.toLocaleString();
@@ -1191,8 +1218,8 @@ function buildEmailContent() {
 
   lines.push("");
   lines.push("[합계]");
-  const hasCustom = state.items.some((item) => item.isCustomPrice);
-  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
+  const hasConsult = hasConsultLineItem(state.items);
+  const suffix = hasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
   const naverUnits = Math.ceil(summary.grandTotal / 1000) || 0;
   lines.push(`예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}`);
   lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
@@ -1208,7 +1235,7 @@ function buildEmailContent() {
 function buildOrderPayload() {
   const customer = getCustomerInfo();
   const summary = calcOrderSummary(state.items);
-  const hasCustomPrice = state.items.some((item) => item.isCustomPrice);
+  const hasCustomPrice = hasConsultLineItem(state.items);
 
   return {
     schemaVersion: ORDER_PAYLOAD_SCHEMA_VERSION,
@@ -1228,7 +1255,7 @@ function buildOrderPayload() {
       subtotal: Number(summary.subtotal || 0),
       shippingCost: Number(summary.shippingCost || 0),
       hasCustomPrice,
-      displayPriceLabel: hasCustomPrice ? "상담안내(상담 필요 품목 미포함)" : null,
+      displayPriceLabel: hasCustomPrice ? `상담안내${CONSULT_EXCLUDED_SUFFIX}` : null,
     },
     items: state.items.map((item) => {
       const isAddon = item.type === "addon";
@@ -1374,7 +1401,7 @@ function renderOrderCompleteDetails() {
     <div class="complete-section">
       <h4>합계</h4>
       <p>예상 결제금액: ${summary.grandTotal.toLocaleString()}원${
-        state.items.some((item) => item.isCustomPrice) ? "(상담 필요 품목 미포함)" : ""
+        hasConsultLineItem(state.items) ? CONSULT_EXCLUDED_SUFFIX : ""
       }</p>
       <p>도어비: ${summary.materialsTotal.toLocaleString()}원</p>
       <p>예상무게: ${summary.totalWeight.toFixed(2)}kg</p>
@@ -1488,13 +1515,33 @@ function autoCalculatePrice() {
     return;
   }
   if (detail.isCustomPrice) {
-    $("#itemPriceDisplay").textContent = "예상금액: 상담 안내";
+    renderItemPriceDisplay({
+      target: "#itemPriceDisplay",
+      totalLabel: "예상금액",
+      totalText: "상담 안내",
+      breakdownRows: buildStandardPriceBreakdownRows({
+        itemHasConsult: true,
+        optionHasConsult: true,
+        serviceHasConsult: true,
+      }),
+    });
     updateAddItemState();
     return;
   }
-  $("#itemPriceDisplay").textContent =
-    `예상금액: ${detail.total.toLocaleString()}원 ` +
-    `(도어비 ${detail.materialCost.toLocaleString()} + 가공비 ${detail.processingCost.toLocaleString()})`;
+  renderItemPriceDisplay({
+    target: "#itemPriceDisplay",
+    totalLabel: "예상금액",
+    totalAmount: detail.total,
+    showConsultSuffix: detail.hasConsultItems,
+    breakdownRows: buildStandardPriceBreakdownRows({
+      itemCost: detail.materialCost,
+      optionCost: detail.optionCost,
+      serviceCost: detail.serviceCost,
+      itemHasConsult: detail.itemHasConsult,
+      optionHasConsult: detail.optionHasConsult,
+      serviceHasConsult: detail.serviceHasConsult,
+    }),
+  });
   updateAddItemState();
 }
 
