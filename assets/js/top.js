@@ -245,6 +245,7 @@ function syncProcessingSectionVisibility() {
 let sendingEmail = false;
 let orderCompleted = false;
 let stickyOffsetTimer = null;
+let previewResizeTimer = null;
 const DEFAULT_TOP_THICKNESSES = [12, 24, 30, 40, 50];
 const TOP_CUSTOM_LENGTH_MAX = 3000;
 const TOP_STANDARD_THICKNESS = 12;
@@ -267,6 +268,25 @@ function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
   return {
     w: Math.max(minPx, width * scale),
     h: Math.max(minPx, length * scale),
+  };
+}
+
+function getPreviewScaleBounds(colorEl, { fallbackMax = 180, fallbackMin = 40 } = {}) {
+  const frameEl = colorEl ? colorEl.closest(".preview-frame") : null;
+  const rect = frameEl ? frameEl.getBoundingClientRect() : null;
+  const frameW = Number(rect?.width || 0);
+  const frameH = Number(rect?.height || 0);
+  if (!frameW || !frameH) {
+    return { maxPx: fallbackMax, minPx: fallbackMin };
+  }
+  const shortSide = Math.max(1, Math.min(frameW, frameH));
+  const framePaddingPx = 24;
+  const visualScale = 0.88;
+  const fitMax = Math.max(1, shortSide - framePaddingPx) * visualScale;
+  const maxPx = Math.max(fallbackMin, Math.round(fitMax));
+  return {
+    maxPx,
+    minPx: Math.min(fallbackMin, maxPx),
   };
 }
 
@@ -1214,6 +1234,14 @@ function requestStickyOffsetUpdate() {
   stickyOffsetTimer = requestAnimationFrame(updateStickyOffset);
 }
 
+function requestTopPreviewUpdate() {
+  if (previewResizeTimer) cancelAnimationFrame(previewResizeTimer);
+  previewResizeTimer = requestAnimationFrame(() => {
+    previewResizeTimer = null;
+    refreshTopEstimate();
+  });
+}
+
 function updateTopPreview(input, detail) {
   const colorEl = $("#topPreviewColor");
   const textEl = $("#topPreviewText");
@@ -1252,10 +1280,9 @@ function updateTopPreview(input, detail) {
     stainless: "linear-gradient(135deg, #f0f0f0 0%, #c7c7c7 100%)",
   };
   const swatch = type.swatch || swatchMap[type.id] || "#ddd";
+  const { maxPx, minPx } = getPreviewScaleBounds(colorEl, { fallbackMax: 180, fallbackMin: 40 });
 
   if (input.shape === "u") {
-    const maxPx = 180;
-    const minPx = 40;
     const overallWidthMm = input.length;
     const overallHeightMm = Math.max(input.length2, input.length3, input.width);
     const scale = Math.min(maxPx / Math.max(overallWidthMm, overallHeightMm), 1);
@@ -1283,8 +1310,6 @@ function updateTopPreview(input, detail) {
     colorEl.style.setProperty("--cutout-w", "0px");
     colorEl.style.setProperty("--cutout-h", "0px");
   } else if (needsSecond) {
-    const maxPx = 180;
-    const minPx = 40;
     const overallWidthMm = input.length;
     const overallHeightMm = Math.max(input.width, input.length2);
     const scale = Math.min(maxPx / Math.max(overallWidthMm, overallHeightMm), 1);
@@ -1339,7 +1364,7 @@ function updateTopPreview(input, detail) {
     colorEl.style.setProperty("--cutout-w", "0px");
     colorEl.style.setProperty("--cutout-h", "0px");
 
-    const { w, h } = getPreviewDimensions(input.length, input.width, 180, 40);
+    const { w, h } = getPreviewDimensions(input.length, input.width, maxPx, minPx);
     colorEl.style.width = `${w}px`;
     colorEl.style.height = `${h}px`;
   }
@@ -1954,7 +1979,10 @@ function initTop() {
   updateTopPreview(readTopInputs(), null);
   requestStickyOffsetUpdate();
   $("#stepFinal .estimate-toggle")?.addEventListener("click", requestStickyOffsetUpdate);
-  window.addEventListener("resize", requestStickyOffsetUpdate);
+  window.addEventListener("resize", () => {
+    requestStickyOffsetUpdate();
+    requestTopPreviewUpdate();
+  });
 }
 
 function openTopTypeModal() {

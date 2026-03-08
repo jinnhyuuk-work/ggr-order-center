@@ -203,6 +203,25 @@ function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
   };
 }
 
+function getPreviewScaleBounds(colorEl, { fallbackMax = 180, fallbackMin = 40 } = {}) {
+  const frameEl = colorEl ? colorEl.closest(".preview-frame") : null;
+  const rect = frameEl ? frameEl.getBoundingClientRect() : null;
+  const frameW = Number(rect?.width || 0);
+  const frameH = Number(rect?.height || 0);
+  if (!frameW || !frameH) {
+    return { maxPx: fallbackMax, minPx: fallbackMin };
+  }
+  const shortSide = Math.max(1, Math.min(frameW, frameH));
+  const framePaddingPx = 24;
+  const visualScale = 0.88;
+  const fitMax = Math.max(1, shortSide - framePaddingPx) * visualScale;
+  const maxPx = Math.max(fallbackMin, Math.round(fitMax));
+  return {
+    maxPx,
+    minPx: Math.min(fallbackMin, maxPx),
+  };
+}
+
 function getHoleCountForService(serviceId, serviceDetails) {
   const srv = SERVICES[serviceId];
   if (!srv) return 1;
@@ -383,6 +402,7 @@ let currentPhase = 1; // 1: 도어/가공, 2: 부자재, 3: 고객 정보
 let sendingEmail = false;
 let orderCompleted = false;
 let stickyOffsetTimer = null;
+let previewResizeTimer = null;
 const EXTRA_CATEGORIES = ["LX SMR PET", "LX Texture PET", "LX PET", "Hansol PET", "Original PET", "LPM"];
 const categories = Array.from(
   new Set(
@@ -1475,7 +1495,8 @@ function updatePreview() {
     return;
   }
   colorEl.style.background = mat.swatch || "#ddd";
-  const { w, h } = getPreviewDimensions(input.width, input.length, 180, 40);
+  const { maxPx, minPx } = getPreviewScaleBounds(colorEl, { fallbackMax: 180, fallbackMin: 40 });
+  const { w, h } = getPreviewDimensions(input.width, input.length, maxPx, minPx);
   colorEl.style.width = `${w}px`;
   colorEl.style.height = `${h}px`;
   textEl.textContent = `${mat.name} / ${input.thickness}T / ${input.width}×${input.length}mm`;
@@ -1661,6 +1682,14 @@ function requestStickyOffsetUpdate() {
   stickyOffsetTimer = requestAnimationFrame(updateStickyOffset);
 }
 
+function requestPreviewUpdate() {
+  if (previewResizeTimer) cancelAnimationFrame(previewResizeTimer);
+  previewResizeTimer = requestAnimationFrame(() => {
+    previewResizeTimer = null;
+    updatePreview();
+  });
+}
+
 function updateSizePlaceholders(mat) {
   const widthEl = $("#widthInput");
   const lengthEl = $("#lengthInput");
@@ -1766,7 +1795,10 @@ function init() {
   $("#resetFlowBtn")?.addEventListener("click", () => {
     window.location.href = "index.html";
   });
-  window.addEventListener("resize", requestStickyOffsetUpdate);
+  window.addEventListener("resize", () => {
+    requestStickyOffsetUpdate();
+    requestPreviewUpdate();
+  });
   document.addEventListener("change", (e) => {
     if (e.target.name === "material" || e.target.name === "service") {
       autoCalculatePrice();
