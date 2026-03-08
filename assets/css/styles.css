@@ -736,50 +736,21 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
-.preview-box,
-#previewBox {
+.preview-box {
+  --preview-frame-aspect-ratio: 1 / 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-lg);
-  padding: 14px;
+  padding: 12px;
   margin: 18px 0 6px;
   background: var(--color-surface-muted);
 }
 
-.preview-text,
-#previewText {
+.preview-text {
   font-weight: 700;
   color: var(--color-text-strong);
-}
-
-#topPreviewBox {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-lg);
-  padding: 14px;
-  margin: 18px 0 6px;
-  background: var(--color-surface-muted);
-}
-
-#topPreviewText {
-  font-weight: 700;
-  color: var(--color-text-strong);
-}
-
-#topPreviewBox .preview-frame {
-  position: relative;
-  height: 220px;
-  border: 1px dashed var(--color-border-faint);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-preview-bg);
-  overflow: hidden;
 }
 
 .l-shape-preview {
@@ -807,7 +778,10 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .preview-frame {
   position: relative;
-  height: 220px;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: var(--preview-frame-aspect-ratio, 1 / 1);
   border: 1px dashed var(--color-border-faint);
   border-radius: var(--radius-lg);
   display: flex;
@@ -820,16 +794,6 @@ input[type="number"]::-webkit-outer-spin-button {
 .system-preview .preview-frame {
   align-items: stretch;
   justify-content: stretch;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  height: auto;
-  min-height: 320px;
-}
-
-@media (max-width: 768px) {
-  .system-preview .preview-frame {
-    min-height: 240px;
-  }
 }
 
 .system-preview .system-column,
