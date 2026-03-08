@@ -8,7 +8,8 @@ const LPM_ITEMS = [
     availableThickness: [18],
     pricePerM2: 47000,
     density: 720,
-    swatch: "#d9d9d9",
+    swatch: "#f2f2f2",
+    thumbnail: "assets/img/product/system/shelf/basic.jpg",
   },
   {
     id: "lpm_natural_walnut",
@@ -18,6 +19,7 @@ const LPM_ITEMS = [
     pricePerM2: 47000,
     density: 720,
     swatch: "#b38352",
+    thumbnail: "assets/img/product/system/shelf/natural-walnut.jpg",
   },
   {
     id: "lpm_smoke_walnut",
@@ -27,6 +29,7 @@ const LPM_ITEMS = [
     pricePerM2: 47000,
     density: 720,
     swatch: "#6b4b36",
+    thumbnail: "assets/img/product/system/shelf/smoke-walnut.jpg",
   },
 ];
 
@@ -38,16 +41,8 @@ const PP_ITEMS = [
     availableThickness: [18],
     pricePerM2: 45000,
     density: 720,
-    swatch: "#c7c7c7",
-  },
-  {
-    id: "pp_white",
-    name: "화이트",
-    category: "PP",
-    availableThickness: [18],
-    pricePerM2: 45000,
-    density: 720,
-    swatch: "#fafafa",
+    swatch: "#ede6e4",
+    thumbnail: "assets/img/product/system/shelf/twill.jpg",
   },
 ];
 
