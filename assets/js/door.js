@@ -877,7 +877,7 @@ if (addItemBtn) {
 
     renderTable();
     renderSummary();
-    $("#itemPriceDisplay").textContent = "금액: 0원";
+    $("#itemPriceDisplay").textContent = "예상금액: 0원";
     resetStepsAfterAdd();
   });
 }
@@ -915,7 +915,7 @@ function resetStepsAfterAdd() {
   clearProcessingServices();
   syncProcessingSectionVisibility();
 
-  $("#itemPriceDisplay").textContent = "금액: 0원";
+  $("#itemPriceDisplay").textContent = "예상금액: 0원";
 
   validateSizeFields();
   updatePreview();
@@ -1469,12 +1469,12 @@ function autoCalculatePrice() {
     return;
   }
   if (detail.isCustomPrice) {
-    $("#itemPriceDisplay").textContent = "금액: 상담 안내";
+    $("#itemPriceDisplay").textContent = "예상금액: 상담 안내";
     updateAddItemState();
     return;
   }
   $("#itemPriceDisplay").textContent =
-    `금액: ${detail.total.toLocaleString()}원 ` +
+    `예상금액: ${detail.total.toLocaleString()}원 ` +
     `(도어비 ${detail.materialCost.toLocaleString()} + 가공비 ${detail.processingCost.toLocaleString()})`;
   updateAddItemState();
 }
