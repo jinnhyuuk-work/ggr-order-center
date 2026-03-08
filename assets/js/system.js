@@ -123,6 +123,7 @@ import {
   renderSelectedCard,
   buildMaterialVisualInlineStyle,
   initCollapsibleSections,
+  renderItemPriceDisplay,
   renderItemPriceNotice,
 } from "./shared.js";
 
@@ -6745,15 +6746,30 @@ function autoCalculatePrice() {
   const layoutConsult = evaluateLayoutConsultState(getLayoutConfigSnapshot(input));
   const totalPrice = bayTotals.total + columnDetail.total;
   const isCustom = bayTotals.isCustomPrice || columnDetail.isCustomPrice || isLayoutConsultStatus(layoutConsult);
-  if (isCustom) {
-    renderItemPriceNotice({ target: "#itemPriceDisplay", text: "상담 안내" });
-  } else {
-    const basePostCost = Number(columnDetail?.basePostBar?.totalCost || 0);
-    const cornerPostCost = Number(columnDetail?.cornerPostBar?.totalCost || 0);
-    $("#itemPriceDisplay").textContent =
-      `금액: ${totalPrice.toLocaleString()}원 ` +
-      `(선반 ${bayTotals.materialCost.toLocaleString()} + 행거 ${bayTotals.componentCost.toLocaleString()} + 가구 ${bayTotals.furnitureCost.toLocaleString()} + 기본 포스트바 ${basePostCost.toLocaleString()} + 코너 포스트바 ${cornerPostCost.toLocaleString()})`;
-  }
+  const basePostCost = Number(columnDetail?.basePostBar?.totalCost || 0);
+  const cornerPostCost = Number(columnDetail?.cornerPostBar?.totalCost || 0);
+  const breakdownRows = isCustom
+    ? [
+        { label: "선반", isConsult: true },
+        { label: "행거", isConsult: true },
+        { label: "가구", isConsult: true },
+        { label: "기본 포스트바", isConsult: true },
+        { label: "코너 포스트바", isConsult: true },
+      ]
+    : [
+        { label: "선반", amount: bayTotals.materialCost },
+        { label: "행거", amount: bayTotals.componentCost },
+        { label: "가구", amount: bayTotals.furnitureCost },
+        { label: "기본 포스트바", amount: basePostCost },
+        { label: "코너 포스트바", amount: cornerPostCost },
+      ];
+  renderItemPriceDisplay({
+    target: "#itemPriceDisplay",
+    totalLabel: "예상금액",
+    totalAmount: totalPrice,
+    totalText: isCustom ? "상담 안내" : "",
+    breakdownRows,
+  });
   updateAddItemState();
 }
 
