@@ -160,6 +160,72 @@ export function createSystemPricingHelpers({
     return normalizeMm(column?.maxLength || column?.length || column?.minLength);
   }
 
+  function collectPositiveHeightsMm(value, collector = []) {
+    if (Array.isArray(value)) {
+      value.forEach((entry) => collectPositiveHeightsMm(entry, collector));
+      return collector;
+    }
+    const mm = normalizeMm(value);
+    if (mm > 0) collector.push(mm);
+    return collector;
+  }
+
+  function getColumnExtraPostBarHeightsMm(column) {
+    return collectPositiveHeightsMm(column?.spaceExtraHeights, []);
+  }
+
+  function buildPostBarRows({ kind, heightCountMap, unitQuantity = 1 }) {
+    const label = getPostBarPricingConfig(kind)?.label || (kind === "corner" ? "코너 포스트바" : "기본 포스트바");
+    return Array.from(heightCountMap.entries())
+      .map(([heightMm, count]) => {
+        const normalizedHeightMm = normalizeMm(heightMm);
+        const normalizedCount = normalizeCount(count, 0);
+        const pricing = getPostBarTierUnitPrice(kind, normalizedHeightMm);
+        const tier = pricing.tier;
+        const unitPrice = roundWon(pricing.unitPrice);
+        const isCustomPrice =
+          normalizedCount > 0 &&
+          (!tier || unitPrice <= 0 || isColumnCustom(normalizedHeightMm));
+        return {
+          kind,
+          label,
+          count: normalizedCount,
+          heightMm: normalizedHeightMm,
+          tierKey: String(tier?.key || ""),
+          tierLabel: String(tier?.label || ""),
+          unitPrice,
+          totalCost: 0,
+          isCustomPrice,
+          quantity: Math.max(1, normalizeCount(unitQuantity, 1)),
+        };
+      })
+      .filter((row) => row.count > 0);
+  }
+
+  function summarizePostBarRows(rows = [], fallbackKind = "basic") {
+    const list = Array.isArray(rows) ? rows : [];
+    const kind = fallbackKind === "corner" ? "corner" : "basic";
+    const tierKeys = Array.from(new Set(list.map((row) => String(row?.tierKey || "")).filter(Boolean)));
+    const tierLabels = Array.from(new Set(list.map((row) => String(row?.tierLabel || "")).filter(Boolean)));
+    const unitPrices = Array.from(
+      new Set(
+        list
+          .map((row) => roundWon(row?.unitPrice))
+          .filter((price) => Number.isFinite(price) && price > 0)
+      )
+    );
+    return {
+      kind,
+      label: getPostBarPricingConfig(kind)?.label || (kind === "corner" ? "코너 포스트바" : "기본 포스트바"),
+      count: list.reduce((sum, row) => sum + normalizeCount(row?.count, 0), 0),
+      heightMm: list.length === 1 ? normalizeMm(list[0]?.heightMm) : 0,
+      tierKey: tierKeys.length === 1 ? tierKeys[0] : "",
+      tierLabel: tierLabels.length === 1 ? tierLabels[0] : tierLabels.length > 1 ? "복수 티어" : "",
+      unitPrice: unitPrices.length === 1 ? unitPrices[0] : 0,
+      totalCost: roundWon(sumBy(list, "totalCost")),
+    };
+  }
+
   function calcAddonsUnitTotal(addons = []) {
     return (Array.isArray(addons) ? addons : []).reduce((sum, id) => {
       const addon = getAddonItemById(id);
@@ -229,53 +295,76 @@ export function createSystemPricingHelpers({
     const baseHeightMm = normalizeMm(column?.length || column?.maxLength);
     const cornerHeightMm = resolveCornerPostBarHeightMm({ column, bays });
 
-    const basePricing = getPostBarTierUnitPrice("basic", baseHeightMm);
-    const cornerPricing = getPostBarTierUnitPrice("corner", cornerHeightMm);
-    const baseTier = basePricing.tier;
-    const cornerTier = cornerPricing.tier;
+    const baseHeightCountMap = new Map();
+    const extraHeights = getColumnExtraPostBarHeightsMm(column);
+    const replacedCount = Math.min(basePostCount, extraHeights.length);
+    const defaultHeightCount = Math.max(0, basePostCount - replacedCount);
+    if (defaultHeightCount > 0 && baseHeightMm > 0) {
+      baseHeightCountMap.set(baseHeightMm, defaultHeightCount);
+    }
+    extraHeights.slice(0, replacedCount).forEach((heightMm) => {
+      if (heightMm <= 0) return;
+      const prev = Number(baseHeightCountMap.get(heightMm) || 0);
+      baseHeightCountMap.set(heightMm, prev + 1);
+    });
 
-    const baseIsCustom =
-      basePostCount > 0 &&
-      (!baseTier || basePricing.unitPrice <= 0 || isColumnCustom(baseHeightMm));
-    const cornerIsCustom =
-      cornerPostCount > 0 &&
-      (!cornerTier || cornerPricing.unitPrice <= 0 || isColumnCustom(cornerHeightMm));
+    const cornerHeightCountMap = new Map();
+    if (cornerPostCount > 0 && cornerHeightMm > 0) {
+      cornerHeightCountMap.set(cornerHeightMm, cornerPostCount);
+    }
+
+    const basePostBars = buildPostBarRows({
+      kind: "basic",
+      heightCountMap: baseHeightCountMap,
+      unitQuantity,
+    });
+    const cornerPostBars = buildPostBarRows({
+      kind: "corner",
+      heightCountMap: cornerHeightCountMap,
+      unitQuantity,
+    });
+
+    const baseIsCustom = basePostBars.some((row) => Boolean(row?.isCustomPrice));
+    const cornerIsCustom = cornerPostBars.some((row) => Boolean(row?.isCustomPrice));
     const isCustomPrice = baseIsCustom || cornerIsCustom;
 
-    const baseTotalCost = isCustomPrice ? 0 : basePricing.unitPrice * basePostCount * unitQuantity;
-    const cornerTotalCost = isCustomPrice ? 0 : cornerPricing.unitPrice * cornerPostCount * unitQuantity;
+    const pricedBasePostBars = basePostBars.map((row) => ({
+      ...row,
+      totalCost: isCustomPrice ? 0 : roundWon(row.unitPrice * row.count * unitQuantity),
+    }));
+    const pricedCornerPostBars = cornerPostBars.map((row) => ({
+      ...row,
+      totalCost: isCustomPrice ? 0 : roundWon(row.unitPrice * row.count * unitQuantity),
+    }));
+
+    const baseTotalCost = roundWon(sumBy(pricedBasePostBars, "totalCost"));
+    const cornerTotalCost = roundWon(sumBy(pricedCornerPostBars, "totalCost"));
     const materialCost = roundWon(baseTotalCost + cornerTotalCost);
     const processingCost = 0;
     const subtotal = materialCost + processingCost;
     const vat = 0;
     const total = roundWon(subtotal);
 
-    const baseWeightDetail =
-      basePostCount > 0
-        ? calcPartDetail({
-            materials: SYSTEM_COLUMN_MATERIALS,
-            materialId: column.materialId,
-            thickness: column.thickness,
-            width: column.width,
-            length: baseHeightMm,
-            quantity: unitQuantity,
-            partMultiplier: basePostCount,
-          })
-        : { weightKg: 0 };
-    const cornerWeightDetail =
-      cornerPostCount > 0
-        ? calcPartDetail({
-            materials: SYSTEM_COLUMN_MATERIALS,
-            materialId: column.materialId,
-            thickness: column.thickness,
-            width: column.width,
-            length: normalizeMm(cornerHeightMm || baseHeightMm),
-            quantity: unitQuantity,
-            partMultiplier: cornerPostCount,
-          })
-        : { weightKg: 0 };
-    const weightKg =
-      Number(baseWeightDetail.weightKg || 0) + Number(cornerWeightDetail.weightKg || 0);
+    const calcPostBarWeightKg = (heightCountMap) =>
+      Array.from(heightCountMap.entries()).reduce((sum, [heightMm, rowCount]) => {
+        const normalizedHeightMm = normalizeMm(heightMm);
+        const normalizedCount = normalizeCount(rowCount, 0);
+        if (!normalizedHeightMm || !normalizedCount) return sum;
+        const detail = calcPartDetail({
+          materials: SYSTEM_COLUMN_MATERIALS,
+          materialId: column.materialId,
+          thickness: column.thickness,
+          width: column.width,
+          length: normalizedHeightMm,
+          quantity: unitQuantity,
+          partMultiplier: normalizedCount,
+        });
+        return sum + Number(detail.weightKg || 0);
+      }, 0);
+    const weightKg = calcPostBarWeightKg(baseHeightCountMap) + calcPostBarWeightKg(cornerHeightCountMap);
+
+    const summarizedBasePostBar = summarizePostBarRows(pricedBasePostBars, "basic");
+    const summarizedCornerPostBar = summarizePostBarRows(pricedCornerPostBars, "corner");
 
     return {
       materialCost,
@@ -285,26 +374,10 @@ export function createSystemPricingHelpers({
       total,
       weightKg,
       isCustomPrice,
-      basePostBar: {
-        kind: "basic",
-        label: getPostBarPricingConfig("basic")?.label || "기본 포스트바",
-        count: basePostCount,
-        heightMm: baseHeightMm,
-        tierKey: String(baseTier?.key || ""),
-        tierLabel: String(baseTier?.label || ""),
-        unitPrice: roundWon(basePricing.unitPrice),
-        totalCost: roundWon(baseTotalCost),
-      },
-      cornerPostBar: {
-        kind: "corner",
-        label: getPostBarPricingConfig("corner")?.label || "코너 포스트바",
-        count: cornerPostCount,
-        heightMm: cornerHeightMm,
-        tierKey: String(cornerTier?.key || ""),
-        tierLabel: String(cornerTier?.label || ""),
-        unitPrice: roundWon(cornerPricing.unitPrice),
-        totalCost: roundWon(cornerTotalCost),
-      },
+      basePostBar: summarizedBasePostBar,
+      cornerPostBar: summarizedCornerPostBar,
+      basePostBars: pricedBasePostBars,
+      cornerPostBars: pricedCornerPostBars,
     };
   }
 

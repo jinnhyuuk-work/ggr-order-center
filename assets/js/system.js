@@ -489,6 +489,12 @@ function applyConsultPriceToDetail(detail = {}) {
   if (next.cornerPostBar && typeof next.cornerPostBar === "object") {
     next.cornerPostBar = { ...next.cornerPostBar, totalCost: 0 };
   }
+  if (Array.isArray(next.basePostBars)) {
+    next.basePostBars = next.basePostBars.map((row) => ({ ...row, totalCost: 0 }));
+  }
+  if (Array.isArray(next.cornerPostBars)) {
+    next.cornerPostBars = next.cornerPostBars.map((row) => ({ ...row, totalCost: 0 }));
+  }
   return next;
 }
 
@@ -9069,8 +9075,14 @@ function buildSystemGroupedShelfBreakdown(entries = []) {
       return;
     }
     if (item.type === "columns") {
-      addPostBarCount(basePostBarMap, "기본", item.basePostBar);
-      addPostBarCount(cornerPostBarMap, "코너", item.cornerPostBar);
+      const baseDetails = Array.isArray(item.basePostBars) && item.basePostBars.length
+        ? item.basePostBars
+        : [item.basePostBar];
+      baseDetails.forEach((entry) => addPostBarCount(basePostBarMap, "기본", entry));
+      const cornerDetails = Array.isArray(item.cornerPostBars) && item.cornerPostBars.length
+        ? item.cornerPostBars
+        : [item.cornerPostBar];
+      cornerDetails.forEach((entry) => addPostBarCount(cornerPostBarMap, "코너", entry));
     }
   });
 
