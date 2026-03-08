@@ -2552,6 +2552,146 @@ th, td {
   padding: 12px 18px;
   min-width: 110px;
 }
+
+#serviceModal .modal-content,
+#topServiceModal .modal-content {
+  max-width: 760px;
+}
+
+#serviceModal .modal-header,
+#topServiceModal .modal-header {
+  align-items: flex-end;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border-faint);
+}
+
+#serviceModal .modal-header h3,
+#topServiceModal .modal-header h3 {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+#serviceModal .error-msg,
+#topServiceModal .error-msg {
+  margin: 0 0 10px;
+  min-height: 18px;
+  line-height: 1.45;
+}
+
+#serviceModal .modal-body,
+#topServiceModal .modal-body {
+  padding-right: 2px;
+}
+
+#serviceModal .modal-body > * + *,
+#topServiceModal .modal-body > * + * {
+  margin-top: 12px;
+}
+
+#serviceModal .service-option-tip,
+#topServiceModal .service-option-tip {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+#serviceModal .service-row,
+#topServiceModal .service-row {
+  padding: 14px;
+  margin-bottom: 0;
+}
+
+#serviceModal .service-row-header,
+#topServiceModal .service-row-header {
+  margin-bottom: 12px;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+#serviceModal .service-field-grid,
+#topServiceModal .service-field-grid {
+  gap: 12px 10px;
+}
+
+#serviceModal .service-field-grid label,
+#topServiceModal .service-field-grid label {
+  line-height: 1.45;
+}
+
+#serviceModal .service-detail-chip,
+#topServiceModal .service-detail-chip {
+  padding: 7px 11px;
+  line-height: 1.45;
+}
+
+#serviceModal .service-input,
+#topServiceModal .service-input,
+#serviceModal .service-textarea,
+#topServiceModal .service-textarea {
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  padding: 11px 6px 9px 2px;
+}
+
+#serviceModal .service-textarea,
+#topServiceModal .service-textarea {
+  min-height: 88px;
+}
+
+#serviceModal .modal-body > div > label,
+#topServiceModal .modal-body > div > label {
+  display: inline-block;
+  margin-bottom: 6px;
+  line-height: 1.45;
+}
+
+#serviceModal .form-row,
+#topServiceModal .form-row {
+  margin-bottom: 0;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+#serviceModal .form-row label,
+#topServiceModal .form-row label {
+  width: 150px;
+  line-height: 1.45;
+  padding-top: 8px;
+}
+
+#serviceModal .form-row input[type="number"],
+#serviceModal .form-row input[type="text"],
+#serviceModal .form-row textarea,
+#serviceModal .form-row select,
+#topServiceModal .form-row input[type="number"],
+#topServiceModal .form-row input[type="text"],
+#topServiceModal .form-row textarea,
+#topServiceModal .form-row select {
+  max-width: 280px;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  padding: 10px 6px 8px 2px;
+}
+
+#serviceModal .modal-footer,
+#topServiceModal .modal-footer {
+  gap: 8px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--color-border-faint);
+}
+
+#serviceModal .modal-footer button,
+#topServiceModal .modal-footer button {
+  min-height: 40px;
+  padding: 10px 14px;
+}
+
 .modal-body {
   flex: 1;
   overflow-y: auto;
@@ -2830,6 +2970,28 @@ th, td {
   .grid-cards--4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  #serviceModal .form-row label,
+  #topServiceModal .form-row label {
+    width: auto;
+    padding-top: 0;
+  }
+
+  #serviceModal .form-row input[type="number"],
+  #serviceModal .form-row input[type="text"],
+  #serviceModal .form-row textarea,
+  #serviceModal .form-row select,
+  #topServiceModal .form-row input[type="number"],
+  #topServiceModal .form-row input[type="text"],
+  #topServiceModal .form-row textarea,
+  #topServiceModal .form-row select {
+    max-width: none;
+  }
+
+  #serviceModal .service-field-grid,
+  #topServiceModal .service-field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 901px) {
@@ -2874,6 +3036,12 @@ th, td {
 
   .grid-cards--keep-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #serviceModal .service-field-grid,
+  #topServiceModal .service-field-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 }
 
