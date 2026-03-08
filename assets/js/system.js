@@ -8103,8 +8103,13 @@ function buildModuleFrontPreviewLayout({
     ? normalizedShelfTopPositionsMm[normalizedShelfTopPositionsMm.length - 1]
     : 0;
   const allowLowestShelfHanger = furnitureBox?.kind === "floor";
+  const allowSingleShelfSingleRodHangerUnderShelf =
+    !furnitureBox &&
+    !allowLowestShelfHanger &&
+    normalizedShelfTopPositionsMm.length === 1 &&
+    normalizedRodCount === 1;
   const hangerCandidatesMm = [];
-  const hangerAnchorShelves = allowLowestShelfHanger
+  const hangerAnchorShelves = allowLowestShelfHanger || allowSingleShelfSingleRodHangerUnderShelf
     ? normalizedShelfTopPositionsMm
     : normalizedShelfTopPositionsMm.slice(0, -1);
   if (hangerAnchorShelves.length) {
