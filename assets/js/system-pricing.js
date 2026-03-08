@@ -34,24 +34,6 @@ function sumBy(items, key) {
   return (Array.isArray(items) ? items : []).reduce((sum, item) => sum + Number(item?.[key] || 0), 0);
 }
 
-export function getPricePerM2(material, thickness) {
-  if (!material) return 0;
-  if (material.pricePerM2ByThickness) {
-    if (thickness && material.pricePerM2ByThickness[thickness]) {
-      return material.pricePerM2ByThickness[thickness];
-    }
-    const firstAvailable = material.availableThickness?.find(
-      (t) => material.pricePerM2ByThickness[t]
-    );
-    if (firstAvailable !== undefined) {
-      return material.pricePerM2ByThickness[firstAvailable];
-    }
-    const firstPrice = Object.values(material.pricePerM2ByThickness)[0];
-    if (firstPrice) return firstPrice;
-  }
-  return material.pricePerM2 || 0;
-}
-
 export function createSystemPricingHelpers({
   limits,
   shelfLengthMm,
@@ -131,21 +113,15 @@ export function createSystemPricingHelpers({
     length,
     quantity,
     partMultiplier = 1,
-    isCustom,
   }) {
     const material = materials[materialId];
     const partQuantity = (quantity || 1) * partMultiplier;
-    const areaM2 = (width / 1000) * (length / 1000);
-    const pricePerM2 = getPricePerM2(material, thickness);
-    const thicknessM = thickness / 1000;
+    const areaM2 = (Number(width || 0) / 1000) * (Number(length || 0) / 1000);
+    const thicknessM = Number(thickness || 0) / 1000;
     const volumeM3 = areaM2 * thicknessM * partQuantity;
-    const weightKg = volumeM3 * (material?.density || 0);
-    const materialCost = areaM2 * pricePerM2 * partQuantity;
+    const weightKg = volumeM3 * Number(material?.density || 0);
     return {
-      areaM2,
-      materialCost: isCustom ? 0 : materialCost,
       weightKg,
-      isCustomPrice: isCustom,
     };
   }
 
@@ -171,35 +147,12 @@ export function createSystemPricingHelpers({
     return tiers.find((tier) => height > 0 && height <= Number(tier?.maxHeightMm || 0)) || null;
   }
 
-  function calcLegacyPostBarUnitCost({ column, heightMm }) {
-    const lengthMm = normalizeMm(heightMm);
-    if (!column?.materialId || !lengthMm) return 0;
-    const detail = calcPartDetail({
-      materials: SYSTEM_COLUMN_MATERIALS,
-      materialId: column.materialId,
-      thickness: column.thickness,
-      width: column.width,
-      length: lengthMm,
-      quantity: 1,
-      partMultiplier: 1,
-      isCustom: false,
-    });
-    return roundWon(detail.materialCost);
-  }
-
-  function getPostBarTierUnitPrice(kind, column, heightMm) {
+  function getPostBarTierUnitPrice(kind, heightMm) {
     const tier = getPostBarTier(kind, heightMm);
-    if (tier && Number(tier.unitPrice || 0) > 0) {
-      return {
-        tier,
-        unitPrice: roundWon(tier.unitPrice),
-        usesLegacyFallback: false,
-      };
-    }
+    const unitPrice = Number(tier?.unitPrice || 0);
     return {
       tier,
-      unitPrice: calcLegacyPostBarUnitCost({ column, heightMm }),
-      usesLegacyFallback: true,
+      unitPrice: Number.isFinite(unitPrice) && unitPrice > 0 ? roundWon(unitPrice) : 0,
     };
   }
 
@@ -241,7 +194,6 @@ export function createSystemPricingHelpers({
       length: shelf.length,
       quantity: unitQuantity,
       partMultiplier: shelfCount,
-      isCustom: false,
     });
     const addonTotal = calcAddonsUnitTotal(addons);
 
@@ -277,13 +229,17 @@ export function createSystemPricingHelpers({
     const baseHeightMm = normalizeMm(column?.length || column?.maxLength);
     const cornerHeightMm = resolveCornerPostBarHeightMm({ column, bays });
 
-    const basePricing = getPostBarTierUnitPrice("basic", column, baseHeightMm);
-    const cornerPricing = getPostBarTierUnitPrice("corner", column, cornerHeightMm);
+    const basePricing = getPostBarTierUnitPrice("basic", baseHeightMm);
+    const cornerPricing = getPostBarTierUnitPrice("corner", cornerHeightMm);
     const baseTier = basePricing.tier;
     const cornerTier = cornerPricing.tier;
 
-    const baseIsCustom = basePostCount > 0 && (!baseTier || isColumnCustom(baseHeightMm));
-    const cornerIsCustom = cornerPostCount > 0 && (!cornerTier || isColumnCustom(cornerHeightMm));
+    const baseIsCustom =
+      basePostCount > 0 &&
+      (!baseTier || basePricing.unitPrice <= 0 || isColumnCustom(baseHeightMm));
+    const cornerIsCustom =
+      cornerPostCount > 0 &&
+      (!cornerTier || cornerPricing.unitPrice <= 0 || isColumnCustom(cornerHeightMm));
     const isCustomPrice = baseIsCustom || cornerIsCustom;
 
     const baseTotalCost = isCustomPrice ? 0 : basePricing.unitPrice * basePostCount * unitQuantity;
@@ -301,10 +257,9 @@ export function createSystemPricingHelpers({
             materialId: column.materialId,
             thickness: column.thickness,
             width: column.width,
-          length: baseHeightMm,
+            length: baseHeightMm,
             quantity: unitQuantity,
             partMultiplier: basePostCount,
-            isCustom: false,
           })
         : { weightKg: 0 };
     const cornerWeightDetail =
@@ -314,10 +269,9 @@ export function createSystemPricingHelpers({
             materialId: column.materialId,
             thickness: column.thickness,
             width: column.width,
-          length: normalizeMm(cornerHeightMm || baseHeightMm),
+            length: normalizeMm(cornerHeightMm || baseHeightMm),
             quantity: unitQuantity,
             partMultiplier: cornerPostCount,
-            isCustom: false,
           })
         : { weightKg: 0 };
     const weightKg =
@@ -340,7 +294,6 @@ export function createSystemPricingHelpers({
         tierLabel: String(baseTier?.label || ""),
         unitPrice: roundWon(basePricing.unitPrice),
         totalCost: roundWon(baseTotalCost),
-        usesLegacyFallback: Boolean(basePricing.usesLegacyFallback),
       },
       cornerPostBar: {
         kind: "corner",
@@ -351,7 +304,6 @@ export function createSystemPricingHelpers({
         tierLabel: String(cornerTier?.label || ""),
         unitPrice: roundWon(cornerPricing.unitPrice),
         totalCost: roundWon(cornerTotalCost),
-        usesLegacyFallback: Boolean(cornerPricing.usesLegacyFallback),
       },
     };
   }

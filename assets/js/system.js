@@ -2,7 +2,6 @@ import {
   SYSTEM_SHELF_MATERIALS,
   SYSTEM_COLUMN_MATERIALS,
   SYSTEM_MATERIAL_CATEGORIES_DESC,
-  SYSTEM_CUSTOM_PROCESSING,
   SYSTEM_SHELF_TIER_PRICING,
   SYSTEM_POST_BAR_PRICING,
   SYSTEM_POST_BAR_HEIGHT_LIMITS as MODULE_POST_BAR_HEIGHT_LIMITS,
@@ -109,7 +108,7 @@ import {
   normalizePresetModuleOptionMode,
   normalizePresetModuleOptionTab,
 } from "./system-flow.js";
-import { getPricePerM2, createSystemPricingHelpers } from "./system-pricing.js";
+import { createSystemPricingHelpers } from "./system-pricing.js";
 import {
   initEmailJS,
   EMAILJS_CONFIG,
@@ -909,7 +908,7 @@ function buildMaterialTierPriceHtml(picker, material) {
   if (picker.key === "column") {
     return buildPostBarTierPriceHtml();
   }
-  return `<div class="material-tier-line">㎡당 ${getPricePerM2(material).toLocaleString()}원</div>`;
+  return `<div class="material-tier-line">가격 정보 준비중</div>`;
 }
 
 function renderMaterialCards(picker) {
@@ -3312,16 +3311,9 @@ function resolveFurnitureSelectionPolicyForEdge(edgeOrId, { modalReturnTo = "" }
   };
 }
 
-function resolveFurnitureAddonUnitPriceByWidth(addonItem, widthMm) {
+function resolveFurnitureAddonUnitPriceByWidth(addonItem, _widthMm) {
   const addon = addonItem && typeof addonItem === "object" ? addonItem : null;
   if (!addon) return 0;
-  const normalizedWidth = Math.round(Number(widthMm || 0));
-  const priceByWidth =
-    addon?.priceByWidth && typeof addon.priceByWidth === "object" ? addon.priceByWidth : null;
-  if (priceByWidth && Number.isFinite(normalizedWidth) && normalizedWidth > 0) {
-    const explicit = Number(priceByWidth[String(normalizedWidth)] || priceByWidth[normalizedWidth] || 0);
-    if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit);
-  }
   const basePrice = Number(addon?.price || 0);
   if (Number.isFinite(basePrice) && basePrice > 0) return Math.round(basePrice);
   return 0;
