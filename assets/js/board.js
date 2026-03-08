@@ -35,6 +35,7 @@ import {
   hasConsultLineItem,
   buildStandardPriceBreakdownRows,
   renderItemPriceDisplay,
+  renderItemPriceNotice,
 } from "./shared.js";
 
 class BaseService {
@@ -880,7 +881,7 @@ if (addItemBtn) {
     const input = readCurrentInputs();
     const err = validateInputs(input);
     if (err) {
-      $("#itemPriceDisplay").textContent = err;
+      renderItemPriceNotice({ target: "#itemPriceDisplay", text: err });
       updateAddItemState();
       return;
     }
@@ -1488,7 +1489,7 @@ function autoCalculatePrice() {
   const input = readCurrentInputs();
   const err = validateInputs(input);
   if (err) {
-    $("#itemPriceDisplay").textContent = err;
+    renderItemPriceNotice({ target: "#itemPriceDisplay", text: err });
     updateAddItemState();
     return;
   }

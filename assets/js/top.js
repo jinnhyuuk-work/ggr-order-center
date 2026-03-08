@@ -26,6 +26,7 @@ import {
   hasConsultLineItem,
   buildStandardPriceBreakdownRows,
   renderItemPriceDisplay,
+  renderItemPriceNotice,
 } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
 
@@ -1182,7 +1183,7 @@ function refreshTopEstimate() {
   updateLength3InputError({ shape: input.shape, length3: input.length3, type });
   const detail = calcTopDetail(input);
   if (detail.error) {
-    priceEl.textContent = detail.error;
+    renderItemPriceNotice({ target: priceEl, text: detail.error });
     updateAddButtonState();
     updateTopPreview(input, null);
     return;
@@ -2027,7 +2028,7 @@ function initTop() {
   initEmailJS();
   updatePreviewSummary(previewSummaryConfig);
   const priceEl = $("#topEstimateText");
-  if (priceEl) priceEl.textContent = "상판 타입을 선택해주세요.";
+  if (priceEl) renderItemPriceNotice({ target: priceEl, text: "상판 타입을 선택해주세요." });
 
   $("#calcTopBtn").addEventListener("click", addTopItem);
   $("#openTopTypeModal").addEventListener("click", openTopTypeModal);

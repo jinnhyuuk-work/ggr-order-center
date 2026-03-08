@@ -124,6 +124,7 @@ import {
   renderSelectedCard,
   buildMaterialVisualInlineStyle,
   initCollapsibleSections,
+  renderItemPriceNotice,
 } from "./shared.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -6693,7 +6694,7 @@ function autoCalculatePrice() {
   updateShelfAddButtonState(input);
   const err = getItemPriceDisplayValidationMessage(input, bays);
   if (err) {
-    $("#itemPriceDisplay").textContent = err;
+    renderItemPriceNotice({ target: "#itemPriceDisplay", text: err });
     updateAddItemState();
     return;
   }
@@ -6747,7 +6748,7 @@ function autoCalculatePrice() {
   const totalPrice = bayTotals.total + columnDetail.total;
   const isCustom = bayTotals.isCustomPrice || columnDetail.isCustomPrice || isLayoutConsultStatus(layoutConsult);
   if (isCustom) {
-    $("#itemPriceDisplay").textContent = "금액: 상담 안내";
+    renderItemPriceNotice({ target: "#itemPriceDisplay", text: "상담 안내" });
   } else {
     const basePostCost = Number(columnDetail?.basePostBar?.totalCost || 0);
     const cornerPostCost = Number(columnDetail?.cornerPostBar?.totalCost || 0);

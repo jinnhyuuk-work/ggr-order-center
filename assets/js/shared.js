@@ -1253,3 +1253,17 @@ export function renderItemPriceDisplay({
     ${rowsHtml ? `<div class="item-price-breakdown">${rowsHtml}</div>` : ""}
   `;
 }
+
+export function renderItemPriceNotice({
+  target,
+  text = "",
+} = {}) {
+  const targetEl = resolveElement(target);
+  if (!targetEl) return;
+  targetEl.classList.add("item-price-display");
+  targetEl.innerHTML = `
+    <div class="item-price-total">
+      <strong class="item-price-total-value">${escapeHtml(String(text || ""))}</strong>
+    </div>
+  `;
+}
