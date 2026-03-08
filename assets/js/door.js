@@ -378,6 +378,9 @@ const previewSummaryConfig = {
   optionSelector: 'input[name="doorOption"]:checked',
   serviceSelector: 'input[name="service"]:checked',
 };
+const HAS_OPTION_SELECTIONS = DOOR_OPTIONS.length > 0;
+const HAS_PROCESSING_SELECTIONS = Object.keys(SERVICES).length > 0;
+const HAS_ADDITIONAL_SELECTIONS = HAS_OPTION_SELECTIONS || HAS_PROCESSING_SELECTIONS;
 
 function clearProcessingServices() {
   document.querySelectorAll('input[name="service"]').forEach((input) => {
@@ -391,6 +394,12 @@ function clearProcessingServices() {
 function syncProcessingSectionVisibility() {
   const container = $("#serviceCards");
   if (!container) return;
+  const section = container.closest(".additional-selection-block--processing");
+  if (section) section.classList.toggle("hidden-step", !HAS_PROCESSING_SELECTIONS);
+  if (!HAS_PROCESSING_SELECTIONS) {
+    updatePreviewSummary(previewSummaryConfig);
+    return;
+  }
   container.classList.remove("hidden-step");
   container.querySelectorAll('input[name="service"]').forEach((input) => {
     input.disabled = false;
@@ -527,6 +536,7 @@ function renderServiceCards() {
 
   Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
   syncProcessingSectionVisibility();
+  if (!HAS_PROCESSING_SELECTIONS) return;
 
   container.addEventListener("change", (e) => {
     if (e.target.name === "service") {
@@ -583,7 +593,13 @@ function renderServiceCards() {
 function renderOptionCards() {
   const container = $("#doorOptionCards");
   if (!container) return;
+  const section = container.closest(".additional-selection-block");
+  if (section) section.classList.toggle("hidden-step", !HAS_OPTION_SELECTIONS);
   container.innerHTML = "";
+  if (!HAS_OPTION_SELECTIONS) {
+    updatePreviewSummary(previewSummaryConfig);
+    return;
+  }
   DOOR_OPTIONS.forEach((opt) => {
     const label = document.createElement("label");
     label.className = "card-base option-card";
@@ -969,9 +985,12 @@ function updateStepVisibility(scrollTarget) {
     return;
   }
 
-  [step1, step2, stepPreview, step3Additional, actionCard].forEach((el) => {
+  [step1, step2, stepPreview, actionCard].forEach((el) => {
     if (el) el.classList.toggle("hidden-step", !showPhase1);
   });
+  if (step3Additional) {
+    step3Additional.classList.toggle("hidden-step", !showPhase1 || !HAS_ADDITIONAL_SELECTIONS);
+  }
   if (step4) step4.classList.toggle("hidden-step", !showPhase2);
   if (step5) step5.classList.toggle("hidden-step", !showPhase3 || orderCompleted);
   if (summaryCard) summaryCard.classList.remove("hidden-step");

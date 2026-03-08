@@ -1,4 +1,4 @@
-import { ADDITIONAL_SELECTION_PAGE_MAP, ORDER_PAGE_KEYS } from "./additional-page-map.js";
+import { getAdditionalSelectionConfigForPage } from "./additional-page-map.js";
 
 export const ADDITIONAL_OPTION_ITEMS = [
   {
@@ -10,7 +10,6 @@ export const ADDITIONAL_OPTION_ITEMS = [
     priceRule: { type: "fixed", value: 5000, unit: "item" },
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.BOARD],
     description: "절단면에 엣지 마감을 추가합니다.",
   },
   {
@@ -22,7 +21,6 @@ export const ADDITIONAL_OPTION_ITEMS = [
     priceRule: { type: "fixed", value: 7000, unit: "item" },
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.BOARD],
     description: "표면 보호를 위한 코팅 옵션입니다.",
   },
   {
@@ -34,7 +32,6 @@ export const ADDITIONAL_OPTION_ITEMS = [
     priceRule: { type: "fixed", value: 4000, unit: "item" },
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.BOARD],
     description: "스크래치 보호 필름을 추가합니다.",
   },
   {
@@ -46,7 +43,6 @@ export const ADDITIONAL_OPTION_ITEMS = [
     priceRule: { type: "fixed", value: 5000, unit: "item" },
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.DOOR],
     description: "절단면에 엣지 마감을 추가합니다.",
   },
   {
@@ -58,7 +54,6 @@ export const ADDITIONAL_OPTION_ITEMS = [
     priceRule: { type: "fixed", value: 7000, unit: "item" },
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.DOOR],
     description: "표면 보호를 위한 코팅 옵션입니다.",
   },
   {
@@ -70,7 +65,6 @@ export const ADDITIONAL_OPTION_ITEMS = [
     priceRule: { type: "fixed", value: 4000, unit: "item" },
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.DOOR],
     description: "스크래치 보호 필름을 추가합니다.",
   },
   {
@@ -82,7 +76,6 @@ export const ADDITIONAL_OPTION_ITEMS = [
     priceRule: { type: "fixed", value: 30000, unit: "item" },
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.TOP],
     description:
       "싱크볼의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다.",
   },
@@ -95,7 +88,6 @@ export const ADDITIONAL_OPTION_ITEMS = [
     priceRule: { type: "fixed", value: 10000, unit: "item" },
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.TOP],
     description:
       "싱크볼에 수전 타공을 추가합니다.<br>정확한 사이즈를 위해 상담이 필요합니다.",
   },
@@ -108,21 +100,24 @@ export const ADDITIONAL_OPTION_ITEMS = [
     priceRule: { type: "fixed", value: 20000, unit: "item" },
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.TOP],
     description:
       "쿡탑의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다.",
   },
 ];
 
+const OPTION_CATALOG_BY_ID = Object.freeze(
+  ADDITIONAL_OPTION_ITEMS.reduce((acc, item) => {
+    if (!item?.id) return acc;
+    acc[item.id] = Object.freeze({ ...item });
+    return acc;
+  }, {})
+);
+
 export function getAdditionalOptionsForPage(pageKey) {
-  const pageConfig = ADDITIONAL_SELECTION_PAGE_MAP[pageKey];
-  const optionIds = pageConfig?.options || [];
+  const pageConfig = getAdditionalSelectionConfigForPage(pageKey);
+  const optionIds = pageConfig?.sections?.options ? pageConfig.optionIds : [];
   return optionIds
-    .map((id) =>
-      ADDITIONAL_OPTION_ITEMS.find(
-        (item) => item.id === id && Array.isArray(item.visibleOn) && item.visibleOn.includes(pageKey)
-      )
-    )
+    .map((id) => OPTION_CATALOG_BY_ID[id])
     .filter(Boolean)
     .map((item) => ({ ...item }));
 }

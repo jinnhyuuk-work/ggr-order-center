@@ -1,4 +1,4 @@
-import { ADDITIONAL_SELECTION_PAGE_MAP, ORDER_PAGE_KEYS } from "./additional-page-map.js";
+import { getAdditionalSelectionConfigForPage } from "./additional-page-map.js";
 
 export const ADDITIONAL_PROCESSING_ITEMS = [
   {
@@ -15,7 +15,6 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
       minCount: 1,
       fields: ["edge", "distance", "verticalRef", "verticalDistance"],
     },
-    visibleOn: [ORDER_PAGE_KEYS.BOARD, ORDER_PAGE_KEYS.DOOR, ORDER_PAGE_KEYS.TOP],
     swatch: "linear-gradient(135deg, #f0f7ff 0%, #c1dbff 100%)",
     description: "경첩 홀 1개당",
   },
@@ -33,7 +32,6 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
       minCount: 1,
       fields: ["edge", "distance", "verticalRef", "verticalDistance"],
     },
-    visibleOn: [ORDER_PAGE_KEYS.BOARD, ORDER_PAGE_KEYS.DOOR, ORDER_PAGE_KEYS.TOP],
     swatch: "linear-gradient(135deg, #fef4e6 0%, #ffd9a8 100%)",
     description: "피스 홀 1개당",
   },
@@ -46,7 +44,6 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     requiresInput: false,
     required: false,
     validation: null,
-    visibleOn: [ORDER_PAGE_KEYS.TOP],
     swatch: "linear-gradient(135deg, #f4f7e9 0%, #dce9c3 100%)",
     description:
       "뒷턱 높이를 입력할 수 있습니다. 가용높이(760 - 상판 폭) 내 무료, 초과 시 상담안내로 처리됩니다.",
@@ -54,16 +51,19 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
   },
 ];
 
+const PROCESSING_CATALOG_BY_ID = Object.freeze(
+  ADDITIONAL_PROCESSING_ITEMS.reduce((acc, item) => {
+    if (!item?.id) return acc;
+    acc[item.id] = Object.freeze({ ...item });
+    return acc;
+  }, {})
+);
+
 export function getAdditionalProcessingServicesForPage(pageKey) {
-  const pageConfig = ADDITIONAL_SELECTION_PAGE_MAP[pageKey];
-  const processingIds = pageConfig?.processing || [];
+  const pageConfig = getAdditionalSelectionConfigForPage(pageKey);
+  const processingIds = pageConfig?.sections?.processing ? pageConfig.processingIds : [];
   return processingIds.reduce((acc, id) => {
-    const item = ADDITIONAL_PROCESSING_ITEMS.find(
-      (candidate) =>
-        candidate.id === id &&
-        Array.isArray(candidate.visibleOn) &&
-        candidate.visibleOn.includes(pageKey)
-    );
+    const item = PROCESSING_CATALOG_BY_ID[id];
     if (!item) return acc;
     acc[item.id] = { ...item };
     return acc;
