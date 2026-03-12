@@ -110,6 +110,10 @@ p[lang="en"], span[lang="en"] {
   font-family: var(--font-en);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 strong[lang="en"],
 b[lang="en"],
 [lang="en"] strong,
