@@ -3072,12 +3072,17 @@ th, td {
   }
 
   .modal-content {
-    width: calc(100vw - 16px);
-    margin: 8px auto;
-    padding: 16px;
-    max-height: calc(100vh - 16px);
+    width: min(500px, calc(100vw - 28px));
+    margin: 14px auto;
+    padding: 14px;
+    max-height: 78vh;
     min-height: auto;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
+  }
+
+  .preview-action-modal .modal-content {
+    width: min(380px, calc(100vw - 28px));
+    max-height: 72vh;
   }
 
   .addon-card-display {
