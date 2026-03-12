@@ -423,7 +423,7 @@ function syncProcessingSectionVisibility() {
   updatePreviewSummary(previewSummaryConfig);
 }
 
-let currentPhase = 1; // 1: 합판/가공, 2: 부자재, 3: 고객 정보
+let currentPhase = 1; // 1: 합판/가공, 3: 고객 정보
 let sendingEmail = false;
 let orderCompleted = false;
 let stickyOffsetTimer = null;
@@ -986,7 +986,6 @@ function updateStepVisibility(scrollTarget) {
   const navActions = document.querySelector(".nav-actions");
 
   const showPhase1 = currentPhase === 1;
-  const showPhase2 = currentPhase === 2;
   const showPhase3 = currentPhase === 3;
 
   if (orderCompleted) {
@@ -1008,7 +1007,7 @@ function updateStepVisibility(scrollTarget) {
   if (step3Additional) {
     step3Additional.classList.toggle("hidden-step", !showPhase1 || !HAS_ADDITIONAL_SELECTIONS);
   }
-  if (step4) step4.classList.toggle("hidden-step", !showPhase2);
+  if (step4) step4.classList.add("hidden-step");
   if (step5) step5.classList.toggle("hidden-step", !showPhase3 || orderCompleted);
   if (summaryCard) summaryCard.classList.remove("hidden-step");
   if (sendBtn) sendBtn.classList.toggle("hidden-step", !showPhase3 || orderCompleted);
@@ -1039,34 +1038,20 @@ function updateStepVisibility(scrollTarget) {
 }
 
 function goToNextStep() {
-  if (currentPhase === 1) {
-    currentPhase = 2;
-    updateStepVisibility(document.getElementById("step4"));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  if (currentPhase !== 1 && currentPhase !== 2) return;
+  const hasMaterial = state.items.some((it) => it.type !== "addon");
+  if (!hasMaterial) {
+    showInfoModal("합판을 하나 이상 담아주세요.");
     return;
   }
-  if (currentPhase === 2) {
-    const hasMaterial = state.items.some((it) => it.type !== "addon");
-    const hasAddon = state.items.some((it) => it.type === "addon");
-    if (!hasMaterial && !hasAddon) {
-      showInfoModal("합판이나 부자재 중 하나 이상 담아주세요.");
-      return;
-    }
-    currentPhase = 3;
-    updateStepVisibility(document.getElementById("step5"));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    return;
-  }
+  currentPhase = 3;
+  updateStepVisibility(document.getElementById("step5"));
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function goToPrevStep() {
   if (currentPhase === 1) return;
-  currentPhase -= 1;
-  if (currentPhase === 2) {
-    updateStepVisibility(document.getElementById("step4"));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    return;
-  }
+  currentPhase = 1;
   updateStepVisibility(document.getElementById("step1"));
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -1290,9 +1275,10 @@ function resetOrderCompleteUI() {
   const summaryCard = document.getElementById("stepFinal");
   const customerStep = document.getElementById("step5");
   const actionCard = document.querySelector(".action-card");
-  ["step1", "step2", "stepPreview", "step3Additional", "step4"].forEach((id) =>
+  ["step1", "step2", "stepPreview", "step3Additional"].forEach((id) =>
     document.getElementById(id)?.classList.remove("hidden-step")
   );
+  document.getElementById("step4")?.classList.add("hidden-step");
   actionCard?.classList.remove("hidden-step");
   navActions?.classList.remove("hidden-step");
   completeEl?.classList.add("hidden-step");

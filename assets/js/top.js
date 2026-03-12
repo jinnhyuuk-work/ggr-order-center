@@ -260,7 +260,7 @@ function formatServiceSummaryText(serviceId, detail) {
 let selectedTopType = "";
 const TOP_CATEGORIES = Array.from(new Set(TOP_TYPES.map((t) => t.category || "기타")));
 let selectedTopCategory = TOP_CATEGORIES[0] || "기타";
-let currentPhase = 1; // 1: 상판/가공, 2: 부자재, 3: 고객정보
+let currentPhase = 1; // 1: 상판/가공, 3: 고객정보
 const state = { items: [], serviceDetails: {}, addons: [] };
 const previewSummaryConfig = {
   optionSelector: "#topOptionCards input:checked",
@@ -1727,7 +1727,6 @@ function updateStepVisibility(scrollTarget) {
   const navActions = document.querySelector(".nav-actions");
 
   const showPhase1 = currentPhase === 1;
-  const showPhase2 = currentPhase === 2;
   const showPhase3 = currentPhase === 3;
 
   if (orderCompleted) {
@@ -1750,7 +1749,7 @@ function updateStepVisibility(scrollTarget) {
     el?.classList.toggle("hidden-step", !showPhase1);
   });
   step3Additional?.classList.toggle("hidden-step", !showPhase1 || !HAS_ADDITIONAL_SELECTIONS);
-  step4?.classList.toggle("hidden-step", !showPhase2);
+  step4?.classList.add("hidden-step");
   step5?.classList.toggle("hidden-step", !showPhase3);
 
   if (navPrev) {
@@ -1776,28 +1775,21 @@ function updateStepVisibility(scrollTarget) {
 }
 
 function goToNextStep() {
-  if (currentPhase === 1) {
-    currentPhase = 2;
-    updateStepVisibility(document.getElementById("step4"));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  if (currentPhase !== 1 && currentPhase !== 2) return;
+  const hasTopItem = state.items.some((it) => it.type !== "addon");
+  if (!hasTopItem) {
+    showInfoModal("상판을 하나 이상 담아주세요.");
     return;
   }
-  if (currentPhase === 2) {
-    const hasItem = state.items.length > 0;
-    if (!hasItem) {
-      showInfoModal("상판이나 부자재 중 하나 이상 담아주세요.");
-      return;
-    }
-    currentPhase = 3;
-    updateStepVisibility(document.getElementById("step5"));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+  currentPhase = 3;
+  updateStepVisibility(document.getElementById("step5"));
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function goToPrevStep() {
   if (currentPhase === 1) return;
-  currentPhase -= 1;
-  updateStepVisibility();
+  currentPhase = 1;
+  updateStepVisibility(document.getElementById("step1"));
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -1805,9 +1797,10 @@ function resetOrderCompleteUI() {
   orderCompleted = false;
   const orderComplete = $("#orderComplete");
   const navActions = document.querySelector(".nav-actions");
-  ["step1", "step2", "stepPreview", "step3Additional", "step4", "step5", "stepFinal"].forEach(
+  ["step1", "step2", "stepPreview", "step3Additional", "step5", "stepFinal"].forEach(
     (id) => document.getElementById(id)?.classList.remove("hidden-step")
   );
+  document.getElementById("step4")?.classList.add("hidden-step");
   navActions?.classList.remove("hidden-step");
   orderComplete?.classList.add("hidden-step");
 }
