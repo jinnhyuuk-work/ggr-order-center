@@ -1,10 +1,17 @@
 import { arrayToMap, COMMON_ADDON_ITEMS } from "./common-data.js";
 
+// 선반 컬러별 단가를 티어 키 기준으로 개별 관리한다.
 const LPM_ITEMS = [
   {
     id: "lpm_basic",
     name: "베이직",
     category: "LPM",
+    priceByTierKey: Object.freeze({
+      lte_400: 22000,
+      lte_600: 28000,
+      lte_800: 34000,
+      corner_standard: 42000,
+    }),
     availableThickness: [18],
     density: 720,
     swatch: "#f2f2f2",
@@ -14,6 +21,12 @@ const LPM_ITEMS = [
     id: "lpm_natural_walnut",
     name: "네추럴 월넛",
     category: "LPM",
+    priceByTierKey: Object.freeze({
+      lte_400: 22000,
+      lte_600: 28000,
+      lte_800: 34000,
+      corner_standard: 42000,
+    }),
     availableThickness: [18],
     density: 720,
     swatch: "#b38352",
@@ -23,6 +36,12 @@ const LPM_ITEMS = [
     id: "lpm_smoke_walnut",
     name: "스모크 월넛",
     category: "LPM",
+    priceByTierKey: Object.freeze({
+      lte_400: 22000,
+      lte_600: 28000,
+      lte_800: 34000,
+      corner_standard: 42000,
+    }),
     availableThickness: [18],
     density: 720,
     swatch: "#6b4b36",
@@ -35,6 +54,12 @@ const PP_ITEMS = [
     id: "pp_twill",
     name: "트윌",
     category: "PP",
+    priceByTierKey: Object.freeze({
+      lte_400: 20000,
+      lte_600: 25500,
+      lte_800: 31000,
+      corner_standard: 39000,
+    }),
     availableThickness: [18],
     density: 720,
     swatch: "#ede6e4",

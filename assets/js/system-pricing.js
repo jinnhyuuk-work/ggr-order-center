@@ -69,14 +69,21 @@ export function createSystemPricingHelpers({
 
   function getShelfTierUnitPrice({ tier = null, material = null } = {}) {
     if (!tier || Boolean(tier?.isCustomPrice)) return 0;
+    const tierKey = String(tier?.key || "");
     const materialId = String(material?.id || "");
     const category = String(material?.category || "");
+    const materialPriceByTierKey =
+      material?.priceByTierKey && typeof material.priceByTierKey === "object"
+        ? material.priceByTierKey
+        : null;
     const priceByMaterialId = tier?.priceByMaterialId && typeof tier.priceByMaterialId === "object"
       ? tier.priceByMaterialId
       : null;
     const priceByCategory = tier?.priceByCategory && typeof tier.priceByCategory === "object"
       ? tier.priceByCategory
       : null;
+    const byMaterialTierKey = materialPriceByTierKey ? Number(materialPriceByTierKey[tierKey] || 0) : 0;
+    if (byMaterialTierKey > 0) return roundWon(byMaterialTierKey);
     const byMaterialPrice = priceByMaterialId ? Number(priceByMaterialId[materialId] || 0) : 0;
     if (byMaterialPrice > 0) return roundWon(byMaterialPrice);
     const byCategoryPrice = priceByCategory ? Number(priceByCategory[category] || 0) : 0;
