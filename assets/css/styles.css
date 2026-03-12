@@ -1058,12 +1058,6 @@ input[type="number"]::-webkit-outer-spin-button {
   box-shadow: 0 0 0 2px rgba(31, 78, 121, 0.12);
 }
 
-@media (max-width: 768px) {
-  .preview-action-modal .modal-content {
-    width: min(420px, calc(100vw - 16px));
-  }
-}
-
 .system-preview-ghost {
   position: absolute;
   border: 1px dashed rgba(17, 17, 17, 0.35);
@@ -3066,23 +3060,36 @@ th, td {
   }
 }
 
+@media (max-width: 768px) {
+  .modal-content {
+    width: min(520px, calc(100vw - 40px));
+    margin: 14px auto;
+    padding: 16px;
+    max-height: 78vh;
+    min-height: auto;
+    border-radius: var(--radius-lg);
+  }
+
+  .preview-action-modal .modal-content {
+    width: min(400px, calc(100vw - 40px));
+    max-height: 72vh;
+  }
+}
+
 @media (max-width: 540px) {
   .layout-type-grid {
     grid-template-columns: 1fr 1fr;
   }
 
   .modal-content {
-    width: min(500px, calc(100vw - 28px));
-    margin: 14px auto;
+    width: calc(100vw - 36px);
+    margin: 12px auto;
     padding: 14px;
-    max-height: 78vh;
-    min-height: auto;
     border-radius: var(--radius-md);
   }
 
   .preview-action-modal .modal-content {
-    width: min(380px, calc(100vw - 28px));
-    max-height: 72vh;
+    width: min(360px, calc(100vw - 36px));
   }
 
   .addon-card-display {
