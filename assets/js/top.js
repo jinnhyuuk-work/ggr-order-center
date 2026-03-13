@@ -1031,13 +1031,13 @@ function renderTable() {
         sizeText: escapeHtml(item.displaySize),
         optionsText: escapeHtml(item.optionsLabel),
         servicesText: escapeHtml(servicesText || "-"),
+        serviceLabel: "가공서비스",
         materialLabel: "상판비",
         materialCost: item.isCustomPrice ? null : baseCost,
-        processingCost: item.processingCost,
+        materialConsult: item.isCustomPrice,
+        processingCost: item.isCustomPrice ? null : item.processingCost,
+        processingConsult: item.isCustomPrice,
       });
-      if (item.isCustomPrice) {
-        baseLines.splice(3, 0, "상판비 상담 안내");
-      }
       return baseLines;
     },
     onQuantityChange: (id, value) => updateItemQuantity(id, value),

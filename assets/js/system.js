@@ -9242,7 +9242,12 @@ function buildSystemGroupDetailLines(groupItem, { includeLayout = true } = {}) {
   }
 
   if (groupItem?.isCustomPrice) {
+    lines.push("품목비 상담 안내");
+    lines.push("가공서비스비 상담 안내");
     lines.push("비규격 상담 안내");
+  } else {
+    lines.push(`품목비 ${Number(groupItem?.materialCost || 0).toLocaleString()}원`);
+    lines.push(`가공서비스비 ${Number(groupItem?.processingCost || 0).toLocaleString()}원`);
   }
   return lines;
 }

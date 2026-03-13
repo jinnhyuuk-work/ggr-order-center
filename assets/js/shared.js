@@ -1197,19 +1197,30 @@ export function buildEstimateDetailLines({
   sizeText,
   optionsText,
   servicesText,
+  serviceLabel = "가공서비스",
   materialLabel,
   materialCost,
   processingCost,
+  processingCostLabel,
+  materialConsult = false,
+  processingConsult = false,
 } = {}) {
   const lines = [];
   if (sizeText) lines.push(`사이즈 ${sizeText}`);
   if (optionsText) lines.push(`옵션 ${optionsText}`);
-  if (servicesText) lines.push(`가공 ${servicesText}`);
-  if (materialLabel && Number.isFinite(materialCost)) {
-    lines.push(`${materialLabel} ${materialCost.toLocaleString()}원`);
+  if (servicesText) lines.push(`${serviceLabel} ${servicesText}`);
+  if (materialLabel) {
+    if (materialConsult) {
+      lines.push(`${materialLabel} 상담 안내`);
+    } else if (Number.isFinite(materialCost)) {
+      lines.push(`${materialLabel} ${materialCost.toLocaleString()}원`);
+    }
   }
-  if (Number.isFinite(processingCost)) {
-    lines.push(`가공비 ${processingCost.toLocaleString()}원`);
+  const resolvedProcessingCostLabel = processingCostLabel || `${serviceLabel}비`;
+  if (processingConsult) {
+    lines.push(`${resolvedProcessingCostLabel} 상담 안내`);
+  } else if (Number.isFinite(processingCost)) {
+    lines.push(`${resolvedProcessingCostLabel} ${processingCost.toLocaleString()}원`);
   }
   return lines;
 }

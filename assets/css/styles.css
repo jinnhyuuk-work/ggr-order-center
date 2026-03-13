@@ -3004,7 +3004,8 @@ th, td {
   text-align: right;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  line-height: 1.5;
 }
 
 .detail-row .detail-line {
