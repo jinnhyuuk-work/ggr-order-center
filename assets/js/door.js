@@ -439,9 +439,23 @@ function getCurrentDoorLengthInputValue() {
   return Number($("#lengthInput")?.value || 0);
 }
 
+function getCurrentDoorLengthBounds() {
+  const selectedInput = document.querySelector('input[name="material"]:checked');
+  const matId = selectedInput?.value || selectedMaterialId;
+  const mat = MATERIALS[matId];
+  const min = Number(mat?.minLength);
+  const max = Number(mat?.maxLength);
+  return {
+    min: Number.isFinite(min) ? min : LENGTH_MIN,
+    max: Number.isFinite(max) ? max : LENGTH_MAX,
+  };
+}
+
 function isDoorLengthReady(length) {
   const numericLength = Number(length);
-  return Number.isFinite(numericLength) && numericLength > 0;
+  if (!Number.isFinite(numericLength)) return false;
+  const { min, max } = getCurrentDoorLengthBounds();
+  return numericLength >= min && numericLength <= max;
 }
 
 function buildDoorHingeAutoPositions(length, count) {
@@ -558,8 +572,9 @@ function updateDoorHingeCountHint({ length, count } = {}) {
   const hintEl = $("#doorHingeCountHint");
   if (!hintEl) return;
   if (!isDoorLengthReady(length)) {
+    const { min, max } = getCurrentDoorLengthBounds();
     hintEl.textContent =
-      "도어 길이를 입력하면 경첩 수량/위치가 자동 생성됩니다. (800mm 이하 2개 / 1500mm 이하 3개 / 그 이상 4개)";
+      `도어 길이를 ${min}~${max}mm 범위로 입력하면 경첩 수량/위치가 자동 생성됩니다. (800mm 이하 2개 / 1500mm 이하 3개 / 그 이상 4개)`;
     return;
   }
   const numericLength = Number(length);
@@ -571,7 +586,8 @@ function updateDoorHingeRangeHint(length) {
   const hintEl = $("#doorHingeRangeHint");
   if (!hintEl) return;
   if (!isDoorLengthReady(length)) {
-    hintEl.textContent = "세로 위치 입력 가능 범위는 길이 입력 후 안내됩니다.";
+    const { min, max } = getCurrentDoorLengthBounds();
+    hintEl.textContent = `세로 위치 입력 가능 범위는 길이 ${min}~${max}mm 입력 후 안내됩니다.`;
     return;
   }
   const numericLength = Math.round(Number(length));
@@ -1999,8 +2015,11 @@ function renderPreviewHoles(input) {
   if (holes.length === 0) return;
 
   const rect = colorEl.getBoundingClientRect();
-  const pxW = rect.width;
-  const pxH = rect.height;
+  const inlineWidth = Number.parseFloat(colorEl.style.width);
+  const inlineHeight = Number.parseFloat(colorEl.style.height);
+  // Prefer target dimensions from inline style so hole coordinates stay correct while size transition is running.
+  const pxW = Number.isFinite(inlineWidth) && inlineWidth > 0 ? inlineWidth : rect.width;
+  const pxH = Number.isFinite(inlineHeight) && inlineHeight > 0 ? inlineHeight : rect.height;
   if (!pxW || !pxH) return;
   const scaleX = pxW / input.width;
   const scaleY = pxH / input.length;
@@ -2313,6 +2332,10 @@ function init() {
   });
   window.addEventListener("resize", () => {
     requestStickyOffsetUpdate();
+    requestPreviewUpdate();
+  });
+  $("#previewColor")?.addEventListener("transitionend", (event) => {
+    if (event.propertyName !== "width" && event.propertyName !== "height") return;
     requestPreviewUpdate();
   });
   document.addEventListener("change", (e) => {
