@@ -5,7 +5,6 @@ import {
   SYSTEM_SHELF_TIER_PRICING,
   SYSTEM_ADDON_ITEMS,
 } from "./data/system-data.js";
-import { calcShippingCost } from "./shared.js";
 
 const SYSTEM_ADDON_ITEMS_BY_ID = new Map(
   (Array.isArray(SYSTEM_ADDON_ITEMS) ? SYSTEM_ADDON_ITEMS : []).map((item) => [String(item.id || ""), item])
@@ -394,8 +393,7 @@ export function createSystemPricingHelpers({
     const subtotal = sumBy(items, "subtotal");
     const vat = 0;
     const totalWeight = sumBy(items, "weightKg");
-    const shippingCost = calcShippingCost(totalWeight);
-    const grandTotal = subtotal + shippingCost;
+    const grandTotal = subtotal;
 
     return {
       materialsTotal,
@@ -403,7 +401,6 @@ export function createSystemPricingHelpers({
       subtotal,
       vat,
       totalWeight,
-      shippingCost,
       grandTotal,
     };
   }

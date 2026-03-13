@@ -336,15 +336,6 @@ export function buildConsultAwarePricing({
   };
 }
 
-export function calcShippingCost(totalWeightKg) {
-  if (totalWeightKg === 0) return 0;
-
-  if (totalWeightKg <= 10) return 4000;
-  if (totalWeightKg <= 20) return 6000;
-  if (totalWeightKg <= 30) return 8000;
-  return 8000 + Math.ceil((totalWeightKg - 30) / 10) * 3000;
-}
-
 export function initEmailJS() {
   if (typeof window === "undefined") return;
   if (window.emailjs && EMAILJS_CONFIG.publicKey) {

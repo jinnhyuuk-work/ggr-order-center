@@ -7,7 +7,6 @@ import {
   DOOR_PRICE_TIERS_BY_CATEGORY,
 } from "./data/door-data.js";
 import {
-  calcShippingCost,
   initEmailJS,
   EMAILJS_CONFIG,
   openModal,
@@ -359,10 +358,7 @@ function calcOrderSummary(items) {
   const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
   const vat = 0;
   const totalWeight = items.reduce((s, i) => s + i.weightKg, 0);
-
-  const shippingCost = calcShippingCost(totalWeight);
-
-  const grandTotal = subtotal + shippingCost;
+  const grandTotal = subtotal;
 
   return {
     materialsTotal,
@@ -370,7 +366,6 @@ function calcOrderSummary(items) {
     subtotal,
     vat,
     totalWeight,
-    shippingCost,
     grandTotal,
   };
 }
@@ -1615,9 +1610,6 @@ function renderSummary() {
   if (materialsTotalEl) materialsTotalEl.textContent = summary.materialsTotal.toLocaleString();
   $("#grandTotal").textContent = `${summary.grandTotal.toLocaleString()}${suffix}`;
 
-  const shippingEl = document.getElementById("shippingCost");
-  if (shippingEl) shippingEl.textContent = summary.shippingCost.toLocaleString();
-
   const naverUnits = Math.ceil(summary.grandTotal / 1000);
   $("#naverUnits").textContent = `${naverUnits}${suffix}`;
   updateSendButtonEnabled();
@@ -1697,7 +1689,7 @@ function buildOrderPayload() {
     totals: {
       grandTotal: Number(summary.grandTotal || 0),
       subtotal: Number(summary.subtotal || 0),
-      shippingCost: Number(summary.shippingCost || 0),
+      shippingCost: 0,
       hasCustomPrice,
       displayPriceLabel: hasCustomPrice ? `상담안내${CONSULT_EXCLUDED_SUFFIX}` : null,
     },

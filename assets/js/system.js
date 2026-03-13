@@ -9164,6 +9164,18 @@ function buildSystemGroupDisplayItems(items = state.items) {
       1,
       Number(columnsItem?.quantity || bays[0]?.quantity || entries[0]?.quantity || 1)
     );
+    const addonCost = bays.reduce(
+      (acc, bay) => {
+        if (!bay || bay.isCustomPrice) return acc;
+        const bayQty = Math.max(1, Number(bay.quantity || quantity || 1));
+        const costs = calcAddonCostBreakdown(bay.addons, bayQty);
+        return {
+          componentCost: acc.componentCost + Number(costs.componentCost || 0),
+          furnitureCost: acc.furnitureCost + Number(costs.furnitureCost || 0),
+        };
+      },
+      { componentCost: 0, furnitureCost: 0 }
+    );
     return {
       id: `group:${groupId}`,
       groupId,
@@ -9172,6 +9184,8 @@ function buildSystemGroupDisplayItems(items = state.items) {
       total: sumNumericField(entries, "total"),
       materialCost: sumNumericField(entries, "materialCost"),
       processingCost: sumNumericField(entries, "processingCost"),
+      componentCost: addonCost.componentCost,
+      furnitureCost: addonCost.furnitureCost,
       subtotal: sumNumericField(entries, "subtotal"),
       vat: sumNumericField(entries, "vat"),
       weightKg: sumNumericField(entries, "weightKg"),
@@ -9243,11 +9257,21 @@ function buildSystemGroupDetailLines(groupItem, { includeLayout = true } = {}) {
 
   if (groupItem?.isCustomPrice) {
     lines.push("품목비 상담 안내");
-    lines.push("가공서비스비 상담 안내");
+    lines.push("구성품비 상담 안내");
     lines.push("비규격 상담 안내");
   } else {
+    const componentCost = Number(groupItem?.componentCost || 0);
+    const furnitureCost = Number(groupItem?.furnitureCost || 0);
+    const componentTotal = componentCost + furnitureCost;
+    const componentParts = [];
+    if (componentCost > 0) componentParts.push(`행거 ${componentCost.toLocaleString()}원`);
+    if (furnitureCost > 0) componentParts.push(`가구 ${furnitureCost.toLocaleString()}원`);
     lines.push(`품목비 ${Number(groupItem?.materialCost || 0).toLocaleString()}원`);
-    lines.push(`가공서비스비 ${Number(groupItem?.processingCost || 0).toLocaleString()}원`);
+    lines.push(
+      `구성품비 ${componentTotal.toLocaleString()}원${
+        componentParts.length ? ` (${componentParts.join(" · ")})` : ""
+      }`
+    );
   }
   return lines;
 }
@@ -9392,9 +9416,6 @@ function renderSummary() {
   const materialsTotalEl = $("#materialsTotal");
   if (materialsTotalEl) materialsTotalEl.textContent = summary.materialsTotal.toLocaleString();
   $("#grandTotal").textContent = `${summary.grandTotal.toLocaleString()}${suffix}`;
-
-  const shippingEl = $("#shippingCost");
-  if (shippingEl) shippingEl.textContent = summary.shippingCost.toLocaleString();
 
   const naverUnits = Math.ceil(summary.grandTotal / 1000);
   $("#naverUnits").textContent = `${naverUnits}${suffix}`;
