@@ -248,7 +248,7 @@ function calcProcessingCost({
 }) {
   const { amount, hasConsult } = evaluateSelectionPricing({
     selectedIds: services,
-    resolveById: (id) => SERVICES[id],
+    resolveById: (id) => PROCESSING_SERVICES[id],
     quantity,
     getAmount: ({ id, item, quantity: qty }) => {
       const detail = serviceDetails?.[id];
@@ -280,6 +280,7 @@ function calcItemDetail(input) {
     options = [],
     services = [],
     serviceDetails = {},
+    doorHingeConfig = createDefaultDoorHingeConfig(),
   } = input;
 
   const { areaM2, materialCost, isCustom } = calcMaterialCost({
@@ -294,6 +295,7 @@ function calcItemDetail(input) {
   }
 
   const { processingCost, hasConsult: hasConsultService } = calcProcessingCost({ quantity, services, serviceDetails });
+  const doorHingeCost = calcDoorHingeCost({ quantity, doorHingeConfig });
   const { optionPrice, hasConsult: hasConsultOption } = calcOptionsPrice(options);
 
   const { weightKg } = calcWeightKg({
@@ -306,7 +308,8 @@ function calcItemDetail(input) {
 
   const appliedMaterialCost = isCustom ? 0 : materialCost;
   const appliedOptionCost = isCustom || hasConsultOption ? 0 : optionPrice;
-  const appliedServiceCost = isCustom || hasConsultService ? 0 : processingCost;
+  const appliedDoorHingeCost = isCustom ? 0 : doorHingeCost;
+  const appliedServiceCost = (isCustom || hasConsultService ? 0 : processingCost) + appliedDoorHingeCost;
   const appliedProcessingCost = appliedServiceCost + appliedOptionCost;
   const subtotal = appliedMaterialCost + appliedProcessingCost;
   const vat = 0;
@@ -319,6 +322,7 @@ function calcItemDetail(input) {
     processingCost: appliedProcessingCost,
     optionCost: appliedOptionCost,
     serviceCost: appliedServiceCost,
+    doorHingeCost: appliedDoorHingeCost,
     subtotal,
     vat,
     total,
@@ -328,6 +332,7 @@ function calcItemDetail(input) {
     itemHasConsult: Boolean(isCustom),
     optionHasConsult: Boolean(isCustom || hasConsultOption),
     serviceHasConsult: Boolean(isCustom || hasConsultService),
+    doorHingeConfig: cloneDoorHingeConfig(doorHingeConfig),
     optionsLabel: formatOptionsLabel(options),
     options,
   };
@@ -379,19 +384,309 @@ const WIDTH_MIN = 100;
 const WIDTH_MAX = 800;
 const LENGTH_MIN = 200;
 const LENGTH_MAX = 2400;
+const DOOR_HINGE_PRICE_PER_HOLE = 1500;
+const DOOR_HINGE_MIN_COUNT = 2;
+const DOOR_HINGE_MAX_COUNT = 4;
+const DOOR_HINGE_DEFAULT_EDGE_DISTANCE = 22;
+const DOOR_HINGE_AUTO_TOP_OFFSET = 100;
+const DOOR_HINGE_AUTO_BOTTOM_OFFSET = 100;
+const DOOR_HINGE_AUTO_INTERIOR_RISE = 100;
+
+const PROCESSING_SERVICES = Object.entries(SERVICES).reduce((acc, [id, service]) => {
+  if (id === "proc_hinge_hole") return acc;
+  acc[id] = service;
+  return acc;
+}, {});
 
 const state = {
   items: [], // {id, materialId, thickness, width, length, quantity, services, ...계산 결과}
   addons: [],
   serviceDetails: {}, // 현재 선택된 가공별 세부 옵션
+  doorHingeConfig: createDefaultDoorHingeConfig(),
 };
 const previewSummaryConfig = {
   optionSelector: 'input[name="doorOption"]:checked',
   serviceSelector: 'input[name="service"]:checked',
 };
 const HAS_OPTION_SELECTIONS = DOOR_OPTIONS.length > 0;
-const HAS_PROCESSING_SELECTIONS = Object.keys(SERVICES).length > 0;
+const HAS_PROCESSING_SELECTIONS = Object.keys(PROCESSING_SERVICES).length > 0;
 const HAS_ADDITIONAL_SELECTIONS = HAS_OPTION_SELECTIONS || HAS_PROCESSING_SELECTIONS;
+
+function resolveDoorHingeCountByLength(length) {
+  const numericLength = Number(length);
+  if (!Number.isFinite(numericLength) || numericLength <= 0) return DOOR_HINGE_MIN_COUNT;
+  if (numericLength <= 800) return 2;
+  if (numericLength <= 1500) return 3;
+  return 4;
+}
+
+function createDefaultDoorHingeConfig() {
+  return {
+    enabled: true,
+    side: "left",
+    count: DOOR_HINGE_MIN_COUNT,
+    edgeDistance: DOOR_HINGE_DEFAULT_EDGE_DISTANCE,
+    holes: [],
+    note: "",
+  };
+}
+
+function cloneDoorHingeConfig(config) {
+  return JSON.parse(JSON.stringify(config || createDefaultDoorHingeConfig()));
+}
+
+function getCurrentDoorLengthInputValue() {
+  return Number($("#lengthInput")?.value || 0);
+}
+
+function buildDoorHingeAutoPositions(length, count) {
+  const numericLength = Number(length);
+  const normalizedCount = Math.max(
+    DOOR_HINGE_MIN_COUNT,
+    Math.min(DOOR_HINGE_MAX_COUNT, Number(count) || DOOR_HINGE_MIN_COUNT)
+  );
+
+  if (!Number.isFinite(numericLength) || numericLength <= 0) {
+    const fallbackByCount = {
+      2: [DOOR_HINGE_AUTO_TOP_OFFSET, 700],
+      3: [DOOR_HINGE_AUTO_TOP_OFFSET, 650, 1200],
+      4: [DOOR_HINGE_AUTO_TOP_OFFSET, 500, 950, 1400],
+    };
+    return (fallbackByCount[normalizedCount] || fallbackByCount[DOOR_HINGE_MIN_COUNT]).slice(
+      0,
+      normalizedCount
+    );
+  }
+
+  const maxPos = Math.max(1, Math.round(numericLength - 1));
+  const rawPositions = Array.from({ length: normalizedCount }, (_, idx) => {
+    if (idx === 0) return DOOR_HINGE_AUTO_TOP_OFFSET;
+    if (idx === normalizedCount - 1) return numericLength - DOOR_HINGE_AUTO_BOTTOM_OFFSET;
+    const equalPosition = (numericLength * idx) / (normalizedCount - 1);
+    return equalPosition - DOOR_HINGE_AUTO_INTERIOR_RISE;
+  });
+  const positions = rawPositions.map((pos) => Math.max(1, Math.min(maxPos, Math.round(pos))));
+
+  for (let idx = 1; idx < positions.length; idx += 1) {
+    if (positions[idx] <= positions[idx - 1]) {
+      positions[idx] = Math.min(maxPos, positions[idx - 1] + 1);
+    }
+  }
+  for (let idx = positions.length - 2; idx >= 0; idx -= 1) {
+    if (positions[idx] >= positions[idx + 1]) {
+      positions[idx] = Math.max(1, positions[idx + 1] - 1);
+    }
+  }
+
+  return positions;
+}
+
+function normalizeDoorHingeConfig(rawConfig = {}, { length } = {}) {
+  const side = rawConfig?.side === "right" ? "right" : "left";
+  const count = resolveDoorHingeCountByLength(length);
+  const autoPositions = buildDoorHingeAutoPositions(length, count);
+  const sourceHoles = Array.isArray(rawConfig?.holes) ? rawConfig.holes : [];
+
+  const holes = Array.from({ length: count }, (_, idx) => {
+    const hole = sourceHoles[idx] || {};
+    const rawVerticalDistance = Number(hole.verticalDistance);
+    const verticalDistance = Number.isFinite(rawVerticalDistance)
+      ? rawVerticalDistance
+      : Number(autoPositions[idx] || 100);
+    return {
+      edge: side,
+      distance: DOOR_HINGE_DEFAULT_EDGE_DISTANCE,
+      verticalRef: "top",
+      verticalDistance,
+    };
+  });
+
+  return {
+    enabled: true,
+    side,
+    count,
+    edgeDistance: DOOR_HINGE_DEFAULT_EDGE_DISTANCE,
+    holes,
+    note: String(rawConfig?.note || "").trim(),
+  };
+}
+
+function getDoorHingeHolesFromDOM(side) {
+  return Array.from(document.querySelectorAll(".door-hinge-vertical-input")).map((inputEl) => ({
+    edge: side,
+    distance: DOOR_HINGE_DEFAULT_EDGE_DISTANCE,
+    verticalRef: "top",
+    verticalDistance: Number(inputEl.value),
+  }));
+}
+
+function setDoorHingeError(message = "") {
+  const errorEl = $("#doorHingeError");
+  if (errorEl) errorEl.textContent = message || "";
+}
+
+function setDoorHingeSide(side) {
+  const normalizedSide = side === "right" ? "right" : "left";
+  const sideInput = $("#doorHingeSide");
+  if (sideInput) sideInput.value = normalizedSide;
+  document.querySelectorAll("[data-door-hinge-side]").forEach((btn) => {
+    const active = btn.dataset.doorHingeSide === normalizedSide;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-pressed", String(active));
+  });
+}
+
+function updateDoorHingeCountHint({ length, count } = {}) {
+  const hintEl = $("#doorHingeCountHint");
+  if (!hintEl) return;
+  const numericLength = Number(length);
+  const lengthText =
+    Number.isFinite(numericLength) && numericLength > 0 ? `${Math.round(numericLength)}mm` : "-";
+  hintEl.textContent = `길이 ${lengthText} 기준 경첩 ${count}개 자동 적용 (800mm 이하 2개 / 1500mm 이하 3개 / 그 이상 4개)`;
+}
+
+function syncDoorHingeFieldVisibility() {
+  const fields = $("#doorHingeFields");
+  if (fields) fields.classList.remove("hidden-step");
+}
+
+function renderDoorHingeRows({ preserveExistingValues = true } = {}) {
+  const rowsEl = $("#doorHingeRows");
+  const sideInput = $("#doorHingeSide");
+  if (!rowsEl || !sideInput) return;
+
+  const side = sideInput.value === "right" ? "right" : "left";
+  const length = getCurrentDoorLengthInputValue();
+  const sourceHoles = preserveExistingValues ? getDoorHingeHolesFromDOM(side) : [];
+
+  state.doorHingeConfig = normalizeDoorHingeConfig(
+    {
+      ...state.doorHingeConfig,
+      side,
+      holes: sourceHoles,
+    },
+    { length }
+  );
+  updateDoorHingeCountHint({ length, count: state.doorHingeConfig.count });
+  setDoorHingeSide(side);
+
+  rowsEl.innerHTML = state.doorHingeConfig.holes
+    .map((hole, idx) => {
+      const value = Number(hole.verticalDistance);
+      return `
+        <div class="door-hinge-row">
+          <p class="door-hinge-row-title">경첩 ${idx + 1}</p>
+          <div class="door-hinge-grid">
+            <div>
+              <label for="doorHingeVertical-${idx}">세로 위치 (mm)</label>
+              <input
+                type="number"
+                id="doorHingeVertical-${idx}"
+                class="service-input door-hinge-vertical-input"
+                data-door-hinge-index="${idx}"
+                min="1"
+                value="${Number.isFinite(value) && value > 0 ? value : ""}"
+              />
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function readDoorHingeConfigFromDOM() {
+  const side = $("#doorHingeSide")?.value === "right" ? "right" : "left";
+  const holes = getDoorHingeHolesFromDOM(side);
+  state.doorHingeConfig = normalizeDoorHingeConfig(
+    {
+      ...state.doorHingeConfig,
+      side,
+      holes,
+    },
+    { length: getCurrentDoorLengthInputValue() }
+  );
+  return cloneDoorHingeConfig(state.doorHingeConfig);
+}
+
+function getDoorHingeValidHoleCount(doorHingeConfig) {
+  const holes = Array.isArray(doorHingeConfig?.holes) ? doorHingeConfig.holes : [];
+  return holes.filter((hole) => Number.isFinite(Number(hole?.verticalDistance)) && Number(hole.verticalDistance) > 0)
+    .length;
+}
+
+function validateDoorHingeConfig(doorHingeConfig, { length } = {}) {
+  const numericLength = Number(length);
+  if (!Number.isFinite(numericLength) || numericLength <= 0) {
+    return "경첩 위치를 위해 도어 길이를 먼저 입력해주세요.";
+  }
+
+  const holes = Array.isArray(doorHingeConfig.holes) ? doorHingeConfig.holes : [];
+  if (holes.length === 0) return "경첩 위치를 1개 이상 입력해주세요.";
+
+  const positions = [];
+  for (let index = 0; index < holes.length; index += 1) {
+    const verticalDistance = Number(holes[index]?.verticalDistance);
+    if (!Number.isFinite(verticalDistance)) {
+      return `${index + 1}번째 경첩 세로 위치를 입력해주세요.`;
+    }
+    if (verticalDistance <= 0 || verticalDistance >= numericLength) {
+      return `${index + 1}번째 경첩 세로 위치는 1mm 이상, 길이(${numericLength}mm) 미만으로 입력해주세요.`;
+    }
+    positions.push(verticalDistance);
+  }
+
+  for (let index = 1; index < positions.length; index += 1) {
+    if (positions[index] <= positions[index - 1]) {
+      return "경첩 위치는 위에서 아래 순서로 오름차순 입력해주세요.";
+    }
+  }
+  return "";
+}
+
+function calcDoorHingeCost({ quantity, doorHingeConfig }) {
+  const holeCount = getDoorHingeValidHoleCount(doorHingeConfig);
+  return holeCount * DOOR_HINGE_PRICE_PER_HOLE * quantity;
+}
+
+function formatDoorHingeConfig(doorHingeConfig, { includeNote = false } = {}) {
+  const holes = Array.isArray(doorHingeConfig.holes) ? doorHingeConfig.holes : [];
+  if (holes.length === 0) return "경첩 위치 미입력";
+  const sideText = doorHingeConfig.side === "right" ? "우경첩" : "좌경첩";
+  const positionText = holes
+    .map((hole) => Number(hole?.verticalDistance))
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .map((value) => `상 ${value}mm`)
+    .join(", ");
+  const noteText = includeNote && doorHingeConfig.note ? ` · 메모: ${doorHingeConfig.note}` : "";
+  return `${sideText} ${holes.length}개${positionText ? ` · ${positionText}` : ""}${noteText}`;
+}
+
+function formatProcessingList(services = [], serviceDetails = {}, doorHingeConfig = {}, opts = {}) {
+  const parts = [];
+  const doorHingeText = formatDoorHingeConfig(doorHingeConfig, opts);
+  if (doorHingeText) parts.push(`경첩 (${doorHingeText})`);
+  const serviceText = formatServiceList(services, serviceDetails, opts);
+  if (serviceText && serviceText !== "-") parts.push(serviceText);
+  return parts.length > 0 ? parts.join(", ") : "-";
+}
+
+function isDoorHingeSelected() {
+  return true;
+}
+
+function updateDoorPreviewSummary() {
+  updatePreviewSummary(previewSummaryConfig);
+  const serviceSummaryEl = $("#previewServiceSummary");
+  if (!serviceSummaryEl) return;
+  const selectedServiceCount = previewSummaryConfig.serviceSelector
+    ? document.querySelectorAll(previewSummaryConfig.serviceSelector).length
+    : 0;
+  const totalServiceCount = selectedServiceCount + (isDoorHingeSelected() ? 1 : 0);
+  serviceSummaryEl.textContent = totalServiceCount
+    ? `가공 ${totalServiceCount}개 선택`
+    : "가공 선택 없음";
+}
 
 function clearProcessingServices() {
   document.querySelectorAll('input[name="service"]').forEach((input) => {
@@ -399,7 +694,7 @@ function clearProcessingServices() {
     input.closest(".service-card")?.classList.remove("selected");
   });
   state.serviceDetails = {};
-  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
+  Object.keys(PROCESSING_SERVICES).forEach((id) => updateServiceSummary(id));
 }
 
 function syncProcessingSectionVisibility() {
@@ -408,14 +703,14 @@ function syncProcessingSectionVisibility() {
   const section = container.closest(".additional-selection-block--processing");
   if (section) section.classList.toggle("hidden-step", !HAS_PROCESSING_SELECTIONS);
   if (!HAS_PROCESSING_SELECTIONS) {
-    updatePreviewSummary(previewSummaryConfig);
+    updateDoorPreviewSummary();
     return;
   }
   container.classList.remove("hidden-step");
   container.querySelectorAll('input[name="service"]').forEach((input) => {
     input.disabled = false;
   });
-  updatePreviewSummary(previewSummaryConfig);
+  updateDoorPreviewSummary();
 }
 
 let currentPhase = 1; // 1: 도어/가공, 3: 고객 정보
@@ -437,7 +732,7 @@ function cloneServiceDetails(details) {
 }
 
 function getDefaultServiceDetail(serviceId) {
-  const srv = SERVICES[serviceId];
+  const srv = PROCESSING_SERVICES[serviceId];
   if (!srv) return { note: "" };
   if (srv.hasDetail()) return { holes: [], note: "" };
   const detail = srv.defaultDetail ? srv.defaultDetail() : { note: "" };
@@ -467,7 +762,7 @@ function formatHandleDetail(detail, { includeNote = false } = {}) {
 }
 
 function formatServiceDetail(serviceId, detail, { includeNote = false } = {}) {
-  const srv = SERVICES[serviceId];
+  const srv = PROCESSING_SERVICES[serviceId] || SERVICES[serviceId];
   const name = srv?.label || serviceId;
   if (!srv) return name;
   if (!srv.hasDetail()) return name;
@@ -498,7 +793,7 @@ function calcOptionsPrice(options = []) {
 }
 
 function formatServiceSummaryText(serviceId, detail) {
-  const srv = SERVICES[serviceId];
+  const srv = PROCESSING_SERVICES[serviceId];
   if (!srv) return "세부 옵션을 설정해주세요.";
   if (!srv.hasDetail()) return "세부 옵션 없음";
   const formatted = srv.formatDetail(detail, { short: true });
@@ -508,11 +803,11 @@ function formatServiceSummaryText(serviceId, detail) {
 function updateServiceSummary(serviceId) {
   updateServiceSummaryChip({
     serviceId,
-    services: SERVICES,
+    services: PROCESSING_SERVICES,
     serviceDetails: state.serviceDetails,
     formatSummaryText: formatServiceSummaryText,
   });
-  updatePreviewSummary(previewSummaryConfig);
+  updateDoorPreviewSummary();
 }
 
 function renderServiceCards() {
@@ -520,7 +815,7 @@ function renderServiceCards() {
   if (!container) return;
   container.innerHTML = "";
 
-  Object.values(SERVICES).forEach((srv) => {
+  Object.values(PROCESSING_SERVICES).forEach((srv) => {
     const label = document.createElement("label");
     label.className = "card-base service-card";
     const fallbackPriceText = srv.pricePerMeter
@@ -549,14 +844,14 @@ function renderServiceCards() {
     container.appendChild(label);
   });
 
-  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
+  Object.keys(PROCESSING_SERVICES).forEach((id) => updateServiceSummary(id));
   syncProcessingSectionVisibility();
   if (!HAS_PROCESSING_SELECTIONS) return;
 
   container.addEventListener("change", (e) => {
     if (e.target.name === "service") {
       const serviceId = e.target.value;
-      const srv = SERVICES[serviceId];
+      const srv = PROCESSING_SERVICES[serviceId];
       const card = e.target.closest(".service-card");
       if (e.target.checked) {
         card?.classList.add("selected");
@@ -567,7 +862,7 @@ function renderServiceCards() {
           updateServiceSummary(serviceId);
           autoCalculatePrice();
         }
-        updatePreviewSummary(previewSummaryConfig);
+        updateDoorPreviewSummary();
       } else {
         if (srv?.hasDetail()) {
           e.target.checked = true;
@@ -578,7 +873,7 @@ function renderServiceCards() {
         delete state.serviceDetails[serviceId];
         updateServiceSummary(serviceId);
         autoCalculatePrice();
-        updatePreviewSummary(previewSummaryConfig);
+        updateDoorPreviewSummary();
       }
     }
   });
@@ -589,7 +884,7 @@ function renderServiceCards() {
     const checkbox = card.querySelector('input[name="service"]');
     if (!checkbox) return;
     const serviceId = checkbox.value;
-    const srv = SERVICES[serviceId];
+    const srv = PROCESSING_SERVICES[serviceId];
     if (!srv?.hasDetail()) return;
     e.preventDefault();
     e.stopPropagation();
@@ -612,7 +907,7 @@ function renderOptionCards() {
   if (section) section.classList.toggle("hidden-step", !HAS_OPTION_SELECTIONS);
   container.innerHTML = "";
   if (!HAS_OPTION_SELECTIONS) {
-    updatePreviewSummary(previewSummaryConfig);
+    updateDoorPreviewSummary();
     return;
   }
   DOOR_OPTIONS.forEach((opt) => {
@@ -630,7 +925,7 @@ function renderOptionCards() {
     `;
     container.appendChild(label);
   });
-  updatePreviewSummary(previewSummaryConfig);
+  updateDoorPreviewSummary();
   container.addEventListener("change", (e) => {
     if (e.target.name !== "doorOption") return;
     const card = e.target.closest(".option-card");
@@ -639,7 +934,7 @@ function renderOptionCards() {
     } else {
       card?.classList.remove("selected");
     }
-    updatePreviewSummary(previewSummaryConfig);
+    updateDoorPreviewSummary();
     autoCalculatePrice();
     updateAddItemState();
   });
@@ -852,14 +1147,16 @@ function readCurrentInputs() {
   );
 
   const serviceDetails = cloneServiceDetails(state.serviceDetails);
+  const doorHingeConfig = readDoorHingeConfigFromDOM();
 
-  return { materialId, thickness, width, length, options, services, serviceDetails };
+  return { materialId, thickness, width, length, options, services, serviceDetails, doorHingeConfig };
 }
 
 // 입력값 검증
 function validateInputs(input) {
-  const { materialId, thickness, width, length } = input;
+  const { materialId, thickness, width, length, doorHingeConfig } = input;
   const mat = MATERIALS[materialId];
+  setDoorHingeError("");
 
   if (!materialId) return "도어를 선택해주세요.";
   if (!thickness) return "두께를 선택해주세요.";
@@ -878,6 +1175,11 @@ function validateInputs(input) {
   if (!material.availableThickness?.includes(thickness)) {
     return `선택한 도어는 ${material.availableThickness.join(", ")}T만 가능합니다.`;
   }
+
+  const doorHingeError = validateDoorHingeConfig(doorHingeConfig, { length });
+  setDoorHingeError(doorHingeError);
+  if (doorHingeError) return doorHingeError;
+
   return null;
 }
 
@@ -900,12 +1202,14 @@ if (addItemBtn) {
       return;
     }
     const itemServiceDetails = cloneServiceDetails(input.serviceDetails);
+    const itemDoorHingeConfig = cloneDoorHingeConfig(input.doorHingeConfig);
 
     state.items.push({
       id: crypto.randomUUID(),
       ...input,
       quantity,
       serviceDetails: itemServiceDetails,
+      doorHingeConfig: itemDoorHingeConfig,
       ...detail,
     });
 
@@ -954,6 +1258,13 @@ function resetStepsAfterAdd() {
   clearProcessingServices();
   syncProcessingSectionVisibility();
 
+  // 도어 전용 경첩 설정 초기화
+  state.doorHingeConfig = createDefaultDoorHingeConfig();
+  setDoorHingeSide(state.doorHingeConfig.side);
+  syncDoorHingeFieldVisibility();
+  renderDoorHingeRows({ preserveExistingValues: false });
+  setDoorHingeError("");
+
   renderItemPriceDisplay({
     target: "#itemPriceDisplay",
     totalLabel: "예상금액",
@@ -963,6 +1274,7 @@ function resetStepsAfterAdd() {
 
   validateSizeFields();
   updatePreview();
+  updateDoorPreviewSummary();
   updateModalCardPreviews();
   updateAddItemState();
 }
@@ -1097,7 +1409,12 @@ function renderTable() {
         ];
       }
       const sizeText = `${item.thickness}T / ${item.width}×${item.length}mm`;
-      const servicesText = formatServiceList(item.services, item.serviceDetails, { includeNote: true });
+      const servicesText = formatProcessingList(
+        item.services,
+        item.serviceDetails,
+        item.doorHingeConfig,
+        { includeNote: true }
+      );
       const baseLines = buildEstimateDetailLines({
         sizeText: escapeHtml(sizeText),
         optionsText: escapeHtml(item.optionsLabel || "-"),
@@ -1144,6 +1461,7 @@ function updateItemQuantity(id, quantity) {
       options: item.options,
       services: item.services,
       serviceDetails: item.serviceDetails,
+      doorHingeConfig: item.doorHingeConfig,
     });
     state.items[idx] = { ...item, quantity, ...detail };
   }
@@ -1193,7 +1511,9 @@ function buildEmailContent() {
       const sizeText = isAddon ? "-" : `${item.thickness}T / ${item.width}×${item.length}mm`;
       const servicesText = isAddon
         ? "-"
-        : formatServiceList(item.services, item.serviceDetails, { includeNote: true });
+        : formatProcessingList(item.services, item.serviceDetails, item.doorHingeConfig, {
+            includeNote: true,
+          });
       const optionsText = isAddon ? "-" : item.optionsLabel || "-";
       const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
       lines.push(
@@ -1246,6 +1566,8 @@ function buildOrderPayload() {
     items: state.items.map((item) => {
       const isAddon = item.type === "addon";
       const addon = isAddon ? BOARD_ADDON_ITEMS.find((candidate) => candidate.id === item.addonId) : null;
+      const hingeSpec = cloneDoorHingeConfig(item.doorHingeConfig || createDefaultDoorHingeConfig());
+      if (!hingeSpec.enabled) hingeSpec.holes = [];
       return {
         lineId: item.id,
         itemType: isAddon ? "addon" : "product",
@@ -1262,6 +1584,11 @@ function buildOrderPayload() {
         options: isAddon ? [] : Array.isArray(item.options) ? item.options : [],
         services: isAddon ? [] : Array.isArray(item.services) ? item.services : [],
         serviceDetails: isAddon ? {} : item.serviceDetails || {},
+        doorSpec: isAddon
+          ? null
+          : {
+              hinges: hingeSpec,
+            },
         pricing: buildConsultAwarePricing({
           materialCost: item.materialCost,
           processingCost: item.processingCost,
@@ -1365,7 +1692,9 @@ function renderOrderCompleteDetails() {
             const sizeText = isAddon ? "-" : `${item.thickness}T / ${item.width}×${item.length}mm`;
             const servicesText = isAddon
               ? "-"
-              : formatServiceList(item.services, item.serviceDetails, { includeNote: true });
+              : formatProcessingList(item.services, item.serviceDetails, item.doorHingeConfig, {
+                  includeNote: true,
+                });
             const optionsText = isAddon ? "-" : item.optionsLabel || "-";
             const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
             return `<p class="item-line">${idx + 1}. ${escapeHtml(materialName)} x${item.quantity} · 크기 ${escapeHtml(sizeText)} · 옵션 ${escapeHtml(optionsText)} · 가공 ${escapeHtml(servicesText)} · 금액 ${amountText}</p>`;
@@ -1577,13 +1906,13 @@ function renderPreviewHoles(input) {
   const colorEl = $("#previewColor");
   if (!colorEl) return;
   clearPreviewHoles();
-  const hasHinge = input?.services?.includes("proc_hinge_hole");
+  const hasHinge = Boolean(input?.doorHingeConfig?.enabled);
   const hasHandle = input?.services?.includes("proc_handle_hole");
   if (!hasHinge && !hasHandle) return;
   if (!input.width || !input.length) return;
   const hingeHoles =
-    hasHinge && Array.isArray(input.serviceDetails?.proc_hinge_hole?.holes)
-      ? input.serviceDetails.proc_hinge_hole.holes
+    hasHinge && Array.isArray(input.doorHingeConfig?.holes)
+      ? input.doorHingeConfig.holes
       : [];
   const handleHoles =
     hasHandle && Array.isArray(input.serviceDetails?.proc_handle_hole?.holes)
@@ -1653,7 +1982,7 @@ const serviceModalController = createServiceModalController({
   errorId: "#serviceModalError",
   noteId: "serviceNote",
   focusTarget: "#serviceModalTitle",
-  services: SERVICES,
+  services: PROCESSING_SERVICES,
   state,
   getDefaultServiceDetail,
   cloneServiceDetails,
@@ -1667,15 +1996,15 @@ const serviceModalController = createServiceModalController({
   onAfterSave: () => {
     autoCalculatePrice();
     updateAddItemState();
-    updatePreview();
+    requestPreviewUpdate();
   },
   onAfterRemove: () => {
     autoCalculatePrice();
     updateAddItemState();
-    updatePreview();
+    requestPreviewUpdate();
   },
   onAfterClose: () => {
-    updatePreview();
+    requestPreviewUpdate();
   },
 });
 
@@ -1756,6 +2085,44 @@ function updateSizePlaceholders(mat) {
   lengthEl.placeholder = `길이 ${mat.minLength}~${mat.maxLength}mm`;
 }
 
+function handleDoorHingeUiChange({ rerenderRows = false, preserveExistingValues = true } = {}) {
+  if (rerenderRows) {
+    renderDoorHingeRows({ preserveExistingValues });
+  } else {
+    readDoorHingeConfigFromDOM();
+  }
+  syncDoorHingeFieldVisibility();
+  autoCalculatePrice();
+  requestPreviewUpdate();
+  updateDoorPreviewSummary();
+  updateAddItemState();
+}
+
+function initDoorHingeSection() {
+  const rowsEl = $("#doorHingeRows");
+  const sideButtons = Array.from(document.querySelectorAll("[data-door-hinge-side]"));
+  if (!rowsEl || sideButtons.length === 0) return;
+
+  state.doorHingeConfig = normalizeDoorHingeConfig(state.doorHingeConfig, {
+    length: getCurrentDoorLengthInputValue(),
+  });
+  setDoorHingeSide(state.doorHingeConfig.side);
+  syncDoorHingeFieldVisibility();
+  renderDoorHingeRows({ preserveExistingValues: false });
+  setDoorHingeError("");
+
+  sideButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setDoorHingeSide(btn.dataset.doorHingeSide || "left");
+      handleDoorHingeUiChange({ rerenderRows: true, preserveExistingValues: true });
+    });
+  });
+  rowsEl.addEventListener("input", (event) => {
+    if (!event.target.classList.contains("door-hinge-vertical-input")) return;
+    handleDoorHingeUiChange({ rerenderRows: false });
+  });
+}
+
 let initialized = false;
 
 function init() {
@@ -1781,6 +2148,7 @@ function init() {
   renderOptionCards();
   renderServiceCards();
   syncProcessingSectionVisibility();
+  initDoorHingeSection();
   initCollapsibleSections();
   renderAddonCards();
   renderTable();
@@ -1788,7 +2156,7 @@ function init() {
   validateSizeFields();
   autoCalculatePrice();
   updatePreview();
-  updatePreviewSummary(previewSummaryConfig);
+  updateDoorPreviewSummary();
   updateModalCardPreviews();
   updateSelectedMaterialLabel();
   updateSizePlaceholders(MATERIALS[selectedMaterialId]);
@@ -1802,20 +2170,32 @@ function init() {
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
 
-  const handleSizeInputChange = () => {
+  const handleSizeInputChange = (event) => {
     updateModalCardPreviews();
     updateSelectedMaterialLabel();
+    if (event?.target?.id === "lengthInput") {
+      renderDoorHingeRows({ preserveExistingValues: false });
+      autoCalculatePrice();
+      requestPreviewUpdate();
+    }
+    updateDoorPreviewSummary();
   };
 
   bindSizeInputHandlers({
     widthId: "widthInput",
     lengthId: "lengthInput",
-    handlers: [validateSizeFields, resetServiceOptions, autoCalculatePrice, updatePreview, handleSizeInputChange],
+    handlers: [
+      validateSizeFields,
+      resetServiceOptions,
+      autoCalculatePrice,
+      requestPreviewUpdate,
+      handleSizeInputChange,
+    ],
     thicknessId: "thicknessSelect",
     thicknessHandlers: [() => {
       resetServiceOptions();
       autoCalculatePrice();
-      updatePreview();
+      requestPreviewUpdate();
       updateSelectedMaterialLabel();
       const selected = MATERIALS[selectedMaterialId];
       updateSizePlaceholders(selected);
@@ -1855,7 +2235,8 @@ function init() {
   document.addEventListener("change", (e) => {
     if (e.target.name === "material" || e.target.name === "service") {
       autoCalculatePrice();
-      updatePreview();
+      requestPreviewUpdate();
+      updateDoorPreviewSummary();
       updateAddItemState();
     }
   });

@@ -62,28 +62,59 @@
             </div>
           </div>
           <div class="accordion-body" id="step2Body">
-            <div class="form-row">
-              <label>두께 (mm)</label>
-              <div class="field-col">
-                <select id="thicknessSelect" class="select-caret">
-                  <option value="">도어를 선택해주세요</option>
-                </select>
+            <div class="bay-input">
+              <div class="bay-input-title">도어 사이즈 설정</div>
+              <div class="form-row">
+                <label>두께 (mm)</label>
+                <div class="field-col">
+                  <select id="thicknessSelect" class="select-caret">
+                    <option value="">도어를 선택해주세요</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <label>폭 (mm)</label>
+                <div class="field-col">
+                  <input type="number" id="widthInput" placeholder="폭 100~800mm" />
+                  <div class="error-msg" id="widthError"></div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <label>길이 (mm)</label>
+                <div class="field-col">
+                  <input type="number" id="lengthInput" placeholder="길이 200~2400mm" />
+                  <div class="error-msg" id="lengthError"></div>
+                </div>
               </div>
             </div>
 
-            <div class="form-row">
-              <label>폭 (mm)</label>
-              <div class="field-col">
-                <input type="number" id="widthInput" placeholder="폭 100~800mm" />
-                <div class="error-msg" id="widthError"></div>
-              </div>
-            </div>
+            <div class="bay-input door-hinge-config">
+              <div class="bay-input-title">경첩 위치 설정</div>
+              <div id="doorHingeFields">
+                <div class="form-row">
+                  <label>경첩 방향</label>
+                  <div class="field-col">
+                    <div class="door-hinge-side-toggle" role="group" aria-label="경첩 방향 선택">
+                      <button type="button" class="door-hinge-toggle-btn is-active" data-door-hinge-side="left" aria-pressed="true">좌측</button>
+                      <button type="button" class="door-hinge-toggle-btn" data-door-hinge-side="right" aria-pressed="false">우측</button>
+                    </div>
+                    <input type="hidden" id="doorHingeSide" value="left" />
+                  </div>
+                </div>
 
-            <div class="form-row">
-              <label>길이 (mm)</label>
-              <div class="field-col">
-                <input type="number" id="lengthInput" placeholder="길이 200~2400mm" />
-                <div class="error-msg" id="lengthError"></div>
+                <div class="form-row">
+                  <label>위치 기준</label>
+                  <div class="field-col">
+                    <div class="field-note" id="doorHingeCountHint">길이에 따라 경첩 수량이 자동 계산됩니다.</div>
+                    <div class="field-note" id="doorHingeModeHint">초기값은 자동구성(상100/하100/중간 등분-100)으로 실시간 반영되며, 각 위치는 직접 수정할 수 있습니다.</div>
+                  </div>
+                </div>
+
+                <div id="doorHingeRows" class="door-hinge-rows"></div>
+                <div class="error-msg" id="doorHingeError"></div>
+                <div class="field-note">세로 위치는 상단 기준 경첩 중심 거리(mm)입니다.</div>
               </div>
             </div>
           </div>
