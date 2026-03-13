@@ -1485,6 +1485,11 @@ input[type="number"]::-webkit-outer-spin-button {
   background: var(--color-row-bg);
 }
 
+.door-hinge-row.is-invalid {
+  border-color: #f1c8c1;
+  background: var(--color-error-bg);
+}
+
 .door-hinge-row-title {
   margin: 0 0 10px;
   font-size: var(--font-size-sm);
@@ -1511,6 +1516,10 @@ input[type="number"]::-webkit-outer-spin-button {
 .door-hinge-grid input[disabled] {
   opacity: 0.8;
   cursor: default;
+}
+
+.door-hinge-empty {
+  margin: 0;
 }
 
 .bay-width-input {
@@ -2991,6 +3000,10 @@ th, td {
   color: var(--color-text-meta);
   font-size: var(--font-size-xs);
   line-height: 1.4;
+}
+
+.error-msg:not(:empty) {
+  margin-top: 6px;
 }
 
 .error-msg.error {

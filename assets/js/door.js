@@ -537,7 +537,10 @@ function getDoorHingeHolesFromDOM(side) {
 
 function setDoorHingeError(message = "") {
   const errorEl = $("#doorHingeError");
-  if (errorEl) errorEl.textContent = message || "";
+  if (!errorEl) return;
+  const text = String(message || "").trim();
+  errorEl.textContent = text;
+  errorEl.classList.toggle("error", Boolean(text));
 }
 
 function setDoorHingeSide(side) {
@@ -564,6 +567,29 @@ function updateDoorHingeCountHint({ length, count } = {}) {
   hintEl.textContent = `길이 ${lengthText} 기준 경첩 ${count}개 자동 적용 (800mm 이하 2개 / 1500mm 이하 3개 / 그 이상 4개)`;
 }
 
+function updateDoorHingeRangeHint(length) {
+  const hintEl = $("#doorHingeRangeHint");
+  if (!hintEl) return;
+  if (!isDoorLengthReady(length)) {
+    hintEl.textContent = "세로 위치 입력 가능 범위는 길이 입력 후 안내됩니다.";
+    return;
+  }
+  const numericLength = Math.round(Number(length));
+  const maxPosition = Math.max(1, numericLength - 1);
+  hintEl.textContent = `세로 위치 입력 범위: 1~${maxPosition}mm (상단 기준)`;
+}
+
+function setDoorHingeInputErrors(invalidIndexes = []) {
+  const invalidSet = new Set((Array.isArray(invalidIndexes) ? invalidIndexes : []).map((idx) => Number(idx)));
+  const rows = Array.from(document.querySelectorAll(".door-hinge-row"));
+  rows.forEach((row, idx) => {
+    const input = row.querySelector(".door-hinge-vertical-input");
+    const isInvalid = invalidSet.has(idx);
+    row.classList.toggle("is-invalid", isInvalid);
+    input?.classList.toggle("input-error", isInvalid);
+  });
+}
+
 function syncDoorHingeFieldVisibility() {
   const fields = $("#doorHingeFields");
   if (fields) fields.classList.remove("hidden-step");
@@ -587,13 +613,24 @@ function renderDoorHingeRows({ preserveExistingValues = true } = {}) {
     { length }
   );
   updateDoorHingeCountHint({ length, count: state.doorHingeConfig.count });
+  updateDoorHingeRangeHint(length);
   setDoorHingeSide(side);
+
+  if (!state.doorHingeConfig.holes.length) {
+    rowsEl.innerHTML = `
+      <div class="service-empty door-hinge-empty">
+        도어 길이를 입력하면 경첩 위치 입력칸이 생성됩니다.
+      </div>
+    `;
+    setDoorHingeInputErrors([]);
+    return;
+  }
 
   rowsEl.innerHTML = state.doorHingeConfig.holes
     .map((hole, idx) => {
       const value = Number(hole.verticalDistance);
       return `
-        <div class="door-hinge-row">
+        <div class="door-hinge-row" data-door-hinge-row-index="${idx}">
           <p class="door-hinge-row-title">경첩 ${idx + 1}</p>
           <div class="door-hinge-grid">
             <div>
@@ -612,6 +649,7 @@ function renderDoorHingeRows({ preserveExistingValues = true } = {}) {
       `;
     })
     .join("");
+  setDoorHingeInputErrors([]);
 }
 
 function readDoorHingeConfigFromDOM() {
@@ -628,39 +666,54 @@ function readDoorHingeConfigFromDOM() {
   return cloneDoorHingeConfig(state.doorHingeConfig);
 }
 
-function getDoorHingeValidHoleCount(doorHingeConfig) {
-  const holes = Array.isArray(doorHingeConfig?.holes) ? doorHingeConfig.holes : [];
-  return holes.filter((hole) => Number.isFinite(Number(hole?.verticalDistance)) && Number(hole.verticalDistance) > 0)
-    .length;
-}
-
-function validateDoorHingeConfig(doorHingeConfig, { length } = {}) {
+function validateDoorHingeConfigDetailed(doorHingeConfig, { length } = {}) {
   const numericLength = Number(length);
   if (!Number.isFinite(numericLength) || numericLength <= 0) {
-    return "경첩 위치를 위해 도어 길이를 먼저 입력해주세요.";
+    return {
+      message: "경첩 위치를 위해 도어 길이를 먼저 입력해주세요.",
+      invalidIndexes: [],
+    };
   }
 
   const holes = Array.isArray(doorHingeConfig.holes) ? doorHingeConfig.holes : [];
-  if (holes.length === 0) return "경첩 위치를 1개 이상 입력해주세요.";
+  if (holes.length === 0) {
+    return { message: "경첩 위치를 1개 이상 입력해주세요.", invalidIndexes: [] };
+  }
 
   const positions = [];
   for (let index = 0; index < holes.length; index += 1) {
     const verticalDistance = Number(holes[index]?.verticalDistance);
     if (!Number.isFinite(verticalDistance)) {
-      return `${index + 1}번째 경첩 세로 위치를 입력해주세요.`;
+      return {
+        message: `${index + 1}번 경첩 세로 위치를 입력해주세요.`,
+        invalidIndexes: [index],
+      };
     }
     if (verticalDistance <= 0 || verticalDistance >= numericLength) {
-      return `${index + 1}번째 경첩 세로 위치는 1mm 이상, 길이(${numericLength}mm) 미만으로 입력해주세요.`;
+      return {
+        message: `${index + 1}번 경첩 세로 위치는 1~${Math.max(1, Math.round(numericLength - 1))}mm 범위로 입력해주세요.`,
+        invalidIndexes: [index],
+      };
     }
     positions.push(verticalDistance);
   }
 
   for (let index = 1; index < positions.length; index += 1) {
     if (positions[index] <= positions[index - 1]) {
-      return "경첩 위치는 위에서 아래 순서로 오름차순 입력해주세요.";
+      return {
+        message: "경첩 위치는 위에서 아래 순서로 오름차순 입력해주세요.",
+        invalidIndexes: [index - 1, index],
+      };
     }
   }
-  return "";
+
+  return { message: "", invalidIndexes: [] };
+}
+
+function getDoorHingeValidHoleCount(doorHingeConfig) {
+  const holes = Array.isArray(doorHingeConfig?.holes) ? doorHingeConfig.holes : [];
+  return holes.filter((hole) => Number.isFinite(Number(hole?.verticalDistance)) && Number(hole.verticalDistance) > 0)
+    .length;
 }
 
 function calcDoorHingeCost({ quantity, doorHingeConfig }) {
@@ -1176,6 +1229,7 @@ function validateInputs(input) {
   const { materialId, thickness, width, length, doorHingeConfig } = input;
   const mat = MATERIALS[materialId];
   setDoorHingeError("");
+  setDoorHingeInputErrors([]);
 
   if (!materialId) return "도어를 선택해주세요.";
   if (!thickness) return "두께를 선택해주세요.";
@@ -1195,9 +1249,10 @@ function validateInputs(input) {
     return `선택한 도어는 ${material.availableThickness.join(", ")}T만 가능합니다.`;
   }
 
-  const doorHingeError = validateDoorHingeConfig(doorHingeConfig, { length });
-  setDoorHingeError(doorHingeError);
-  if (doorHingeError) return doorHingeError;
+  const doorHingeValidation = validateDoorHingeConfigDetailed(doorHingeConfig, { length });
+  setDoorHingeInputErrors(doorHingeValidation.invalidIndexes);
+  setDoorHingeError(doorHingeValidation.message);
+  if (doorHingeValidation.message) return doorHingeValidation.message;
 
   return null;
 }
@@ -2109,6 +2164,15 @@ function handleDoorHingeUiChange({ rerenderRows = false, preserveExistingValues 
     renderDoorHingeRows({ preserveExistingValues });
   } else {
     readDoorHingeConfigFromDOM();
+  }
+  const length = getCurrentDoorLengthInputValue();
+  if (!isDoorLengthReady(length)) {
+    setDoorHingeInputErrors([]);
+    setDoorHingeError("");
+  } else {
+    const validation = validateDoorHingeConfigDetailed(state.doorHingeConfig, { length });
+    setDoorHingeInputErrors(validation.invalidIndexes);
+    setDoorHingeError(validation.message);
   }
   syncDoorHingeFieldVisibility();
   autoCalculatePrice();

@@ -56,7 +56,7 @@
         <!-- STEP 02: 사이즈 입력 -->
         <section id="step2" class="step-card is-accordion is-collapsed">
           <div class="step-card-header">
-            <h2>사이즈를 입력해주세요.</h2>
+            <h2>사이즈와 경첩 위치를 입력해주세요.</h2>
             <div class="step-card-meta">
               <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step2" aria-expanded="false">열기</button>
             </div>
@@ -107,14 +107,14 @@
                 <div class="form-row">
                   <label>위치 기준</label>
                   <div class="field-col">
-                    <div class="field-note" id="doorHingeCountHint">길이에 따라 경첩 수량이 자동 계산됩니다.</div>
-                    <div class="field-note" id="doorHingeModeHint">초기값은 자동구성(상100/하100/중간 등분-100)으로 실시간 반영되며, 각 위치는 직접 수정할 수 있습니다.</div>
+                    <div class="field-note" id="doorHingeCountHint" aria-live="polite">길이에 따라 경첩 수량이 자동 계산됩니다.</div>
+                    <div class="field-note" id="doorHingeRangeHint" aria-live="polite">세로 위치 입력 가능 범위는 길이 입력 후 안내됩니다.</div>
+                    <div class="field-note" id="doorHingeModeHint">자동 계산된 경첩 위치는 선반에 걸릴 수 있습니다. 선반의 높이를 확인해주세요.<br> 기존 도어가 있다면 기존 도어에 맞춰 경첩 위치를 수정해주세요.</div>
                   </div>
                 </div>
 
                 <div id="doorHingeRows" class="door-hinge-rows"></div>
-                <div class="error-msg" id="doorHingeError"></div>
-                <div class="field-note">세로 위치는 상단 기준 경첩 중심 거리(mm)입니다.</div>
+                <div class="error-msg" id="doorHingeError" role="alert" aria-live="polite"></div>
               </div>
             </div>
           </div>
