@@ -439,6 +439,11 @@ function getCurrentDoorLengthInputValue() {
   return Number($("#lengthInput")?.value || 0);
 }
 
+function isDoorLengthReady(length) {
+  const numericLength = Number(length);
+  return Number.isFinite(numericLength) && numericLength > 0;
+}
+
 function buildDoorHingeAutoPositions(length, count) {
   const numericLength = Number(length);
   const normalizedCount = Math.max(
@@ -483,6 +488,16 @@ function buildDoorHingeAutoPositions(length, count) {
 
 function normalizeDoorHingeConfig(rawConfig = {}, { length } = {}) {
   const side = rawConfig?.side === "right" ? "right" : "left";
+  if (!isDoorLengthReady(length)) {
+    return {
+      enabled: true,
+      side,
+      count: 0,
+      edgeDistance: DOOR_HINGE_DEFAULT_EDGE_DISTANCE,
+      holes: [],
+      note: String(rawConfig?.note || "").trim(),
+    };
+  }
   const count = resolveDoorHingeCountByLength(length);
   const autoPositions = buildDoorHingeAutoPositions(length, count);
   const sourceHoles = Array.isArray(rawConfig?.holes) ? rawConfig.holes : [];
@@ -539,9 +554,13 @@ function setDoorHingeSide(side) {
 function updateDoorHingeCountHint({ length, count } = {}) {
   const hintEl = $("#doorHingeCountHint");
   if (!hintEl) return;
+  if (!isDoorLengthReady(length)) {
+    hintEl.textContent =
+      "도어 길이를 입력하면 경첩 수량/위치가 자동 생성됩니다. (800mm 이하 2개 / 1500mm 이하 3개 / 그 이상 4개)";
+    return;
+  }
   const numericLength = Number(length);
-  const lengthText =
-    Number.isFinite(numericLength) && numericLength > 0 ? `${Math.round(numericLength)}mm` : "-";
+  const lengthText = `${Math.round(numericLength)}mm`;
   hintEl.textContent = `길이 ${lengthText} 기준 경첩 ${count}개 자동 적용 (800mm 이하 2개 / 1500mm 이하 3개 / 그 이상 4개)`;
 }
 
