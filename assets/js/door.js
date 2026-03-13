@@ -27,7 +27,6 @@ import {
   updateServiceSummaryChip,
   initCollapsibleSections,
   updatePreviewSummary,
-  buildEstimateDetailLines,
   ORDER_PAYLOAD_SCHEMA_VERSION,
   buildConsultAwarePricing,
   CONSULT_EXCLUDED_SUFFIX,
@@ -35,7 +34,6 @@ import {
   evaluateSelectionPricing,
   resolveAmountFromPriceRule,
   hasConsultLineItem,
-  buildStandardPriceBreakdownRows,
   renderItemPriceDisplay,
   renderItemPriceNotice,
 } from "./shared.js";
@@ -750,13 +748,27 @@ function formatDoorHingeConfig(doorHingeConfig, { includeNote = false } = {}) {
   return `${sideText} ${holes.length}개${positionText ? ` · ${positionText}` : ""}${noteText}`;
 }
 
+function getDoorProcessingCategoryTexts(
+  services = [],
+  serviceDetails = {},
+  doorHingeConfig = {},
+  opts = {}
+) {
+  const serviceTextRaw = formatServiceList(services, serviceDetails, opts);
+  const serviceText = serviceTextRaw && serviceTextRaw !== "-" ? serviceTextRaw : "-";
+  const hingeTextRaw = formatDoorHingeConfig(doorHingeConfig || createDefaultDoorHingeConfig(), opts);
+  const hingeText = hingeTextRaw && hingeTextRaw !== "-" ? hingeTextRaw : "-";
+  return { serviceText, hingeText };
+}
+
 function formatProcessingList(services = [], serviceDetails = {}, doorHingeConfig = {}, opts = {}) {
-  const parts = [];
-  const doorHingeText = formatDoorHingeConfig(doorHingeConfig, opts);
-  if (doorHingeText) parts.push(`경첩 (${doorHingeText})`);
-  const serviceText = formatServiceList(services, serviceDetails, opts);
-  if (serviceText && serviceText !== "-") parts.push(serviceText);
-  return parts.length > 0 ? parts.join(", ") : "-";
+  const { serviceText, hingeText } = getDoorProcessingCategoryTexts(
+    services,
+    serviceDetails,
+    doorHingeConfig,
+    opts
+  );
+  return `가공서비스 (${serviceText}), 경첩가공 (${hingeText})`;
 }
 
 function isDoorHingeSelected() {
@@ -766,14 +778,45 @@ function isDoorHingeSelected() {
 function updateDoorPreviewSummary() {
   updatePreviewSummary(previewSummaryConfig);
   const serviceSummaryEl = $("#previewServiceSummary");
-  if (!serviceSummaryEl) return;
+  const hingeSummaryEl = $("#previewHingeSummary");
+  if (!serviceSummaryEl && !hingeSummaryEl) return;
   const selectedServiceCount = previewSummaryConfig.serviceSelector
     ? document.querySelectorAll(previewSummaryConfig.serviceSelector).length
     : 0;
-  const totalServiceCount = selectedServiceCount + (isDoorHingeSelected() ? 1 : 0);
-  serviceSummaryEl.textContent = totalServiceCount
-    ? `가공 ${totalServiceCount}개 선택`
-    : "가공 선택 없음";
+  const currentHingeConfig = readDoorHingeConfigFromDOM();
+  const hingeConfigured =
+    isDoorLengthReady(getCurrentDoorLengthInputValue()) &&
+    getDoorHingeValidHoleCount(currentHingeConfig) > 0 &&
+    isDoorHingeSelected();
+  if (serviceSummaryEl) {
+    serviceSummaryEl.textContent = selectedServiceCount
+      ? `가공서비스 ${selectedServiceCount}개 선택`
+      : "가공서비스 선택 없음";
+  }
+  if (hingeSummaryEl) {
+    hingeSummaryEl.textContent = hingeConfigured ? "경첩가공 1개 선택" : "경첩가공 설정 필요";
+  }
+}
+
+function buildDoorPriceBreakdownRows({
+  itemCost = 0,
+  optionCost = 0,
+  serviceCost = 0,
+  hingeCost = 0,
+  itemHasConsult = false,
+  optionHasConsult = false,
+  serviceHasConsult = false,
+  hingeHasConsult = false,
+} = {}) {
+  const normalizedHingeCost = Number(hingeCost || 0);
+  const normalizedServiceCost = Number(serviceCost || 0);
+  const serviceOnlyCost = Math.max(0, normalizedServiceCost - normalizedHingeCost);
+  return [
+    { label: "품목", amount: itemCost, isConsult: itemHasConsult },
+    { label: "경첩가공", amount: normalizedHingeCost, isConsult: hingeHasConsult },
+    { label: "옵션", amount: optionCost, isConsult: optionHasConsult },
+    { label: "가공서비스", amount: serviceOnlyCost, isConsult: serviceHasConsult },
+  ];
 }
 
 function clearProcessingServices() {
@@ -1309,7 +1352,7 @@ if (addItemBtn) {
       target: "#itemPriceDisplay",
       totalLabel: "예상금액",
       totalAmount: 0,
-      breakdownRows: buildStandardPriceBreakdownRows(),
+      breakdownRows: buildDoorPriceBreakdownRows(),
     });
     resetStepsAfterAdd();
   });
@@ -1359,7 +1402,7 @@ function resetStepsAfterAdd() {
     target: "#itemPriceDisplay",
     totalLabel: "예상금액",
     totalAmount: 0,
-    breakdownRows: buildStandardPriceBreakdownRows(),
+    breakdownRows: buildDoorPriceBreakdownRows(),
   });
 
   validateSizeFields();
@@ -1499,23 +1542,28 @@ function renderTable() {
         ];
       }
       const sizeText = `${item.thickness}T / ${item.width}×${item.length}mm`;
-      const servicesText = formatProcessingList(
+      const { serviceText, hingeText } = getDoorProcessingCategoryTexts(
         item.services,
         item.serviceDetails,
         item.doorHingeConfig,
         { includeNote: true }
       );
-      const baseLines = buildEstimateDetailLines({
-        sizeText: escapeHtml(sizeText),
-        optionsText: escapeHtml(item.optionsLabel || "-"),
-        servicesText: escapeHtml(servicesText),
-        materialLabel: "도어비",
-        materialCost: item.isCustomPrice ? null : item.materialCost,
-        processingCost: item.processingCost,
-      });
+      const serviceOnlyCost = Math.max(0, Number(item.serviceCost || 0) - Number(item.doorHingeCost || 0));
+      const baseLines = [
+        `사이즈 ${escapeHtml(sizeText)}`,
+        `경첩가공 ${escapeHtml(hingeText)}`,
+        `옵션 ${escapeHtml(item.optionsLabel || "-")}`,
+        `가공서비스 ${escapeHtml(serviceText)}`,
+      ];
       if (item.isCustomPrice) {
-        baseLines.splice(3, 0, "도어비 상담 안내");
+        baseLines.push("도어비 상담 안내");
+        baseLines.push("경첩가공비 상담 안내");
+        baseLines.push("가공서비스비 상담 안내");
+        return baseLines;
       }
+      baseLines.push(`도어비 ${item.materialCost.toLocaleString()}원`);
+      baseLines.push(`경첩가공비 ${Number(item.doorHingeCost || 0).toLocaleString()}원`);
+      baseLines.push(`가공서비스비 ${serviceOnlyCost.toLocaleString()}원`);
       return baseLines;
     },
     onQuantityChange: (id, value) => updateItemQuantity(id, value),
@@ -1599,15 +1647,15 @@ function buildEmailContent() {
         ? addonInfo?.name || "부자재"
         : MATERIALS[item.materialId].name;
       const sizeText = isAddon ? "-" : `${item.thickness}T / ${item.width}×${item.length}mm`;
-      const servicesText = isAddon
-        ? "-"
-        : formatProcessingList(item.services, item.serviceDetails, item.doorHingeConfig, {
+      const { serviceText, hingeText } = isAddon
+        ? { serviceText: "-", hingeText: "-" }
+        : getDoorProcessingCategoryTexts(item.services, item.serviceDetails, item.doorHingeConfig, {
             includeNote: true,
           });
       const optionsText = isAddon ? "-" : item.optionsLabel || "-";
       const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
       lines.push(
-        `${idx + 1}. ${materialName} x${item.quantity} | 크기 ${sizeText} | 옵션 ${optionsText} | 가공 ${servicesText} | 금액 ${amountText}`
+        `${idx + 1}. ${materialName} x${item.quantity} | 크기 ${sizeText} | 옵션 ${optionsText} | 가공서비스 ${serviceText} | 경첩가공 ${hingeText} | 금액 ${amountText}`
       );
     });
   }
@@ -1780,14 +1828,14 @@ function renderOrderCompleteDetails() {
               ? addonInfo?.name || "부자재"
               : MATERIALS[item.materialId].name;
             const sizeText = isAddon ? "-" : `${item.thickness}T / ${item.width}×${item.length}mm`;
-            const servicesText = isAddon
-              ? "-"
-              : formatProcessingList(item.services, item.serviceDetails, item.doorHingeConfig, {
+            const { serviceText, hingeText } = isAddon
+              ? { serviceText: "-", hingeText: "-" }
+              : getDoorProcessingCategoryTexts(item.services, item.serviceDetails, item.doorHingeConfig, {
                   includeNote: true,
                 });
             const optionsText = isAddon ? "-" : item.optionsLabel || "-";
             const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-            return `<p class="item-line">${idx + 1}. ${escapeHtml(materialName)} x${item.quantity} · 크기 ${escapeHtml(sizeText)} · 옵션 ${escapeHtml(optionsText)} · 가공 ${escapeHtml(servicesText)} · 금액 ${amountText}</p>`;
+            return `<p class="item-line">${idx + 1}. ${escapeHtml(materialName)} x${item.quantity} · 크기 ${escapeHtml(sizeText)} · 옵션 ${escapeHtml(optionsText)} · 가공서비스 ${escapeHtml(serviceText)} · 경첩가공 ${escapeHtml(hingeText)} · 금액 ${amountText}</p>`;
           })
           .join("");
 
@@ -1925,10 +1973,11 @@ function autoCalculatePrice() {
       target: "#itemPriceDisplay",
       totalLabel: "예상금액",
       totalText: "상담 안내",
-      breakdownRows: buildStandardPriceBreakdownRows({
+      breakdownRows: buildDoorPriceBreakdownRows({
         itemHasConsult: true,
         optionHasConsult: true,
         serviceHasConsult: true,
+        hingeHasConsult: true,
       }),
     });
     updateAddItemState();
@@ -1939,10 +1988,11 @@ function autoCalculatePrice() {
     totalLabel: "예상금액",
     totalAmount: detail.total,
     showConsultSuffix: detail.hasConsultItems,
-    breakdownRows: buildStandardPriceBreakdownRows({
+    breakdownRows: buildDoorPriceBreakdownRows({
       itemCost: detail.materialCost,
       optionCost: detail.optionCost,
       serviceCost: detail.serviceCost,
+      hingeCost: detail.doorHingeCost,
       itemHasConsult: detail.itemHasConsult,
       optionHasConsult: detail.optionHasConsult,
       serviceHasConsult: detail.serviceHasConsult,
