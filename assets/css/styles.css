@@ -2923,7 +2923,7 @@ th, td {
 @media (max-width: 900px) {
   .main-grid {
     grid-template-columns: 1fr;
-    padding-bottom: clamp(180px, 28vh, 240px);
+    /*padding-bottom: clamp(180px, 28vh, 240px);*/
   }
 
   .form-row {
@@ -3018,6 +3018,22 @@ th, td {
 
   .estimate-panel.is-collapsed .estimate-body {
     display: none;
+  }
+
+  .estimate-panel .estimate-header {
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+
+  .estimate-panel .estimate-header h2 {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    line-height: 1.3;
+  }
+
+  .estimate-panel .summary p {
+    margin: 6px 0;
+    padding: 6px 0;
   }
 
   .grid-cards,
