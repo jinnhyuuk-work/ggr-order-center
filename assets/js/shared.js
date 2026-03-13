@@ -897,7 +897,7 @@ export function createServiceModalController({
         : `<div class="service-empty">등록된 위치가 없습니다. 아래의 "위치 추가"를 눌러주세요.</div>`;
 
     body.innerHTML = `
-      <p class="service-option-tip">${srv.label} 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
+      <p class="input-tip">${srv.label} 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
       ${rowsHtml}
       <div class="service-actions">
         <button type="button" data-add-hole>위치 추가</button>
@@ -963,7 +963,7 @@ export function createServiceModalController({
     }
     const body = bodyId ? document.querySelector(bodyId) : null;
     if (body) {
-      body.innerHTML = `<p class="service-option-tip">선택한 가공의 세부 설정을 입력해주세요.</p>`;
+      body.innerHTML = `<p class="input-tip">선택한 가공의 세부 설정을 입력해주세요.</p>`;
     }
   };
 

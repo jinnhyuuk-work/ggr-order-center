@@ -1548,7 +1548,7 @@ function renderBackHeightModalBody() {
   if (!bodyEl) return;
   const savedHeight = getBackHeightFromServiceDetail(state.serviceDetails?.[TOP_BACK_SHELF_SERVICE_ID]);
   bodyEl.innerHTML = `
-    <p class="service-option-tip">뒷턱 높이를 입력해주세요. 높이는 최대 ${TOP_BACK_HEIGHT_MAX}mm까지 가능합니다.</p>
+    <p class="input-tip">뒷턱 높이를 입력해주세요. 높이는 최대 ${TOP_BACK_HEIGHT_MAX}mm까지 가능합니다.</p>
     <div class="form-row">
       <label for="topBackHeightModalInput">뒷턱 높이 (mm)</label>
       <div class="field-col">

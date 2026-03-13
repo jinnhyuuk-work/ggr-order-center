@@ -63,7 +63,8 @@
           </div>
           <div class="accordion-body" id="step2Body">
             <div class="bay-input">
-              <div class="bay-input-title">도어 사이즈 설정</div>
+              <div class="form-section-title">도어 사이즈 설정</div>
+              <p class="form-section-desc">선택한 도어의 규격 범위에 맞춰 두께, 폭, 길이를 입력해주세요.</p>
               <div class="form-row">
                 <label>두께 (mm)</label>
                 <div class="field-col">
@@ -91,7 +92,14 @@
             </div>
 
             <div class="bay-input door-hinge-config">
-              <div class="bay-input-title">경첩 위치 설정</div>
+              <div class="form-section-title">경첩 위치 설정</div>
+              <p class="form-section-desc">길이를 입력하면 경첩 수량과 기본 위치가 자동으로 반영됩니다.</p>
+              <div class="input-tip">
+                <ul class="input-tip-list">
+                  <li>자동 계산된 경첩 위치가 선반에 걸릴 수 있으니 선반의 위치를 확인해주세요.</li>
+                  <li>기존 도어가 있다면 기존 도어에 맞춰 경첩 위치를 수정해주세요.</li>
+                </ul>
+              </div>
               <div id="doorHingeFields">
                 <div class="form-row">
                   <label>경첩 방향</label>
@@ -109,7 +117,6 @@
                   <div class="field-col">
                     <div class="field-note" id="doorHingeCountHint" aria-live="polite">길이에 따라 경첩 수량이 자동 계산됩니다.</div>
                     <div class="field-note" id="doorHingeRangeHint" aria-live="polite">세로 위치 입력 가능 범위는 길이 입력 후 안내됩니다.</div>
-                    <div class="field-note" id="doorHingeModeHint">자동 계산된 경첩 위치는 선반에 걸릴 수 있습니다. 선반의 높이를 확인해주세요.<br> 기존 도어가 있다면 기존 도어에 맞춰 경첩 위치를 수정해주세요.</div>
                   </div>
                 </div>
 

@@ -6848,7 +6848,8 @@ function renderShapeSizeInputs() {
   const layoutCard = document.createElement("div");
   layoutCard.className = "bay-input system-layout-config-card";
   layoutCard.innerHTML = `
-    <div class="bay-input-title">레이아웃 타입 및 설치공간 설정</div>
+    <div class="form-section-title">레이아웃 타입 및 설치공간 설정</div>
+    <p class="form-section-desc">레이아웃 타입을 선택한 뒤 각 설치공간 길이를 입력해주세요.</p>
     <div class="layout-type-grid" role="group" aria-label="레이아웃 타입 선택">
       ${SYSTEM_SHAPE_KEYS.map((shapeKey) => {
         const sectionCount = getSectionCountForShape(shapeKey);
@@ -6896,7 +6897,8 @@ function renderShapeSizeInputs() {
   const row = document.createElement("div");
   row.className = "bay-input";
   row.innerHTML = `
-    <div class="bay-input-title">천장 높이 설정</div>
+    <div class="form-section-title">천장 높이 설정</div>
+    <p class="form-section-desc">최소/최대 천장 높이를 입력하고 필요한 경우 개별높이를 추가해주세요.</p>
     <div class="form-row">
       <label>가장 낮은 천장 높이 (mm)</label>
       <div class="field-col">
@@ -6925,7 +6927,8 @@ function renderShapeSizeInputs() {
   const layoutStatusCard = document.createElement("div");
   layoutStatusCard.className = "bay-input";
   layoutStatusCard.innerHTML = `
-    <div class="bay-input-title">레이아웃 상태 및 상담 안내</div>
+    <div class="form-section-title">레이아웃 상태 및 상담 안내</div>
+    <p class="form-section-desc">입력한 레이아웃 조건에 따라 상담 여부가 실시간으로 안내됩니다.</p>
     <div id="layoutConstraintStatus" class="layout-constraint-status" aria-live="polite"></div>
     <div class="field-note">설치공간 길이 ${SYSTEM_SECTION_LENGTH_CONSULT_AT_MM}mm 이상 또는 가장 높은 높이 ${SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM}mm 초과이면 상담 안내로 처리됩니다.</div>
   `;
@@ -6980,7 +6983,8 @@ function renderBayInputs() {
     const block = document.createElement("div");
     block.className = "bay-input";
     block.innerHTML = `
-      <div class="bay-input-title">모듈 구성</div>
+      <div class="form-section-title">모듈 구성</div>
+      <p class="form-section-desc">각 모듈의 선반 폭과 개수를 입력해주세요.</p>
       <div class="shelf-list" data-side-index="all"></div>
     `;
     container.appendChild(block);
