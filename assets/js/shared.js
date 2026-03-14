@@ -768,6 +768,25 @@ export function renderEstimateTable({
   onQuantityChange,
   onDelete,
 } = {}) {
+  const preserveWindowScroll = (callback) => {
+    if (typeof callback !== "function") return;
+    if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
+      callback();
+      return;
+    }
+    const prevX = Number(window.scrollX || window.pageXOffset || 0);
+    const prevY = Number(window.scrollY || window.pageYOffset || 0);
+    callback();
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const nextX = Number(window.scrollX || window.pageXOffset || 0);
+        const nextY = Number(window.scrollY || window.pageYOffset || 0);
+        if (Math.abs(nextX - prevX) < 1 && Math.abs(nextY - prevY) < 1) return;
+        window.scrollTo({ left: prevX, top: prevY, behavior: "auto" });
+      });
+    });
+  };
+
   const tbody = document.querySelector(tbodySelector);
   if (!tbody) return;
   const emptyBanner = emptySelector ? document.querySelector(emptySelector) : null;
@@ -818,7 +837,9 @@ export function renderEstimateTable({
     input.addEventListener("change", (e) => {
       const id = e.target.dataset.id;
       const value = Math.max(1, Number(e.target.value) || 1);
-      onQuantityChange?.(id, value);
+      preserveWindowScroll(() => {
+        onQuantityChange?.(id, value);
+      });
     });
   });
 
