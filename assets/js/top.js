@@ -461,7 +461,7 @@ function clearProcessingServices() {
 function syncProcessingSectionVisibility() {
   const container = $("#topServiceCards");
   if (!container) return;
-  const section = container.closest(".additional-selection-block--processing");
+  const section = container.closest(".selection-block--input");
   if (section) section.classList.toggle("hidden-step", !HAS_PROCESSING_SELECTIONS);
   if (!HAS_PROCESSING_SELECTIONS) {
     updatePreviewSummary(previewSummaryConfig);
@@ -935,7 +935,7 @@ function renderTopTypeCards() {
 function renderOptions() {
   const container = $("#topOptionCards");
   if (!container) return;
-  const section = container.closest(".additional-selection-block");
+  const section = container.closest(".selection-block");
   if (section) section.classList.toggle("hidden-step", !HAS_OPTION_SELECTIONS);
   container.innerHTML = "";
   if (!HAS_OPTION_SELECTIONS) {

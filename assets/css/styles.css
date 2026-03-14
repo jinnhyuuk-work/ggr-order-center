@@ -386,30 +386,30 @@ section {
   flex-wrap: wrap;
 }
 
-.additional-selection-block {
+.selection-block {
   border: 1px solid var(--color-border-faint);
   border-radius: var(--radius-lg);
   background: var(--color-surface-muted);
   padding: 14px;
 }
 
-.additional-selection-block + .additional-selection-block {
+.selection-block + .selection-block {
   margin-top: 14px;
 }
 
-.additional-selection-head {
+.selection-block-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.additional-selection-head h3 {
+.selection-block-head h3 {
   margin: 0;
   font-size: var(--font-size-md);
 }
 
-.additional-selection-badge {
+.selection-block-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -422,19 +422,19 @@ section {
   border: 1px solid var(--color-border-faint);
 }
 
-.additional-selection-badge--input {
+.selection-block-badge--input {
   color: #7a4312;
   background: #fff2e6;
   border-color: #ffd8b5;
 }
 
-.additional-selection-hint {
+.selection-block-hint {
   margin: 8px 0 0;
   font-size: var(--font-size-xs);
   color: var(--color-text-sub);
 }
 
-.additional-selection-block .grid-cards {
+.selection-block .grid-cards {
   margin-top: 10px;
 }
 
@@ -1451,14 +1451,14 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 8px;
 }
 
-.service-type-toggle {
+.selection-service-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   width: 100%;
 }
 
-.service-type-btn {
+.selection-service-card {
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -1467,38 +1467,38 @@ input[type="number"]::-webkit-outer-spin-button {
   text-align: left;
 }
 
-.service-type-btn.is-active,
-.service-type-btn.selected {
+.selection-service-card.is-active,
+.selection-service-card.selected {
   border-color: var(--color-border);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
   background: var(--color-surface);
 }
 
-.service-type-btn:focus-visible {
+.selection-service-card:focus-visible {
   outline: none;
   border-color: var(--color-border);
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12);
 }
 
-.service-type-card-media {
+.selection-service-media {
   background-size: cover;
   background-position: center;
 }
 
-.service-type-card-media--delivery {
+.selection-service-media--delivery {
   background-color: var(--color-border-faint);
 }
 
-.service-type-card-media--installation {
+.selection-service-media--installation {
   background-color: var(--color-border-faint);
 }
 
-.service-type-btn.is-active .service-type-card-media,
-.service-type-btn.selected .service-type-card-media {
+.selection-service-card.is-active .selection-service-media,
+.selection-service-card.selected .selection-service-media {
   border-color: var(--color-border);
 }
 
-.service-type-card-copy {
+.selection-service-copy {
   display: block;
 }
 

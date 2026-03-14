@@ -1018,7 +1018,7 @@ function clearProcessingServices() {
 function syncProcessingSectionVisibility() {
   const container = $("#serviceCards");
   if (!container) return;
-  const section = container.closest(".additional-selection-block--processing");
+  const section = container.closest(".selection-block--input");
   if (section) section.classList.toggle("hidden-step", !HAS_PROCESSING_SELECTIONS);
   if (!HAS_PROCESSING_SELECTIONS) {
     updateDoorPreviewSummary();
@@ -1221,7 +1221,7 @@ function renderServiceCards() {
 function renderOptionCards() {
   const container = $("#doorOptionCards");
   if (!container) return;
-  const section = container.closest(".additional-selection-block");
+  const section = container.closest(".selection-block");
   if (section) section.classList.toggle("hidden-step", !HAS_OPTION_SELECTIONS);
   container.innerHTML = "";
   if (!HAS_OPTION_SELECTIONS) {
