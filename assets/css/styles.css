@@ -1451,6 +1451,57 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 8px;
 }
 
+.service-type-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.service-type-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  text-align: left;
+}
+
+.service-type-btn.is-active,
+.service-type-btn.selected {
+  border-color: var(--color-border);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  background: var(--color-surface);
+}
+
+.service-type-btn:focus-visible {
+  outline: none;
+  border-color: var(--color-border);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12);
+}
+
+.service-type-card-media {
+  background-size: cover;
+  background-position: center;
+}
+
+.service-type-card-media--delivery {
+  background-color: var(--color-border-faint);
+}
+
+.service-type-card-media--installation {
+  background-color: var(--color-border-faint);
+}
+
+.service-type-btn.is-active .service-type-card-media,
+.service-type-btn.selected .service-type-card-media {
+  border-color: var(--color-border);
+}
+
+.service-type-card-copy {
+  display: block;
+}
+
 .door-hinge-toggle-btn {
   min-width: 74px;
   padding: 8px 12px;

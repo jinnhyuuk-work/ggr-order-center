@@ -125,6 +125,8 @@ import {
   initCollapsibleSections,
   renderItemPriceDisplay,
   renderItemPriceNotice,
+  resolveServiceRegionByAddress,
+  calcGroupedAmount,
 } from "./shared.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -657,6 +659,338 @@ function refreshBuilderDerivedUI({ preview = true, price = true, addItemState = 
     updateAddItemState();
   }
   syncLayoutConstraintIndicators();
+}
+
+const FULFILLMENT_TYPE_LABELS = Object.freeze({
+  delivery: "배송",
+  installation: "시공",
+});
+
+function getFulfillmentType() {
+  const value = String($("#fulfillmentType")?.value || "");
+  return value === "delivery" || value === "installation" ? value : "";
+}
+
+function setFulfillmentType(nextType) {
+  const normalizedType = nextType === "installation" ? "installation" : nextType === "delivery" ? "delivery" : "";
+  const typeInput = $("#fulfillmentType");
+  if (typeInput) typeInput.value = normalizedType;
+  document.querySelectorAll("[data-fulfillment-type]").forEach((btn) => {
+    const active = normalizedType && btn.dataset.fulfillmentType === normalizedType;
+    btn.classList.toggle("is-active", Boolean(active));
+    btn.classList.toggle("selected", Boolean(active));
+    btn.setAttribute("aria-pressed", String(Boolean(active)));
+  });
+}
+
+function setServiceStepError(message = "") {
+  const errorEl = $("#serviceStepError");
+  if (!errorEl) return;
+  errorEl.textContent = String(message || "").trim();
+}
+
+function isServiceAddressReady(customer = getCustomerInfo()) {
+  return Boolean(customer?.postcode && customer?.address && customer?.detailAddress);
+}
+
+function getSystemColumnsItems() {
+  return state.items.filter((item) => item.type === "columns");
+}
+
+function getSystemBayItems() {
+  return state.items.filter((item) => item.type === "bay");
+}
+
+function getPostBarRowsForService(columnItem) {
+  const rows = [];
+  const baseRows = Array.isArray(columnItem?.basePostBars) && columnItem.basePostBars.length
+    ? columnItem.basePostBars
+    : columnItem?.basePostBar
+      ? [columnItem.basePostBar]
+      : [];
+  const cornerRows = Array.isArray(columnItem?.cornerPostBars) && columnItem.cornerPostBars.length
+    ? columnItem.cornerPostBars
+    : columnItem?.cornerPostBar
+      ? [columnItem.cornerPostBar]
+      : [];
+  [...baseRows, ...cornerRows].forEach((row) => {
+    if (!row || typeof row !== "object") return;
+    const rowCount = Math.max(0, Number(row.count || 0));
+    const rowQty = Math.max(1, Math.floor(Number(row.quantity || columnItem?.quantity || 1)));
+    rows.push({
+      countTotal: rowCount * rowQty,
+      heightMm: Math.max(0, Number(row.heightMm || 0)),
+    });
+  });
+  return rows;
+}
+
+function getSystemPostBarSummary() {
+  const rows = getSystemColumnsItems().flatMap((item) => getPostBarRowsForService(item));
+  return {
+    totalCount: rows.reduce((sum, row) => sum + Number(row.countTotal || 0), 0),
+    hasOverHeight: rows.some((row) => Number(row.countTotal || 0) > 0 && Number(row.heightMm || 0) > 2400),
+    hasUnknownHeight: rows.some((row) => Number(row.countTotal || 0) > 0 && Number(row.heightMm || 0) <= 0),
+  };
+}
+
+function getSystemShelfSummary() {
+  const bays = getSystemBayItems();
+  return {
+    totalCount: bays.reduce((sum, bay) => {
+      const shelfCount = Math.max(1, Math.floor(Number(bay?.shelf?.count || 1)));
+      const quantity = Math.max(1, Math.floor(Number(bay?.quantity || 1)));
+      return sum + shelfCount * quantity;
+    }, 0),
+    hasOverWidth: bays.some((bay) => Number(bay?.shelf?.width || 0) > 800),
+    hasUnknownWidth: bays.some((bay) => Number(bay?.shelf?.width || 0) <= 0),
+  };
+}
+
+function hasSystemCornerOrFurniture() {
+  return getSystemBayItems().some((bay) => {
+    if (bay?.isCorner) return true;
+    const addons = Array.isArray(bay?.addons) ? bay.addons : [];
+    return addons.some((addonId) => String(addonId || "") && String(addonId || "") !== String(ADDON_CLOTHES_ROD_ID));
+  });
+}
+
+function getSystemSectionLengthSumMm() {
+  return getSystemColumnsItems().reduce((sum, item) => {
+    const quantity = Math.max(1, Math.floor(Number(item?.quantity || 1)));
+    const sectionUsage = Array.isArray(item?.layoutSpec?.sectionUsage) ? item.layoutSpec.sectionUsage : [];
+    const sections = Array.isArray(item?.layoutSpec?.sections) ? item.layoutSpec.sections : [];
+    const perUnitLengthByUsage = sectionUsage.reduce(
+      (acc, usage) => acc + Math.max(0, Number(usage?.usedMm || 0)),
+      0
+    );
+    const perUnitLengthBySection = sections.reduce(
+      (acc, section) => acc + Math.max(0, Number(section?.lengthMm || 0)),
+      0
+    );
+    const perUnitLength = perUnitLengthByUsage > 0 ? perUnitLengthByUsage : perUnitLengthBySection;
+    return sum + perUnitLength * quantity;
+  }, 0);
+}
+
+function evaluateFulfillmentService() {
+  const customer = getCustomerInfo();
+  const type = getFulfillmentType();
+  const typeLabel = FULFILLMENT_TYPE_LABELS[type] || "";
+  const region = resolveServiceRegionByAddress(customer.address);
+  const addressReady = isServiceAddressReady(customer);
+  const hasProducts = state.items.length > 0;
+
+  if (!type || !hasProducts) {
+    return {
+      type,
+      typeLabel,
+      region,
+      amount: 0,
+      amountText: "미선택",
+      isConsult: false,
+      reason: "",
+      addressReady,
+    };
+  }
+  if (!addressReady) {
+    return {
+      type,
+      typeLabel,
+      region,
+      amount: 0,
+      amountText: "주소 입력 필요",
+      isConsult: false,
+      reason: "주소를 입력하면 서비스비를 확인할 수 있습니다.",
+      addressReady,
+    };
+  }
+  if (!region.isSupported) {
+    return {
+      type,
+      typeLabel,
+      region,
+      amount: 0,
+      amountText: "상담 안내",
+      isConsult: true,
+      reason: "수도권 외 지역은 상담 안내입니다.",
+      addressReady,
+    };
+  }
+
+  const postBar = getSystemPostBarSummary();
+  const shelf = getSystemShelfSummary();
+
+  if (type === "delivery") {
+    if (hasSystemCornerOrFurniture()) {
+      return {
+        type,
+        typeLabel,
+        region,
+        amount: 0,
+        amountText: "상담 안내",
+        isConsult: true,
+        reason: "코너/가구 포함 구성은 배송 상담 안내입니다.",
+        addressReady,
+      };
+    }
+    if (postBar.hasOverHeight || postBar.hasUnknownHeight) {
+      return {
+        type,
+        typeLabel,
+        region,
+        amount: 0,
+        amountText: "상담 안내",
+        isConsult: true,
+        reason: "포스트바 2400mm 초과 규격은 배송 상담 안내입니다.",
+        addressReady,
+      };
+    }
+    if (shelf.hasOverWidth || shelf.hasUnknownWidth) {
+      return {
+        type,
+        typeLabel,
+        region,
+        amount: 0,
+        amountText: "상담 안내",
+        isConsult: true,
+        reason: "선반 800mm 초과 규격은 배송 상담 안내입니다.",
+        addressReady,
+      };
+    }
+    const postBarCost = calcGroupedAmount(postBar.totalCount, 5, 8000);
+    const shelfCost = calcGroupedAmount(shelf.totalCount, 3, 7000);
+    const amount = postBarCost + shelfCost;
+    return {
+      type,
+      typeLabel,
+      region,
+      amount,
+      amountText: `${amount.toLocaleString()}원`,
+      isConsult: false,
+      reason: "",
+      addressReady,
+    };
+  }
+
+  if (postBar.totalCount === 2) {
+    return { type, typeLabel, region, amount: 50000, amountText: "50,000원", isConsult: false, reason: "", addressReady };
+  }
+  if (postBar.totalCount === 3) {
+    return { type, typeLabel, region, amount: 70000, amountText: "70,000원", isConsult: false, reason: "", addressReady };
+  }
+  if (postBar.totalCount === 4) {
+    return { type, typeLabel, region, amount: 90000, amountText: "90,000원", isConsult: false, reason: "", addressReady };
+  }
+  if (postBar.totalCount >= 5) {
+    const sectionLengthSumMm = getSystemSectionLengthSumMm();
+    if (!sectionLengthSumMm) {
+      return {
+        type,
+        typeLabel,
+        region,
+        amount: 0,
+        amountText: "상담 안내",
+        isConsult: true,
+        reason: "섹션 길이 정보가 없어 시공 상담 안내입니다.",
+        addressReady,
+      };
+    }
+    const amount = calcGroupedAmount(sectionLengthSumMm, 100, 3000);
+    return {
+      type,
+      typeLabel,
+      region,
+      amount,
+      amountText: `${amount.toLocaleString()}원`,
+      isConsult: false,
+      reason: "",
+      addressReady,
+    };
+  }
+
+  return {
+    type,
+    typeLabel,
+    region,
+    amount: 0,
+    amountText: "상담 안내",
+    isConsult: true,
+    reason: "포스트바 수량 조건을 확인해주세요.",
+    addressReady,
+  };
+}
+
+function buildGrandSummary() {
+  const baseSummary = calcOrderSummary(state.items);
+  const fulfillment = evaluateFulfillmentService();
+  const serviceCost = fulfillment.isConsult ? 0 : Number(fulfillment.amount || 0);
+  const grandTotal = Number(baseSummary.grandTotal || 0) + serviceCost;
+  const hasConsult = state.items.some((item) => item.isCustomPrice) || (Boolean(fulfillment.type) && fulfillment.isConsult);
+  return {
+    ...baseSummary,
+    fulfillment,
+    serviceCost,
+    grandTotal,
+    hasConsult,
+  };
+}
+
+function formatServiceCostText(fulfillment) {
+  if (!fulfillment?.type) return "미선택";
+  if (fulfillment.isConsult) return "상담 안내";
+  return `${Number(fulfillment.amount || 0).toLocaleString()}원`;
+}
+
+function formatFulfillmentLine(fulfillment) {
+  if (!fulfillment?.type) return "서비스 미선택";
+  const regionText = fulfillment?.region?.label ? ` / ${fulfillment.region.label}` : "";
+  const typeText = fulfillment.typeLabel || "서비스";
+  if (fulfillment.isConsult) return `${typeText}${regionText} · 상담 안내`;
+  return `${typeText}${regionText} · ${Number(fulfillment.amount || 0).toLocaleString()}원`;
+}
+
+function updateServiceStepUI({ showError = false } = {}) {
+  const customer = getCustomerInfo();
+  const addressReady = isServiceAddressReady(customer);
+  const region = resolveServiceRegionByAddress(customer.address);
+  const regionHintEl = $("#serviceRegionHint");
+  if (regionHintEl) {
+    if (!addressReady) {
+      regionHintEl.textContent = "주소를 입력하면 서비스 가능 지역을 안내합니다.";
+    } else {
+      regionHintEl.textContent = `판별 지역: ${region.label}${region.isSupported ? "" : " (상담 안내)"}`;
+    }
+  }
+
+  const fulfillment = evaluateFulfillmentService();
+  const priceHintEl = $("#servicePriceHint");
+  if (priceHintEl) {
+    if (!fulfillment.type) {
+      priceHintEl.textContent = "서비스를 선택하면 예상 서비스비가 표시됩니다.";
+    } else if (fulfillment.isConsult) {
+      priceHintEl.textContent = `${fulfillment.typeLabel} 서비스비: 상담 안내${fulfillment.reason ? ` (${fulfillment.reason})` : ""}`;
+    } else {
+      priceHintEl.textContent = `${fulfillment.typeLabel} 서비스비: ${Number(fulfillment.amount || 0).toLocaleString()}원`;
+    }
+  }
+
+  if (showError) {
+    setServiceStepError(validateServiceStep());
+  } else {
+    setServiceStepError("");
+  }
+}
+
+function validateServiceStep() {
+  const customer = getCustomerInfo();
+  if (!isServiceAddressReady(customer)) {
+    return "서비스 진행을 위해 주소를 입력해주세요.";
+  }
+  if (!getFulfillmentType()) {
+    return "배송 또는 시공 서비스를 선택해주세요.";
+  }
+  return "";
 }
 
 let currentPhase = 1;
@@ -9409,22 +9743,24 @@ function updateItemQuantity(id, quantity) {
 }
 
 function renderSummary() {
-  const summary = calcOrderSummary(state.items);
-  const hasCustom = state.items.some((item) => item.isCustomPrice);
-  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
+  const summary = buildGrandSummary();
+  const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
 
   const materialsTotalEl = $("#materialsTotal");
   if (materialsTotalEl) materialsTotalEl.textContent = summary.materialsTotal.toLocaleString();
   $("#grandTotal").textContent = `${summary.grandTotal.toLocaleString()}${suffix}`;
+  const serviceCostEl = $("#serviceCost");
+  if (serviceCostEl) serviceCostEl.textContent = formatServiceCostText(summary.fulfillment);
 
   const naverUnits = Math.ceil(summary.grandTotal / 1000);
   $("#naverUnits").textContent = `${naverUnits}${suffix}`;
+  updateServiceStepUI();
   updateSendButtonEnabled();
 }
 
 function buildEmailContent() {
   const customer = getCustomerInfo();
-  const summary = calcOrderSummary(state.items);
+  const summary = buildGrandSummary();
   const displayItems = buildSystemGroupDisplayItems(state.items);
 
   const lines = [];
@@ -9451,9 +9787,9 @@ function buildEmailContent() {
 
   lines.push("");
   lines.push("[합계]");
-  const hasCustom = state.items.some((item) => item.isCustomPrice);
-  const suffix = hasCustom ? "(상담 필요 품목 미포함)" : "";
+  const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
   const naverUnits = Math.ceil(summary.grandTotal / 1000) || 0;
+  lines.push(`서비스: ${formatFulfillmentLine(summary.fulfillment)}`);
   lines.push(`예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}`);
   lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
 
@@ -9470,7 +9806,7 @@ function updateSendButtonEnabled() {
   updateSendButtonEnabledShared({
     customer,
     hasItems: state.items.length > 0,
-    onFinalStep: currentPhase === 2,
+    onFinalStep: currentPhase === 3,
     hasConsent: isConsentChecked(),
     sending: sendingEmail,
   });
@@ -9482,7 +9818,7 @@ function resetOrderCompleteUI() {
   const completeEl = $("#orderComplete");
   const summaryCard = $("#stepFinal");
   const actionCard = document.querySelector(".action-card");
-  ["stepShape", "stepColumnMaterial", "stepShelfMaterial", "stepPreview"].forEach(
+  ["stepShape", "stepColumnMaterial", "stepShelfMaterial", "stepPreview", "step4"].forEach(
     (id) => document.getElementById(id)?.classList.remove("hidden-step")
   );
   actionCard?.classList.remove("hidden-step");
@@ -9490,17 +9826,20 @@ function resetOrderCompleteUI() {
   completeEl?.classList.add("hidden-step");
   summaryCard?.classList.remove("order-complete-visible");
   summaryCard?.classList.remove("hidden-step");
+  $("#step4")?.classList.add("hidden-step");
   $("#step5")?.classList.add("hidden-step");
 }
 
 function showOrderComplete() {
   const navActions = document.querySelector(".nav-actions");
   const completeEl = $("#orderComplete");
+  const serviceStep = $("#step4");
   const customerStep = $("#step5");
   const summaryCard = $("#stepFinal");
   renderOrderCompleteDetails();
   orderCompleted = true;
   navActions?.classList.add("hidden-step");
+  serviceStep?.classList.add("hidden-step");
   customerStep?.classList.add("hidden-step");
   completeEl?.classList.remove("hidden-step");
   summaryCard?.classList.add("order-complete-visible");
@@ -9516,6 +9855,7 @@ function updateStepVisibility(scrollTarget) {
   const stepShelf = $("#stepShelfMaterial");
   const stepPreview = $("#stepPreview");
   const actionCard = document.querySelector(".action-card");
+  const step4 = $("#step4");
   const step5 = $("#step5");
   const summaryCard = $("#stepFinal");
   const sendBtn = $("#sendQuoteBtn");
@@ -9526,9 +9866,10 @@ function updateStepVisibility(scrollTarget) {
 
   const showPhase1 = currentPhase === 1;
   const showPhase2 = currentPhase === 2;
+  const showPhase3 = currentPhase === 3;
 
   if (orderCompleted) {
-    [stepShape, stepColumn, stepShelf, stepPreview, step5, actionCard].forEach(
+    [stepShape, stepColumn, stepShelf, stepPreview, step4, step5, actionCard].forEach(
       (el) => el?.classList.add("hidden-step")
     );
     navActions?.classList.add("hidden-step");
@@ -9543,12 +9884,13 @@ function updateStepVisibility(scrollTarget) {
   [stepShape, stepColumn, stepShelf, stepPreview, actionCard].forEach((el) => {
     if (el) el.classList.toggle("hidden-step", !showPhase1);
   });
-  if (step5) step5.classList.toggle("hidden-step", !showPhase2 || orderCompleted);
+  if (step4) step4.classList.toggle("hidden-step", !showPhase2 || orderCompleted);
+  if (step5) step5.classList.toggle("hidden-step", !showPhase3 || orderCompleted);
   if (summaryCard) summaryCard.classList.remove("hidden-step");
-  if (sendBtn) sendBtn.classList.toggle("hidden-step", !showPhase2 || orderCompleted);
+  if (sendBtn) sendBtn.classList.toggle("hidden-step", !showPhase3 || orderCompleted);
   if (nextBtn) {
-    nextBtn.classList.toggle("hidden-step", showPhase2 || orderCompleted);
-    nextBtn.style.display = showPhase2 || orderCompleted ? "none" : "";
+    nextBtn.classList.toggle("hidden-step", showPhase3 || orderCompleted);
+    nextBtn.style.display = showPhase3 || orderCompleted ? "none" : "";
   }
   if (backToCenterBtn) {
     backToCenterBtn.classList.toggle("hidden-step", !showPhase1 || orderCompleted);
@@ -9579,16 +9921,33 @@ function goToNextStep() {
       return;
     }
     currentPhase = 2;
-    updateStepVisibility($("#step5"));
+    updateStepVisibility($("#step4"));
+    updateServiceStepUI();
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
+  }
+  if (currentPhase === 2) {
+    const serviceError = validateServiceStep();
+    if (serviceError) {
+      setServiceStepError(serviceError);
+      showInfoModal(serviceError);
+      return;
+    }
+    currentPhase = 3;
+    updateStepVisibility($("#step5"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 
 function goToPrevStep() {
   if (currentPhase === 1) return;
-  currentPhase = 1;
-  updateStepVisibility($("#stepShape"));
+  if (currentPhase === 3) {
+    currentPhase = 2;
+    updateStepVisibility($("#step4"));
+  } else {
+    currentPhase = 1;
+    updateStepVisibility($("#stepShape"));
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -9606,8 +9965,9 @@ function renderOrderCompleteDetails() {
   const container = $("#orderCompleteDetails");
   if (!container) return;
   const customer = getCustomerInfo();
-  const summary = calcOrderSummary(state.items);
+  const summary = buildGrandSummary();
   const displayItems = buildSystemGroupDisplayItems(state.items);
+  const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
 
   const itemsHtml =
     displayItems.length === 0
@@ -9637,9 +9997,8 @@ function renderOrderCompleteDetails() {
     </div>
     <div class="complete-section">
       <h4>합계</h4>
-      <p>예상 결제금액: ${summary.grandTotal.toLocaleString()}원${
-        state.items.some((item) => item.isCustomPrice) ? "(상담 필요 품목 미포함)" : ""
-      }</p>
+      <p>서비스: ${escapeHtml(formatFulfillmentLine(summary.fulfillment))}</p>
+      <p>예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}</p>
       <p>자재비: ${summary.materialsTotal.toLocaleString()}원</p>
       <p>예상무게: ${summary.totalWeight.toFixed(2)}kg</p>
     </div>
@@ -9940,8 +10299,21 @@ function init() {
   ["#customerName", "#customerPhone", "#customerEmail"].forEach((sel) => {
     $(sel)?.addEventListener("input", updateSendButtonEnabled);
   });
+  document.querySelectorAll("[data-fulfillment-type]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setFulfillmentType(btn.dataset.fulfillmentType);
+      setServiceStepError("");
+      updateServiceStepUI();
+      renderSummary();
+    });
+  });
   ["#sample6_postcode", "#sample6_address", "#sample6_detailAddress"].forEach((sel) => {
-    $(sel)?.addEventListener("input", updateSendButtonEnabled);
+    $(sel)?.addEventListener("input", () => {
+      setServiceStepError("");
+      updateServiceStepUI();
+      renderSummary();
+      updateSendButtonEnabled();
+    });
   });
 
   Object.values(materialPickers).forEach((picker) => {
@@ -10037,6 +10409,9 @@ function init() {
     }
   });
 
+  setFulfillmentType(getFulfillmentType());
+  updateServiceStepUI();
+  updateSendButtonEnabled();
   window.addEventListener("resize", requestStickyOffsetUpdate);
 }
 

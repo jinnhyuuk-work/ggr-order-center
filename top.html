@@ -165,17 +165,49 @@
           <button id="calcTopBtn">상판 담기</button>
         </section>
 
-        <section id="step4" class="step-card addons-card hidden-step">
-          <h2>추가 부자재 주문</h2>
-          <p class="addons-desc">
-            상판 주문을 완료하셨다면 추가 부자재 주문도 이어서 진행해보세요.
-          </p>
-          <div class="addon-picker">
-            <button type="button" id="openTopAddonModal">부자재 선택하기</button>
+        <section id="step4" class="step-card hidden-step">
+          <h2>주소와 서비스를 선택해주세요.</h2>
+          <div class="form-row">
+            <label for="sample6_postcode">주소</label>
+            <div class="field-col">
+              <div class="nav-actions">
+                <input type="text" id="sample6_postcode" placeholder="우편번호" />
+                <button type="button" onclick="sample6_execDaumPostcode()">우편번호 찾기</button>
+              </div>
+              <input type="text" id="sample6_address" placeholder="주소" />
+              <input type="text" id="sample6_detailAddress" placeholder="상세주소" />
+            </div>
           </div>
-          <div class="addon-picker">
-            <div id="selectedTopAddonCard" class="selected-material-card addon-card-display">
-              <div class="placeholder">선택된 부자재 없음</div>
+          <div class="form-row">
+            <label>서비스</label>
+            <div class="field-col">
+              <div class="additional-selection-block additional-selection-block--processing">
+                <div class="additional-selection-head">
+                  <h3>배송/시공 서비스</h3>
+                  <span class="additional-selection-badge additional-selection-badge--input">입력 필요</span>
+                </div>
+                <p class="additional-selection-hint">배송 또는 시공을 선택하면 서비스비가 자동 반영됩니다.</p>
+                <div class="service-type-toggle grid-cards grid-cards--2 grid-cards--keep-2" role="group" aria-label="서비스 선택">
+                  <button type="button" class="service-type-btn card-base service-type-btn--delivery" data-fulfillment-type="delivery" aria-pressed="false">
+                    <span class="material-visual service-type-card-media service-type-card-media--delivery" aria-hidden="true"></span>
+                    <span class="service-type-card-copy">
+                      <span class="name">배송</span>
+                      <span class="description">품목/수량/지역 기준 배송비 계산</span>
+                    </span>
+                  </button>
+                  <button type="button" class="service-type-btn card-base service-type-btn--installation" data-fulfillment-type="installation" aria-pressed="false">
+                    <span class="material-visual service-type-card-media service-type-card-media--installation" aria-hidden="true"></span>
+                    <span class="service-type-card-copy">
+                      <span class="name">시공</span>
+                      <span class="description">품목/수량/지역 기준 시공비 계산</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <input type="hidden" id="fulfillmentType" value="" />
+              <div class="field-note" id="serviceRegionHint" aria-live="polite">주소를 입력하면 서비스 가능 지역을 안내합니다.</div>
+              <div class="field-note" id="servicePriceHint" aria-live="polite">서비스를 선택하면 예상 서비스비가 표시됩니다.</div>
+              <div class="error-msg" id="serviceStepError" role="alert" aria-live="polite"></div>
             </div>
           </div>
         </section>
@@ -198,17 +230,6 @@
             <label for="customerEmail">이메일</label>
             <div class="field-col">
               <input type="email" id="customerEmail" placeholder="you@example.com" />
-            </div>
-          </div>
-          <div class="form-row">
-            <label for="sample6_postcode">주소</label>
-            <div class="field-col">
-              <div class="nav-actions">
-                <input type="text" id="sample6_postcode" placeholder="우편번호" />
-                <button type="button" onclick="sample6_execDaumPostcode()">우편번호 찾기</button>
-              </div>
-              <input type="text" id="sample6_address" placeholder="주소" />
-              <input type="text" id="sample6_detailAddress" placeholder="상세주소" />
             </div>
           </div>
           <div class="form-row">
@@ -275,6 +296,7 @@
 
         <div class="summary">
           <p>예상 결제금액: <span id="grandTotal">0</span> 원</p>
+          <p>서비스비: <span id="serviceCost">미선택</span></p>
           <p>예상 네이버 결제수량: <span id="naverUnits">0</span> 개</p>
         </div>
 

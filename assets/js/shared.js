@@ -7,6 +7,12 @@ export const EMAILJS_CONFIG = {
 export const ORDER_PAYLOAD_SCHEMA_VERSION = "v1";
 export const CONSULT_DISPLAY_PRICE_LABEL = "상담안내";
 export const CONSULT_EXCLUDED_SUFFIX = "(상담 필요 항목 미포함)";
+export const SERVICE_REGION_LABELS = Object.freeze({
+  seoul: "서울시",
+  gyeonggi: "경기도",
+  incheon: "인천",
+  other: "수도권 외",
+});
 
 const MODAL_FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -23,6 +29,38 @@ let autoModalTitleIdSeq = 0;
 
 export function formatPrice(value) {
   return Number(value || 0).toLocaleString();
+}
+
+export function resolveServiceRegionByAddress(address = "") {
+  const text = String(address || "").trim();
+  if (!text) {
+    return { key: "", label: "주소 미입력", isSupported: false };
+  }
+  if (/(^|\s)서울|서울특별시/.test(text)) {
+    return { key: "seoul", label: SERVICE_REGION_LABELS.seoul, isSupported: true };
+  }
+  if (/(^|\s)경기|경기도/.test(text)) {
+    return { key: "gyeonggi", label: SERVICE_REGION_LABELS.gyeonggi, isSupported: true };
+  }
+  if (/(^|\s)인천|인천광역시/.test(text)) {
+    return { key: "incheon", label: SERVICE_REGION_LABELS.incheon, isSupported: true };
+  }
+  return { key: "other", label: SERVICE_REGION_LABELS.other, isSupported: false };
+}
+
+export function calcGroupedAmount(count = 0, groupSize = 1, groupPrice = 0) {
+  const normalizedCount = Math.max(0, Math.floor(Number(count) || 0));
+  const normalizedGroupSize = Math.max(1, Math.floor(Number(groupSize) || 1));
+  const normalizedGroupPrice = Math.max(0, Number(groupPrice) || 0);
+  if (!normalizedCount || !normalizedGroupPrice) return 0;
+  return Math.ceil(normalizedCount / normalizedGroupSize) * normalizedGroupPrice;
+}
+
+export function ceilAmountByUnit(value = 0, unit = 1) {
+  const normalizedValue = Math.max(0, Number(value) || 0);
+  const normalizedUnit = Math.max(1, Number(unit) || 1);
+  if (!normalizedValue) return 0;
+  return Math.ceil(normalizedValue / normalizedUnit) * normalizedUnit;
 }
 
 function escapeHtml(value) {
