@@ -575,19 +575,6 @@ function updateDoorHingeCountHint({ length, count } = {}) {
   hintEl.textContent = `길이 ${lengthText} 기준 경첩 ${count}개 자동 적용 (800mm 이하 2개 / 1500mm 이하 3개 / 그 이상 4개)`;
 }
 
-function updateDoorHingeRangeHint(length) {
-  const hintEl = $("#doorHingeRangeHint");
-  if (!hintEl) return;
-  if (!isDoorLengthReady(length)) {
-    const { min, max } = getCurrentDoorLengthBounds();
-    hintEl.textContent = `세로 위치 입력 가능 범위는 길이 ${min}~${max}mm 입력 후 안내됩니다.`;
-    return;
-  }
-  const numericLength = Math.round(Number(length));
-  const maxPosition = Math.max(1, numericLength - 1);
-  hintEl.textContent = `세로 위치 입력 범위: 1~${maxPosition}mm (상단 기준)`;
-}
-
 function setDoorHingeInputErrors(invalidIndexes = []) {
   const invalidSet = new Set((Array.isArray(invalidIndexes) ? invalidIndexes : []).map((idx) => Number(idx)));
   const rows = Array.from(document.querySelectorAll(".door-hinge-row"));
@@ -622,7 +609,6 @@ function renderDoorHingeRows({ preserveExistingValues = true } = {}) {
     { length }
   );
   updateDoorHingeCountHint({ length, count: state.doorHingeConfig.count });
-  updateDoorHingeRangeHint(length);
   setDoorHingeSide(side);
 
   if (!state.doorHingeConfig.holes.length) {
