@@ -153,37 +153,38 @@
               <input type="text" id="sample6_detailAddress" placeholder="상세주소" />
             </div>
           </div>
-          <div class="form-row">
-            <label>서비스</label>
-            <div class="field-col">
-              <div class="selection-block selection-block--input">
-                <div class="selection-block-head">
-                  <h3>배송/시공 서비스</h3>
-                  <span class="selection-block-badge selection-block-badge--input">입력 필요</span>
-                </div>
-                <p class="selection-block-hint">배송 또는 시공을 선택하면 서비스비가 자동 반영됩니다.</p>
-                <div class="selection-service-grid grid-cards grid-cards--2 grid-cards--keep-2" role="group" aria-label="서비스 선택">
-                  <button type="button" class="selection-service-card card-base selection-service-card--delivery" data-fulfillment-type="delivery" aria-pressed="false">
-                    <span class="material-visual selection-service-media selection-service-media--delivery" aria-hidden="true"></span>
-                    <span class="selection-service-copy">
-                      <span class="name">배송</span>
-                      <span class="description">품목/수량/지역 기준 배송비 계산</span>
-                    </span>
-                  </button>
-                  <button type="button" class="selection-service-card card-base selection-service-card--installation" data-fulfillment-type="installation" aria-pressed="false">
-                    <span class="material-visual selection-service-media selection-service-media--installation" aria-hidden="true"></span>
-                    <span class="selection-service-copy">
-                      <span class="name">시공</span>
-                      <span class="description">품목/수량/지역 기준 시공비 계산</span>
-                    </span>
-                  </button>
-                </div>
-              </div>
-              <input type="hidden" id="fulfillmentType" value="" />
-              <div class="field-note" id="serviceRegionHint" aria-live="polite">주소를 입력하면 서비스 가능 지역을 안내합니다.</div>
-              <div class="field-note" id="servicePriceHint" aria-live="polite">서비스를 선택하면 예상 서비스비가 표시됩니다.</div>
-              <div class="error-msg" id="serviceStepError" role="alert" aria-live="polite"></div>
+          <div class="selection-block selection-block--input">
+            <div class="selection-block-head">
+              <h3>배송/시공 서비스</h3>
+              <span class="selection-block-badge selection-block-badge--input">입력 필요</span>
             </div>
+            <p class="selection-block-hint">배송 또는 시공을 선택하면 서비스비가 자동 반영됩니다.</p>
+            <div class="input-tip" aria-live="polite">
+              <ul class="input-tip-list">
+                <li id="serviceRegionHint">주소를 입력하면 서비스 가능 지역을 안내합니다.</li>
+                <li id="servicePriceHint">서비스를 선택하면 예상 서비스비가 표시됩니다.</li>
+              </ul>
+            </div>
+            <div class="selection-service-grid grid-cards grid-cards--2 grid-cards--keep-2" role="group" aria-label="서비스 선택">
+              <button type="button" class="card-base selection-service-card selection-service-card--delivery" data-fulfillment-type="delivery" aria-pressed="false">
+                <div class="material-visual selection-service-media selection-service-media--delivery" aria-hidden="true"></div>
+                <div class="selection-service-copy">
+                  <div class="name">배송</div>
+                  <div class="price is-placeholder" id="serviceCardPriceDelivery">상품 담기 후 계산</div>
+                  <div class="description">품목/수량/지역 기준 배송비 계산</div>
+                </div>
+              </button>
+              <button type="button" class="card-base selection-service-card selection-service-card--installation" data-fulfillment-type="installation" aria-pressed="false">
+                <div class="material-visual selection-service-media selection-service-media--installation" aria-hidden="true"></div>
+                <div class="selection-service-copy">
+                  <div class="name">시공</div>
+                  <div class="price is-placeholder" id="serviceCardPriceInstallation">상품 담기 후 계산</div>
+                  <div class="description">품목/수량/지역 기준 시공비 계산</div>
+                </div>
+              </button>
+            </div>
+            <input type="hidden" id="fulfillmentType" value="" />
+            <div class="error-msg" id="serviceStepError" role="alert" aria-live="polite"></div>
           </div>
         </section>
 

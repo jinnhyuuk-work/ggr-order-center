@@ -409,7 +409,6 @@ function setFulfillmentType(nextType) {
   if (typeInput) typeInput.value = normalizedType;
   document.querySelectorAll("[data-fulfillment-type]").forEach((btn) => {
     const active = normalizedType && btn.dataset.fulfillmentType === normalizedType;
-    btn.classList.toggle("is-active", Boolean(active));
     btn.classList.toggle("selected", Boolean(active));
     btn.setAttribute("aria-pressed", String(Boolean(active)));
   });
@@ -425,9 +424,9 @@ function isServiceAddressReady(customer = getCustomerInfo()) {
   return Boolean(customer?.postcode && customer?.address && customer?.detailAddress);
 }
 
-function evaluateFulfillmentService() {
+function evaluateFulfillmentService(nextType = getFulfillmentType()) {
   const customer = getCustomerInfo();
-  const type = getFulfillmentType();
+  const type = nextType === "installation" ? "installation" : nextType === "delivery" ? "delivery" : "";
   const typeLabel = FULFILLMENT_TYPE_LABELS[type] || "";
   const region = resolveServiceRegionByAddress(customer.address);
   const addressReady = isServiceAddressReady(customer);
@@ -513,6 +512,29 @@ function formatFulfillmentLine(fulfillment) {
   return `${typeText}${regionText} · ${Number(fulfillment.amount || 0).toLocaleString()}원`;
 }
 
+function formatFulfillmentCardPriceText(fulfillment) {
+  if (!fulfillment?.type) return "선택 필요";
+  if (fulfillment.amountText === "미선택") return "상품 담기 후 계산";
+  if (!fulfillment.addressReady) return "주소 입력 후 계산";
+  if (fulfillment.isConsult) return "상담 안내";
+  return `${Number(fulfillment.amount || 0).toLocaleString()}원`;
+}
+
+function updateFulfillmentCardPriceUI() {
+  const cardEntries = [
+    { id: "#serviceCardPriceDelivery", fulfillment: evaluateFulfillmentService("delivery") },
+    { id: "#serviceCardPriceInstallation", fulfillment: evaluateFulfillmentService("installation") },
+  ];
+  cardEntries.forEach(({ id, fulfillment }) => {
+    const priceEl = $(id);
+    if (!priceEl) return;
+    const isPlaceholder = fulfillment.amountText === "미선택" || !fulfillment.addressReady;
+    priceEl.textContent = formatFulfillmentCardPriceText(fulfillment);
+    priceEl.classList.toggle("is-consult", Boolean(fulfillment.isConsult));
+    priceEl.classList.toggle("is-placeholder", Boolean(!fulfillment.isConsult && isPlaceholder));
+  });
+}
+
 function updateServiceStepUI({ showError = false } = {}) {
   const customer = getCustomerInfo();
   const addressReady = isServiceAddressReady(customer);
@@ -537,6 +559,7 @@ function updateServiceStepUI({ showError = false } = {}) {
       priceHintEl.textContent = `${fulfillment.typeLabel} 서비스비: ${Number(fulfillment.amount || 0).toLocaleString()}원`;
     }
   }
+  updateFulfillmentCardPriceUI();
 
   if (showError) {
     setServiceStepError(validateServiceStep());
