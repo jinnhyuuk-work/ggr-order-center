@@ -1,4 +1,10 @@
-import { arrayToMap, COMMON_ADDON_ITEMS } from "./common-data.js";
+import {
+  arrayToMap,
+  COMMON_ADDON_ITEMS,
+  createDataEntryMetaMap,
+  createDataItemMetaMap,
+  createDatasetMeta,
+} from "./common-data.js";
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
@@ -91,3 +97,82 @@ export const BOARD_PROCESSING_SERVICES = {
 export const BOARD_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.BOARD);
 
 export const BOARD_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
+
+export const BOARD_DATASETS_META = Object.freeze({
+  materials: createDatasetMeta({
+    id: "board_materials",
+    label: "합판 자재 데이터",
+    description: "합판 페이지에서 사용되는 자재/단가 기준 데이터입니다.",
+    source: "assets/js/data/board-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:board"],
+  }),
+  processing_services: createDatasetMeta({
+    id: "board_processing_services",
+    label: "합판 가공 서비스 데이터",
+    description: "합판 페이지에서 노출되는 가공 서비스 데이터입니다.",
+    source: "assets/js/data/board-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:board"],
+  }),
+  options: createDatasetMeta({
+    id: "board_options",
+    label: "합판 옵션 데이터",
+    description: "합판 페이지에서 선택 가능한 추가 옵션 데이터입니다.",
+    source: "assets/js/data/board-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:board"],
+  }),
+  addon_items: createDatasetMeta({
+    id: "board_addon_items",
+    label: "합판 부자재 데이터",
+    description: "합판 페이지에서 공통으로 사용하는 부자재 데이터입니다.",
+    source: "assets/js/data/board-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:board"],
+  }),
+});
+
+export const BOARD_DATA_META_BY_ID = Object.freeze({
+  materials: createDataEntryMetaMap(MATERIALS, {
+    dataset: "board_materials",
+    source: "assets/js/data/board-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:board", "kind:material"],
+  }),
+  processing_services: createDataEntryMetaMap(BOARD_PROCESSING_SERVICES, {
+    dataset: "board_processing_services",
+    source: "assets/js/data/board-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:board", "kind:processing"],
+    labelKey: "label",
+  }),
+  options: createDataItemMetaMap(BOARD_OPTIONS, {
+    dataset: "board_options",
+    source: "assets/js/data/board-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:board", "kind:option"],
+  }),
+  addon_items: createDataItemMetaMap(BOARD_ADDON_ITEMS, {
+    dataset: "board_addon_items",
+    source: "assets/js/data/board-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:board", "kind:addon"],
+  }),
+});

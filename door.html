@@ -210,8 +210,9 @@
           </div>
           <div class="input-tip" aria-live="polite">
               <ul class="input-tip-list">
-                <li id="serviceRegionHint">주소를 입력하면 서비스 가능 지역을 안내합니다.</li>
+                <li id="serviceRegionHint">주소를 입력하면 서비스 권역을 안내합니다.</li>
                 <li id="servicePriceHint">서비스를 선택하면 예상 서비스비가 표시됩니다.</li>
+                <li>안내된 금액은 예상 금액으로, 정확한 배송비와 시공비는 상담 후 확인 가능합니다.</li>
               </ul>
           </div>
           <div class="selection-block selection-block--input">
@@ -429,7 +430,13 @@
           }
 
           document.getElementById('sample6_postcode').value = data.zonecode;
-          document.getElementById("sample6_address").value = addr;
+          const addressEl = document.getElementById("sample6_address");
+          addressEl.value = addr;
+          addressEl.dataset.matchedAddress = addr;
+          addressEl.dataset.sido = data.sido || "";
+          addressEl.dataset.sigungu = data.sigungu || "";
+          addressEl.dataset.bname = data.bname || "";
+          addressEl.dataset.roadname = data.roadname || "";
           document.getElementById("sample6_detailAddress").focus();
         }
       }).open();

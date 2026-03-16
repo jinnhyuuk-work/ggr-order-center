@@ -1,3 +1,5 @@
+import { createDatasetMeta } from "./common-data.js";
+
 export const FULFILLMENT_POLICY_MESSAGES = Object.freeze({
   noSelectionAmountText: "미선택",
   addressRequiredAmountText: "주소 입력 필요",
@@ -67,5 +69,69 @@ export const SYSTEM_FULFILLMENT_POLICY = Object.freeze({
     }),
     missingSectionLengthConsultReason: "섹션 길이 정보가 없어 시공 상담 안내입니다.",
     fallbackConsultReason: "포스트바 수량 조건을 확인해주세요.",
+  }),
+});
+
+export const FULFILLMENT_POLICY_DATASET_META = createDatasetMeta({
+  id: "fulfillment_policies",
+  label: "서비스 정책 데이터",
+  description: "페이지별 배송/시공/상담 정책 메시지와 계산 규칙 데이터입니다.",
+  source: "assets/js/data/fulfillment-policy-data.js",
+  owner: "order-center",
+  updated_at: "2026-03-16",
+  status: "active",
+  tags: ["[internal]", "policy:fulfillment"],
+});
+
+export const FULFILLMENT_POLICY_META_BY_KEY = Object.freeze({
+  FULFILLMENT_POLICY_MESSAGES: createDatasetMeta({
+    id: "fulfillment_policy_messages",
+    label: "서비스 정책 공통 메시지",
+    description: "서비스 정책 공통 문구(미선택/상담안내/주소 필요 등) 모음입니다.",
+    source: "assets/js/data/fulfillment-policy-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "policy:message"],
+  }),
+  TOP_FULFILLMENT_POLICY: createDatasetMeta({
+    id: "top_fulfillment_policy",
+    label: "상판 서비스 정책",
+    description: "상판 페이지 배송/시공 정책 데이터입니다.",
+    source: "assets/js/data/fulfillment-policy-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:top", "policy:fulfillment"],
+  }),
+  BOARD_FULFILLMENT_POLICY: createDatasetMeta({
+    id: "board_fulfillment_policy",
+    label: "합판 서비스 정책",
+    description: "합판 페이지 배송/시공 정책 데이터입니다.",
+    source: "assets/js/data/fulfillment-policy-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:board", "policy:fulfillment"],
+  }),
+  DOOR_FULFILLMENT_POLICY: createDatasetMeta({
+    id: "door_fulfillment_policy",
+    label: "도어 서비스 정책",
+    description: "도어 페이지 배송/시공 정책 데이터입니다.",
+    source: "assets/js/data/fulfillment-policy-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:door", "policy:fulfillment"],
+  }),
+  SYSTEM_FULFILLMENT_POLICY: createDatasetMeta({
+    id: "system_fulfillment_policy",
+    label: "시스템 서비스 정책",
+    description: "시스템 페이지 배송/시공 정책 데이터입니다.",
+    source: "assets/js/data/fulfillment-policy-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:system", "policy:fulfillment"],
   }),
 });

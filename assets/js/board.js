@@ -35,7 +35,6 @@ import {
   buildStandardPriceBreakdownRows,
   renderItemPriceDisplay,
   renderItemPriceNotice,
-  resolveServiceRegionByAddress,
 } from "./shared.js";
 import {
   normalizeFulfillmentType,
@@ -49,6 +48,7 @@ import {
   FULFILLMENT_POLICY_MESSAGES,
   BOARD_FULFILLMENT_POLICY,
 } from "./data/fulfillment-policy-data.js";
+import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
 
 class BaseService {
   constructor(cfg) {
@@ -476,13 +476,15 @@ function updateFulfillmentCardPriceUI() {
 function updateServiceStepUI({ showError = false } = {}) {
   const customer = getCustomerInfo();
   const addressReady = isServiceAddressReady(customer);
-  const region = resolveServiceRegionByAddress(customer.address);
   const regionHintEl = $("#serviceRegionHint");
+  const travelZone = resolveInstallationTravelZoneByAddress(customer);
   if (regionHintEl) {
     if (!addressReady) {
-      regionHintEl.textContent = "주소를 입력하면 서비스 가능 지역을 안내합니다.";
+      regionHintEl.textContent = "주소를 입력하면 서비스 권역을 안내합니다.";
+    } else if (travelZone.isMatched) {
+      regionHintEl.textContent = `판별 권역: ${travelZone.zoneLabel}`;
     } else {
-      regionHintEl.textContent = `판별 지역: ${region.label}${region.isSupported ? "" : " (상담 안내)"}`;
+      regionHintEl.textContent = "판별 권역: 상담 안내";
     }
   }
 

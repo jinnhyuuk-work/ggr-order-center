@@ -8,9 +8,9 @@ export const ORDER_PAYLOAD_SCHEMA_VERSION = "v2";
 export const CONSULT_DISPLAY_PRICE_LABEL = "상담안내";
 export const CONSULT_EXCLUDED_SUFFIX = "(상담 필요 항목 미포함)";
 export const SERVICE_REGION_LABELS = Object.freeze({
-  seoul: "서울시",
+  seoul: "서울특별시",
   gyeonggi: "경기도",
-  incheon: "인천",
+  incheon: "인천광역시",
   other: "수도권 외",
 });
 
@@ -36,13 +36,13 @@ export function resolveServiceRegionByAddress(address = "") {
   if (!text) {
     return { key: "", label: "주소 미입력", isSupported: false };
   }
-  if (/(^|\s)서울|서울특별시/.test(text)) {
+  if (/(^|\s)(서울특별시|서울시|서울)(\s|$)/.test(text)) {
     return { key: "seoul", label: SERVICE_REGION_LABELS.seoul, isSupported: true };
   }
-  if (/(^|\s)경기|경기도/.test(text)) {
+  if (/(^|\s)(경기도|경기)(\s|$)/.test(text)) {
     return { key: "gyeonggi", label: SERVICE_REGION_LABELS.gyeonggi, isSupported: true };
   }
-  if (/(^|\s)인천|인천광역시/.test(text)) {
+  if (/(^|\s)(인천광역시|인천시|인천)(\s|$)/.test(text)) {
     return { key: "incheon", label: SERVICE_REGION_LABELS.incheon, isSupported: true };
   }
   return { key: "other", label: SERVICE_REGION_LABELS.other, isSupported: false };
@@ -558,14 +558,29 @@ export function getCustomerInfo({
   addressSelector = "#sample6_address",
   detailAddressSelector = "#sample6_detailAddress",
 } = {}) {
+  const addressEl = document.querySelector(addressSelector);
+  const address = addressEl?.value.trim() || "";
+  const matchedAddress = String(addressEl?.dataset?.matchedAddress || "").trim();
+  const canUseStructuredAddressMeta = Boolean(address && matchedAddress && address === matchedAddress);
+  const addressMeta = {
+    sido: canUseStructuredAddressMeta ? String(addressEl?.dataset?.sido || "").trim() : "",
+    sigungu: canUseStructuredAddressMeta ? String(addressEl?.dataset?.sigungu || "").trim() : "",
+    bname: canUseStructuredAddressMeta ? String(addressEl?.dataset?.bname || "").trim() : "",
+    roadname: canUseStructuredAddressMeta ? String(addressEl?.dataset?.roadname || "").trim() : "",
+  };
+
   return {
     name: document.querySelector(nameSelector)?.value.trim() || "",
     phone: document.querySelector(phoneSelector)?.value.trim() || "",
     email: document.querySelector(emailSelector)?.value.trim() || "",
     memo: document.querySelector(memoSelector)?.value.trim() || "",
     postcode: document.querySelector(postcodeSelector)?.value.trim() || "",
-    address: document.querySelector(addressSelector)?.value.trim() || "",
+    address,
     detailAddress: document.querySelector(detailAddressSelector)?.value.trim() || "",
+    addressMeta,
+    sido: addressMeta.sido,
+    sigungu: addressMeta.sigungu,
+    bname: addressMeta.bname,
   };
 }
 

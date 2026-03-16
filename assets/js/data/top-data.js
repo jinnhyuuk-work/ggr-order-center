@@ -1,4 +1,9 @@
-import { COMMON_ADDON_ITEMS } from "./common-data.js";
+import {
+  COMMON_ADDON_ITEMS,
+  createDataEntryMetaMap,
+  createDataItemMetaMap,
+  createDatasetMeta,
+} from "./common-data.js";
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
@@ -589,3 +594,82 @@ export const TOP_TYPES = [
 export const TOP_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.TOP);
 
 export const TOP_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
+
+export const TOP_DATASETS_META = Object.freeze({
+  types: createDatasetMeta({
+    id: "top_types",
+    label: "상판 자재 타입 데이터",
+    description: "상판 페이지의 자재/기준 단가/가용 규격 데이터입니다.",
+    source: "assets/js/data/top-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:top"],
+  }),
+  processing_services: createDatasetMeta({
+    id: "top_processing_services",
+    label: "상판 가공 서비스 데이터",
+    description: "상판 페이지에서 노출되는 가공 서비스 데이터입니다.",
+    source: "assets/js/data/top-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:top"],
+  }),
+  options: createDatasetMeta({
+    id: "top_options",
+    label: "상판 옵션 데이터",
+    description: "상판 페이지에서 선택 가능한 추가 옵션 데이터입니다.",
+    source: "assets/js/data/top-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:top"],
+  }),
+  addon_items: createDatasetMeta({
+    id: "top_addon_items",
+    label: "상판 부자재 데이터",
+    description: "상판 페이지에서 공통으로 사용하는 부자재 데이터입니다.",
+    source: "assets/js/data/top-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:top"],
+  }),
+});
+
+export const TOP_DATA_META_BY_ID = Object.freeze({
+  types: createDataItemMetaMap(TOP_TYPES, {
+    dataset: "top_types",
+    source: "assets/js/data/top-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:top", "kind:material"],
+  }),
+  processing_services: createDataEntryMetaMap(TOP_PROCESSING_SERVICES, {
+    dataset: "top_processing_services",
+    source: "assets/js/data/top-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:top", "kind:processing"],
+    labelKey: "label",
+  }),
+  options: createDataItemMetaMap(TOP_OPTIONS, {
+    dataset: "top_options",
+    source: "assets/js/data/top-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:top", "kind:option"],
+  }),
+  addon_items: createDataItemMetaMap(TOP_ADDON_ITEMS, {
+    dataset: "top_addon_items",
+    source: "assets/js/data/top-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:top", "kind:addon"],
+  }),
+});

@@ -1,4 +1,5 @@
 import { getAdditionalSelectionConfigForPage } from "./additional-page-map.js";
+import { createDataItemMetaMap, createDatasetMeta } from "./common-data.js";
 
 export const ADDITIONAL_OPTION_ITEMS = [
   {
@@ -114,6 +115,26 @@ const OPTION_CATALOG_BY_ID = Object.freeze(
     return acc;
   }, {})
 );
+
+export const ADDITIONAL_OPTIONS_DATASET_META = createDatasetMeta({
+  id: "additional_options",
+  label: "추가 옵션 데이터",
+  description: "페이지(상판/도어/합판)별로 재사용되는 추가 옵션 원본 목록입니다.",
+  source: "assets/js/data/additional-options-data.js",
+  owner: "order-center",
+  updated_at: "2026-03-16",
+  status: "active",
+  tags: ["[internal]", "selection:options"],
+});
+
+export const ADDITIONAL_OPTIONS_META_BY_ID = createDataItemMetaMap(ADDITIONAL_OPTION_ITEMS, {
+  dataset: "additional_options",
+  source: "assets/js/data/additional-options-data.js",
+  owner: "order-center",
+  updated_at: "2026-03-16",
+  status: "active",
+  tags: ["[internal]", "kind:option"],
+});
 
 export function getAdditionalOptionsForPage(pageKey) {
   const pageConfig = getAdditionalSelectionConfigForPage(pageKey);

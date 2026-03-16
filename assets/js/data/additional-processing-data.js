@@ -1,4 +1,5 @@
 import { getAdditionalSelectionConfigForPage } from "./additional-page-map.js";
+import { createDataItemMetaMap, createDatasetMeta } from "./common-data.js";
 
 export const ADDITIONAL_PROCESSING_ITEMS = [
   {
@@ -68,6 +69,27 @@ const PROCESSING_CATALOG_BY_ID = Object.freeze(
     return acc;
   }, {})
 );
+
+export const ADDITIONAL_PROCESSING_DATASET_META = createDatasetMeta({
+  id: "additional_processing",
+  label: "추가 가공 서비스 데이터",
+  description: "페이지별로 재사용되는 추가 가공 서비스 원본 목록입니다.",
+  source: "assets/js/data/additional-processing-data.js",
+  owner: "order-center",
+  updated_at: "2026-03-16",
+  status: "active",
+  tags: ["[internal]", "selection:processing"],
+});
+
+export const ADDITIONAL_PROCESSING_META_BY_ID = createDataItemMetaMap(ADDITIONAL_PROCESSING_ITEMS, {
+  dataset: "additional_processing",
+  source: "assets/js/data/additional-processing-data.js",
+  owner: "order-center",
+  updated_at: "2026-03-16",
+  status: "active",
+  tags: ["[internal]", "kind:processing"],
+  labelKey: "label",
+});
 
 export function getAdditionalProcessingServicesForPage(pageKey) {
   const pageConfig = getAdditionalSelectionConfigForPage(pageKey);

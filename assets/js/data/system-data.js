@@ -1,4 +1,9 @@
-import { arrayToMap, COMMON_ADDON_ITEMS } from "./common-data.js";
+import {
+  arrayToMap,
+  createDataEntryMetaMap,
+  createDataItemMetaMap,
+  createDatasetMeta,
+} from "./common-data.js";
 
 // 선반 컬러별 단가를 티어 키 기준으로 개별 관리한다.
 const LPM_ITEMS = [
@@ -614,3 +619,87 @@ export const SYSTEM_ADDON_ITEMS = Object.freeze(
     })
     .map((item) => Object.freeze({ ...item }))
 );
+
+const SYSTEM_MODULE_PRESET_ITEMS_FLAT = Object.freeze([
+  ...SYSTEM_MODULE_PRESETS.normal,
+  ...SYSTEM_MODULE_PRESETS.corner,
+]);
+
+export const SYSTEM_DATASETS_META = Object.freeze({
+  shelf_materials: createDatasetMeta({
+    id: "system_shelf_materials",
+    label: "시스템 선반 자재 데이터",
+    description: "시스템 페이지 선반용 자재/티어 단가 기준 데이터입니다.",
+    source: "assets/js/data/system-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:system"],
+  }),
+  column_materials: createDatasetMeta({
+    id: "system_column_materials",
+    label: "시스템 포스트바 자재 데이터",
+    description: "시스템 페이지 포스트바 컬러/기본 정보 데이터입니다.",
+    source: "assets/js/data/system-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:system"],
+  }),
+  module_presets: createDatasetMeta({
+    id: "system_module_presets",
+    label: "시스템 모듈 프리셋 데이터",
+    description: "시스템 페이지 모듈/코너 프리셋 템플릿 데이터입니다.",
+    source: "assets/js/data/system-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:system"],
+  }),
+  addon_items: createDatasetMeta({
+    id: "system_addon_items",
+    label: "시스템 부가 가구 데이터",
+    description: "시스템 페이지에서 선택 가능한 가구/행거 부자재 데이터입니다.",
+    source: "assets/js/data/system-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:system"],
+  }),
+});
+
+export const SYSTEM_DATA_META_BY_ID = Object.freeze({
+  shelf_materials: createDataEntryMetaMap(SYSTEM_SHELF_MATERIALS, {
+    dataset: "system_shelf_materials",
+    source: "assets/js/data/system-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:system", "kind:material"],
+  }),
+  column_materials: createDataEntryMetaMap(SYSTEM_COLUMN_MATERIALS, {
+    dataset: "system_column_materials",
+    source: "assets/js/data/system-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:system", "kind:material"],
+  }),
+  module_presets: createDataItemMetaMap(SYSTEM_MODULE_PRESET_ITEMS_FLAT, {
+    dataset: "system_module_presets",
+    source: "assets/js/data/system-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:system", "kind:preset"],
+    labelKey: "label",
+  }),
+  addon_items: createDataItemMetaMap(SYSTEM_ADDON_ITEMS, {
+    dataset: "system_addon_items",
+    source: "assets/js/data/system-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:system", "kind:addon"],
+  }),
+});

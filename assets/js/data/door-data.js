@@ -1,4 +1,10 @@
-import { arrayToMap, COMMON_ADDON_ITEMS } from "./common-data.js";
+import {
+  arrayToMap,
+  COMMON_ADDON_ITEMS,
+  createDataEntryMetaMap,
+  createDataItemMetaMap,
+  createDatasetMeta,
+} from "./common-data.js";
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
@@ -1221,3 +1227,82 @@ export const DOOR_SIDE_THICKNESS_OPTIONS = [
 export const DOOR_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.DOOR);
 
 export const DOOR_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
+
+export const DOOR_DATASETS_META = Object.freeze({
+  materials: createDatasetMeta({
+    id: "door_materials",
+    label: "도어 자재 데이터",
+    description: "도어 페이지의 자재/가격 티어/규격 기준 데이터입니다.",
+    source: "assets/js/data/door-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:door"],
+  }),
+  processing_services: createDatasetMeta({
+    id: "door_processing_services",
+    label: "도어 가공 서비스 데이터",
+    description: "도어 페이지에서 노출되는 가공 서비스 데이터입니다.",
+    source: "assets/js/data/door-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:door"],
+  }),
+  options: createDatasetMeta({
+    id: "door_options",
+    label: "도어 옵션 데이터",
+    description: "도어 페이지에서 선택 가능한 추가 옵션 데이터입니다.",
+    source: "assets/js/data/door-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:door"],
+  }),
+  addon_items: createDatasetMeta({
+    id: "door_addon_items",
+    label: "도어 부자재 데이터",
+    description: "도어 페이지에서 공통으로 사용하는 부자재 데이터입니다.",
+    source: "assets/js/data/door-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:door"],
+  }),
+});
+
+export const DOOR_DATA_META_BY_ID = Object.freeze({
+  materials: createDataEntryMetaMap(DOOR_MATERIALS, {
+    dataset: "door_materials",
+    source: "assets/js/data/door-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:door", "kind:material"],
+  }),
+  processing_services: createDataEntryMetaMap(DOOR_PROCESSING_SERVICES, {
+    dataset: "door_processing_services",
+    source: "assets/js/data/door-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:door", "kind:processing"],
+    labelKey: "label",
+  }),
+  options: createDataItemMetaMap(DOOR_OPTIONS, {
+    dataset: "door_options",
+    source: "assets/js/data/door-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:door", "kind:option"],
+  }),
+  addon_items: createDataItemMetaMap(DOOR_ADDON_ITEMS, {
+    dataset: "door_addon_items",
+    source: "assets/js/data/door-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:door", "kind:addon"],
+  }),
+});
