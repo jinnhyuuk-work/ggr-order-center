@@ -7409,6 +7409,12 @@ function renderShapeSizeInputs() {
   layoutCard.innerHTML = `
     <div class="form-section-title">레이아웃 타입 및 설치공간 설정</div>
     <p class="form-section-desc">레이아웃 타입을 선택한 뒤 각 설치공간 길이를 입력해주세요.</p>
+    <div class="input-tip">
+      <ul class="input-tip-list">
+         <li>레이아웃 타입은 코너를 사용해 연결되는 구성을 기준으로 합니다.</li>
+         <li>연결되지 않은 구성을 원하실 경우 ㅣ자로 개별 구성해주세요.</li>
+       </ul>
+    </div>
     <div class="layout-type-grid" role="group" aria-label="레이아웃 타입 선택">
       ${SYSTEM_SHAPE_KEYS.map((shapeKey) => {
         const sectionCount = getSectionCountForShape(shapeKey);
@@ -7458,6 +7464,13 @@ function renderShapeSizeInputs() {
   row.innerHTML = `
     <div class="form-section-title">천장 높이 설정</div>
     <p class="form-section-desc">최소/최대 천장 높이를 입력하고 필요한 경우 개별높이를 추가해주세요.</p>
+    <div class="input-tip">
+      <ul class="input-tip-list">
+        <li>공간에 따라 천장 높이가 크게 차이날 수 있으므로 여러 위치를 측정해주세요.</li>
+        <li>창문, 커튼박스 등으로 동일 높이 설치가 어려운 경우에는 개별 높이 포스트바를 추가해 주세요.</li>
+        <li>추가하신 개별 높이 포스트바의 갯수를 반영해 포스트바를 제작합니다.</li>
+    </ul>
+    </div>
     <div class="form-row">
       <label>가장 낮은 천장 높이 (mm)</label>
       <div class="field-col">
@@ -7476,7 +7489,6 @@ function renderShapeSizeInputs() {
       <div class="field-col">
         <button type="button" class="ghost-btn space-extra-add-btn" id="addSpaceExtra-${i}">개별높이 추가</button>
         <div id="spaceExtraList-${i}" class="field-stack"></div>
-        <div class="field-note">창문, 커튼박스 등으로 동일 높이 설치가 어려운 경우에는 구간별 개별 높이 포스트바를 추가해 주세요.</div>
         <div class="error-msg" id="spaceExtraError-${i}"></div>
       </div>
     </div>

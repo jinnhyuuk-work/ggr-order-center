@@ -59,6 +59,12 @@
             </div>
           </div>
           <div class="accordion-body" id="step2Body">
+            <div class="input-tip">
+                <ul class="input-tip-list">
+                  <li>상판의 두께는 12T가 기본이며, 이외의 두께는 ㄷ자로 가공해서 제작되는 형태입니다.</li>
+                  <li>12T 이외 상판의 가격은 상담을 통해 안내됩니다.</li>
+                </ul>
+            </div>
             <div class="form-row">
               <label>상판 타입</label>
               <div class="field-col">
@@ -178,18 +184,19 @@
               <input type="text" id="sample6_detailAddress" placeholder="상세주소" />
             </div>
           </div>
+          <div class="input-tip" aria-live="polite">
+              <ul class="input-tip-list">
+                <li id="serviceRegionHint">주소를 입력하면 서비스 권역을 안내합니다.</li>
+                <li id="servicePriceHint">서비스를 선택하면 예상 서비스비가 표시됩니다.</li>
+                <li>안내된 금액은 예상 금액으로, 정확한 배송비와 시공비는 상담 후 확인 가능합니다.</li>
+              </ul>
+          </div>
           <div class="selection-block selection-block--input">
             <div class="selection-block-head">
               <h3>배송/시공 서비스</h3>
               <span class="selection-block-badge selection-block-badge--input">입력 필요</span>
             </div>
             <p class="selection-block-hint">배송 또는 시공을 선택하면 서비스비가 자동 반영됩니다.</p>
-            <div class="input-tip" aria-live="polite">
-              <ul class="input-tip-list">
-                <li id="serviceRegionHint">주소를 입력하면 서비스 권역을 안내합니다.</li>
-                <li id="servicePriceHint">서비스를 선택하면 예상 서비스비가 표시됩니다.</li>
-              </ul>
-            </div>
             <div class="selection-service-grid grid-cards grid-cards--2 grid-cards--keep-2" role="group" aria-label="서비스 선택">
               <button type="button" class="card-base selection-service-card selection-service-card--delivery" data-fulfillment-type="delivery" aria-pressed="false">
                 <div class="material-visual selection-service-media selection-service-media--delivery" aria-hidden="true"></div>
@@ -277,6 +284,11 @@
         <div class="estimate-header">
           <h2>주문 예정 항목을 확인해주세요.</h2>
           <button type="button" class="ghost-btn accordion-toggle estimate-toggle" data-toggle-target="stepFinal" data-open-text="닫기" data-closed-text="열기" aria-expanded="false">열기</button>
+        </div>
+        <div class="input-tip">
+          <ul class="input-tip-list">
+             <li>모든 금액은 예상 금액으로 정확한 금액은 상담 후 확인 가능합니다.</li>
+          </ul>
         </div>
         <div class="estimate-body">
           <div class="table-wrapper">
