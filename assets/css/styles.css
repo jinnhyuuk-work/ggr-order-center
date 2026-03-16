@@ -2480,7 +2480,7 @@ th, td {
 }
 
 .measurement-guide-step-title {
-  margin: 0 0 4px;
+  margin: 0 0 8px;
   font-size: var(--font-size-sm);
 }
 

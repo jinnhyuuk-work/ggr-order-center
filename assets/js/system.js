@@ -140,6 +140,8 @@ import {
   SYSTEM_FULFILLMENT_POLICY,
 } from "./data/fulfillment-policy-data.js";
 import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
+import { SYSTEM_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
+import { createMeasurementGuideModalController } from "./measurement-guide-core.js";
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -980,63 +982,6 @@ const builderHistory = {
   redo: [],
   applying: false,
 };
-const MEASUREMENT_GUIDES = Object.freeze({
-  "system-layout": {
-    title: "레이아웃/설치공간 측정법",
-    intro: "레이아웃은 벽체 기준 설치 가능한 실제 길이를 기준으로 입력해주세요.",
-    sections: [
-      {
-        title: "1. 레이아웃 타입 선택",
-        items: [
-          "실제 코너 연결 형태(ㅣ/ㄱ/역ㄱ/ㄷ/ㅁ자)와 동일한 타입을 먼저 선택하세요.",
-          "연결되지 않은 분리 구간은 ㅣ자 개별 구성으로 나누어 입력하는 것이 정확합니다.",
-        ],
-      },
-      {
-        title: "2. 설치공간 길이 측정",
-        items: [
-          "각 구간은 벽체 기준 직선 거리로 mm 단위 실측하세요.",
-          "장식 몰딩/문선/배관 등 장애물이 있으면 실제 사용 가능한 길이로 입력하세요.",
-        ],
-      },
-      {
-        title: "3. 구간별 오차 확인",
-        items: [
-          "좌/중/우 또는 상/중/하처럼 여러 지점을 측정해 편차를 확인하세요.",
-          "편차가 있으면 시공 간섭이 없는 기준값으로 입력하는 것을 권장합니다.",
-        ],
-      },
-    ],
-  },
-  "system-ceiling": {
-    title: "천장 높이 측정법",
-    intro: "천장 높이는 포스트바 제작 기준이므로 최소/최대 높이를 함께 확인해야 합니다.",
-    sections: [
-      {
-        title: "1. 가장 낮은 높이",
-        items: [
-          "설치 예정 구간에서 가장 낮은 천장 지점을 찾고 바닥부터 수직으로 측정하세요.",
-          "보, 몰딩, 커튼박스 등 돌출부가 있으면 해당 지점을 기준으로 입력하세요.",
-        ],
-      },
-      {
-        title: "2. 가장 높은 높이",
-        items: [
-          "동일 구간 내 가장 높은 지점을 측정해 최대값으로 입력하세요.",
-          "최소/최대 높이 차이가 크면 설치 조건이 달라질 수 있습니다.",
-        ],
-      },
-      {
-        title: "3. 개별높이 추가",
-        items: [
-          "구간마다 높이가 다르면 개별높이 항목을 추가해 각각 입력하세요.",
-          "추가된 개별높이 수량은 포스트바 구성과 견적에 함께 반영됩니다.",
-        ],
-      },
-    ],
-  },
-});
-
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
   return String(value)
@@ -1047,228 +992,23 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function normalizeMeasurementGuideImages(guide) {
-  const rawImages = Array.isArray(guide?.images)
-    ? guide.images
-    : guide?.image?.src
-      ? [guide.image]
-      : [];
-  return rawImages
-    .filter((image) => image && image.src)
-    .map((image, index) => ({
-      src: String(image.src),
-      alt: String(image.alt || `${guide?.title || "측정 가이드"} ${index + 1}`),
-    }));
-}
-
-function normalizeMeasurementGuideSections(guide) {
-  const rawSections = Array.isArray(guide?.sections) ? guide.sections : [];
-  return rawSections.map((section, index) => ({
-    title: String(section?.title || `${index + 1}. 안내`),
-    items: Array.isArray(section?.items)
-      ? section.items.map((item) => String(item || "")).filter(Boolean)
-      : [],
-  }));
-}
-
-function resolveMeasurementGuideStepItem(list, index) {
-  if (!Array.isArray(list) || list.length === 0) return null;
-  const safeIndex = Math.max(0, Math.min(list.length - 1, Number(index) || 0));
-  return list[safeIndex];
-}
-
-function buildMeasurementGuideStepItemsHtml(section) {
-  const items = Array.isArray(section?.items) ? section.items.slice(0, 3) : [];
-  if (!items.length) return "";
-  const listItems = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  return `<ul class="measurement-guide-step-list">${listItems}</ul>`;
-}
-
-function buildMeasurementGuideMediaHtml(images = [], stepSections = "", stepCount = 0) {
-  const totalSlides = Math.max(1, Number(stepCount) || images.length || 1);
-  const hasImages = images.length > 0;
-  const slides = Array.from({ length: totalSlides }, (_, index) => {
-    const image = resolveMeasurementGuideStepItem(images, index);
-    const isActive = index === 0;
-    const mediaNode =
-      hasImages && image?.src
-        ? `
-          <img
-            class="measurement-guide-media-image"
-            src="${escapeHtml(image.src)}"
-            alt="${escapeHtml(image?.alt || `측정 가이드 ${index + 1}`)}"
-            loading="lazy"
-            decoding="async"
-          />
-        `
-        : `<div class="measurement-guide-media-placeholder">측정 이미지 영역</div>`;
-    return `
-      <figure
-        class="measurement-guide-slide${isActive ? " is-active" : ""}"
-        data-measurement-slide
-        data-slide-index="${index}"
-        aria-hidden="${isActive ? "false" : "true"}"
-      >
-        ${mediaNode}
-      </figure>
-    `;
-  }).join("");
-  const controls =
-    totalSlides > 1
-      ? `
-        <div class="measurement-guide-carousel-controls">
-          <button type="button" class="measurement-guide-carousel-btn" data-measurement-carousel-prev aria-label="이전 이미지">
-            &lt;
-          </button>
-          <button type="button" class="measurement-guide-carousel-btn" data-measurement-carousel-next aria-label="다음 이미지">
-            &gt;
-          </button>
-        </div>
-        <div class="measurement-guide-carousel-status">
-          <div class="measurement-guide-carousel-dots" role="tablist" aria-label="측정 가이드 이미지 선택">
-            ${Array.from({ length: totalSlides }, (_, index) => {
-              const isActive = index === 0;
-              return `
-                <button
-                  type="button"
-                  class="measurement-guide-carousel-dot${isActive ? " is-active" : ""}"
-                  data-measurement-carousel-dot
-                  data-slide-to="${index}"
-                  aria-label="${index + 1}번 이미지"
-                  aria-pressed="${isActive ? "true" : "false"}"
-                >
-                  ${index + 1}
-                </button>
-              `;
-            }).join("")}
-          </div>
-          <span class="measurement-guide-carousel-counter" data-measurement-carousel-counter aria-live="polite">
-            1 / ${totalSlides}
-          </span>
-        </div>
-      `
-      : "";
-  return `
-    <figure class="measurement-guide-media" aria-label="측정 이미지 캐러셀" data-measurement-guide-root>
-      <div class="measurement-guide-carousel" data-measurement-carousel data-current-index="0" data-total-slides="${totalSlides}">
-        <div class="measurement-guide-slide-frame">
-          <div class="measurement-guide-carousel-slides">
-            ${slides}
-          </div>
-          ${controls}
-        </div>
-        ${stepSections}
-      </div>
-    </figure>
-  `;
-}
-
-function buildMeasurementGuideStepsHtml(sections = [], stepCount = 0) {
-  if (!sections.length) return "";
-  const totalSteps = Math.max(1, Number(stepCount) || sections.length);
-  const steps = Array.from({ length: totalSteps }, (_, index) => {
-    const section = resolveMeasurementGuideStepItem(sections, index);
-    const isActive = index === 0;
-    return `
-      <section
-        class="measurement-guide-step${isActive ? " is-active" : ""}"
-        data-measurement-step
-        data-step-index="${index}"
-        aria-hidden="${isActive ? "false" : "true"}"
-      >
-        <h4 class="measurement-guide-step-title">${escapeHtml(section?.title || `${index + 1}. 안내`)}</h4>
-        ${buildMeasurementGuideStepItemsHtml(section)}
-      </section>
-    `;
-  }).join("");
-  return `<div class="measurement-guide-steps">${steps}</div>`;
-}
-
-function setMeasurementGuideCarouselIndex(carouselEl, nextIndex) {
-  if (!carouselEl) return;
-  const slides = Array.from(carouselEl.querySelectorAll("[data-measurement-slide]"));
-  const total = slides.length;
-  if (!total) return;
-  const normalizedIndex = ((Number(nextIndex) % total) + total) % total;
-  carouselEl.dataset.currentIndex = String(normalizedIndex);
-  slides.forEach((slideEl, index) => {
-    const isActive = index === normalizedIndex;
-    slideEl.classList.toggle("is-active", isActive);
-    slideEl.setAttribute("aria-hidden", isActive ? "false" : "true");
-  });
-  const counterEl = carouselEl.querySelector("[data-measurement-carousel-counter]");
-  if (counterEl) {
-    counterEl.textContent = `${normalizedIndex + 1} / ${total}`;
-  }
-  carouselEl.querySelectorAll("[data-measurement-carousel-dot]").forEach((dotEl, index) => {
-    const isActive = index === normalizedIndex;
-    dotEl.classList.toggle("is-active", isActive);
-    dotEl.setAttribute("aria-pressed", isActive ? "true" : "false");
-  });
-  const stepRoot = carouselEl.closest("[data-measurement-guide-root]");
-  if (stepRoot) {
-    stepRoot.querySelectorAll("[data-measurement-step]").forEach((stepEl, index) => {
-      const isActive = index === normalizedIndex;
-      stepEl.classList.toggle("is-active", isActive);
-      stepEl.setAttribute("aria-hidden", isActive ? "false" : "true");
-    });
-  }
-}
-
-function moveMeasurementGuideCarousel(carouselEl, delta) {
-  const currentIndex = Number(carouselEl?.dataset?.currentIndex || 0);
-  setMeasurementGuideCarouselIndex(carouselEl, currentIndex + Number(delta || 0));
-}
+const measurementGuideController = createMeasurementGuideModalController({
+  guides: SYSTEM_MEASUREMENT_GUIDES,
+  openModal,
+  closeModal,
+  escapeHtml,
+});
 
 function handleMeasurementGuideCarouselClick(event) {
-  const target = event.target instanceof Element ? event.target : null;
-  if (!target) return;
-  const prevBtn = target.closest("[data-measurement-carousel-prev]");
-  if (prevBtn) {
-    moveMeasurementGuideCarousel(prevBtn.closest("[data-measurement-carousel]"), -1);
-    return;
-  }
-  const nextBtn = target.closest("[data-measurement-carousel-next]");
-  if (nextBtn) {
-    moveMeasurementGuideCarousel(nextBtn.closest("[data-measurement-carousel]"), 1);
-    return;
-  }
-  const dotBtn = target.closest("[data-measurement-carousel-dot]");
-  if (dotBtn) {
-    const nextIndex = Number(dotBtn.dataset.slideTo || 0);
-    setMeasurementGuideCarouselIndex(dotBtn.closest("[data-measurement-carousel]"), nextIndex);
-  }
-}
-
-function buildMeasurementGuideBodyHtml(guide) {
-  const intro = guide?.intro
-    ? `<p class="measurement-guide-intro">${escapeHtml(guide.intro)}</p>`
-    : "";
-  const images = normalizeMeasurementGuideImages(guide);
-  const sections = normalizeMeasurementGuideSections(guide);
-  const stepCount = Math.max(images.length, sections.length);
-  const stepSections = buildMeasurementGuideStepsHtml(sections, stepCount);
-  const media = buildMeasurementGuideMediaHtml(images, stepSections, stepCount);
-  return `${intro}${media}`;
+  measurementGuideController.handleBodyClick(event);
 }
 
 function openMeasurementGuideModal(guideKey) {
-  const guide = MEASUREMENT_GUIDES[String(guideKey || "")];
-  if (!guide) return;
-  const titleEl = $("#measurementGuideModalTitle");
-  const bodyEl = $("#measurementGuideModalBody");
-  if (titleEl) titleEl.textContent = guide.title || "측정 가이드";
-  if (bodyEl) {
-    bodyEl.innerHTML = buildMeasurementGuideBodyHtml(guide);
-    bodyEl
-      .querySelectorAll("[data-measurement-carousel]")
-      .forEach((carouselEl) => setMeasurementGuideCarouselIndex(carouselEl, 0));
-  }
-  openModal("#measurementGuideModal", { focusTarget: "#measurementGuideModalTitle" });
+  measurementGuideController.open(guideKey);
 }
 
 function closeMeasurementGuideModal() {
-  closeModal("#measurementGuideModal");
+  measurementGuideController.close();
 }
 
 function formatColumnSize(column) {
