@@ -1020,6 +1020,12 @@ let currentPhase = 1;
 let sendingEmail = false;
 let orderCompleted = false;
 let stickyOffsetTimer = null;
+let previewResizeRafTimer = null;
+let previewFrameResizeObserver = null;
+let previewFrameLastSize = { width: 0, height: 0 };
+let previewAddButtonPlacementHints = new Map();
+let previewAddTooltipEl = null;
+let previewAddTooltipAnchorEl = null;
 let activeShelfAddonId = null;
 let activeCornerOptionId = null;
 let activeBayOptionId = null;
@@ -5123,6 +5129,7 @@ function applyPreviewAddButtonState(btn, { enabled = true, reason = "" } = {}) {
     btn.classList.remove("btn-disabled");
     delete btn.dataset.disabledReason;
     btn.removeAttribute("aria-disabled");
+    if (previewAddTooltipAnchorEl === btn) hidePreviewAddTooltip();
     return;
   }
   btn.disabled = true;
@@ -5131,10 +5138,91 @@ function applyPreviewAddButtonState(btn, { enabled = true, reason = "" } = {}) {
   if (!reason) {
     delete btn.dataset.disabledReason;
     btn.removeAttribute("aria-disabled");
+    if (previewAddTooltipAnchorEl === btn) hidePreviewAddTooltip();
     return;
   }
   btn.dataset.disabledReason = reason;
   btn.setAttribute("aria-disabled", "true");
+}
+
+function ensurePreviewAddTooltipElement() {
+  if (previewAddTooltipEl && previewAddTooltipEl.isConnected) return previewAddTooltipEl;
+  const el = document.createElement("div");
+  el.className = "preview-add-tooltip";
+  el.setAttribute("role", "tooltip");
+  el.setAttribute("aria-hidden", "true");
+  el.style.display = "none";
+  document.body.appendChild(el);
+  previewAddTooltipEl = el;
+  return el;
+}
+
+function hidePreviewAddTooltip() {
+  if (!previewAddTooltipEl) return;
+  previewAddTooltipEl.style.display = "none";
+  previewAddTooltipEl.textContent = "";
+  previewAddTooltipEl.setAttribute("aria-hidden", "true");
+  delete previewAddTooltipEl.dataset.placement;
+  previewAddTooltipAnchorEl = null;
+}
+
+function showPreviewAddTooltip(anchorEl, message = "") {
+  if (!(anchorEl instanceof Element)) return;
+  const text = String(message || "").trim();
+  if (!text) {
+    hidePreviewAddTooltip();
+    return;
+  }
+  const tooltipEl = ensurePreviewAddTooltipElement();
+  tooltipEl.textContent = text;
+  tooltipEl.style.display = "block";
+  tooltipEl.setAttribute("aria-hidden", "false");
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const tooltipRect = tooltipEl.getBoundingClientRect();
+  const viewportW = Math.max(
+    0,
+    Number(window.innerWidth || 0) || Number(document.documentElement?.clientWidth || 0)
+  );
+  const viewportH = Math.max(
+    0,
+    Number(window.innerHeight || 0) || Number(document.documentElement?.clientHeight || 0)
+  );
+  const gutter = 8;
+  const gap = 8;
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, Number(value || 0)));
+  let left = anchorRect.left + anchorRect.width / 2 - tooltipRect.width / 2;
+  left = clamp(left, gutter, Math.max(gutter, viewportW - tooltipRect.width - gutter));
+  let top = anchorRect.bottom + gap;
+  let placement = "bottom";
+  if (top + tooltipRect.height > viewportH - gutter) {
+    top = anchorRect.top - tooltipRect.height - gap;
+    placement = "top";
+  }
+  if (top < gutter) {
+    top = clamp(
+      anchorRect.bottom + gap,
+      gutter,
+      Math.max(gutter, viewportH - tooltipRect.height - gutter)
+    );
+    placement = "bottom";
+  }
+  tooltipEl.style.left = `${Math.round(left)}px`;
+  tooltipEl.style.top = `${Math.round(top)}px`;
+  tooltipEl.dataset.placement = placement;
+  previewAddTooltipAnchorEl = anchorEl;
+}
+
+function getPreviewAddButtonPlacementKey(point = null) {
+  if (!point || typeof point !== "object") return "";
+  const endpointId = String(point.endpointId || "").trim();
+  if (endpointId) return `endpoint:${endpointId}`;
+  const cornerId = String(point.cornerId || "").trim();
+  const sideIndex = Number(point.sideIndex);
+  const attachSideIndex = Number(point.attachSideIndex);
+  const attachAtStart = Boolean(point.attachAtStart);
+  if (!Number.isFinite(sideIndex)) return "";
+  const sideToken = Number.isFinite(attachSideIndex) ? attachSideIndex : sideIndex;
+  return `fallback:${sideIndex}:${sideToken}:${attachAtStart ? "1" : "0"}:${cornerId}`;
 }
 
 function setPreviewRenderTransform(next) {
@@ -5144,6 +5232,42 @@ function setPreviewRenderTransform(next) {
     ty: Number(next?.ty || 0),
     depthMm: Number(next?.depthMm || 400),
   };
+}
+
+function requestPreviewFrameRerender() {
+  if (previewResizeRafTimer) cancelAnimationFrame(previewResizeRafTimer);
+  previewResizeRafTimer = requestAnimationFrame(() => {
+    previewResizeRafTimer = null;
+    hidePreviewAddTooltip();
+    const frame = $("#systemPreviewFrame");
+    if (!frame) return;
+    const rect = frame.getBoundingClientRect();
+    const width = Math.round(Number(rect.width || 0));
+    const height = Math.round(Number(rect.height || 0));
+    if (width <= 0 || height <= 0) return;
+    if (previewFrameLastSize.width === width && previewFrameLastSize.height === height) return;
+    previewFrameLastSize = { width, height };
+    updatePreview();
+  });
+}
+
+function bindPreviewFrameResizeSync() {
+  const frame = $("#systemPreviewFrame");
+  if (!frame) return;
+  const rect = frame.getBoundingClientRect();
+  previewFrameLastSize = {
+    width: Math.round(Number(rect.width || 0)),
+    height: Math.round(Number(rect.height || 0)),
+  };
+  if (previewFrameResizeObserver) {
+    previewFrameResizeObserver.disconnect();
+    previewFrameResizeObserver = null;
+  }
+  if (typeof ResizeObserver !== "function") return;
+  previewFrameResizeObserver = new ResizeObserver(() => {
+    requestPreviewFrameRerender();
+  });
+  previewFrameResizeObserver.observe(frame);
 }
 
 function clearPreviewGhost() {
@@ -5254,10 +5378,31 @@ function bindAddButtonPreviewInteractions(btn, endpoint, canAddFromPreview) {
     showPreviewGhostForEndpoint(endpoint, preferredType);
   };
   const hide = () => clearPreviewGhost();
-  btn.addEventListener("mouseenter", show);
-  btn.addEventListener("focus", show);
-  btn.addEventListener("mouseleave", hide);
-  btn.addEventListener("blur", hide);
+  const showDisabledReason = () => {
+    if (!btn.disabled) return;
+    const reason = String(btn.dataset.disabledReason || "").trim();
+    if (!reason) return;
+    showPreviewAddTooltip(btn, reason);
+  };
+  const hideDisabledReason = () => {
+    if (previewAddTooltipAnchorEl === btn) hidePreviewAddTooltip();
+  };
+  btn.addEventListener("mouseenter", () => {
+    show();
+    showDisabledReason();
+  });
+  btn.addEventListener("focus", () => {
+    show();
+    showDisabledReason();
+  });
+  btn.addEventListener("mouseleave", () => {
+    hide();
+    hideDisabledReason();
+  });
+  btn.addEventListener("blur", () => {
+    hide();
+    hideDisabledReason();
+  });
 }
 
 function cloneBuilderStateSnapshot() {
@@ -5870,12 +6015,27 @@ function updatePreview() {
   const shelvesEl = $("#systemPreviewShelves");
   const textEl = $("#systemPreviewText");
   if (!frame || !shelvesEl || !textEl) return;
+  hidePreviewAddTooltip();
   const frameRect = frame.getBoundingClientRect();
   const frameW = frameRect.width || 260;
   const frameH = frameRect.height || 220;
+  previewFrameLastSize = {
+    width: Math.round(Number(frameW || 0)),
+    height: Math.round(Number(frameH || 0)),
+  };
   const shortSide = Math.min(frameW, frameH);
   const uiScale = Math.max(0.8, Math.min(1.15, shortSide / 520));
-  const addBtnSize = Math.round(26 * uiScale);
+  const coarsePointer =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches;
+  const addBtnMinSize = coarsePointer ? 40 : 22;
+  const addBtnMaxSize = coarsePointer ? 44 : 32;
+  const addBtnBaseSize = coarsePointer ? 40 : 28;
+  const addBtnSize = Math.max(
+    addBtnMinSize,
+    Math.min(addBtnMaxSize, Math.round(addBtnBaseSize * uiScale))
+  );
   const dimFontSize = Math.round(11 * uiScale);
   const dimPaddingX = Math.max(4, Math.round(6 * uiScale));
   const dimPaddingY = Math.max(1, Math.round(2 * uiScale));
@@ -5904,6 +6064,7 @@ function updatePreview() {
     textEl.textContent = `${buildLayoutPreviewSummaryText(input)} · 옵션 선택 후 모듈을 추가하면 미리보기가 표시됩니다.`;
     shelvesEl.innerHTML = "";
     clearPreviewGhost();
+    previewAddButtonPlacementHints = new Map();
     if (!bays.length) {
       previewOpenEndpoints = new Map();
       const rootEndpoint = buildRootEndpoint();
@@ -6399,9 +6560,9 @@ function updatePreview() {
   const rangeY = Math.max(maxY - minY, 1);
   // Keep a dedicated safe area at the top so the preview never collides with
   // the toggle/undo-redo controls, and reduce initial module scale slightly.
-  const sidePaddingPx = Math.max(22, Math.round(addBtnSize * 1.1));
-  const topSafeAreaPx = Math.max(78, Math.round(addBtnSize * 2.8));
-  const bottomPaddingPx = Math.max(24, Math.round(addBtnSize * 1.0));
+  const sidePaddingPx = Math.max(22, Math.min(38, Math.round(addBtnSize * 1.1)));
+  const topSafeAreaPx = Math.max(72, Math.min(104, Math.round(addBtnSize * 2.4)));
+  const bottomPaddingPx = Math.max(22, Math.min(42, Math.round(addBtnSize * 1.0)));
   const availableW = Math.max(1, frameW - sidePaddingPx * 2);
   const availableH = Math.max(1, frameH - topSafeAreaPx - bottomPaddingPx);
   const fitScaleX = availableW / rangeX;
@@ -6806,20 +6967,52 @@ function updatePreview() {
   }
 
   const placedAddBtnBoxes = [];
+  const nextPlacementHints = new Map();
   const addBtnRadius = addBtnSize / 2;
   const isSingleStraightBayLayout =
     edges.length === 1 && String(edges[0]?.type || "") === "bay" && addButtons.length === 2;
   const framePad = Math.max(8, addBtnRadius + 2);
+  const minBtnX = framePad;
+  const maxBtnX = Math.max(framePad, frameW - framePad);
+  const minBtnY = framePad;
+  const maxBtnY = Math.max(framePad, frameH - framePad);
+  const clampToFrame = (value, min, max) => Math.min(max, Math.max(min, Number(value || 0)));
   const rectOverlapsCircle = (rect, cx, cy, r) =>
     cx + r > rect.left && cx - r < rect.right && cy + r > rect.top && cy - r < rect.bottom;
-  const isBlockedPoint = (x, y, r) => {
+  const isBlockedPointForPlacement = (x, y, r, { ignoreColumns = false } = {}) => {
     if (x < framePad || x > frameW - framePad || y < framePad || y > frameH - framePad) {
       return true;
     }
     if (shelfBoxesPx.some((rect) => rectOverlapsCircle(rect, x, y, r))) return true;
-    if (columnBoxesPx.some((rect) => rectOverlapsCircle(rect, x, y, r))) return true;
+    if (!ignoreColumns && columnBoxesPx.some((rect) => rectOverlapsCircle(rect, x, y, r))) return true;
     if (placedAddBtnBoxes.some((rect) => rectOverlapsCircle(rect, x, y, r))) return true;
     return false;
+  };
+  const fallbackAngles = [0, 45, 90, 135, 180, 225, 270, 315].map(
+    (deg) => (deg * Math.PI) / 180
+  );
+  const findNearestAvailablePoint = (originX, originY, r, { ignoreColumns = false } = {}) => {
+    const baseX = clampToFrame(originX, minBtnX, maxBtnX);
+    const baseY = clampToFrame(originY, minBtnY, maxBtnY);
+    if (!isBlockedPointForPlacement(baseX, baseY, r, { ignoreColumns })) return { x: baseX, y: baseY };
+    const radialSteps = [
+      Math.max(8, addBtnSize * 0.55),
+      Math.max(14, addBtnSize * 1.05),
+      Math.max(20, addBtnSize * 1.65),
+      Math.max(26, addBtnSize * 2.25),
+    ];
+    for (let i = 0; i < radialSteps.length; i += 1) {
+      const radius = radialSteps[i];
+      for (let j = 0; j < fallbackAngles.length; j += 1) {
+        const angle = fallbackAngles[j];
+        const candidateX = clampToFrame(baseX + Math.cos(angle) * radius, minBtnX, maxBtnX);
+        const candidateY = clampToFrame(baseY + Math.sin(angle) * radius, minBtnY, maxBtnY);
+        if (!isBlockedPointForPlacement(candidateX, candidateY, r, { ignoreColumns })) {
+          return { x: candidateX, y: candidateY };
+        }
+      }
+    }
+    return { x: baseX, y: baseY };
   };
 
   addButtons.forEach((point) => {
@@ -6853,44 +7046,119 @@ function updatePreview() {
     const tangentY = inwardX / inwardLen;
     const columnCenterPxX = columnCenterX * scale + tx;
     const columnCenterPxY = columnCenterY * scale + ty;
-    const offsetPx = Math.max(columnDepthPx * 0.5 + addBtnSize * 0.65, 20);
     const extendDir = normalizeDirection(point.extendDx, point.extendDy);
     const singleBayPreferred = isSingleStraightBayLayout
       ? { x: Number(extendDir.dx || 0), y: Number(extendDir.dy || 0) }
       : null;
+    const isLinearSingleBayPlacement = Boolean(
+      isSingleStraightBayLayout &&
+        singleBayPreferred &&
+        (Math.abs(Number(singleBayPreferred.x || 0)) >= 0.5 ||
+          Math.abs(Number(singleBayPreferred.y || 0)) >= 0.5)
+    );
+    const ignoreColumnOverlap = isLinearSingleBayPlacement;
+    const placementKey = getPreviewAddButtonPlacementKey(point);
+    const previousHint = placementKey ? previewAddButtonPlacementHints.get(placementKey) : null;
     const candidateVectors = [];
-    if (singleBayPreferred) {
-      candidateVectors.push(singleBayPreferred);
-      if (Math.abs(singleBayPreferred.x) >= Math.abs(singleBayPreferred.y)) {
-        candidateVectors.push({ x: singleBayPreferred.x, y: 0, mul: 1.2 });
-      } else {
-        candidateVectors.push({ x: 0, y: singleBayPreferred.y, mul: 1.2 });
+    if (previousHint && !isLinearSingleBayPlacement) {
+      const hintDx = Number(previousHint.dx || 0);
+      const hintDy = Number(previousHint.dy || 0);
+      const hintLen = Math.hypot(hintDx, hintDy);
+      if (hintLen > 0.0001) {
+        candidateVectors.push({
+          x: hintDx / hintLen,
+          y: hintDy / hintLen,
+          mul: Number(previousHint.mul || 1),
+        });
       }
     }
-    candidateVectors.push(
-      { x: outwardX, y: outwardY },
-      { x: tangentX, y: tangentY },
-      { x: -tangentX, y: -tangentY },
-      { x: outwardX, y: outwardY, mul: 1.35 },
-      { x: inwardX / inwardLen, y: inwardY / inwardLen }
+    if (isLinearSingleBayPlacement && singleBayPreferred) {
+      candidateVectors.push(
+        { x: singleBayPreferred.x, y: singleBayPreferred.y, mul: 1 },
+        { x: singleBayPreferred.x, y: singleBayPreferred.y, mul: 1.25 },
+        { x: singleBayPreferred.x, y: singleBayPreferred.y, mul: 0.82 },
+        { x: singleBayPreferred.x, y: singleBayPreferred.y, mul: 1.48 }
+      );
+    } else {
+      if (singleBayPreferred) {
+        candidateVectors.push(singleBayPreferred);
+        if (Math.abs(singleBayPreferred.x) >= Math.abs(singleBayPreferred.y)) {
+          candidateVectors.push({ x: singleBayPreferred.x, y: 0, mul: 1.2 });
+        } else {
+          candidateVectors.push({ x: 0, y: singleBayPreferred.y, mul: 1.2 });
+        }
+      }
+      candidateVectors.push(
+        { x: outwardX, y: outwardY },
+        { x: tangentX, y: tangentY },
+        { x: -tangentX, y: -tangentY },
+        { x: outwardX, y: outwardY, mul: 1.35 },
+        { x: inwardX / inwardLen, y: inwardY / inwardLen }
+      );
+    }
+    const offsetPx = isLinearSingleBayPlacement
+      ? Math.max(addBtnRadius + Math.round(addBtnSize * 0.22), 16)
+      : Math.max(columnDepthPx * 0.5 + addBtnSize * 0.65, 20);
+    const toClampedPoint = (x, y) => ({
+      x: clampToFrame(x, minBtnX, maxBtnX),
+      y: clampToFrame(y, minBtnY, maxBtnY),
+    });
+    const initialPoint = toClampedPoint(
+      columnCenterPxX + (singleBayPreferred?.x ?? outwardX) * offsetPx,
+      columnCenterPxY + (singleBayPreferred?.y ?? outwardY) * offsetPx
     );
-    let btnX = columnCenterPxX + (singleBayPreferred?.x ?? outwardX) * offsetPx;
-    let btnY = columnCenterPxY + (singleBayPreferred?.y ?? outwardY) * offsetPx;
+    let btnX = initialPoint.x;
+    let btnY = initialPoint.y;
+    let placed = !isBlockedPointForPlacement(btnX, btnY, addBtnRadius, {
+      ignoreColumns: ignoreColumnOverlap,
+    });
     for (let i = 0; i < candidateVectors.length; i += 1) {
+      if (placed) break;
       const c = candidateVectors[i];
       const mul = Number(c.mul || 1);
-      const cx = columnCenterPxX + Number(c.x || 0) * offsetPx * mul;
-      const cy = columnCenterPxY + Number(c.y || 0) * offsetPx * mul;
-      if (!isBlockedPoint(cx, cy, addBtnRadius)) {
-        btnX = cx;
-        btnY = cy;
+      const candidatePoint = toClampedPoint(
+        columnCenterPxX + Number(c.x || 0) * offsetPx * mul,
+        columnCenterPxY + Number(c.y || 0) * offsetPx * mul
+      );
+      if (
+        !isBlockedPointForPlacement(candidatePoint.x, candidatePoint.y, addBtnRadius, {
+          ignoreColumns: ignoreColumnOverlap,
+        })
+      ) {
+        btnX = candidatePoint.x;
+        btnY = candidatePoint.y;
+        placed = true;
         break;
       }
+    }
+    if (
+      isBlockedPointForPlacement(btnX, btnY, addBtnRadius, {
+        ignoreColumns: ignoreColumnOverlap,
+      })
+    ) {
+      const fallbackPoint = findNearestAvailablePoint(btnX, btnY, addBtnRadius, {
+        ignoreColumns: ignoreColumnOverlap,
+      });
+      btnX = fallbackPoint.x;
+      btnY = fallbackPoint.y;
     }
     btn.style.left = `${btnX}px`;
     btn.style.top = `${btnY}px`;
     shelvesEl.appendChild(btn);
     bindAddButtonPreviewInteractions(btn, point, canAddFromPreview);
+    if (placementKey && !isLinearSingleBayPlacement) {
+      const relX = btnX - columnCenterPxX;
+      const relY = btnY - columnCenterPxY;
+      const relLen = Math.hypot(relX, relY);
+      if (relLen > 0.0001) {
+        const safeOffset = Math.max(1, Number(offsetPx || 0));
+        nextPlacementHints.set(placementKey, {
+          dx: relX / relLen,
+          dy: relY / relLen,
+          mul: Math.min(2.6, Math.max(0.45, relLen / safeOffset)),
+        });
+      }
+    }
     placedAddBtnBoxes.push({
       left: btnX - addBtnRadius,
       right: btnX + addBtnRadius,
@@ -6898,6 +7166,7 @@ function updatePreview() {
       bottom: btnY + addBtnRadius,
     });
   });
+  previewAddButtonPlacementHints = nextPlacementHints;
 }
 
 function openPreviewAddTypeModal(
@@ -10141,6 +10410,7 @@ function init() {
     updateBayAddonAvailability();
     updateStepVisibility();
     updateBuilderHistoryButtons();
+    bindPreviewFrameResizeSync();
     requestStickyOffsetUpdate();
   } catch (err) {
     console.error("init render failed", err);
@@ -10435,7 +10705,11 @@ function init() {
   setFulfillmentType(getFulfillmentType());
   updateServiceStepUI();
   updateSendButtonEnabled();
-  window.addEventListener("resize", requestStickyOffsetUpdate);
+  window.addEventListener("scroll", hidePreviewAddTooltip, { passive: true });
+  window.addEventListener("resize", () => {
+    requestStickyOffsetUpdate();
+    requestPreviewFrameRerender();
+  });
 }
 
 if (document.readyState === "loading") {
