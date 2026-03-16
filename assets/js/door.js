@@ -453,6 +453,64 @@ const SIDE_THICKNESS_LABELS = Object.freeze(
     return acc;
   }, {})
 );
+const MEASUREMENT_GUIDES = Object.freeze({
+  "door-size": {
+    title: "도어 사이즈 측정법",
+    intro: "도어는 실제 설치될 문짝 외곽 기준으로 mm 단위 실측이 필요합니다.",
+    sections: [
+      {
+        title: "1. 폭(W) 측정",
+        items: [
+          "도어 정면 기준으로 좌우 외곽 끝점까지 직선으로 재세요.",
+          "상/중/하 3지점을 재고, 오차가 있으면 가장 작은 값을 입력하세요.",
+        ],
+      },
+      {
+        title: "2. 길이(H) 측정",
+        items: [
+          "상하 외곽 끝점까지 좌/중/우 3지점을 측정하세요.",
+          "바닥/천장 기울기가 있으면 간섭이 없는 최소값을 기준으로 입력하세요.",
+        ],
+      },
+      {
+        title: "3. 두께/측면두께 확인",
+        items: [
+          "도어 두께는 선택한 도어 자재 두께(예: 18T)와 동일하게 맞추세요.",
+          "측면 두께는 경첩이 고정될 가구 측판 두께를 기준으로 선택하세요.",
+        ],
+      },
+    ],
+    note: "현장 오차를 줄이기 위해 줄자를 밀착한 상태에서 mm 단위로 입력해주세요.",
+  },
+  "door-hinge": {
+    title: "경첩 위치 측정법",
+    intro: "경첩 위치는 문이 열리는 방향보다 경첩 고정 방향 기준으로 잡는 것이 중요합니다.",
+    sections: [
+      {
+        title: "1. 경첩 방향 먼저 선택",
+        items: [
+          "좌측/우측 중 경첩이 고정될 측면을 먼저 정하세요.",
+          "방향이 바뀌면 모든 위치 기준점이 함께 바뀝니다.",
+        ],
+      },
+      {
+        title: "2. 상/하단 기준거리 입력",
+        items: [
+          "도어 상단/하단에서 경첩 중심까지 거리를 동일 기준으로 측정하세요.",
+          "자동 계산값을 기본으로 두고 기존 타공이 있으면 그 위치에 맞춰 조정하세요.",
+        ],
+      },
+      {
+        title: "3. 간섭 여부 확인",
+        items: [
+          "선반/서랍 간섭이 없는지 도어 개폐 방향에서 확인하세요.",
+          "간섭 우려가 있으면 경첩 위치를 조금 이동해 여유를 확보하세요.",
+        ],
+      },
+    ],
+    note: "최종 확정 전에는 실제 가구 내부 구조와 경첩 방향을 다시 한번 확인해주세요.",
+  },
+});
 
 function normalizeDoorType(value) {
   const key = String(value || "").trim().toLowerCase();
@@ -1093,6 +1151,43 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function buildMeasurementGuideBodyHtml(guide) {
+  const intro = guide?.intro
+    ? `<p class="measurement-guide-intro">${escapeHtml(guide.intro)}</p>`
+    : "";
+  const sections = (guide?.sections || [])
+    .map((section) => {
+      const items = (section?.items || [])
+        .map((item) => `<li>${escapeHtml(item)}</li>`)
+        .join("");
+      return `
+        <section class="measurement-guide-section">
+          <h4>${escapeHtml(section?.title || "")}</h4>
+          <ul class="measurement-guide-list">${items}</ul>
+        </section>
+      `;
+    })
+    .join("");
+  const note = guide?.note
+    ? `<p class="measurement-guide-note">${escapeHtml(guide.note)}</p>`
+    : "";
+  return `${intro}${sections}${note}`;
+}
+
+function openMeasurementGuideModal(guideKey) {
+  const guide = MEASUREMENT_GUIDES[String(guideKey || "")];
+  if (!guide) return;
+  const titleEl = $("#measurementGuideModalTitle");
+  const bodyEl = $("#measurementGuideModalBody");
+  if (titleEl) titleEl.textContent = guide.title || "측정 가이드";
+  if (bodyEl) bodyEl.innerHTML = buildMeasurementGuideBodyHtml(guide);
+  openModal("#measurementGuideModal", { focusTarget: "#measurementGuideModalTitle" });
+}
+
+function closeMeasurementGuideModal() {
+  closeModal("#measurementGuideModal");
 }
 
 function formatHingeDetail(detail, { short = false, includeNote = false } = {}) {
@@ -2640,6 +2735,8 @@ function init() {
 
   $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
   $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
+  $("#closeMeasurementGuideModal")?.addEventListener("click", closeMeasurementGuideModal);
+  $("#measurementGuideModalBackdrop")?.addEventListener("click", closeMeasurementGuideModal);
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
 
@@ -2738,6 +2835,12 @@ function init() {
       updateDoorPreviewSummary();
       updateAddItemState();
     }
+  });
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const guideBtn = target?.closest("[data-measurement-guide]");
+    if (!guideBtn) return;
+    openMeasurementGuideModal(guideBtn.dataset.measurementGuide || "");
   });
 }
 

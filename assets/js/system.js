@@ -980,6 +980,64 @@ const builderHistory = {
   redo: [],
   applying: false,
 };
+const MEASUREMENT_GUIDES = Object.freeze({
+  "system-layout": {
+    title: "레이아웃/설치공간 측정법",
+    intro: "레이아웃은 벽체 기준 설치 가능한 실제 길이를 기준으로 입력해주세요.",
+    sections: [
+      {
+        title: "1. 레이아웃 타입 선택",
+        items: [
+          "실제 코너 연결 형태(ㅣ/ㄱ/역ㄱ/ㄷ/ㅁ자)와 동일한 타입을 먼저 선택하세요.",
+          "연결되지 않은 분리 구간은 ㅣ자 개별 구성으로 나누어 입력하는 것이 정확합니다.",
+        ],
+      },
+      {
+        title: "2. 설치공간 길이 측정",
+        items: [
+          "각 구간은 벽체 기준 직선 거리로 mm 단위 실측하세요.",
+          "장식 몰딩/문선/배관 등 장애물이 있으면 실제 사용 가능한 길이로 입력하세요.",
+        ],
+      },
+      {
+        title: "3. 구간별 오차 확인",
+        items: [
+          "좌/중/우 또는 상/중/하처럼 여러 지점을 측정해 편차를 확인하세요.",
+          "편차가 있으면 시공 간섭이 없는 기준값으로 입력하는 것을 권장합니다.",
+        ],
+      },
+    ],
+    note: "입력한 길이는 모듈 배치 가능 여부와 상담 안내 판정에 직접 반영됩니다.",
+  },
+  "system-ceiling": {
+    title: "천장 높이 측정법",
+    intro: "천장 높이는 포스트바 제작 기준이므로 최소/최대 높이를 함께 확인해야 합니다.",
+    sections: [
+      {
+        title: "1. 가장 낮은 높이",
+        items: [
+          "설치 예정 구간에서 가장 낮은 천장 지점을 찾고 바닥부터 수직으로 측정하세요.",
+          "보, 몰딩, 커튼박스 등 돌출부가 있으면 해당 지점을 기준으로 입력하세요.",
+        ],
+      },
+      {
+        title: "2. 가장 높은 높이",
+        items: [
+          "동일 구간 내 가장 높은 지점을 측정해 최대값으로 입력하세요.",
+          "최소/최대 높이 차이가 크면 설치 조건이 달라질 수 있습니다.",
+        ],
+      },
+      {
+        title: "3. 개별높이 추가",
+        items: [
+          "구간마다 높이가 다르면 개별높이 항목을 추가해 각각 입력하세요.",
+          "추가된 개별높이 수량은 포스트바 구성과 견적에 함께 반영됩니다.",
+        ],
+      },
+    ],
+    note: "레이저 거리계 또는 수직 수평이 맞는 줄자를 사용하면 오차를 줄일 수 있습니다.",
+  },
+});
 
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
@@ -989,6 +1047,43 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function buildMeasurementGuideBodyHtml(guide) {
+  const intro = guide?.intro
+    ? `<p class="measurement-guide-intro">${escapeHtml(guide.intro)}</p>`
+    : "";
+  const sections = (guide?.sections || [])
+    .map((section) => {
+      const items = (section?.items || [])
+        .map((item) => `<li>${escapeHtml(item)}</li>`)
+        .join("");
+      return `
+        <section class="measurement-guide-section">
+          <h4>${escapeHtml(section?.title || "")}</h4>
+          <ul class="measurement-guide-list">${items}</ul>
+        </section>
+      `;
+    })
+    .join("");
+  const note = guide?.note
+    ? `<p class="measurement-guide-note">${escapeHtml(guide.note)}</p>`
+    : "";
+  return `${intro}${sections}${note}`;
+}
+
+function openMeasurementGuideModal(guideKey) {
+  const guide = MEASUREMENT_GUIDES[String(guideKey || "")];
+  if (!guide) return;
+  const titleEl = $("#measurementGuideModalTitle");
+  const bodyEl = $("#measurementGuideModalBody");
+  if (titleEl) titleEl.textContent = guide.title || "측정 가이드";
+  if (bodyEl) bodyEl.innerHTML = buildMeasurementGuideBodyHtml(guide);
+  openModal("#measurementGuideModal", { focusTarget: "#measurementGuideModalTitle" });
+}
+
+function closeMeasurementGuideModal() {
+  closeModal("#measurementGuideModal");
 }
 
 function formatColumnSize(column) {
@@ -7405,9 +7500,19 @@ function renderShapeSizeInputs() {
   const i = 0;
 
   const layoutCard = document.createElement("div");
-  layoutCard.className = "bay-input system-layout-config-card";
+  layoutCard.className = "config-card system-layout-config-card";
   layoutCard.innerHTML = `
-    <div class="form-section-title">레이아웃 타입 및 설치공간 설정</div>
+    <div class="form-section-head">
+      <div class="form-section-title">레이아웃 타입 및 설치공간 설정</div>
+      <button
+        type="button"
+        class="section-help-btn"
+        data-measurement-guide="system-layout"
+        aria-label="레이아웃 타입 및 설치공간 측정법 보기"
+      >
+        ?
+      </button>
+    </div>
     <p class="form-section-desc">레이아웃 타입을 선택한 뒤 각 설치공간 길이를 입력해주세요.</p>
     <div class="input-tip">
       <ul class="input-tip-list">
@@ -7460,9 +7565,19 @@ function renderShapeSizeInputs() {
   container.appendChild(layoutCard);
 
   const row = document.createElement("div");
-  row.className = "bay-input";
+  row.className = "config-card";
   row.innerHTML = `
-    <div class="form-section-title">천장 높이 설정</div>
+    <div class="form-section-head">
+      <div class="form-section-title">천장 높이 설정</div>
+      <button
+        type="button"
+        class="section-help-btn"
+        data-measurement-guide="system-ceiling"
+        aria-label="천장 높이 측정법 보기"
+      >
+        ?
+      </button>
+    </div>
     <p class="form-section-desc">최소/최대 천장 높이를 입력하고 필요한 경우 개별높이를 추가해주세요.</p>
     <div class="input-tip">
       <ul class="input-tip-list">
@@ -7496,7 +7611,7 @@ function renderShapeSizeInputs() {
   container.appendChild(row);
 
   const layoutStatusCard = document.createElement("div");
-  layoutStatusCard.className = "bay-input";
+  layoutStatusCard.className = "config-card";
   layoutStatusCard.innerHTML = `
     <div class="form-section-title">레이아웃 상태 및 상담 안내</div>
     <p class="form-section-desc">입력한 레이아웃 조건에 따라 상담 여부가 실시간으로 안내됩니다.</p>
@@ -7552,7 +7667,7 @@ function renderBayInputs() {
   if (container) {
     container.innerHTML = "";
     const block = document.createElement("div");
-    block.className = "bay-input";
+    block.className = "config-card";
     block.innerHTML = `
       <div class="form-section-title">모듈 구성</div>
       <p class="form-section-desc">각 모듈의 선반 폭과 개수를 입력해주세요.</p>
@@ -10523,6 +10638,8 @@ function init() {
   });
   $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
   $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
+  $("#closeMeasurementGuideModal")?.addEventListener("click", closeMeasurementGuideModal);
+  $("#measurementGuideModalBackdrop")?.addEventListener("click", closeMeasurementGuideModal);
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
   $("#stepFinal .estimate-toggle")?.addEventListener("click", requestStickyOffsetUpdate);
@@ -10619,6 +10736,13 @@ function init() {
     });
   });
   syncPreviewInfoModeButtons();
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const guideBtn = target?.closest("[data-measurement-guide]");
+    if (!guideBtn) return;
+    openMeasurementGuideModal(guideBtn.dataset.measurementGuide || "");
+  });
 
   document.addEventListener("keydown", (e) => {
     const target = e.target;

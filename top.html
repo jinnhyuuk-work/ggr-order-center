@@ -59,63 +59,77 @@
             </div>
           </div>
           <div class="accordion-body" id="step2Body">
-            <div class="input-tip">
-                <ul class="input-tip-list">
-                  <li>상판의 두께는 12T가 기본이며, 이외의 두께는 ㄷ자로 가공해서 제작되는 형태입니다.</li>
-                  <li>12T 이외 상판의 가격은 상담을 통해 안내됩니다.</li>
-                </ul>
-            </div>
-            <div class="form-row">
-              <label>상판 타입</label>
-              <div class="field-col">
-                <select id="kitchenShape" class="select-caret">
-                  <option value="">타입을 선택해주세요</option>
-                  <option value="i">I자</option>
-                  <option value="l">ㄱ자</option>
-                  <option value="rl">역ㄱ자</option>
-                  <option value="u">ㄷ자</option>
-                </select>
+            <div class="config-card">
+              <div class="form-section-head">
+                <div class="form-section-title">상판 사이즈 설정</div>
+                <button
+                  type="button"
+                  class="section-help-btn"
+                  data-measurement-guide="top-size"
+                  aria-label="상판 사이즈 측정법 보기"
+                >
+                  ?
+                </button>
               </div>
-            </div>
-            <div class="form-row">
-              <label>두께 (mm)</label>
-              <div class="field-col">
-                <select id="topThickness" class="select-caret">
-                  <option value="">두께를 선택해주세요</option>
-                  <option value="12">12T</option>
-                  <option value="24">24T</option>
-                  <option value="30">30T</option>
-                  <option value="40">40T</option>
-                  <option value="50">50T</option>
-                </select>
+              <p class="form-section-desc">상판 형태를 선택한 뒤 깊이와 길이를 순서대로 입력해주세요.</p>
+              <div class="input-tip">
+                  <ul class="input-tip-list">
+                    <li>상판의 두께는 12T가 기본이며, 이외의 두께는 ㄷ자로 가공해서 제작되는 형태입니다.</li>
+                    <li>12T 이외 상판의 가격은 상담을 통해 안내됩니다.</li>
+                  </ul>
               </div>
-            </div>
-            <div class="form-row">
-              <label>깊이 (mm)</label>
-              <div class="field-col">
-                <input type="number" id="topDepth" placeholder="예: 650" />
-                <div class="error-msg" id="topDepthError"></div>
+              <div class="form-row">
+                <label>상판 타입</label>
+                <div class="field-col">
+                  <select id="kitchenShape" class="select-caret">
+                    <option value="">타입을 선택해주세요</option>
+                    <option value="i">I자</option>
+                    <option value="l">ㄱ자</option>
+                    <option value="rl">역ㄱ자</option>
+                    <option value="u">ㄷ자</option>
+                  </select>
+                </div>
               </div>
-            </div>
-            <div class="form-row">
-              <label>길이 (mm)</label>
-              <div class="field-col">
-                <input type="number" id="topLength" placeholder="예: 2400" />
-                <div class="error-msg" id="topLengthError"></div>
+              <div class="form-row">
+                <label>두께 (mm)</label>
+                <div class="field-col">
+                  <select id="topThickness" class="select-caret">
+                    <option value="">두께를 선택해주세요</option>
+                    <option value="12">12T</option>
+                    <option value="24">24T</option>
+                    <option value="30">30T</option>
+                    <option value="40">40T</option>
+                    <option value="50">50T</option>
+                  </select>
+                </div>
               </div>
-            </div>
-            <div class="form-row hidden-step" id="topLength2Row">
-              <label>길이2 (mm)</label>
-              <div class="field-col">
-                <input type="number" id="topLength2" placeholder="예: 1800 (ㄱ자 추가 변)" />
-                <div class="error-msg" id="topLength2Error"></div>
+              <div class="form-row">
+                <label>깊이 (mm)</label>
+                <div class="field-col">
+                  <input type="number" id="topDepth" placeholder="예: 650" />
+                  <div class="error-msg" id="topDepthError"></div>
+                </div>
               </div>
-            </div>
-            <div class="form-row hidden-step" id="topLength3Row">
-              <label>길이3 (mm)</label>
-              <div class="field-col">
-                <input type="number" id="topLength3" placeholder="예: 1800 (ㄷ자 추가 변)" />
-                <div class="error-msg" id="topLength3Error"></div>
+              <div class="form-row">
+                <label>길이 (mm)</label>
+                <div class="field-col">
+                  <input type="number" id="topLength" placeholder="예: 2400" />
+                  <div class="error-msg" id="topLengthError"></div>
+                </div>
+              </div>
+              <div class="form-row hidden-step" id="topLength2Row">
+                <label>길이2 (mm)</label>
+                <div class="field-col">
+                  <input type="number" id="topLength2" placeholder="예: 1800 (ㄱ자 추가 변)" />
+                  <div class="error-msg" id="topLength2Error"></div>
+                </div>
+              </div>
+              <div class="form-row hidden-step" id="topLength3Row">
+                <label>길이3 (mm)</label>
+                <div class="field-col">
+                  <input type="number" id="topLength3" placeholder="예: 1800 (ㄷ자 추가 변)" />
+                  <div class="error-msg" id="topLength3Error"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -376,6 +390,27 @@
       <div id="infoMessage" class="info-message">안내 메시지</div>
       <div class="modal-footer">
         <button type="button" id="closeInfoModal" class="modal-close">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div
+    id="measurementGuideModal"
+    class="modal measurement-guide-modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="measurementGuideModalTitle"
+  >
+    <div class="modal-backdrop" id="measurementGuideModalBackdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="measurementGuideModalTitle" tabindex="-1">측정 가이드</h3>
+      </div>
+      <div class="modal-body">
+        <div id="measurementGuideModalBody" class="measurement-guide-body"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="closeMeasurementGuideModal" class="modal-close">닫기</button>
       </div>
     </div>
   </div>

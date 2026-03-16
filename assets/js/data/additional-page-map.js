@@ -26,7 +26,7 @@ export const ADDITIONAL_SELECTION_PAGE_CONFIG = Object.freeze({
   }),
   [ORDER_PAGE_KEYS.DOOR]: freezePageConfig({
     optionIds: [],
-    processingIds: ["proc_handle_hole"],
+    processingIds: [],
   }),
   [ORDER_PAGE_KEYS.TOP]: freezePageConfig({
     optionIds: ["top_sink_cut", "top_faucet_hole", "top_cooktop_cut", "top_back_add"],

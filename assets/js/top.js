@@ -488,6 +488,36 @@ function getPreviewScaleBounds(colorEl, { fallbackMax = 180, fallbackMin = 40 } 
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
+const MEASUREMENT_GUIDES = Object.freeze({
+  "top-size": {
+    title: "상판 사이즈 측정법",
+    intro: "상판은 싱크대 상부 실제 설치 구간을 기준으로 mm 단위 실측이 필요합니다.",
+    sections: [
+      {
+        title: "1. 형태 먼저 확정",
+        items: [
+          "주방 형태(I/ㄱ/역ㄱ/ㄷ자)를 먼저 선택한 뒤 길이 항목 개수를 결정하세요.",
+          "형태에 맞는 길이 항목(길이/길이2/길이3)을 빠짐없이 측정하세요.",
+        ],
+      },
+      {
+        title: "2. 깊이(D) 측정",
+        items: [
+          "벽면에서 전면 끝선까지 수직으로 측정하세요.",
+          "좌/중/우를 재고 오차가 있으면 시공 간섭이 없는 값을 기준으로 입력하세요.",
+        ],
+      },
+      {
+        title: "3. 길이(L) 측정",
+        items: [
+          "각 변의 시작점과 끝점을 벽체 기준 직선으로 측정하세요.",
+          "코너 구간은 실제 만나는 모서리 기준으로 재고, mm 단위로 입력하세요.",
+        ],
+      },
+    ],
+    note: "두께가 12T를 초과하거나 비규격 치수인 경우 상담 안내가 표시될 수 있습니다.",
+  },
+});
 
 function formatPrice(n) {
   return Number(n || 0).toLocaleString();
@@ -576,6 +606,43 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function buildMeasurementGuideBodyHtml(guide) {
+  const intro = guide?.intro
+    ? `<p class="measurement-guide-intro">${escapeHtml(guide.intro)}</p>`
+    : "";
+  const sections = (guide?.sections || [])
+    .map((section) => {
+      const items = (section?.items || [])
+        .map((item) => `<li>${escapeHtml(item)}</li>`)
+        .join("");
+      return `
+        <section class="measurement-guide-section">
+          <h4>${escapeHtml(section?.title || "")}</h4>
+          <ul class="measurement-guide-list">${items}</ul>
+        </section>
+      `;
+    })
+    .join("");
+  const note = guide?.note
+    ? `<p class="measurement-guide-note">${escapeHtml(guide.note)}</p>`
+    : "";
+  return `${intro}${sections}${note}`;
+}
+
+function openMeasurementGuideModal(guideKey) {
+  const guide = MEASUREMENT_GUIDES[String(guideKey || "")];
+  if (!guide) return;
+  const titleEl = $("#measurementGuideModalTitle");
+  const bodyEl = $("#measurementGuideModalBody");
+  if (titleEl) titleEl.textContent = guide.title || "측정 가이드";
+  if (bodyEl) bodyEl.innerHTML = buildMeasurementGuideBodyHtml(guide);
+  openModal("#measurementGuideModal", { focusTarget: "#measurementGuideModalTitle" });
+}
+
+function closeMeasurementGuideModal() {
+  closeModal("#measurementGuideModal");
 }
 
 function readTopInputs() {
@@ -2213,6 +2280,8 @@ function initTop() {
   $("#sendQuoteBtn")?.addEventListener("click", sendQuote);
   $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
   $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
+  $("#closeMeasurementGuideModal")?.addEventListener("click", closeMeasurementGuideModal);
+  $("#measurementGuideModalBackdrop")?.addEventListener("click", closeMeasurementGuideModal);
   $("#saveTopServiceModal")?.addEventListener("click", saveServiceModal);
   $("#removeTopServiceModal")?.addEventListener("click", removeServiceModal);
   $("#cancelTopServiceModal")?.addEventListener("click", () => closeServiceModal(true));
@@ -2261,6 +2330,12 @@ function initTop() {
   window.addEventListener("resize", () => {
     requestStickyOffsetUpdate();
     requestTopPreviewUpdate();
+  });
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const guideBtn = target?.closest("[data-measurement-guide]");
+    if (!guideBtn) return;
+    openMeasurementGuideModal(guideBtn.dataset.measurementGuide || "");
   });
 }
 
