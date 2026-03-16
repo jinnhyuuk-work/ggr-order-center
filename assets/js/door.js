@@ -1157,6 +1157,29 @@ function buildMeasurementGuideBodyHtml(guide) {
   const intro = guide?.intro
     ? `<p class="measurement-guide-intro">${escapeHtml(guide.intro)}</p>`
     : "";
+  const hasImage = Boolean(guide?.image?.src);
+  const mediaCaption = escapeHtml(
+    guide?.image?.caption || "측정 예시 이미지를 추가하면 이 영역에 표시됩니다."
+  );
+  const media = hasImage
+    ? `
+      <figure class="measurement-guide-media">
+        <img
+          class="measurement-guide-media-image"
+          src="${escapeHtml(guide.image.src)}"
+          alt="${escapeHtml(guide?.image?.alt || "측정 예시 이미지")}"
+          loading="lazy"
+          decoding="async"
+        />
+        <figcaption class="measurement-guide-media-caption">${mediaCaption}</figcaption>
+      </figure>
+    `
+    : `
+      <figure class="measurement-guide-media" aria-label="측정 이미지 영역">
+        <div class="measurement-guide-media-placeholder">측정 이미지 영역</div>
+        <figcaption class="measurement-guide-media-caption">${mediaCaption}</figcaption>
+      </figure>
+    `;
   const sections = (guide?.sections || [])
     .map((section) => {
       const items = (section?.items || [])
@@ -1173,7 +1196,7 @@ function buildMeasurementGuideBodyHtml(guide) {
   const note = guide?.note
     ? `<p class="measurement-guide-note">${escapeHtml(guide.note)}</p>`
     : "";
-  return `${intro}${sections}${note}`;
+  return `${intro}${media}${sections}${note}`;
 }
 
 function openMeasurementGuideModal(guideKey) {
