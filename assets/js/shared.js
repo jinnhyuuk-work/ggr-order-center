@@ -4,7 +4,7 @@ export const EMAILJS_CONFIG = {
   publicKey: "dUvt2iF9ciN8bvf6r",
 };
 
-export const ORDER_PAYLOAD_SCHEMA_VERSION = "v1";
+export const ORDER_PAYLOAD_SCHEMA_VERSION = "v2";
 export const CONSULT_DISPLAY_PRICE_LABEL = "상담안내";
 export const CONSULT_EXCLUDED_SUFFIX = "(상담 필요 항목 미포함)";
 export const SERVICE_REGION_LABELS = Object.freeze({

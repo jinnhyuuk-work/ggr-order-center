@@ -40,6 +40,18 @@ import {
   resolveServiceRegionByAddress,
   calcGroupedAmount,
 } from "./shared.js";
+import {
+  normalizeFulfillmentType,
+  isServiceAddressReady,
+  evaluateFulfillmentPolicy,
+  formatServiceCostText,
+  formatFulfillmentLine,
+  formatFulfillmentCardPriceText,
+} from "./fulfillment-policy.js";
+import {
+  FULFILLMENT_POLICY_MESSAGES,
+  DOOR_FULFILLMENT_POLICY,
+} from "./data/fulfillment-policy-data.js";
 
 class BaseService {
   constructor(cfg) {
@@ -408,10 +420,6 @@ const previewSummaryConfig = {
 const HAS_OPTION_SELECTIONS = DOOR_OPTIONS.length > 0;
 const HAS_PROCESSING_SELECTIONS = Object.keys(PROCESSING_SERVICES).length > 0;
 const HAS_ADDITIONAL_SELECTIONS = HAS_OPTION_SELECTIONS || HAS_PROCESSING_SELECTIONS;
-const FULFILLMENT_TYPE_LABELS = Object.freeze({
-  delivery: "배송",
-  installation: "시공",
-});
 const DOOR_TYPE_LABELS = Object.freeze(
   (Array.isArray(DOOR_TYPE_OPTIONS) ? DOOR_TYPE_OPTIONS : []).reduce((acc, option) => {
     const id = String(option?.id || "").trim().toLowerCase();
@@ -468,12 +476,11 @@ function formatSideThicknessLabel(value) {
 }
 
 function getFulfillmentType() {
-  const value = String($("#fulfillmentType")?.value || "");
-  return value === "delivery" || value === "installation" ? value : "";
+  return normalizeFulfillmentType(String($("#fulfillmentType")?.value || ""));
 }
 
 function setFulfillmentType(nextType) {
-  const normalizedType = nextType === "installation" ? "installation" : nextType === "delivery" ? "delivery" : "";
+  const normalizedType = normalizeFulfillmentType(nextType);
   const typeInput = $("#fulfillmentType");
   if (typeInput) typeInput.value = normalizedType;
   document.querySelectorAll("[data-fulfillment-type]").forEach((btn) => {
@@ -489,10 +496,6 @@ function setServiceStepError(message = "") {
   errorEl.textContent = String(message || "").trim();
 }
 
-function isServiceAddressReady(customer = getCustomerInfo()) {
-  return Boolean(customer?.postcode && customer?.address && customer?.detailAddress);
-}
-
 function getDoorProductItems() {
   return state.items.filter((item) => item.type !== "addon");
 }
@@ -506,129 +509,69 @@ function getDoorProductQuantity() {
 
 function evaluateFulfillmentService(nextType = getFulfillmentType()) {
   const customer = getCustomerInfo();
-  const type = nextType === "installation" ? "installation" : nextType === "delivery" ? "delivery" : "";
-  const typeLabel = FULFILLMENT_TYPE_LABELS[type] || "";
-  const region = resolveServiceRegionByAddress(customer.address);
-  const addressReady = isServiceAddressReady(customer);
   const hasProducts = getDoorProductItems().length > 0;
+  return evaluateFulfillmentPolicy({
+    nextType,
+    customer,
+    hasProducts,
+    evaluateSupportedPolicy: ({ type }) => {
+      const quantity = getDoorProductQuantity();
+      if (type === "delivery") {
+        const hasOversize = getDoorProductItems().some(
+          (item) =>
+            Number(item?.width || 0) > DOOR_FULFILLMENT_POLICY.delivery.maxWidthMm ||
+            Number(item?.length || 0) > DOOR_FULFILLMENT_POLICY.delivery.maxLengthMm
+        );
+        if (hasOversize) {
+          return {
+            amount: 0,
+            amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
+            isConsult: true,
+            reason: DOOR_FULFILLMENT_POLICY.delivery.oversizeConsultReason,
+          };
+        }
+        const amount = calcGroupedAmount(
+          quantity,
+          DOOR_FULFILLMENT_POLICY.delivery.groupedFee.groupSize,
+          DOOR_FULFILLMENT_POLICY.delivery.groupedFee.groupPrice
+        );
+        return {
+          amount,
+          amountText: `${amount.toLocaleString()}원`,
+          isConsult: false,
+          reason: "",
+        };
+      }
 
-  if (!type || !hasProducts) {
-    return {
-      type,
-      typeLabel,
-      region,
-      amount: 0,
-      amountText: "미선택",
-      isConsult: false,
-      reason: "",
-      addressReady,
-    };
-  }
-
-  if (!addressReady) {
-    return {
-      type,
-      typeLabel,
-      region,
-      amount: 0,
-      amountText: "주소 입력 필요",
-      isConsult: false,
-      reason: "주소를 입력하면 서비스비를 확인할 수 있습니다.",
-      addressReady,
-    };
-  }
-
-  if (!region.isSupported) {
-    return {
-      type,
-      typeLabel,
-      region,
-      amount: 0,
-      amountText: "상담 안내",
-      isConsult: true,
-      reason: "수도권 외 지역은 상담 안내입니다.",
-      addressReady,
-    };
-  }
-
-  const quantity = getDoorProductQuantity();
-  if (type === "delivery") {
-    const hasOversize = getDoorProductItems().some(
-      (item) => Number(item?.width || 0) > 600 || Number(item?.length || 0) > 800
-    );
-    if (hasOversize) {
+      const installationPolicy = DOOR_FULFILLMENT_POLICY.installation;
+      const amount =
+        quantity <= installationPolicy.baseQuantity
+          ? installationPolicy.baseAmount
+          : installationPolicy.baseAmount +
+            (quantity - installationPolicy.baseQuantity) * installationPolicy.additionalUnitAmount;
       return {
-        type,
-        typeLabel,
-        region,
-        amount: 0,
-        amountText: "상담 안내",
-        isConsult: true,
-        reason: "600×800mm 초과 규격은 배송 상담 안내입니다.",
-        addressReady,
+        amount,
+        amountText: `${amount.toLocaleString()}원`,
+        isConsult: false,
+        reason: "",
       };
-    }
-    const amount = calcGroupedAmount(quantity, 3, 7000);
-    return {
-      type,
-      typeLabel,
-      region,
-      amount,
-      amountText: `${amount.toLocaleString()}원`,
-      isConsult: false,
-      reason: "",
-      addressReady,
-    };
-  }
-
-  const amount = quantity <= 5 ? 50000 : 50000 + (quantity - 5) * 10000;
-  return {
-    type,
-    typeLabel,
-    region,
-    amount,
-    amountText: `${amount.toLocaleString()}원`,
-    isConsult: false,
-    reason: "",
-    addressReady,
-  };
+    },
+  });
 }
 
 function buildGrandSummary() {
   const baseSummary = calcOrderSummary(state.items);
   const fulfillment = evaluateFulfillmentService();
-  const serviceCost = fulfillment.isConsult ? 0 : Number(fulfillment.amount || 0);
-  const grandTotal = Number(baseSummary.grandTotal || 0) + serviceCost;
+  const fulfillmentCost = fulfillment.isConsult ? 0 : Number(fulfillment.amount || 0);
+  const grandTotal = Number(baseSummary.grandTotal || 0) + fulfillmentCost;
   const hasConsult = hasConsultLineItem(state.items) || (Boolean(fulfillment.type) && fulfillment.isConsult);
   return {
     ...baseSummary,
     fulfillment,
-    serviceCost,
+    fulfillmentCost,
     grandTotal,
     hasConsult,
   };
-}
-
-function formatServiceCostText(fulfillment) {
-  if (!fulfillment?.type) return "미선택";
-  if (fulfillment.isConsult) return "상담 안내";
-  return `${Number(fulfillment.amount || 0).toLocaleString()}원`;
-}
-
-function formatFulfillmentLine(fulfillment) {
-  if (!fulfillment?.type) return "서비스 미선택";
-  const regionText = fulfillment?.region?.label ? ` / ${fulfillment.region.label}` : "";
-  const typeText = fulfillment.typeLabel || "서비스";
-  if (fulfillment.isConsult) return `${typeText}${regionText} · 상담 안내`;
-  return `${typeText}${regionText} · ${Number(fulfillment.amount || 0).toLocaleString()}원`;
-}
-
-function formatFulfillmentCardPriceText(fulfillment) {
-  if (!fulfillment?.type) return "선택 필요";
-  if (fulfillment.amountText === "미선택") return "상품 담기 후 계산";
-  if (!fulfillment.addressReady) return "주소 입력 후 계산";
-  if (fulfillment.isConsult) return "상담 안내";
-  return `${Number(fulfillment.amount || 0).toLocaleString()}원`;
 }
 
 function updateFulfillmentCardPriceUI() {
@@ -2010,11 +1953,10 @@ function buildOrderPayload() {
     totals: {
       grandTotal: Number(summary.grandTotal || 0),
       subtotal: Number(summary.subtotal || 0),
-      shippingCost: 0,
-      serviceType: summary.fulfillment.type || "",
-      serviceRegion: summary.fulfillment.region?.label || "",
-      serviceCost: Number(summary.serviceCost || 0),
-      serviceConsult: Boolean(summary.fulfillment.isConsult),
+      fulfillmentType: summary.fulfillment.type || "",
+      fulfillmentRegion: summary.fulfillment.region?.label || "",
+      fulfillmentCost: Number(summary.fulfillmentCost || 0),
+      fulfillmentConsult: Boolean(summary.fulfillment.isConsult),
       hasCustomPrice,
       displayPriceLabel: hasCustomPrice ? `상담안내${CONSULT_EXCLUDED_SUFFIX}` : null,
     },

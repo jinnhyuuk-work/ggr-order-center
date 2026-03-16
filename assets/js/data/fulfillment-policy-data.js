@@ -1,0 +1,71 @@
+export const FULFILLMENT_POLICY_MESSAGES = Object.freeze({
+  noSelectionAmountText: "미선택",
+  addressRequiredAmountText: "주소 입력 필요",
+  consultAmountText: "상담 안내",
+  needsAddressReason: "주소를 입력하면 서비스비를 확인할 수 있습니다.",
+  unsupportedRegionReason: "수도권 외 지역은 상담 안내입니다.",
+  fallbackReason: "서비스 정책을 확인해주세요.",
+});
+
+export const TOP_FULFILLMENT_POLICY = Object.freeze({
+  installationAmount: 50000,
+  installationAmountText: "50,000원",
+  deliveryConsultReason: "상판 배송 서비스는 상담 안내입니다.",
+});
+
+export const BOARD_FULFILLMENT_POLICY = Object.freeze({
+  consultReason: "합판 서비스는 상담 안내입니다.",
+});
+
+export const DOOR_FULFILLMENT_POLICY = Object.freeze({
+  delivery: Object.freeze({
+    maxWidthMm: 600,
+    maxLengthMm: 800,
+    groupedFee: Object.freeze({
+      groupSize: 3,
+      groupPrice: 7000,
+    }),
+    oversizeConsultReason: "600×800mm 초과 규격은 배송 상담 안내입니다.",
+  }),
+  installation: Object.freeze({
+    baseQuantity: 5,
+    baseAmount: 50000,
+    additionalUnitAmount: 10000,
+  }),
+});
+
+export const SYSTEM_FULFILLMENT_POLICY = Object.freeze({
+  delivery: Object.freeze({
+    consultReasons: Object.freeze({
+      cornerOrFurniture: "코너/가구 포함 구성은 배송 상담 안내입니다.",
+      overPostBarHeight: "포스트바 2400mm 초과 규격은 배송 상담 안내입니다.",
+      overShelfWidth: "선반 800mm 초과 규격은 배송 상담 안내입니다.",
+    }),
+    postBarGroupedFee: Object.freeze({
+      groupSize: 5,
+      groupPrice: 8000,
+    }),
+    shelfGroupedFee: Object.freeze({
+      groupSize: 3,
+      groupPrice: 7000,
+    }),
+  }),
+  installation: Object.freeze({
+    fixedByPostBarCount: Object.freeze({
+      2: 50000,
+      3: 70000,
+      4: 90000,
+    }),
+    fixedAmountTextByPostBarCount: Object.freeze({
+      2: "50,000원",
+      3: "70,000원",
+      4: "90,000원",
+    }),
+    sectionLengthGroupedFee: Object.freeze({
+      groupSizeMm: 100,
+      groupPrice: 3500,
+    }),
+    missingSectionLengthConsultReason: "섹션 길이 정보가 없어 시공 상담 안내입니다.",
+    fallbackConsultReason: "포스트바 수량 조건을 확인해주세요.",
+  }),
+});

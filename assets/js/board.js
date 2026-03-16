@@ -37,6 +37,18 @@ import {
   renderItemPriceNotice,
   resolveServiceRegionByAddress,
 } from "./shared.js";
+import {
+  normalizeFulfillmentType,
+  isServiceAddressReady,
+  evaluateFulfillmentPolicy,
+  formatServiceCostText,
+  formatFulfillmentLine,
+  formatFulfillmentCardPriceText,
+} from "./fulfillment-policy.js";
+import {
+  FULFILLMENT_POLICY_MESSAGES,
+  BOARD_FULFILLMENT_POLICY,
+} from "./data/fulfillment-policy-data.js";
 
 class BaseService {
   constructor(cfg) {
@@ -393,18 +405,13 @@ const previewSummaryConfig = {
 const HAS_OPTION_SELECTIONS = BOARD_OPTIONS.length > 0;
 const HAS_PROCESSING_SELECTIONS = Object.keys(SERVICES).length > 0;
 const HAS_ADDITIONAL_SELECTIONS = HAS_OPTION_SELECTIONS || HAS_PROCESSING_SELECTIONS;
-const FULFILLMENT_TYPE_LABELS = Object.freeze({
-  delivery: "배송",
-  installation: "시공",
-});
 
 function getFulfillmentType() {
-  const value = String($("#fulfillmentType")?.value || "");
-  return value === "delivery" || value === "installation" ? value : "";
+  return normalizeFulfillmentType(String($("#fulfillmentType")?.value || ""));
 }
 
 function setFulfillmentType(nextType) {
-  const normalizedType = nextType === "installation" ? "installation" : nextType === "delivery" ? "delivery" : "";
+  const normalizedType = normalizeFulfillmentType(nextType);
   const typeInput = $("#fulfillmentType");
   if (typeInput) typeInput.value = normalizedType;
   document.querySelectorAll("[data-fulfillment-type]").forEach((btn) => {
@@ -420,104 +427,35 @@ function setServiceStepError(message = "") {
   errorEl.textContent = String(message || "").trim();
 }
 
-function isServiceAddressReady(customer = getCustomerInfo()) {
-  return Boolean(customer?.postcode && customer?.address && customer?.detailAddress);
-}
-
 function evaluateFulfillmentService(nextType = getFulfillmentType()) {
   const customer = getCustomerInfo();
-  const type = nextType === "installation" ? "installation" : nextType === "delivery" ? "delivery" : "";
-  const typeLabel = FULFILLMENT_TYPE_LABELS[type] || "";
-  const region = resolveServiceRegionByAddress(customer.address);
-  const addressReady = isServiceAddressReady(customer);
   const hasProducts = state.items.some((item) => item.type !== "addon");
-
-  if (!type || !hasProducts) {
-    return {
-      type,
-      typeLabel,
-      region,
+  return evaluateFulfillmentPolicy({
+    nextType,
+    customer,
+    hasProducts,
+    evaluateSupportedPolicy: () => ({
       amount: 0,
-      amountText: "미선택",
-      isConsult: false,
-      reason: "",
-      addressReady,
-    };
-  }
-
-  if (!addressReady) {
-    return {
-      type,
-      typeLabel,
-      region,
-      amount: 0,
-      amountText: "주소 입력 필요",
-      isConsult: false,
-      reason: "주소를 입력하면 서비스비를 확인할 수 있습니다.",
-      addressReady,
-    };
-  }
-
-  if (!region.isSupported) {
-    return {
-      type,
-      typeLabel,
-      region,
-      amount: 0,
-      amountText: "상담 안내",
+      amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
       isConsult: true,
-      reason: "수도권 외 지역은 상담 안내입니다.",
-      addressReady,
-    };
-  }
-
-  return {
-    type,
-    typeLabel,
-    region,
-    amount: 0,
-    amountText: "상담 안내",
-    isConsult: true,
-    reason: "합판 서비스는 상담 안내입니다.",
-    addressReady,
-  };
+      reason: BOARD_FULFILLMENT_POLICY.consultReason,
+    }),
+  });
 }
 
 function buildGrandSummary() {
   const baseSummary = calcOrderSummary(state.items);
   const fulfillment = evaluateFulfillmentService();
-  const serviceCost = fulfillment.isConsult ? 0 : Number(fulfillment.amount || 0);
-  const grandTotal = Number(baseSummary.grandTotal || 0) + serviceCost;
+  const fulfillmentCost = fulfillment.isConsult ? 0 : Number(fulfillment.amount || 0);
+  const grandTotal = Number(baseSummary.grandTotal || 0) + fulfillmentCost;
   const hasConsult = hasConsultLineItem(state.items) || (Boolean(fulfillment.type) && fulfillment.isConsult);
   return {
     ...baseSummary,
     fulfillment,
-    serviceCost,
+    fulfillmentCost,
     grandTotal,
     hasConsult,
   };
-}
-
-function formatServiceCostText(fulfillment) {
-  if (!fulfillment?.type) return "미선택";
-  if (fulfillment.isConsult) return "상담 안내";
-  return `${Number(fulfillment.amount || 0).toLocaleString()}원`;
-}
-
-function formatFulfillmentLine(fulfillment) {
-  if (!fulfillment?.type) return "서비스 미선택";
-  const regionText = fulfillment?.region?.label ? ` / ${fulfillment.region.label}` : "";
-  const typeText = fulfillment.typeLabel || "서비스";
-  if (fulfillment.isConsult) return `${typeText}${regionText} · 상담 안내`;
-  return `${typeText}${regionText} · ${Number(fulfillment.amount || 0).toLocaleString()}원`;
-}
-
-function formatFulfillmentCardPriceText(fulfillment) {
-  if (!fulfillment?.type) return "선택 필요";
-  if (fulfillment.amountText === "미선택") return "상품 담기 후 계산";
-  if (!fulfillment.addressReady) return "주소 입력 후 계산";
-  if (fulfillment.isConsult) return "상담 안내";
-  return `${Number(fulfillment.amount || 0).toLocaleString()}원`;
 }
 
 function updateFulfillmentCardPriceUI() {
@@ -1425,11 +1363,10 @@ function buildOrderPayload() {
     totals: {
       grandTotal: Number(summary.grandTotal || 0),
       subtotal: Number(summary.subtotal || 0),
-      shippingCost: 0,
-      serviceType: summary.fulfillment.type || "",
-      serviceRegion: summary.fulfillment.region?.label || "",
-      serviceCost: Number(summary.serviceCost || 0),
-      serviceConsult: Boolean(summary.fulfillment.isConsult),
+      fulfillmentType: summary.fulfillment.type || "",
+      fulfillmentRegion: summary.fulfillment.region?.label || "",
+      fulfillmentCost: Number(summary.fulfillmentCost || 0),
+      fulfillmentConsult: Boolean(summary.fulfillment.isConsult),
       hasCustomPrice,
       displayPriceLabel: hasCustomPrice ? `상담안내${CONSULT_EXCLUDED_SUFFIX}` : null,
     },
