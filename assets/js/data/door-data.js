@@ -1208,6 +1208,16 @@ export const DOOR_PROCESSING_SERVICES = {
   ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.DOOR),
 };
 
+export const DOOR_TYPE_OPTIONS = [
+  { id: "indoor", label: "인도어" },
+  { id: "outdoor", label: "아웃도어" },
+];
+
+export const DOOR_SIDE_THICKNESS_OPTIONS = [
+  { value: 15, label: "15T" },
+  { value: 18, label: "18T" },
+];
+
 export const DOOR_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.DOOR);
 
 export const DOOR_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];

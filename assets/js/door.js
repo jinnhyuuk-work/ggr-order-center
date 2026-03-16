@@ -5,6 +5,8 @@ import {
   DOOR_ADDON_ITEMS as BOARD_ADDON_ITEMS,
   DOOR_MATERIAL_CATEGORIES_DESC as MATERIAL_CATEGORIES_DESC,
   DOOR_PRICE_TIERS_BY_CATEGORY,
+  DOOR_TYPE_OPTIONS,
+  DOOR_SIDE_THICKNESS_OPTIONS,
 } from "./data/door-data.js";
 import {
   initEmailJS,
@@ -410,6 +412,60 @@ const FULFILLMENT_TYPE_LABELS = Object.freeze({
   delivery: "배송",
   installation: "시공",
 });
+const DOOR_TYPE_LABELS = Object.freeze(
+  (Array.isArray(DOOR_TYPE_OPTIONS) ? DOOR_TYPE_OPTIONS : []).reduce((acc, option) => {
+    const id = String(option?.id || "").trim().toLowerCase();
+    if (!id) return acc;
+    const label = String(option?.label || id).trim();
+    acc[id] = label || id;
+    return acc;
+  }, {})
+);
+const SIDE_THICKNESS_OPTIONS = Object.freeze(
+  (Array.isArray(DOOR_SIDE_THICKNESS_OPTIONS) ? DOOR_SIDE_THICKNESS_OPTIONS : [])
+    .map((option) => {
+      const rawValue =
+        option && typeof option === "object" ? option.value : option;
+      const value = Number(rawValue);
+      if (!Number.isFinite(value) || value <= 0) return null;
+      const normalized = Math.round(value);
+      const rawLabel =
+        option && typeof option === "object" ? option.label : "";
+      const label = String(rawLabel || `${normalized}T`).trim();
+      return { value: normalized, label: label || `${normalized}T` };
+    })
+    .filter(Boolean)
+);
+const SIDE_THICKNESS_VALUES = Object.freeze(
+  SIDE_THICKNESS_OPTIONS.map((option) => option.value)
+);
+const SIDE_THICKNESS_LABELS = Object.freeze(
+  SIDE_THICKNESS_OPTIONS.reduce((acc, option) => {
+    acc[option.value] = option.label;
+    return acc;
+  }, {})
+);
+
+function normalizeDoorType(value) {
+  const key = String(value || "").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(DOOR_TYPE_LABELS, key) ? key : "";
+}
+
+function formatDoorTypeLabel(value) {
+  const normalized = normalizeDoorType(value);
+  return DOOR_TYPE_LABELS[normalized] || "-";
+}
+
+function normalizeSideThickness(value) {
+  const numericValue = Number(value);
+  return SIDE_THICKNESS_VALUES.includes(numericValue) ? numericValue : 0;
+}
+
+function formatSideThicknessLabel(value) {
+  const normalized = normalizeSideThickness(value);
+  if (!normalized) return "-";
+  return SIDE_THICKNESS_LABELS[normalized] || `${normalized}T`;
+}
 
 function getFulfillmentType() {
   const value = String($("#fulfillmentType")?.value || "");
@@ -1476,7 +1532,9 @@ function updateAddItemState() {
 function readCurrentInputs() {
   const selected = document.querySelector('input[name="material"]:checked');
   const materialId = selected ? selected.value : "";
+  const doorType = normalizeDoorType($("#doorTypeSelect")?.value);
   const thickness = Number($("#thicknessSelect").value);
+  const sideThickness = normalizeSideThickness($("#sideThicknessSelect")?.value);
   const width = Number($("#widthInput").value);
   const length = Number($("#lengthInput").value);
   const options = Array.from(
@@ -1490,18 +1548,31 @@ function readCurrentInputs() {
   const serviceDetails = cloneServiceDetails(state.serviceDetails);
   const doorHingeConfig = readDoorHingeConfigFromDOM();
 
-  return { materialId, thickness, width, length, options, services, serviceDetails, doorHingeConfig };
+  return {
+    materialId,
+    doorType,
+    thickness,
+    sideThickness,
+    width,
+    length,
+    options,
+    services,
+    serviceDetails,
+    doorHingeConfig,
+  };
 }
 
 // 입력값 검증
 function validateInputs(input) {
-  const { materialId, thickness, width, length, doorHingeConfig } = input;
+  const { materialId, doorType, thickness, sideThickness, width, length, doorHingeConfig } = input;
   const mat = MATERIALS[materialId];
   setDoorHingeError("");
   setDoorHingeInputErrors([]);
 
   if (!materialId) return "도어를 선택해주세요.";
+  if (!doorType) return "도어 형태를 선택해주세요.";
   if (!thickness) return "두께를 선택해주세요.";
+  if (!sideThickness) return "측면 두께를 선택해주세요.";
   if (!width) return "폭을 입력해주세요.";
   const widthMin = mat?.minWidth ?? WIDTH_MIN;
   const widthMax = mat?.maxWidth ?? WIDTH_MAX;
@@ -1579,11 +1650,16 @@ function resetStepsAfterAdd() {
   updateSelectedMaterialLabel();
   updateSizePlaceholders(null);
 
+  const doorTypeSelect = $("#doorTypeSelect");
+  if (doorTypeSelect) doorTypeSelect.value = "";
+
   // 두께 선택 초기화
   const thicknessSelect = $("#thicknessSelect");
   if (thicknessSelect) {
     thicknessSelect.innerHTML = `<option value="">도어를 선택해주세요</option>`;
   }
+  const sideThicknessSelect = $("#sideThicknessSelect");
+  if (sideThicknessSelect) sideThicknessSelect.value = "";
 
   // 사이즈 입력 초기화
   const widthEl = $("#widthInput");
@@ -1772,6 +1848,8 @@ function renderTable() {
         ];
       }
       const sizeText = `${item.thickness}T / ${item.width}×${item.length}mm`;
+      const doorTypeText = formatDoorTypeLabel(item.doorType);
+      const sideThicknessText = formatSideThicknessLabel(item.sideThickness);
       const { serviceText, hingeText } = getDoorProcessingCategoryTexts(
         item.services,
         item.serviceDetails,
@@ -1781,6 +1859,8 @@ function renderTable() {
       const serviceOnlyCost = Math.max(0, Number(item.serviceCost || 0) - Number(item.doorHingeCost || 0));
       const baseLines = [
         `사이즈 ${escapeHtml(sizeText)}`,
+        `도어형태 ${escapeHtml(doorTypeText)}`,
+        `측면두께 ${escapeHtml(sideThicknessText)}`,
         `경첩가공 ${escapeHtml(hingeText)}`,
         `옵션 ${escapeHtml(item.optionsLabel || "-")}`,
         `가공서비스 ${escapeHtml(serviceText)}`,
@@ -1877,6 +1957,8 @@ function buildEmailContent() {
         ? addonInfo?.name || "부자재"
         : MATERIALS[item.materialId].name;
       const sizeText = isAddon ? "-" : `${item.thickness}T / ${item.width}×${item.length}mm`;
+      const doorTypeText = isAddon ? "-" : formatDoorTypeLabel(item.doorType);
+      const sideThicknessText = isAddon ? "-" : formatSideThicknessLabel(item.sideThickness);
       const { serviceText, hingeText } = isAddon
         ? { serviceText: "-", hingeText: "-" }
         : getDoorProcessingCategoryTexts(item.services, item.serviceDetails, item.doorHingeConfig, {
@@ -1885,7 +1967,7 @@ function buildEmailContent() {
       const optionsText = isAddon ? "-" : item.optionsLabel || "-";
       const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
       lines.push(
-        `${idx + 1}. ${materialName} x${item.quantity} | 크기 ${sizeText} | 옵션 ${optionsText} | 가공서비스 ${serviceText} | 경첩가공 ${hingeText} | 금액 ${amountText}`
+        `${idx + 1}. ${materialName} x${item.quantity} | 크기 ${sizeText} | 도어형태 ${doorTypeText} | 측면두께 ${sideThicknessText} | 옵션 ${optionsText} | 가공서비스 ${serviceText} | 경첩가공 ${hingeText} | 금액 ${amountText}`
       );
     });
   }
@@ -1939,6 +2021,8 @@ function buildOrderPayload() {
     items: state.items.map((item) => {
       const isAddon = item.type === "addon";
       const addon = isAddon ? BOARD_ADDON_ITEMS.find((candidate) => candidate.id === item.addonId) : null;
+      const doorType = normalizeDoorType(item.doorType);
+      const sideThickness = normalizeSideThickness(item.sideThickness);
       const hingeSpec = cloneDoorHingeConfig(item.doorHingeConfig || createDefaultDoorHingeConfig());
       if (!hingeSpec.enabled) hingeSpec.holes = [];
       return {
@@ -1951,6 +2035,7 @@ function buildOrderPayload() {
           ? null
           : {
               thicknessMm: Number(item.thickness || 0),
+              sideThicknessMm: sideThickness,
               widthMm: Number(item.width || 0),
               lengthMm: Number(item.length || 0),
             },
@@ -1960,6 +2045,9 @@ function buildOrderPayload() {
         doorSpec: isAddon
           ? null
           : {
+              type: doorType,
+              typeLabel: DOOR_TYPE_LABELS[doorType] || "",
+              sideThicknessMm: sideThickness,
               hinges: hingeSpec,
             },
         pricing: buildConsultAwarePricing({
@@ -2075,6 +2163,8 @@ function renderOrderCompleteDetails() {
               ? addonInfo?.name || "부자재"
               : MATERIALS[item.materialId].name;
             const sizeText = isAddon ? "-" : `${item.thickness}T / ${item.width}×${item.length}mm`;
+            const doorTypeText = isAddon ? "-" : formatDoorTypeLabel(item.doorType);
+            const sideThicknessText = isAddon ? "-" : formatSideThicknessLabel(item.sideThickness);
             const { serviceText, hingeText } = isAddon
               ? { serviceText: "-", hingeText: "-" }
               : getDoorProcessingCategoryTexts(item.services, item.serviceDetails, item.doorHingeConfig, {
@@ -2082,7 +2172,7 @@ function renderOrderCompleteDetails() {
                 });
             const optionsText = isAddon ? "-" : item.optionsLabel || "-";
             const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-            return `<p class="item-line">${idx + 1}. ${escapeHtml(materialName)} x${item.quantity} · 크기 ${escapeHtml(sizeText)} · 옵션 ${escapeHtml(optionsText)} · 가공서비스 ${escapeHtml(serviceText)} · 경첩가공 ${escapeHtml(hingeText)} · 금액 ${amountText}</p>`;
+            return `<p class="item-line">${idx + 1}. ${escapeHtml(materialName)} x${item.quantity} · 크기 ${escapeHtml(sizeText)} · 도어형태 ${escapeHtml(doorTypeText)} · 측면두께 ${escapeHtml(sideThicknessText)} · 옵션 ${escapeHtml(optionsText)} · 가공서비스 ${escapeHtml(serviceText)} · 경첩가공 ${escapeHtml(hingeText)} · 금액 ${amountText}</p>`;
           })
           .join("");
 
@@ -2179,6 +2269,34 @@ function updateThicknessOptions(materialId) {
   autoCalculatePrice();
 }
 
+function renderDoorTypeOptions() {
+  const select = $("#doorTypeSelect");
+  if (!select) return;
+  const currentValue = normalizeDoorType(select.value);
+  select.innerHTML = `<option value="">도어 형태를 선택해주세요</option>`;
+  Object.entries(DOOR_TYPE_LABELS).forEach(([value, label]) => {
+    const optionEl = document.createElement("option");
+    optionEl.value = value;
+    optionEl.textContent = label;
+    select.appendChild(optionEl);
+  });
+  if (currentValue) select.value = currentValue;
+}
+
+function renderSideThicknessOptions() {
+  const select = $("#sideThicknessSelect");
+  if (!select) return;
+  const currentValue = normalizeSideThickness(select.value);
+  select.innerHTML = `<option value="">측면 두께를 선택해주세요</option>`;
+  SIDE_THICKNESS_OPTIONS.forEach((item) => {
+    const optionEl = document.createElement("option");
+    optionEl.value = String(item.value);
+    optionEl.textContent = item.label;
+    select.appendChild(optionEl);
+  });
+  if (currentValue) select.value = String(currentValue);
+}
+
 function validateSizeFields() {
   const calcBtn = $("#calcItemBtn");
   const mat = MATERIALS[selectedMaterialId];
@@ -2256,7 +2374,14 @@ function updatePreview() {
 
   const input = readCurrentInputs();
   const mat = MATERIALS[input.materialId];
-  if (!mat || !input.width || !input.length || !input.thickness) {
+  if (
+    !mat ||
+    !input.width ||
+    !input.length ||
+    !input.thickness ||
+    !input.doorType ||
+    !input.sideThickness
+  ) {
     colorEl.style.background = "#ddd";
     colorEl.style.width = "120px";
     colorEl.style.height = "120px";
@@ -2269,7 +2394,7 @@ function updatePreview() {
   const { w, h } = getPreviewDimensions(input.width, input.length, maxPx, minPx);
   colorEl.style.width = `${w}px`;
   colorEl.style.height = `${h}px`;
-  textEl.textContent = `${mat.name} / ${input.thickness}T / ${input.width}×${input.length}mm`;
+  textEl.textContent = `${mat.name} / ${formatDoorTypeLabel(input.doorType)} / ${input.thickness}T / 측면 ${formatSideThicknessLabel(input.sideThickness)} / ${input.width}×${input.length}mm`;
   renderPreviewHoles(input);
 }
 
@@ -2543,6 +2668,8 @@ function init() {
 
   initEmailJS();
 
+  renderDoorTypeOptions();
+  renderSideThicknessOptions();
   renderMaterialTabs();
   renderMaterialCards();
   renderOptionCards();
@@ -2602,6 +2729,15 @@ function init() {
       const selected = MATERIALS[selectedMaterialId];
       updateSizePlaceholders(selected);
     }],
+  });
+  ["doorTypeSelect", "sideThicknessSelect"].forEach((id) => {
+    const selectEl = document.getElementById(id);
+    selectEl?.addEventListener("change", () => {
+      autoCalculatePrice();
+      requestPreviewUpdate();
+      updateDoorPreviewSummary();
+      updateAddItemState();
+    });
   });
   $("#openMaterialModal").addEventListener("click", openMaterialModal);
   $("#closeMaterialModal").addEventListener("click", closeMaterialModal);
