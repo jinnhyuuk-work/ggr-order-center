@@ -2462,31 +2462,38 @@ th, td {
   color: var(--color-text-muted);
 }
 
-.measurement-guide-section {
-  padding: 10px 12px;
-  border: 1px solid var(--color-border-faint);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-muted);
+.measurement-guide-steps {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-faint);
 }
 
-.measurement-guide-section h4 {
-  margin: 0 0 8px;
+.measurement-guide-step {
+  display: none;
+  margin: 0;
+}
+
+.measurement-guide-step.is-active {
+  display: block;
+}
+
+.measurement-guide-step-title {
+  margin: 0 0 4px;
   font-size: var(--font-size-sm);
 }
 
-.measurement-guide-list {
-  margin: 0 0 0 18px;
-  padding: 0;
-}
-
-.measurement-guide-list li + li {
-  margin-top: 6px;
-}
-
-.measurement-guide-note {
+.measurement-guide-step-list {
   margin: 0;
+  padding-left: 16px;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.measurement-guide-step-list li + li {
+  margin-top: 4px;
 }
 
 .measurement-guide-media {
@@ -2498,22 +2505,55 @@ th, td {
   overflow: hidden;
 }
 
+.measurement-guide-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.measurement-guide-slide-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  overflow: hidden;
+}
+
+.measurement-guide-carousel-slides {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.measurement-guide-slide {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.measurement-guide-slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .measurement-guide-media-image {
   display: block;
   width: 100%;
-  max-height: 240px;
+  height: 100%;
   object-fit: contain;
-  border-radius: var(--radius-sm);
-  background: #fff;
 }
 
 .measurement-guide-media-placeholder {
   display: grid;
   place-items: center;
   width: 100%;
-  min-height: 170px;
+  height: 100%;
   box-sizing: border-box;
-  border-radius: var(--radius-sm);
   border: 1px dashed var(--color-border);
   background:
     linear-gradient(135deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.01)),
@@ -2530,10 +2570,80 @@ th, td {
   padding: 14px;
 }
 
-.measurement-guide-media-caption {
-  margin: 8px 2px 0;
-  color: var(--color-text-muted);
+.measurement-guide-carousel-controls {
+  position: absolute;
+  inset: 50% 8px auto;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.measurement-guide-carousel-btn {
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-faint);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--color-text-strong);
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: auto;
+}
+
+.measurement-guide-carousel-status {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.measurement-guide-carousel-counter {
+  color: #fff;
   font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.56);
+}
+
+.measurement-guide-carousel-dots {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.measurement-guide-carousel-dot {
+  width: 8px;
+  height: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.52);
+  color: transparent;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.measurement-guide-carousel-dot.is-active {
+  width: 20px;
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .module-option-modal-footer {
