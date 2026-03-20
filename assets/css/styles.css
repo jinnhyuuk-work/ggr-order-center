@@ -3171,12 +3171,28 @@ th, td {
 .card-base:hover {
   border-color: var(--color-border);
   box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  background: var(--color-surface-muted);
+  color: inherit;
+}
+
+button.card-base:hover {
+  background: var(--color-surface-muted);
+  color: inherit;
 }
 
 .card-base.selected {
   border-color: var(--color-border);
   box-shadow: 0 8px 20px rgba(0,0,0,0.12);
   background: var(--color-surface);
+}
+
+button.card-base.selected:hover {
+  background: var(--color-surface);
+  color: inherit;
+}
+
+button.card-base:active {
+  transform: none;
 }
 
 .service-actions {
