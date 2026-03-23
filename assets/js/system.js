@@ -5696,6 +5696,10 @@ function resolveAnchorForDirection(anchorId, preferredDir = null) {
   const dirs = getEdgeEndpointDirections(parent);
   const scoreStart = pref.dx * dirs.start.dx + pref.dy * dirs.start.dy;
   const scoreEnd = pref.dx * dirs.end.dx + pref.dy * dirs.end.dy;
+  // Keep the current anchor side when direction scoring is tied.
+  if (Math.abs(scoreEnd - scoreStart) < 1e-6) {
+    return canonical || raw;
+  }
   return `${String(parent.id || "")}:${scoreEnd > scoreStart ? "end" : "start"}`;
 }
 
@@ -9341,7 +9345,9 @@ function reanchorChildrenAfterEdgeRemoval(removedEdge) {
     const preferredInward = hasValidPlacement(edge.placement)
       ? normalizeDirection(edge.placement.inwardX, edge.placement.inwardY)
       : null;
-    const targetAnchor = resolveAnchorForDirection(replacementAnchor, preferredDir);
+    // Keep removed edge's parent endpoint as the reattach target.
+    // Using child direction here can flip to the opposite parent endpoint and cause large jumps.
+    const targetAnchor = resolveAnchorForDirection(replacementAnchor);
     edge.anchorEndpointId = targetAnchor || replacementAnchor || "root-endpoint";
     if (edge.anchorEndpointId === "root-endpoint") {
       applyRootAnchorVector(edge, preferredDir || { dx: 1, dy: 0 }, preferredInward);
