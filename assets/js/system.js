@@ -3387,6 +3387,39 @@ function findBayEndpointNeighborsByPlacement(targetEdge, endpointSide = "end", t
   };
 }
 
+function collectUniqueBayEdgeIds(edgeIds = []) {
+  const seen = new Set();
+  return (Array.isArray(edgeIds) ? edgeIds : [])
+    .map((edgeId) => String(edgeId || ""))
+    .filter((edgeId) => {
+      if (!edgeId || seen.has(edgeId)) return false;
+      const edge = findShelfById(edgeId);
+      if (!edge || edge.type !== "bay") return false;
+      seen.add(edgeId);
+      return true;
+    });
+}
+
+function reanchorBayChildChain(parentEdgeId, childEdgeIds = []) {
+  const parentId = String(parentEdgeId || "");
+  if (!parentId) return [];
+  const chainIds = collectUniqueBayEdgeIds(childEdgeIds).filter((edgeId) => edgeId !== parentId);
+  let anchorParentId = parentId;
+  chainIds.forEach((childId) => {
+    const child = findShelfById(childId);
+    if (!child || child.type !== "bay") return;
+    child.anchorEndpointId = `${anchorParentId}:end`;
+    child.attachAtStart = false;
+    clearRootAnchorVector(child);
+    child.placement = null;
+    anchorParentId = childId;
+  });
+  for (let i = chainIds.length - 2; i >= 0; i -= 1) {
+    moveEdgeBeforeInOrder(chainIds[i], chainIds[i + 1]);
+  }
+  return chainIds;
+}
+
 function addBayAdjacentToModuleEdge(edgeId, { direction = "right" } = {}) {
   const targetId = String(edgeId || "");
   normalizeDanglingAnchorIds();
@@ -3411,15 +3444,12 @@ function addBayAdjacentToModuleEdge(edgeId, { direction = "right" } = {}) {
   }
 
   const anchoredEdges = collectEdgesAnchoredToEndpoint(targetId, endpointSide);
-  if (anchoredEdges.length > 1) {
-    return {
-      ok: false,
-      message: "해당 방향에 연결된 모듈이 많아 자동 추가할 수 없습니다.",
-      shelfId: "",
-    };
-  }
-  const anchoredChild = anchoredEdges[0] || null;
-  if (anchoredChild && anchoredChild.type !== "bay") {
+  const anchoredBayChildIds = collectUniqueBayEdgeIds(
+    anchoredEdges
+      .filter((edge) => String(edge?.type || "") === "bay")
+      .map((edge) => String(edge?.id || ""))
+  );
+  if (anchoredEdges.some((edge) => edge && edge.type !== "bay")) {
     return {
       ok: false,
       message: "코너가 연결된 방향은 좌/우 추가를 지원하지 않습니다.",
@@ -3490,24 +3520,20 @@ function addBayAdjacentToModuleEdge(edgeId, { direction = "right" } = {}) {
   }
 
   let betweenPlan = null;
-  if (anchoredChild && parentNeighbor) {
-    return {
-      ok: false,
-      message: "해당 방향에 연결된 모듈이 많아 자동 추가할 수 없습니다.",
-      shelfId: "",
-    };
-  }
-  if (anchoredChild) {
+  let betweenChainChildIds = [];
+  if (anchoredBayChildIds.length) {
+    const anchoredChildId = anchoredBayChildIds[0];
     betweenPlan = {
       parentEdgeId: targetId,
-      childEdgeId: String(anchoredChild.id || ""),
+      childEdgeId: anchoredChildId,
       parentEndpointId: canonicalTargetEndpointId,
       sourceEndpoint: {
         ...sourceEndpoint,
         endpointId: canonicalTargetEndpointId,
       },
-      insertId: `insert:${targetId}:${endpointSide}:${String(anchoredChild.id || "")}`,
+      insertId: `insert:${targetId}:${endpointSide}:${anchoredChildId}`,
     };
+    betweenChainChildIds = anchoredBayChildIds.slice();
   } else if (parentNeighbor) {
     betweenPlan = {
       parentEdgeId: String(parentNeighbor.edge.id || ""),
@@ -3516,6 +3542,7 @@ function addBayAdjacentToModuleEdge(edgeId, { direction = "right" } = {}) {
       sourceEndpoint: parentNeighbor.sourceEndpoint,
       insertId: `insert:${String(parentNeighbor.edge.id || "")}:${targetId}`,
     };
+    betweenChainChildIds = [targetId];
   }
 
   if (!betweenPlan) {
@@ -3523,64 +3550,97 @@ function addBayAdjacentToModuleEdge(edgeId, { direction = "right" } = {}) {
     const geometryNeighbors = Array.isArray(geometryNeighborsResult.neighbors)
       ? geometryNeighborsResult.neighbors
       : [];
-    if (geometryNeighbors.length > 1) {
-      return {
-        ok: false,
-        message: "해당 방향에 연결된 모듈이 많아 자동 추가할 수 없습니다.",
-        shelfId: "",
-      };
-    }
-    if (geometryNeighbors.length === 1) {
-      const geometryNeighbor = geometryNeighbors[0];
-      const neighborEdge = geometryNeighbor.edge;
-      const neighborId = String(neighborEdge?.id || "");
-      if (!neighborId) {
-        return {
-          ok: false,
-          message: "모듈 추가에 실패했습니다.",
-          shelfId: "",
-        };
-      }
-      const neighborAnchorCanonical = resolveAnchorForDirection(String(neighborEdge.anchorEndpointId || ""));
-      const neighborAnchorInfo = parseCanonicalEndpointId(neighborAnchorCanonical);
-      const targetAnchoredToNeighbor = Boolean(targetAnchorInfo && targetAnchorInfo.edgeId === neighborId);
-      const neighborAnchoredToTarget = Boolean(neighborAnchorInfo && neighborAnchorInfo.edgeId === targetId);
-      if (targetAnchoredToNeighbor && neighborAnchoredToTarget) {
-        return {
-          ok: false,
-          message: "해당 방향에 연결된 모듈이 많아 자동 추가할 수 없습니다.",
-          shelfId: "",
-        };
-      }
-      if (targetAnchoredToNeighbor) {
-        const parentEndpointId = `${neighborId}:${geometryNeighbor.side}`;
-        betweenPlan = {
-          parentEdgeId: neighborId,
-          childEdgeId: targetId,
-          parentEndpointId,
-          sourceEndpoint: {
-            ...geometryNeighbor.endpoint,
-            endpointId: parentEndpointId,
-          },
-          insertId: `insert:${neighborId}:${targetId}`,
-        };
-      } else if (neighborAnchoredToTarget) {
+    const geometryBayNeighbors = geometryNeighbors.filter(
+      (info) => info?.edge && info.edge.type === "bay" && String(info.edge.id || "") !== targetId
+    );
+    const geometryNeighborIds = collectUniqueBayEdgeIds(
+      geometryBayNeighbors.map((info) => String(info?.edge?.id || ""))
+    );
+    if (geometryNeighborIds.length) {
+      const geometryMetaById = new Map(
+        geometryNeighborIds.map((neighborId) => {
+          const neighborEdge = findShelfById(neighborId);
+          const neighborAnchorCanonical = resolveAnchorForDirection(
+            String(neighborEdge?.anchorEndpointId || "")
+          );
+          const neighborAnchorInfo = parseCanonicalEndpointId(neighborAnchorCanonical);
+          return [
+            neighborId,
+            {
+              neighborId,
+              neighborEdge,
+              neighborAnchorCanonical,
+              neighborAnchorInfo,
+            },
+          ];
+        })
+      );
+
+      const endpointAnchoredChildIds = geometryNeighborIds.filter((neighborId) => {
+        const meta = geometryMetaById.get(neighborId);
+        return Boolean(meta && meta.neighborAnchorCanonical === canonicalTargetEndpointId);
+      });
+      if (endpointAnchoredChildIds.length) {
+        const firstChildId = endpointAnchoredChildIds[0];
         betweenPlan = {
           parentEdgeId: targetId,
-          childEdgeId: neighborId,
+          childEdgeId: firstChildId,
           parentEndpointId: canonicalTargetEndpointId,
           sourceEndpoint: {
             ...sourceEndpoint,
             endpointId: canonicalTargetEndpointId,
           },
-          insertId: `insert:${targetId}:${endpointSide}:${neighborId}`,
+          insertId: `insert:${targetId}:${endpointSide}:${firstChildId}`,
         };
+        betweenChainChildIds = endpointAnchoredChildIds.slice();
       } else {
-        return {
-          ok: false,
-          message: "해당 방향의 연결 상태를 확인할 수 없습니다. 다시 시도해주세요.",
-          shelfId: "",
+        const targetParentId = String(targetAnchorInfo?.edgeId || "");
+        const targetParentMeta = targetParentId ? geometryMetaById.get(targetParentId) : null;
+        const targetParentAnchorInfo = parseCanonicalEndpointId(targetAnchorCanonical);
+        const canInsertBetweenParentAndTarget =
+          Boolean(targetParentMeta?.neighborEdge) &&
+          Boolean(targetParentAnchorInfo?.edgeId) &&
+          String(targetParentAnchorInfo.edgeId || "") === targetParentId;
+        if (canInsertBetweenParentAndTarget) {
+          const parentEndpointSide = targetParentAnchorInfo.side === "start" ? "start" : "end";
+          const parentSourceEndpoint = buildBayEndpointFromPlacement(
+            targetParentMeta.neighborEdge,
+            parentEndpointSide
+          );
+          if (parentSourceEndpoint) {
+            const siblingChildIds = geometryNeighborIds.filter((neighborId) => {
+              if (neighborId === targetParentId || neighborId === targetId) return false;
+              const meta = geometryMetaById.get(neighborId);
+              return Boolean(meta && meta.neighborAnchorCanonical === targetAnchorCanonical);
+            });
+            betweenPlan = {
+              parentEdgeId: targetParentId,
+              childEdgeId: targetId,
+              parentEndpointId: targetAnchorCanonical,
+              sourceEndpoint: {
+                ...parentSourceEndpoint,
+                endpointId: targetAnchorCanonical,
+              },
+              insertId: `insert:${targetParentId}:${targetId}`,
+            };
+            betweenChainChildIds = [targetId, ...siblingChildIds];
+          }
+        }
+      }
+
+      if (!betweenPlan) {
+        const fallbackChildId = geometryNeighborIds[0];
+        betweenPlan = {
+          parentEdgeId: targetId,
+          childEdgeId: fallbackChildId,
+          parentEndpointId: canonicalTargetEndpointId,
+          sourceEndpoint: {
+            ...sourceEndpoint,
+            endpointId: canonicalTargetEndpointId,
+          },
+          insertId: `insert:${targetId}:${endpointSide}:${fallbackChildId}`,
         };
+        betweenChainChildIds = geometryNeighborIds.slice();
       }
     }
   }
@@ -3602,6 +3662,11 @@ function addBayAdjacentToModuleEdge(edgeId, { direction = "right" } = {}) {
         message: "모듈 사이 추가에 실패했습니다.",
         shelfId: "",
       };
+    }
+    if (betweenChainChildIds.length > 1) {
+      reanchorBayChildChain(insertedShelfId, betweenChainChildIds);
+      normalizeDanglingAnchorIds();
+      renderBayInputs();
     }
     return {
       ok: true,
