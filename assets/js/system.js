@@ -9346,6 +9346,35 @@ function buildModuleFrontPreviewLayout({
         Math.max(minMiddleTopMm, maxMiddleTopMm)
       );
       shelfTopPositionsMm = [topShelfTopMm, middleTopMm, bottomShelfTopMm];
+    } else if (
+      String(moduleType || "bay") === "bay" &&
+      visibleShelfCount === 4 &&
+      normalizedRodCount === 1
+    ) {
+      // GSH-3 style: keep top shelf/hanger, place one shelf at middle,
+      // and place the remaining shelf at the midpoint between middle and bottom.
+      const middleTargetTopMm = topShelfTopMm + (bottomShelfTopMm - topShelfTopMm) / 2;
+      const minMiddleTopMm =
+        topShelfTopMm + shelfThicknessMm + MODULE_FRONT_PREVIEW_MIN_GAP_MM;
+      const maxMiddleTopMm =
+        bottomShelfTopMm - (shelfThicknessMm + MODULE_FRONT_PREVIEW_MIN_GAP_MM) * 2;
+      const middleTopMm = clampModuleFrontPreviewValue(
+        middleTargetTopMm,
+        minMiddleTopMm,
+        Math.max(minMiddleTopMm, maxMiddleTopMm)
+      );
+
+      const lowerTargetTopMm = middleTopMm + (bottomShelfTopMm - middleTopMm) / 2;
+      const minLowerTopMm = middleTopMm + shelfThicknessMm + MODULE_FRONT_PREVIEW_MIN_GAP_MM;
+      const maxLowerTopMm =
+        bottomShelfTopMm - shelfThicknessMm - MODULE_FRONT_PREVIEW_MIN_GAP_MM;
+      const lowerTopMm = clampModuleFrontPreviewValue(
+        lowerTargetTopMm,
+        minLowerTopMm,
+        Math.max(minLowerTopMm, maxLowerTopMm)
+      );
+
+      shelfTopPositionsMm = [topShelfTopMm, middleTopMm, lowerTopMm, bottomShelfTopMm];
     }
   }
 
