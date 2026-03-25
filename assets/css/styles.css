@@ -1115,6 +1115,32 @@ input[type="number"]::-webkit-outer-spin-button {
   background: rgba(255, 247, 235, 0.96);
 }
 
+.system-dimension-label--compact {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.system-dimension-label--compact:not(.system-dimension-label--expanded) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  color: #333;
+  font-size: calc(var(--preview-dim-font-size, 11px) - 1px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0;
+  z-index: 3;
+}
+
+.system-dimension-label--expanded {
+  z-index: 5;
+}
+
 .system-dimension-label--column {
   font-size: calc(var(--preview-dim-font-size, 11px) - 1px);
   padding: max(1px, calc(var(--preview-dim-padding-y, 2px) - 1px))
@@ -1158,6 +1184,16 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .system-module-label--compact {
   cursor: pointer;
+}
+
+.system-module-label--index-only:not(.system-module-label--expanded) {
+  min-width: 0;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .system-module-label--expanded {
@@ -1222,24 +1258,6 @@ input[type="number"]::-webkit-outer-spin-button {
   font-size: calc(var(--preview-dim-font-size, 11px) - 1px);
   font-weight: 700;
   line-height: 1.1;
-}
-
-.system-module-label[data-density-level="0"][data-compose-key="preset"] .system-module-index-chip {
-  border-color: rgba(30, 78, 122, 0.28);
-  background: rgba(226, 240, 255, 0.92);
-  color: #1f4e79;
-}
-
-.system-module-label[data-density-level="0"][data-compose-key="custom"] .system-module-index-chip {
-  border-color: rgba(171, 109, 18, 0.35);
-  background: rgba(255, 243, 217, 0.92);
-  color: #7a4c00;
-}
-
-.system-module-label[data-density-level="0"][data-compose-key="unknown"] .system-module-index-chip {
-  border-color: rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.96);
-  color: #333;
 }
 
 .system-module-label-line:last-child {

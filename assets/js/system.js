@@ -4412,7 +4412,7 @@ function getComposeTabLabelInfo(edge = null) {
 function createModuleLabelElement(
   labelInfo = {},
   {
-    level = 2, // 2: badge+shelf+addons, 1: badge+shelf, 0: index chip only
+    level = 2, // 2: badge+shelf+addons, 1: index chip only, 0: index chip only
     index = 1,
   } = {}
 ) {
@@ -4422,6 +4422,7 @@ function createModuleLabelElement(
     labelInfo.corner ? " system-module-label--corner" : ""
   }`;
   if (normalizedLevel < 2) labelEl.classList.add("system-module-label--compact");
+  if (normalizedLevel <= 1) labelEl.classList.add("system-module-label--index-only");
   labelEl.dataset.densityLevel = String(normalizedLevel);
   labelEl.dataset.restoreLevel = String(normalizedLevel);
   labelEl.dataset.labelIndex = String(Math.max(1, Number(index || 1)));
@@ -4440,7 +4441,7 @@ function createModuleLabelElement(
   labelEl.style.left = `${Number(labelInfo.x || 0)}px`;
   labelEl.style.top = `${Number(labelInfo.y || 0)}px`;
 
-  if (normalizedLevel === 0) {
+  if (normalizedLevel <= 1) {
     const chip = document.createElement("span");
     chip.className = "system-module-index-chip";
     chip.textContent = String(Math.max(1, Number(index || 1)));
@@ -4509,6 +4510,102 @@ function setModuleLabelExpandedState(labelEl, expanded = false) {
   labelEl.replaceWith(rebuilt);
 }
 
+function formatDimensionLabelText(
+  text = "",
+  { compact = false, expanded = false, compactText = "" } = {}
+) {
+  const raw = String(text || "").trim();
+  if (!raw) return "";
+  if (compact && !expanded) {
+    const compactRaw = String(compactText || "").trim();
+    if (compactRaw) return compactRaw;
+    return raw;
+  }
+  return `${raw}mm`;
+}
+
+function createDimensionLabelElement(labelInfo = {}, { compact = false } = {}) {
+  const labelEl = document.createElement("div");
+  labelEl.className = `system-dimension-label${
+    labelInfo.corner ? " system-dimension-label--corner" : ""
+  }`;
+  const isCompact = Boolean(compact);
+  if (isCompact) {
+    labelEl.classList.add("system-dimension-label--compact");
+  }
+  const edgeId = String(labelInfo.edgeId || "");
+  labelEl.dataset.edgeId = edgeId;
+  labelEl.dataset.rawText = String(labelInfo.text || "");
+  const compactText =
+    Number.isFinite(Number(labelInfo.moduleIndex)) && Number(labelInfo.moduleIndex) > 0
+      ? String(Math.max(1, Math.floor(Number(labelInfo.moduleIndex))))
+      : "";
+  labelEl.dataset.compactText = compactText;
+  labelEl.dataset.restoreCompact = isCompact ? "true" : "false";
+  labelEl.textContent = formatDimensionLabelText(labelInfo.text, {
+    compact: isCompact,
+    expanded: false,
+    compactText,
+  });
+  labelEl.style.left = `${Number(labelInfo.x || 0)}px`;
+  labelEl.style.top = `${Number(labelInfo.y || 0)}px`;
+  if (isCompact && edgeId) {
+    labelEl.addEventListener("mouseenter", () => {
+      setDimensionLabelExpandedState(labelEl, true);
+      setPreviewEdgeHoverState(edgeId, true);
+    });
+    labelEl.addEventListener("mouseleave", () => {
+      setDimensionLabelExpandedState(labelEl, false);
+      setPreviewEdgeHoverState("", false);
+    });
+  }
+  return labelEl;
+}
+
+function setDimensionLabelExpandedState(labelEl, expanded = false) {
+  if (!(labelEl instanceof Element)) return;
+  const restoreCompact = String(labelEl.dataset.restoreCompact || "") === "true";
+  if (!restoreCompact) return;
+  const rawText = String(labelEl.dataset.rawText || "");
+  const compactText = String(labelEl.dataset.compactText || "");
+  const shouldExpand = Boolean(expanded);
+  labelEl.textContent = formatDimensionLabelText(rawText, {
+    compact: restoreCompact,
+    expanded: shouldExpand,
+    compactText,
+  });
+  labelEl.classList.toggle("system-dimension-label--expanded", shouldExpand);
+}
+
+function resolveDimensionLabelCompactStates(labelInfos = [], parentEl) {
+  const infos = Array.isArray(labelInfos) ? labelInfos : [];
+  if (!(parentEl instanceof Element) || infos.length <= 1) return infos.map(() => false);
+  const overlapPadding = 2;
+  const tempLabels = [];
+  const tempRects = [];
+  infos.forEach((info) => {
+    const tempEl = createDimensionLabelElement(info, { compact: false });
+    tempEl.style.visibility = "hidden";
+    tempEl.style.opacity = "0";
+    tempEl.style.pointerEvents = "none";
+    parentEl.appendChild(tempEl);
+    tempLabels.push(tempEl);
+    tempRects.push(getBoundingRectOnParent(tempEl, parentEl));
+  });
+
+  let hasOverlap = false;
+  for (let i = 0; i < tempRects.length; i += 1) {
+    for (let j = i + 1; j < tempRects.length; j += 1) {
+      if (isRectOverlapping(tempRects[i], tempRects[j], overlapPadding)) {
+        hasOverlap = true;
+      }
+    }
+  }
+
+  tempLabels.forEach((el) => el.remove());
+  return infos.map(() => hasOverlap);
+}
+
 function syncModuleLabelExpansionByEdge(edgeId = "", active = false) {
   const container = $("#systemPreviewShelves");
   if (!container) return;
@@ -4519,6 +4616,19 @@ function syncModuleLabelExpansionByEdge(edgeId = "", active = false) {
     const shouldExpand =
       Boolean(active) && Boolean(targetId) && String(labelEl.dataset.edgeId || "") === targetId;
     setModuleLabelExpandedState(labelEl, shouldExpand);
+  });
+}
+
+function syncDimensionLabelExpansionByEdge(edgeId = "", active = false) {
+  const container = $("#systemPreviewShelves");
+  if (!container) return;
+  const targetId = String(edgeId || "");
+  const labels = Array.from(container.querySelectorAll(".system-dimension-label[data-edge-id]"));
+  labels.forEach((labelEl) => {
+    if (!(labelEl instanceof Element)) return;
+    const shouldExpand =
+      Boolean(active) && Boolean(targetId) && String(labelEl.dataset.edgeId || "") === targetId;
+    setDimensionLabelExpandedState(labelEl, shouldExpand);
   });
 }
 
@@ -4815,11 +4925,13 @@ function setPreviewEdgeHoverState(edgeId = "", active = false) {
   });
   if (!active) {
     syncModuleLabelExpansionByEdge("", false);
+    syncDimensionLabelExpansionByEdge("", false);
     return;
   }
   const targetId = String(edgeId || "");
   if (!targetId) {
     syncModuleLabelExpansionByEdge("", false);
+    syncDimensionLabelExpansionByEdge("", false);
     return;
   }
   const target = Array.from(
@@ -4830,7 +4942,9 @@ function setPreviewEdgeHoverState(edgeId = "", active = false) {
       String(el?.dataset?.cornerPreview || "") === targetId
   );
   if (target) target.classList.add("is-edge-hovered");
-  syncModuleLabelExpansionByEdge(targetId, Boolean(target));
+  const shouldExpandLabels = Boolean(targetId);
+  syncModuleLabelExpansionByEdge(targetId, shouldExpandLabels);
+  syncDimensionLabelExpansionByEdge(targetId, shouldExpandLabels);
 }
 
 function renderBuilderStructure() {
@@ -7252,10 +7366,12 @@ function updatePreview() {
       .filter((edge) => edge?.id)
       .map((edge) => [String(edge.id), edge])
   );
-  shelves.forEach((item) => {
+  shelves.forEach((item, itemIndex) => {
     const edge = edgeById.get(String(item.id || ""));
     const shelfCount = Math.max(1, Number(edge?.count || 1));
     const addonSummary = formatAddonCompactBreakdown(getShelfAddonIds(item.id));
+    const composeInfo = getComposeTabLabelInfo(edge);
+    const moduleIndex = Math.max(1, itemIndex + 1);
     if (item.isCorner && item.arms?.length) {
       const primaryArm = item.arms[0] || null;
       const secondaryArm = item.arms[1] || null;
@@ -7300,6 +7416,8 @@ function updatePreview() {
         ? (Number(labelAnchorArm.minY || 0) + Number(labelAnchorArm.maxY || 0)) / 2
         : (Number(item.minY || 0) + Number(item.maxY || 0)) / 2;
       dimensionLabels.push({
+        edgeId: item.id,
+        moduleIndex,
         x: labelXMm * scale + tx,
         y: labelYMm * scale + ty,
         text: cornerText,
@@ -7311,7 +7429,7 @@ function updatePreview() {
         y: labelYMm * scale + ty,
         count: shelfCount,
         addons: addonSummary,
-        compose: getComposeTabLabelInfo(edge),
+        compose: composeInfo,
         corner: true,
       });
       return;
@@ -7322,6 +7440,8 @@ function updatePreview() {
       Math.round(lengthWithSupport - SUPPORT_VISIBLE_MM * 2)
     );
     dimensionLabels.push({
+      edgeId: item.id,
+      moduleIndex,
       x: ((item.minX + item.maxX) / 2) * scale + tx,
       y: ((item.minY + item.maxY) / 2) * scale + ty,
       text: `${nominalLength}`,
@@ -7333,20 +7453,17 @@ function updatePreview() {
       y: ((item.minY + item.maxY) / 2) * scale + ty,
       count: shelfCount,
       addons: addonSummary,
-      compose: getComposeTabLabelInfo(edge),
+      compose: composeInfo,
       corner: false,
     });
   });
 
   if (showSizeInfo) {
-    dimensionLabels.forEach((labelInfo) => {
-      const labelEl = document.createElement("div");
-      labelEl.className = `system-dimension-label${
-        labelInfo.corner ? " system-dimension-label--corner" : ""
-      }`;
-      labelEl.textContent = `${labelInfo.text}mm`;
-      labelEl.style.left = `${labelInfo.x}px`;
-      labelEl.style.top = `${labelInfo.y}px`;
+    const compactStates = resolveDimensionLabelCompactStates(dimensionLabels, shelvesEl);
+    dimensionLabels.forEach((labelInfo, index) => {
+      const labelEl = createDimensionLabelElement(labelInfo, {
+        compact: Boolean(compactStates[index]),
+      });
       shelvesEl.appendChild(labelEl);
     });
   } else {
