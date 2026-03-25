@@ -2015,6 +2015,38 @@ th, td {
   padding: 4px 6px;
 }
 
+#estimateTable .estimate-name-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+#estimateTable .estimate-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-toggle-btn {
+  border: 1px solid var(--color-border-faint);
+  background: var(--color-surface-muted);
+  color: var(--color-text-sub);
+  border-radius: var(--radius-btn);
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.detail-toggle-btn:hover {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
 #estimateTable th:nth-child(3),
 #estimateTable td:nth-child(3),
 #estimateTable th:nth-child(4),
@@ -3416,6 +3448,10 @@ button.card-base:active {
   white-space: normal;
   word-break: break-word;
   overflow-wrap: anywhere;
+}
+
+.detail-row.is-collapsed {
+  display: none;
 }
 
 .error-msg {

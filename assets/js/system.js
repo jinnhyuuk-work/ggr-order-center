@@ -11129,7 +11129,11 @@ function buildEmailContent({
       lines.push(`- 수량: ${item.quantity}`);
       if (detailInline) lines.push(`- 구성: ${detailInline}`);
       lines.push(`- 금액: ${amountText}`);
-      if (idx < displayItems.length - 1) lines.push("");
+      if (idx < displayItems.length - 1) {
+        lines.push("");
+        lines.push("------------------------------");
+        lines.push("");
+      }
     });
   }
   lines.push("");

@@ -33,6 +33,7 @@ const MODAL_FOCUSABLE_SELECTOR = [
 let activeModalState = null;
 let modalKeyHandlerBound = false;
 let autoModalTitleIdSeq = 0;
+const ESTIMATE_DETAIL_OPEN_STATE = new Map();
 const CUSTOMER_PHOTO_MAX_COUNT = 5;
 const CUSTOMER_PHOTO_MAX_FILE_SIZE_MB = 10;
 const CUSTOMER_PHOTO_MAX_DIMENSION_PX = 2000;
@@ -1168,12 +1169,40 @@ export function renderEstimateTable({
   }
   if (emptyBanner) emptyBanner.style.display = "none";
 
-  items.forEach((item) => {
+  const currentDetailStateKeys = new Set(
+    items.map((item, index) => String(item?.id || `row-${index}`))
+  );
+  Array.from(ESTIMATE_DETAIL_OPEN_STATE.keys()).forEach((key) => {
+    if (!currentDetailStateKeys.has(key)) {
+      ESTIMATE_DETAIL_OPEN_STATE.delete(key);
+    }
+  });
+
+  items.forEach((item, index) => {
+    const detailStateKey = String(item?.id || `row-${index}`);
+    const detailLinesRaw = getDetailLines ? getDetailLines(item) : [];
+    const detailLines = Array.isArray(detailLinesRaw)
+      ? detailLinesRaw.map((line) => String(line || "").trim()).filter(Boolean)
+      : [];
+    const hasDetail = detailLines.length > 0;
+    const detailOpen = hasDetail && ESTIMATE_DETAIL_OPEN_STATE.get(detailStateKey) === true;
+
     const tr = document.createElement("tr");
     const nameText = getName ? getName(item) : "";
     const totalText = getTotalText ? getTotalText(item) : "-";
     tr.innerHTML = `
-      <td>${nameText}</td>
+      <td>
+        <div class="estimate-name-wrap">
+          <span class="estimate-name-text">${nameText}</span>
+          ${
+            hasDetail
+              ? `<button type="button" class="detail-toggle-btn" aria-expanded="${detailOpen ? "true" : "false"}">${
+                  detailOpen ? "상세닫기" : "상세보기"
+                }</button>`
+              : ""
+          }
+        </div>
+      </td>
       <td>
         <input
           type="number"
@@ -1190,17 +1219,27 @@ export function renderEstimateTable({
     `;
     tbody.appendChild(tr);
 
-    const detailLines = getDetailLines ? getDetailLines(item) : [];
-    const detailRow = document.createElement("tr");
-    detailRow.className = "detail-row";
-    detailRow.innerHTML = `
-      <td colspan="4">
-        <div class="sub-detail">
-          ${detailLines.map((line) => `<div class="detail-line">${line}</div>`).join("")}
-        </div>
-      </td>
-    `;
-    tbody.appendChild(detailRow);
+    if (hasDetail) {
+      const detailRow = document.createElement("tr");
+      detailRow.className = `detail-row${detailOpen ? "" : " is-collapsed"}`;
+      detailRow.innerHTML = `
+        <td colspan="4">
+          <div class="sub-detail">
+            ${detailLines.map((line) => `<div class="detail-line">${line}</div>`).join("")}
+          </div>
+        </td>
+      `;
+      tbody.appendChild(detailRow);
+
+      const toggleBtn = tr.querySelector(".detail-toggle-btn");
+      toggleBtn?.addEventListener("click", () => {
+        const willOpen = detailRow.classList.contains("is-collapsed");
+        detailRow.classList.toggle("is-collapsed", !willOpen);
+        toggleBtn.setAttribute("aria-expanded", String(willOpen));
+        toggleBtn.textContent = willOpen ? "상세닫기" : "상세보기";
+        ESTIMATE_DETAIL_OPEN_STATE.set(detailStateKey, willOpen);
+      });
+    }
   });
 
   tbody.querySelectorAll(".qty-input").forEach((input) => {

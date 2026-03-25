@@ -1956,7 +1956,11 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
       lines.push(`- 가공서비스: ${serviceText}`);
       lines.push(`- 경첩가공: ${hingeText}`);
       lines.push(`- 금액: ${amountText}`);
-      if (idx < state.items.length - 1) lines.push("");
+      if (idx < state.items.length - 1) {
+        lines.push("");
+        lines.push("------------------------------");
+        lines.push("");
+      }
     });
   }
 

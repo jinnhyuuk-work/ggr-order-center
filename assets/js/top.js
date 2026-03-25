@@ -2053,7 +2053,11 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
       lines.push(`- 옵션: ${item.optionsLabel || "-"}`);
       lines.push(`- 가공: ${servicesText || "-"}`);
       lines.push(`- 금액: ${amountText}`);
-      if (idx < state.items.length - 1) lines.push("");
+      if (idx < state.items.length - 1) {
+        lines.push("");
+        lines.push("------------------------------");
+        lines.push("");
+      }
     });
   }
 
