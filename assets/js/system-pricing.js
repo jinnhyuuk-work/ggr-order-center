@@ -243,6 +243,7 @@ export function createSystemPricingHelpers({
     const unitQuantity = Math.max(1, normalizeCount(quantity, 1));
     const shelfMaterial = SYSTEM_SHELF_MATERIALS[shelf?.materialId];
     const shelfWidthMm = normalizeMm(shelf?.width);
+    const shelfLengthMm = normalizeMm(safeShelfLengthMm || shelf?.length);
     const shelfCount = Math.max(1, normalizeCount(shelf?.count, 1));
     const shelfTier = getShelfTier({
       kind: isCorner ? "corner" : "normal",
@@ -263,7 +264,7 @@ export function createSystemPricingHelpers({
       materialId: shelf.materialId,
       thickness: shelf.thickness,
       width: shelf.width,
-      length: shelf.length,
+      length: shelfLengthMm,
       quantity: unitQuantity,
       partMultiplier: shelfCount,
     });

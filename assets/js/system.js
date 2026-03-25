@@ -167,7 +167,7 @@ const COLUMN_WIDTH_MM = 30;
 const COLUMN_ENDPOINT_WIDTH_MM = 25;
 const COLUMN_DEPTH_MM = 75;
 const COLUMN_EXTRA_LENGTH_THRESHOLD = 2400;
-const SHELF_LENGTH_MM = 600;
+const SHELF_LENGTH_MM = 400;
 const SHELF_THICKNESS_MM = 18;
 const COLUMN_THICKNESS_MM = 18;
 // Module input width (shelf width only, without post bar).
@@ -10519,7 +10519,8 @@ function buildSystemGroupedShelfBreakdown(entries = []) {
   const addShelfCount = (bucket, shelf, qty = 0, materialCost = 0) => {
     const thickness = Math.max(0, Number(shelf?.thickness || 0));
     const width = Math.max(0, Number(shelf?.width || 0));
-    const length = Math.max(0, Number(shelf?.length || SHELF_LENGTH_MM || 0));
+    // System shelf depth is fixed to 400mm; keep grouped detail-line aligned with spec.
+    const length = Math.max(0, Number(SHELF_LENGTH_MM || 0));
     const count = Math.max(0, Number(qty || 0));
     if (!count || !width || !length) return;
     const key = `${thickness}T-${width}x${length}`;
