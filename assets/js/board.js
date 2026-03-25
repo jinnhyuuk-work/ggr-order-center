@@ -35,6 +35,8 @@ import {
   buildStandardPriceBreakdownRows,
   renderItemPriceDisplay,
   renderItemPriceNotice,
+  initCustomerPhotoUploader,
+  uploadCustomerPhotoFilesToCloudinary,
 } from "./shared.js";
 import {
   normalizeFulfillmentType,
@@ -547,6 +549,7 @@ function syncProcessingSectionVisibility() {
 let currentPhase = 1; // 1: 합판/가공, 2: 서비스, 3: 고객 정보
 let sendingEmail = false;
 let orderCompleted = false;
+let customerPhotoUploader = null;
 let stickyOffsetTimer = null;
 let previewResizeTimer = null;
 const EXTRA_CATEGORIES = ["LPM", "PP"];
@@ -1292,7 +1295,7 @@ function renderSummary() {
   updateSendButtonEnabled();
 }
 
-function buildEmailContent() {
+function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = [] } = {}) {
   const customer = getCustomerInfo();
   const summary = buildGrandSummary();
 
@@ -1303,6 +1306,19 @@ function buildEmailContent() {
   lines.push(`이메일: ${customer.email || "-"}`);
   lines.push(`주소: ${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim());
   lines.push(`요청사항: ${customer.memo || "-"}`);
+  if (customerPhotoUploads.length || customerPhotoErrors.length) {
+    lines.push("");
+    lines.push("=== 공간/가구 사진 ===");
+    if (customerPhotoUploads.length) {
+      customerPhotoUploads.forEach((photo, index) => {
+        lines.push(`${index + 1}) ${photo.originalName || `사진 ${index + 1}`}`);
+        lines.push(`- ${photo.secureUrl || "-"}`);
+      });
+    }
+    if (customerPhotoErrors.length) {
+      lines.push(`업로드 실패: ${customerPhotoErrors.map((error) => `${error.name}(${error.reason})`).join(" / ")}`);
+    }
+  }
   lines.push("");
   lines.push("=== 주문 내역 ===");
 
@@ -1348,7 +1364,7 @@ function buildEmailContent() {
   };
 }
 
-function buildOrderPayload() {
+function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
   const customer = getCustomerInfo();
   const summary = buildGrandSummary();
   const hasCustomPrice = summary.hasConsult;
@@ -1366,6 +1382,11 @@ function buildOrderPayload() {
       detailAddress: customer.detailAddress || "",
       memo: customer.memo || "",
     },
+    customerPhotos: (Array.isArray(customerPhotoUploads) ? customerPhotoUploads : []).map((photo) => ({
+      name: String(photo?.originalName || "").trim(),
+      url: String(photo?.secureUrl || "").trim(),
+      publicId: String(photo?.publicId || "").trim(),
+    })),
     totals: {
       grandTotal: Number(summary.grandTotal || 0),
       subtotal: Number(summary.subtotal || 0),
@@ -1470,6 +1491,7 @@ function resetFlow() {
     const el = document.querySelector(sel);
     if (el) el.value = "";
   });
+  customerPhotoUploader?.clear?.();
   setFulfillmentType("");
   setServiceStepError("");
   renderTable();
@@ -1559,13 +1581,28 @@ async function sendQuote() {
   sendingEmail = true;
   updateSendButtonEnabled();
 
-  const { subject, body, lines } = buildEmailContent();
+  const selectedCustomerPhotos = customerPhotoUploader?.getSelectedFiles?.() || [];
+  const customerPhotoUploadResult = await uploadCustomerPhotoFilesToCloudinary({
+    files: selectedCustomerPhotos,
+    pageKey: "board",
+  });
+  const customerPhotoUploads = Array.isArray(customerPhotoUploadResult?.uploaded)
+    ? customerPhotoUploadResult.uploaded
+    : [];
+  const customerPhotoErrors = Array.isArray(customerPhotoUploadResult?.failed)
+    ? customerPhotoUploadResult.failed
+    : [];
+
+  const { subject, body, lines } = buildEmailContent({
+    customerPhotoUploads,
+    customerPhotoErrors,
+  });
   const orderTimeText = new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Asia/Seoul",
   }).format(new Date());
-  const payload = buildOrderPayload();
+  const payload = buildOrderPayload({ customerPhotoUploads });
   const addressLine = `${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim();
   const templateParams = {
     name: customer.name || "-",
@@ -1577,6 +1614,13 @@ async function sendQuote() {
     customer_email: customer.email,
     customer_address: addressLine || "-",
     customer_memo: customer.memo || "-",
+    customer_photo_count: String(customerPhotoUploads.length || 0),
+    customer_photo_urls: customerPhotoUploads.map((photo) => photo.secureUrl).join("\n") || "-",
+    customer_photo_upload_error:
+      customerPhotoErrors.map((error) => `${error.name}: ${error.reason}`).join(" / ") || "-",
+    preview_image_url: "-",
+    preview_image_public_id: "-",
+    preview_image_error: "-",
     order_lines: lines.join("\n"),
     order_payload_json: JSON.stringify(payload, null, 2),
   };
@@ -1922,6 +1966,10 @@ function init() {
   resetOrderCompleteUI();
 
   initEmailJS();
+  customerPhotoUploader = initCustomerPhotoUploader({
+    showInfoModal,
+    onChange: () => updateSendButtonEnabled(),
+  });
 
   renderMaterialTabs();
   renderMaterialCards();

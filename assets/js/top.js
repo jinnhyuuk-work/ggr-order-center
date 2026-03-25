@@ -27,6 +27,8 @@ import {
   buildStandardPriceBreakdownRows,
   renderItemPriceDisplay,
   renderItemPriceNotice,
+  initCustomerPhotoUploader,
+  uploadCustomerPhotoFilesToCloudinary,
 } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
 import { TOP_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
@@ -442,6 +444,7 @@ function syncProcessingSectionVisibility() {
 
 let sendingEmail = false;
 let orderCompleted = false;
+let customerPhotoUploader = null;
 let stickyOffsetTimer = null;
 let previewResizeTimer = null;
 const DEFAULT_TOP_THICKNESSES = [12, 24, 30, 40, 50];
@@ -2010,7 +2013,7 @@ function updateSendButtonEnabled() {
   });
 }
 
-function buildEmailContent() {
+function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = [] } = {}) {
   const customer = getCustomerInfo();
   const summary = buildGrandSummary();
   const grandTotal = summary.grandTotal;
@@ -2022,6 +2025,19 @@ function buildEmailContent() {
   lines.push(`이메일: ${customer.email || "-"}`);
   lines.push(`주소: ${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim());
   lines.push(`요청사항: ${customer.memo || "-"}`);
+  if (customerPhotoUploads.length || customerPhotoErrors.length) {
+    lines.push("");
+    lines.push("=== 공간/가구 사진 ===");
+    if (customerPhotoUploads.length) {
+      customerPhotoUploads.forEach((photo, index) => {
+        lines.push(`${index + 1}) ${photo.originalName || `사진 ${index + 1}`}`);
+        lines.push(`- ${photo.secureUrl || "-"}`);
+      });
+    }
+    if (customerPhotoErrors.length) {
+      lines.push(`업로드 실패: ${customerPhotoErrors.map((error) => `${error.name}(${error.reason})`).join(" / ")}`);
+    }
+  }
   lines.push("");
   lines.push("=== 주문 내역 ===");
 
@@ -2058,7 +2074,7 @@ function buildEmailContent() {
   };
 }
 
-function buildOrderPayload() {
+function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
   const customer = getCustomerInfo();
   const summary = buildGrandSummary();
   const grandTotal = summary.grandTotal;
@@ -2078,6 +2094,11 @@ function buildOrderPayload() {
       detailAddress: customer.detailAddress || "",
       memo: customer.memo || "",
     },
+    customerPhotos: (Array.isArray(customerPhotoUploads) ? customerPhotoUploads : []).map((photo) => ({
+      name: String(photo?.originalName || "").trim(),
+      url: String(photo?.secureUrl || "").trim(),
+      publicId: String(photo?.publicId || "").trim(),
+    })),
     totals: {
       grandTotal: Number(grandTotal || 0),
       subtotal: Number(subtotal || 0),
@@ -2139,13 +2160,28 @@ async function sendQuote() {
   sendingEmail = true;
   updateSendButtonEnabled();
 
-  const { subject, body, lines } = buildEmailContent();
+  const selectedCustomerPhotos = customerPhotoUploader?.getSelectedFiles?.() || [];
+  const customerPhotoUploadResult = await uploadCustomerPhotoFilesToCloudinary({
+    files: selectedCustomerPhotos,
+    pageKey: "top",
+  });
+  const customerPhotoUploads = Array.isArray(customerPhotoUploadResult?.uploaded)
+    ? customerPhotoUploadResult.uploaded
+    : [];
+  const customerPhotoErrors = Array.isArray(customerPhotoUploadResult?.failed)
+    ? customerPhotoUploadResult.failed
+    : [];
+
+  const { subject, body, lines } = buildEmailContent({
+    customerPhotoUploads,
+    customerPhotoErrors,
+  });
   const orderTimeText = new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Asia/Seoul",
   }).format(new Date());
-  const payload = buildOrderPayload();
+  const payload = buildOrderPayload({ customerPhotoUploads });
   const addressLine = `${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim();
   const templateParams = {
     name: customer.name || "-",
@@ -2157,6 +2193,13 @@ async function sendQuote() {
     customer_email: customer.email,
     customer_address: addressLine || "-",
     customer_memo: customer.memo || "-",
+    customer_photo_count: String(customerPhotoUploads.length || 0),
+    customer_photo_urls: customerPhotoUploads.map((photo) => photo.secureUrl).join("\n") || "-",
+    customer_photo_upload_error:
+      customerPhotoErrors.map((error) => `${error.name}: ${error.reason}`).join(" / ") || "-",
+    preview_image_url: "-",
+    preview_image_public_id: "-",
+    preview_image_error: "-",
     order_lines: lines.join("\n"),
     order_payload_json: JSON.stringify(payload, null, 2),
   };
@@ -2192,6 +2235,7 @@ function resetFlow() {
     const el = document.querySelector(sel);
     if (el) el.value = "";
   });
+  customerPhotoUploader?.clear?.();
   setFulfillmentType("");
   setServiceStepError("");
   renderTable();
@@ -2223,6 +2267,10 @@ function initTop() {
   renderTopCategoryDesc();
   resetOrderCompleteUI();
   initEmailJS();
+  customerPhotoUploader = initCustomerPhotoUploader({
+    showInfoModal,
+    onChange: () => updateSendButtonEnabled(),
+  });
   updatePreviewSummary(previewSummaryConfig);
   const priceEl = $("#topEstimateText");
   if (priceEl) renderItemPriceNotice({ target: priceEl, text: "상판 타입을 선택해주세요." });

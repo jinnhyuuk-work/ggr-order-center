@@ -33,6 +33,11 @@ const MODAL_FOCUSABLE_SELECTOR = [
 let activeModalState = null;
 let modalKeyHandlerBound = false;
 let autoModalTitleIdSeq = 0;
+const CUSTOMER_PHOTO_MAX_COUNT = 5;
+const CUSTOMER_PHOTO_MAX_FILE_SIZE_MB = 10;
+const CUSTOMER_PHOTO_MAX_DIMENSION_PX = 2000;
+const CUSTOMER_PHOTO_JPEG_QUALITY = 0.86;
+const CUSTOMER_PHOTO_UPLOAD_TIMEOUT_MS = 20000;
 
 export function formatPrice(value) {
   return Number(value || 0).toLocaleString();
@@ -589,6 +594,349 @@ export function getCustomerInfo({
     sigungu: addressMeta.sigungu,
     bname: addressMeta.bname,
   };
+}
+
+function isFileLike(value) {
+  if (!value || typeof value !== "object") return false;
+  if (typeof File !== "undefined" && value instanceof File) return true;
+  return (
+    typeof value.name === "string" &&
+    Number.isFinite(Number(value.size)) &&
+    typeof value.type === "string"
+  );
+}
+
+function isImageFileLike(file) {
+  return Boolean(file) && /^image\//i.test(String(file?.type || "").trim());
+}
+
+function formatFileSize(value = 0) {
+  const size = Math.max(0, Number(value) || 0);
+  if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)}MB`;
+  if (size >= 1024) return `${Math.round(size / 1024)}KB`;
+  return `${size}B`;
+}
+
+function getFileFingerprint(file) {
+  return [
+    String(file?.name || "").trim(),
+    Number(file?.size || 0),
+    Number(file?.lastModified || 0),
+  ].join("::");
+}
+
+function sanitizeFileName(name = "") {
+  return String(name || "")
+    .trim()
+    .replace(/[^\w.\-가-힣]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function withTimeout(promise, timeoutMs = 0, timeoutMessage = "요청 시간이 초과되었습니다.") {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+function getCustomerPhotoDefaultFolder() {
+  const baseFolder = String(CLOUDINARY_CONFIG?.folder || "").trim();
+  if (!baseFolder) return "ggr-order-center/customer-photo";
+  const trimmed = baseFolder.replace(/\/+$/g, "");
+  return trimmed.endsWith("/customer-photo") ? trimmed : `${trimmed}/customer-photo`;
+}
+
+function renderCustomerPhotoList(listEl, files = []) {
+  if (!listEl) return;
+  if (!Array.isArray(files) || files.length === 0) {
+    listEl.innerHTML = `<div class="customer-photo-empty">선택된 사진이 없습니다.</div>`;
+    return;
+  }
+  listEl.innerHTML = files
+    .map((file, index) => {
+      const fileName = escapeHtml(String(file?.name || `사진 ${index + 1}`));
+      const fileSize = escapeHtml(formatFileSize(file?.size || 0));
+      return `
+        <div class="customer-photo-chip">
+          <span class="customer-photo-chip-name">${fileName}</span>
+          <span class="customer-photo-chip-size">${fileSize}</span>
+          <button type="button" class="customer-photo-remove-btn" data-customer-photo-remove="${index}" aria-label="${fileName} 제거">삭제</button>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+export function initCustomerPhotoUploader({
+  inputSelector = "#customerPhotoInput",
+  listSelector = "#customerPhotoList",
+  maxCount = CUSTOMER_PHOTO_MAX_COUNT,
+  maxFileSizeMb = CUSTOMER_PHOTO_MAX_FILE_SIZE_MB,
+  showInfoModal = null,
+  onChange = null,
+} = {}) {
+  const inputEl = typeof document !== "undefined" ? document.querySelector(inputSelector) : null;
+  const listEl = typeof document !== "undefined" ? document.querySelector(listSelector) : null;
+  const normalizedMaxCount = Math.max(1, Math.floor(Number(maxCount) || CUSTOMER_PHOTO_MAX_COUNT));
+  const maxFileSizeBytes = Math.max(
+    1,
+    Math.floor(Number(maxFileSizeMb) || CUSTOMER_PHOTO_MAX_FILE_SIZE_MB) * 1024 * 1024
+  );
+  const state = { files: [] };
+
+  const notifyChange = () => {
+    if (typeof onChange === "function") {
+      onChange(state.files.slice());
+    }
+  };
+
+  const showErrors = (errors = []) => {
+    if (!errors.length || typeof showInfoModal !== "function") return;
+    if (errors.length === 1) {
+      showInfoModal(errors[0]);
+      return;
+    }
+    if (errors.length === 2) {
+      showInfoModal(errors.join("\n"));
+      return;
+    }
+    const preview = errors.slice(0, 2).join("\n");
+    showInfoModal(`${preview}\n외 ${errors.length - 2}건`);
+  };
+
+  const render = () => {
+    renderCustomerPhotoList(listEl, state.files);
+  };
+
+  const clear = () => {
+    state.files = [];
+    if (inputEl) inputEl.value = "";
+    render();
+    notifyChange();
+  };
+
+  const getSelectedFiles = () => state.files.slice();
+
+  if (!inputEl || !listEl) {
+    return {
+      clear,
+      getSelectedFiles,
+      getSelectedCount: () => getSelectedFiles().length,
+    };
+  }
+
+  render();
+
+  inputEl.addEventListener("change", () => {
+    const selectedFiles = Array.from(inputEl.files || []).filter(isFileLike);
+    inputEl.value = "";
+    if (!selectedFiles.length) return;
+
+    const errors = [];
+    const merged = [...state.files];
+    const knownFingerprintSet = new Set(merged.map((file) => getFileFingerprint(file)));
+    selectedFiles.forEach((file) => {
+      const fileName = String(file?.name || "이미지");
+      if (!isImageFileLike(file)) {
+        errors.push(`${fileName}: 이미지 파일만 업로드할 수 있습니다.`);
+        return;
+      }
+      if (Number(file.size || 0) > maxFileSizeBytes) {
+        errors.push(`${fileName}: 파일 크기는 ${Math.floor(maxFileSizeBytes / (1024 * 1024))}MB 이하만 가능합니다.`);
+        return;
+      }
+      if (merged.length >= normalizedMaxCount) {
+        errors.push(`사진은 최대 ${normalizedMaxCount}장까지 업로드할 수 있습니다.`);
+        return;
+      }
+      const fingerprint = getFileFingerprint(file);
+      if (knownFingerprintSet.has(fingerprint)) {
+        errors.push(`${fileName}: 이미 선택된 사진입니다.`);
+        return;
+      }
+      merged.push(file);
+      knownFingerprintSet.add(fingerprint);
+    });
+
+    state.files = merged;
+    render();
+    notifyChange();
+    showErrors(errors);
+  });
+
+  listEl.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target.closest("[data-customer-photo-remove]") : null;
+    if (!target) return;
+    const removeIndex = Number(target.getAttribute("data-customer-photo-remove"));
+    if (!Number.isInteger(removeIndex) || removeIndex < 0 || removeIndex >= state.files.length) return;
+    state.files.splice(removeIndex, 1);
+    render();
+    notifyChange();
+  });
+
+  return {
+    clear,
+    getSelectedFiles,
+    getSelectedCount: () => getSelectedFiles().length,
+  };
+}
+
+async function loadImageFromFile(file) {
+  if (typeof document === "undefined" || !isFileLike(file)) return null;
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("이미지 파일을 읽을 수 없습니다."));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function compressCustomerPhoto(file) {
+  if (!isFileLike(file) || !isImageFileLike(file) || typeof document === "undefined") {
+    return { uploadFile: file, width: 0, height: 0, transformed: false };
+  }
+
+  try {
+    const image = await loadImageFromFile(file);
+    const sourceWidth = Math.max(1, Math.round(Number(image?.naturalWidth || image?.width || 0)));
+    const sourceHeight = Math.max(1, Math.round(Number(image?.naturalHeight || image?.height || 0)));
+    const maxSide = Math.max(sourceWidth, sourceHeight);
+    const scale = maxSide > CUSTOMER_PHOTO_MAX_DIMENSION_PX
+      ? CUSTOMER_PHOTO_MAX_DIMENSION_PX / maxSide
+      : 1;
+    const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+    const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return { uploadFile: file, width: sourceWidth, height: sourceHeight, transformed: false };
+    }
+    context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", CUSTOMER_PHOTO_JPEG_QUALITY);
+    });
+    if (!(blob instanceof Blob) || !blob.size) {
+      return { uploadFile: file, width: sourceWidth, height: sourceHeight, transformed: false };
+    }
+
+    const baseName = sanitizeFileName(String(file?.name || "").replace(/\.[^.]+$/, "")) || "customer-photo";
+    const uploadName = `${baseName}.jpg`;
+    const uploadFile = typeof File !== "undefined"
+      ? new File([blob], uploadName, { type: "image/jpeg" })
+      : blob;
+    return {
+      uploadFile,
+      uploadName,
+      width: targetWidth,
+      height: targetHeight,
+      transformed: true,
+    };
+  } catch (_error) {
+    return { uploadFile: file, width: 0, height: 0, transformed: false };
+  }
+}
+
+export function isCloudinaryUploadReady() {
+  if (!CLOUDINARY_CONFIG || typeof CLOUDINARY_CONFIG !== "object") return false;
+  if (CLOUDINARY_CONFIG.enabled === false) return false;
+  const cloudName = String(CLOUDINARY_CONFIG.cloudName || "").trim();
+  const uploadPreset = String(CLOUDINARY_CONFIG.uploadPreset || "").trim();
+  return Boolean(cloudName && uploadPreset);
+}
+
+export async function uploadCustomerPhotoFilesToCloudinary({
+  files = [],
+  pageKey = "",
+  folder = "",
+  timeoutMs = CUSTOMER_PHOTO_UPLOAD_TIMEOUT_MS,
+} = {}) {
+  const selectedFiles = (Array.isArray(files) ? files : []).filter(isFileLike);
+  const uploaded = [];
+  const failed = [];
+  if (!selectedFiles.length) return { uploaded, failed, skipped: "no_files" };
+
+  if (!isCloudinaryUploadReady()) {
+    selectedFiles.forEach((file) => {
+      failed.push({
+        name: String(file?.name || "이미지"),
+        reason: "Cloudinary 설정이 비어 있습니다.",
+      });
+    });
+    return { uploaded, failed, skipped: "not_configured" };
+  }
+
+  const cloudName = String(CLOUDINARY_CONFIG.cloudName || "").trim();
+  const uploadPreset = String(CLOUDINARY_CONFIG.uploadPreset || "").trim();
+  const uploadFolder = String(folder || "").trim() || getCustomerPhotoDefaultFolder();
+  const tags = ["order-center", "customer-photo"];
+  if (String(pageKey || "").trim()) tags.push(`page-${String(pageKey).trim()}`);
+  const uploadEndpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`;
+
+  for (const file of selectedFiles) {
+    const originalName = String(file?.name || "이미지").trim() || "이미지";
+    try {
+      const optimized = await compressCustomerPhoto(file);
+      const uploadFile = optimized.uploadFile || file;
+      const formData = new FormData();
+      if (typeof File !== "undefined" && uploadFile instanceof File) {
+        formData.append("file", uploadFile);
+      } else {
+        formData.append("file", uploadFile, optimized.uploadName || originalName);
+      }
+      formData.append("upload_preset", uploadPreset);
+      formData.append("tags", tags.join(","));
+      if (uploadFolder) formData.append("folder", uploadFolder);
+
+      const response = await withTimeout(
+        fetch(uploadEndpoint, { method: "POST", body: formData }),
+        timeoutMs,
+        `${originalName}: 업로드 시간이 초과되었습니다.`
+      );
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const reason = String(result?.error?.message || "").trim();
+        throw new Error(reason || `Cloudinary 업로드 실패 (${response.status})`);
+      }
+      const secureUrl = String(result?.secure_url || "").trim();
+      if (!secureUrl) {
+        throw new Error("업로드 URL을 받지 못했습니다.");
+      }
+      uploaded.push({
+        originalName,
+        secureUrl,
+        publicId: String(result?.public_id || "").trim(),
+        width: Number(result?.width || optimized.width || 0),
+        height: Number(result?.height || optimized.height || 0),
+      });
+    } catch (error) {
+      failed.push({
+        name: originalName,
+        reason: String(error?.message || error || "업로드 실패").trim() || "업로드 실패",
+      });
+    }
+  }
+
+  return { uploaded, failed, skipped: "" };
 }
 
 export function validateCustomerInfo(customer) {

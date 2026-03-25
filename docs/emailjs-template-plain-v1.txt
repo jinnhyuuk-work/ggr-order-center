@@ -1,0 +1,31 @@
+[주문요청 접수]
+제목: {{subject}}
+접수시각: {{time}}
+
+[고객 정보]
+이름: {{customer_name}}
+연락처: {{customer_phone}}
+이메일: {{customer_email}}
+주소: {{customer_address}}
+요청사항: {{customer_memo}}
+
+[고객 사진]
+업로드 개수: {{customer_photo_count}}
+업로드 URL:
+{{customer_photo_urls}}
+업로드 오류:
+{{customer_photo_upload_error}}
+
+[시스템 미리보기]
+URL: {{preview_image_url}}
+Public ID: {{preview_image_public_id}}
+오류: {{preview_image_error}}
+
+[주문 요약 라인]
+{{order_lines}}
+
+[Payload JSON]
+{{order_payload_json}}
+
+[전체 메시지]
+{{message}}

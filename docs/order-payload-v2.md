@@ -11,6 +11,7 @@
 5. 상담품목 가격은 `pricing`에서 숫자 대신 `null`과 `displayPriceLabel`로 표현한다.
 6. 추가옵션/가공서비스 `id`는 전역 유니크 접두 규칙을 사용한다.
 7. 배송/시공 요약 키는 `service*` 대신 `fulfillment*`를 사용한다.
+8. 고객 업로드 사진 URL은 선택 필드 `customerPhotos` 배열에 담는다.
 
 ## 3. 루트 스키마
 ```json
@@ -27,6 +28,7 @@
     "detailAddress": "",
     "memo": ""
   },
+  "customerPhotos": [],
   "totals": {
     "grandTotal": 0,
     "subtotal": 0,
