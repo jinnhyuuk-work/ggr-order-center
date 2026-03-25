@@ -1903,17 +1903,17 @@ function buildEmailContent() {
   const summary = buildGrandSummary();
 
   const lines = [];
-  lines.push("[고객 정보]");
+  lines.push("=== 고객 정보 ===");
   lines.push(`이름: ${customer.name || "-"}`);
   lines.push(`연락처: ${customer.phone || "-"}`);
   lines.push(`이메일: ${customer.email || "-"}`);
   lines.push(`주소: ${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim());
   lines.push(`요청사항: ${customer.memo || "-"}`);
   lines.push("");
-  lines.push("[주문 내역]");
+  lines.push("=== 주문 내역 ===");
 
   if (state.items.length === 0) {
-    lines.push("담긴 항목 없음");
+    lines.push("- 담긴 항목 없음");
   } else {
     state.items.forEach((item, idx) => {
       const isAddon = item.type === "addon";
@@ -1931,14 +1931,21 @@ function buildEmailContent() {
           });
       const optionsText = isAddon ? "-" : item.optionsLabel || "-";
       const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-      lines.push(
-        `${idx + 1}. ${materialName} x${item.quantity} | 크기 ${sizeText} | 도어형태 ${doorTypeText} | 측면두께 ${sideThicknessText} | 옵션 ${optionsText} | 가공서비스 ${serviceText} | 경첩가공 ${hingeText} | 금액 ${amountText}`
-      );
+      lines.push(`${idx + 1}) ${materialName}`);
+      lines.push(`- 수량: ${item.quantity}`);
+      lines.push(`- 크기: ${sizeText}`);
+      lines.push(`- 도어형태: ${doorTypeText}`);
+      lines.push(`- 측면두께: ${sideThicknessText}`);
+      lines.push(`- 옵션: ${optionsText}`);
+      lines.push(`- 가공서비스: ${serviceText}`);
+      lines.push(`- 경첩가공: ${hingeText}`);
+      lines.push(`- 금액: ${amountText}`);
+      if (idx < state.items.length - 1) lines.push("");
     });
   }
 
   lines.push("");
-  lines.push("[합계]");
+  lines.push("=== 합계 ===");
   const hasConsult = summary.hasConsult;
   const suffix = hasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
   const naverUnits = Math.ceil(summary.grandTotal / 1000) || 0;
@@ -2183,11 +2190,18 @@ async function sendQuote() {
   updateSendButtonEnabled();
 
   const { subject, body, lines } = buildEmailContent();
+  const orderTimeText = new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Seoul",
+  }).format(new Date());
   const payload = buildOrderPayload();
   const addressLine = `${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim();
   const templateParams = {
+    name: customer.name || "-",
+    time: orderTimeText,
     subject,
-    message: `${body}\n\n주소: ${addressLine || "-"}`,
+    message: body,
     customer_name: customer.name,
     customer_phone: customer.phone,
     customer_email: customer.email,

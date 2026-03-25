@@ -2016,31 +2016,33 @@ function buildEmailContent() {
   const grandTotal = summary.grandTotal;
 
   const lines = [];
-  lines.push("[고객 정보]");
+  lines.push("=== 고객 정보 ===");
   lines.push(`이름: ${customer.name || "-"}`);
   lines.push(`연락처: ${customer.phone || "-"}`);
   lines.push(`이메일: ${customer.email || "-"}`);
   lines.push(`주소: ${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim());
   lines.push(`요청사항: ${customer.memo || "-"}`);
   lines.push("");
-  lines.push("[주문 내역]");
+  lines.push("=== 주문 내역 ===");
 
   if (state.items.length === 0) {
-    lines.push("담긴 항목 없음");
+    lines.push("- 담긴 항목 없음");
   } else {
     state.items.forEach((item, idx) => {
       const servicesText = formatServiceList(item.services, item.serviceDetails, { includeNote: true });
       const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-      lines.push(
-        `${idx + 1}. ${item.typeName} x${item.quantity} | 크기 ${
-          item.displaySize
-        } | 옵션 ${item.optionsLabel} | 가공 ${servicesText || "-"} | 금액 ${amountText}`
-      );
+      lines.push(`${idx + 1}) ${item.typeName}`);
+      lines.push(`- 수량: ${item.quantity}`);
+      lines.push(`- 크기: ${item.displaySize || "-"}`);
+      lines.push(`- 옵션: ${item.optionsLabel || "-"}`);
+      lines.push(`- 가공: ${servicesText || "-"}`);
+      lines.push(`- 금액: ${amountText}`);
+      if (idx < state.items.length - 1) lines.push("");
     });
   }
 
   lines.push("");
-  lines.push("[합계]");
+  lines.push("=== 합계 ===");
   const hasConsult = summary.hasConsult;
   const suffix = hasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
   const naverUnits = Math.ceil(grandTotal / 1000) || 0;
@@ -2138,11 +2140,18 @@ async function sendQuote() {
   updateSendButtonEnabled();
 
   const { subject, body, lines } = buildEmailContent();
+  const orderTimeText = new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Seoul",
+  }).format(new Date());
   const payload = buildOrderPayload();
   const addressLine = `${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim();
   const templateParams = {
+    name: customer.name || "-",
+    time: orderTimeText,
     subject,
-    message: `${body}\n\n주소: ${addressLine || "-"}`,
+    message: body,
     customer_name: customer.name,
     customer_phone: customer.phone,
     customer_email: customer.email,

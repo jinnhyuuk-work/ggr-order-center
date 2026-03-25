@@ -106,6 +106,7 @@ import { createSystemPricingHelpers } from "./system-pricing.js";
 import {
   initEmailJS,
   EMAILJS_CONFIG,
+  CLOUDINARY_CONFIG,
   openModal,
   closeModal,
   getCustomerInfo,
@@ -232,6 +233,9 @@ const SYSTEM_SHAPE_CORNER_ATTACH_SIDE_RULES = Object.freeze({
 });
 const FREE_LAYOUT_MODE = true;
 const BUILDER_HISTORY_LIMIT = 80;
+const HTML2CANVAS_CDN_URL = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+const CLOUDINARY_UPLOAD_TIMEOUT_MS = 15000;
+let html2canvasLoaderPromise = null;
 const {
   calcAddonCostBreakdown,
   calcBayDetail,
@@ -972,6 +976,7 @@ let previewOpenEndpoints = new Map();
 let inlineInsertPendingFirstSaveEdgeId = "";
 let previewRenderTransform = { scale: 1, tx: 0, ty: 0, depthMm: 400 };
 let previewInfoMode = "size";
+let previewCaptureIndexOnlyMode = false;
 const builderHistory = {
   undo: [],
   redo: [],
@@ -5012,9 +5017,7 @@ function setPreviewEdgeHoverState(edgeId = "", active = false) {
   syncDimensionLabelExpansionByEdge(targetId, shouldExpandLabels);
 }
 
-function renderBuilderStructure() {
-  const listEl = $("#builderEdgeList");
-  if (!listEl) return;
+function buildBuilderEdgeRows() {
   const rows = [];
   const edges = getPreviewOrderedEdges(getOrderedCommittedGraphEdges());
   edges.forEach((edge, idx) => {
@@ -5040,6 +5043,13 @@ function renderBuilderStructure() {
       meta: `${widthText} / 선반 ${Number(edge.count || 1)}개 / ${addonText}`,
     });
   });
+  return rows;
+}
+
+function renderBuilderStructure() {
+  const listEl = $("#builderEdgeList");
+  if (!listEl) return;
+  const rows = buildBuilderEdgeRows();
   if (!rows.length) {
     listEl.innerHTML = `<div class="builder-hint">아직 구성된 모듈이 없습니다.</div>`;
     return;
@@ -7532,7 +7542,9 @@ function updatePreview() {
       shelvesEl.appendChild(labelEl);
     });
   } else {
-    const densityLevels = resolveModuleLabelDensityLevels(moduleInfoLabels, shelvesEl);
+    const densityLevels = previewCaptureIndexOnlyMode
+      ? moduleInfoLabels.map(() => 1)
+      : resolveModuleLabelDensityLevels(moduleInfoLabels, shelvesEl);
     moduleInfoLabels.forEach((labelInfo, index) => {
       const labelEl = createModuleLabelElement(labelInfo, {
         level: densityLevels[index],
@@ -10899,35 +10911,225 @@ function renderSummary() {
   updateSendButtonEnabled();
 }
 
-function buildEmailContent() {
+function isCloudinaryUploadReady() {
+  if (!CLOUDINARY_CONFIG || typeof CLOUDINARY_CONFIG !== "object") return false;
+  if (CLOUDINARY_CONFIG.enabled === false) return false;
+  const cloudName = String(CLOUDINARY_CONFIG.cloudName || "").trim();
+  const uploadPreset = String(CLOUDINARY_CONFIG.uploadPreset || "").trim();
+  return Boolean(cloudName && uploadPreset);
+}
+
+function withTimeout(promise, timeoutMs = 0, timeoutMessage = "요청 시간이 초과되었습니다.") {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+function ensureHtml2Canvas() {
+  if (typeof window?.html2canvas === "function") {
+    return Promise.resolve(window.html2canvas);
+  }
+  if (html2canvasLoaderPromise) return html2canvasLoaderPromise;
+
+  html2canvasLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = HTML2CANVAS_CDN_URL;
+    script.async = true;
+    script.onload = () => {
+      if (typeof window?.html2canvas === "function") {
+        resolve(window.html2canvas);
+        return;
+      }
+      html2canvasLoaderPromise = null;
+      reject(new Error("미리보기 캡처 라이브러리를 불러오지 못했습니다."));
+    };
+    script.onerror = () => {
+      html2canvasLoaderPromise = null;
+      reject(new Error("미리보기 캡처 라이브러리 로드에 실패했습니다."));
+    };
+    document.head.appendChild(script);
+  });
+
+  return html2canvasLoaderPromise;
+}
+
+function waitForNextFrame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+async function captureSystemPreviewImageDataUrl() {
+  const previewEl = $("#systemPreviewFrame") || $("#systemPreviewBox");
+  if (!previewEl) return "";
+  const stepPreviewEl = $("#stepPreview");
+  const shouldRevealHiddenStep = Boolean(stepPreviewEl?.classList.contains("hidden-step"));
+  const originalStepStyle = stepPreviewEl?.getAttribute("style") || "";
+  const previousInfoMode = previewInfoMode;
+  const previousCaptureIndexOnlyMode = previewCaptureIndexOnlyMode;
+
+  try {
+    previewCaptureIndexOnlyMode = true;
+    setPreviewInfoMode("module", { rerender: false });
+    if (shouldRevealHiddenStep && stepPreviewEl) {
+      stepPreviewEl.classList.remove("hidden-step");
+      stepPreviewEl.style.position = "fixed";
+      stepPreviewEl.style.left = "0";
+      stepPreviewEl.style.top = "-10000px";
+      stepPreviewEl.style.width = `${Math.min(Math.max((Number(window.innerWidth || 0) || 1200) - 48, 360), 980)}px`;
+      stepPreviewEl.style.pointerEvents = "none";
+      await waitForNextFrame();
+      updatePreview();
+      await waitForNextFrame();
+    }
+
+    const html2canvas = await ensureHtml2Canvas();
+    const rect = previewEl.getBoundingClientRect();
+    const width = Math.round(Number(rect.width || previewEl.offsetWidth || 0));
+    const height = Math.round(Number(rect.height || previewEl.offsetHeight || 0));
+    if (width <= 0 || height <= 0) return "";
+
+    const captureScale = Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1));
+    const canvas = await html2canvas(previewEl, {
+      backgroundColor: "#f3f3f3",
+      scale: captureScale,
+      useCORS: true,
+      logging: false,
+      removeContainer: true,
+      width,
+      height,
+      windowWidth: Math.max(width, Number(window.innerWidth || 0)),
+      windowHeight: Math.max(height, Number(window.innerHeight || 0)),
+      ignoreElements: (el) => {
+        if (!(el instanceof Element)) return false;
+        return (
+          el.classList.contains("system-preview-add-btn") ||
+          el.classList.contains("preview-info-toggle") ||
+          el.classList.contains("preview-history-actions") ||
+          el.classList.contains("system-dimension-label") ||
+          el.classList.contains("system-section-width-label") ||
+          el.classList.contains("system-preview-ghost")
+        );
+      },
+    });
+    if (!canvas || canvas.width <= 0 || canvas.height <= 0) return "";
+    if (typeof canvas.toDataURL !== "function") return "";
+    const dataUrl = canvas.toDataURL("image/png");
+    return /^data:image\/png;base64,/.test(dataUrl) ? dataUrl : "";
+  } finally {
+    previewCaptureIndexOnlyMode = previousCaptureIndexOnlyMode;
+    setPreviewInfoMode(previousInfoMode, { rerender: false });
+    if (shouldRevealHiddenStep && stepPreviewEl) {
+      if (originalStepStyle) {
+        stepPreviewEl.setAttribute("style", originalStepStyle);
+      } else {
+        stepPreviewEl.removeAttribute("style");
+      }
+      stepPreviewEl.classList.add("hidden-step");
+    } else {
+      updatePreview();
+    }
+  }
+}
+
+async function uploadSystemPreviewToCloudinary() {
+  if (!isCloudinaryUploadReady()) {
+    return { secureUrl: "", publicId: "", skipped: "not_configured" };
+  }
+
+  const imageDataUrl = await captureSystemPreviewImageDataUrl();
+  if (!imageDataUrl) {
+    return { secureUrl: "", publicId: "", skipped: "capture_empty" };
+  }
+
+  const cloudName = String(CLOUDINARY_CONFIG.cloudName || "").trim();
+  const uploadPreset = String(CLOUDINARY_CONFIG.uploadPreset || "").trim();
+  const folder = String(CLOUDINARY_CONFIG.folder || "").trim();
+  const formData = new FormData();
+  formData.append("file", imageDataUrl);
+  formData.append("upload_preset", uploadPreset);
+  formData.append("tags", "order-center,system-preview");
+  if (folder) formData.append("folder", folder);
+
+  const uploadEndpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`;
+  const response = await withTimeout(
+    fetch(uploadEndpoint, { method: "POST", body: formData }),
+    CLOUDINARY_UPLOAD_TIMEOUT_MS,
+    "미리보기 이미지 업로드 시간이 초과되었습니다."
+  );
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const reason = String(result?.error?.message || "").trim();
+    throw new Error(reason || `Cloudinary 업로드 실패 (${response.status})`);
+  }
+  const secureUrl = String(result?.secure_url || "").trim();
+  if (!secureUrl) {
+    throw new Error("Cloudinary 업로드 URL을 받지 못했습니다.");
+  }
+  const publicId = String(result?.public_id || "").trim();
+  return { secureUrl, publicId, skipped: "" };
+}
+
+function buildEmailContent({ previewImageUrl = "", previewImageError = "" } = {}) {
   const customer = getCustomerInfo();
   const summary = buildGrandSummary();
   const displayItems = buildSystemGroupDisplayItems(state.items);
+  const builderRows = buildBuilderEdgeRows();
 
   const lines = [];
-  lines.push("[고객 정보]");
+  lines.push("=== 고객 정보 ===");
   lines.push(`이름: ${customer.name || "-"}`);
   lines.push(`연락처: ${customer.phone || "-"}`);
   lines.push(`이메일: ${customer.email || "-"}`);
   lines.push(`주소: ${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim());
   lines.push(`요청사항: ${customer.memo || "-"}`);
   lines.push("");
-  lines.push("[주문 내역]");
+  lines.push("=== 주문 내역 ===");
 
   if (displayItems.length === 0) {
-    lines.push("담긴 항목 없음");
+    lines.push("- 담긴 항목 없음");
   } else {
     displayItems.forEach((item, idx) => {
       const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-      const detailInline = buildSystemGroupDetailLines(item).join(" / ");
-      lines.push(
-        `${idx + 1}. 시스템 구성 x${item.quantity}${detailInline ? ` | ${detailInline}` : ""} | 금액 ${amountText}`
-      );
+      const detailInline = buildSystemGroupDetailLines(item).join(" · ");
+      lines.push(`${idx + 1}) 시스템 구성`);
+      lines.push(`- 수량: ${item.quantity}`);
+      if (detailInline) lines.push(`- 구성: ${detailInline}`);
+      lines.push(`- 금액: ${amountText}`);
+      if (idx < displayItems.length - 1) lines.push("");
     });
+  }
+  lines.push("");
+  lines.push("=== 모듈 내역 ===");
+  if (!builderRows.length) {
+    lines.push("- 구성 내역 없음");
+  } else {
+    builderRows.forEach((row) => {
+      lines.push(`- ${row.title}: ${row.meta}`);
+    });
+  }
+  if (previewImageUrl) {
+    lines.push("");
+    lines.push("=== 미리보기 ===");
+    lines.push(previewImageUrl);
+  } else if (previewImageError) {
+    lines.push("");
+    lines.push("=== 미리보기 ===");
+    lines.push(`업로드 실패: ${previewImageError}`);
   }
 
   lines.push("");
-  lines.push("[합계]");
+  lines.push("=== 합계 ===");
   const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
   const naverUnits = Math.ceil(summary.grandTotal / 1000) || 0;
   lines.push(`서비스: ${formatFulfillmentLine(summary.fulfillment)}`);
@@ -11163,17 +11365,47 @@ async function sendQuote() {
   sendingEmail = true;
   updateSendButtonEnabled();
 
-  const { subject, body, lines } = buildEmailContent();
+  let previewImageUrl = "";
+  let previewImagePublicId = "";
+  let previewImageError = "";
+  try {
+    const uploadResult = await uploadSystemPreviewToCloudinary();
+    previewImageUrl = String(uploadResult?.secureUrl || "").trim();
+    previewImagePublicId = String(uploadResult?.publicId || "").trim();
+    if (!previewImageUrl) {
+      const skippedReason = String(uploadResult?.skipped || "").trim();
+      if (skippedReason === "capture_empty") {
+        previewImageError = "미리보기 캡처 결과가 비어 있습니다.";
+      } else if (skippedReason === "not_configured") {
+        previewImageError = "Cloudinary 설정이 비어 있습니다.";
+      }
+    }
+  } catch (uploadError) {
+    console.warn("[system] preview upload skipped:", uploadError);
+    previewImageError = String(uploadError?.message || uploadError || "").trim();
+  }
+
+  const { subject, body, lines } = buildEmailContent({ previewImageUrl, previewImageError });
+  const orderTimeText = new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Seoul",
+  }).format(new Date());
   const addressLine = `${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim();
   const templateParams = {
+    name: customer.name || "-",
+    time: orderTimeText,
     subject,
-    message: `${body}\n\n주소: ${addressLine || "-"}`,
+    message: body,
     customer_name: customer.name,
     customer_phone: customer.phone,
     customer_email: customer.email,
     customer_address: addressLine || "-",
     customer_memo: customer.memo || "-",
     order_lines: lines.join("\n"),
+    preview_image_url: previewImageUrl || "-",
+    preview_image_public_id: previewImagePublicId || "-",
+    preview_image_error: previewImageError || "-",
   };
 
   try {
