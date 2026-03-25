@@ -913,6 +913,13 @@ input[type="number"]::-webkit-outer-spin-button {
     border-color 0.15s ease, transform 0.15s ease;
 }
 
+.system-preview-add-btn::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 999px;
+}
+
 .system-preview .system-preview-add-btn:not(:disabled):not(.is-disabled):hover {
   background: var(--btn-color);
   color: var(--btn-bg);

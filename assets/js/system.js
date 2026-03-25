@@ -41,9 +41,6 @@ import {
   buildPreviewAddRootCornerDirectionSelectionUiExecutionPlan,
   buildPreviewAddRootCornerDirectionSelectionUiDispatchPlan,
   buildPreviewAddTypeBackUiExecutionPlan,
-  buildPreviewModuleActionModalOpenUiExecutionPlan,
-  buildPreviewModuleActionModalOpenUiDispatchPlan,
-  buildPreviewModuleActionRemoveTransition,
   setPreviewModuleActionFlowTarget,
   buildPreviewModuleActionCloseUiDispatchPlan,
   getClosedModalIdFromEvent,
@@ -94,14 +91,11 @@ import {
   resolvePreviewPresetMatchedIdForTargetEdge,
   buildPreviewPresetPickerOpenFromPresetModuleOption,
   buildPreviewPresetPickerCloseUiDispatchPlan,
-  buildPreviewModuleActionBackContext,
   buildPreviewAddPresetModuleOptionOpenPlan,
   buildPresetModuleOptionOpenFromPreviewAddUiDispatchPlan,
   buildPresetModuleOptionOpenFromPreviewAddExceptionUiDispatchPlan,
   buildPreviewAddOpenArgsFromBackContext,
   buildPresetModuleOptionBackUiDispatchPlan,
-  buildPresetModuleOptionOpenFromPreviewModuleActionFlow,
-  buildPresetModuleOptionOpenFromPreviewModuleActionUiDispatchPlan,
   buildPresetModuleOptionOpenFromDirectComposeEdge,
   normalizePreviewModuleType,
   normalizePreviewEdgeType,
@@ -975,6 +969,7 @@ const previewPresetPickerFlowState = createPreviewPresetPickerFlowState();
 const presetModuleOptionFlowState = createPresetModuleOptionFlowState();
 const previewModuleActionFlowState = createPreviewModuleActionFlowState();
 let previewOpenEndpoints = new Map();
+let inlineInsertPendingFirstSaveEdgeId = "";
 let previewRenderTransform = { scale: 1, tx: 0, ty: 0, depthMm: 400 };
 let previewInfoMode = "size";
 const builderHistory = {
@@ -2574,11 +2569,16 @@ function handlePresetModuleOptionFilterChange() {
 function openPresetPickerFromPresetModuleOptionModal() {
   const modalState = presetModuleOptionFlowState.modalState;
   if (!modalState) return;
+  const modalEdgeId = String(modalState?.edgeId || "");
+  const modalEdge = modalEdgeId ? findShelfById(modalEdgeId) : null;
   const nextOpen = buildPreviewPresetPickerOpenFromPresetModuleOption(
     modalState,
     presetModuleOptionFlowState.draft
   );
   if (!nextOpen) return;
+  if (isPendingEdge(modalEdge)) {
+    suppressPendingOptionModalCleanupOnce = true;
+  }
   closePresetModuleOptionModal({ returnFocus: false, clearState: false });
   openPreviewPresetModuleModal(nextOpen.moduleType, nextOpen.options);
 }
@@ -2901,11 +2901,21 @@ function applyPreviewPresetToExistingBay(edgeId, preset, selectedFilterKey = "")
   const prevRodCount = getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID);
   const prevFurnitureAddonId = getSelectedFurnitureAddonId(shelf.id);
   const nextFurnitureAddonId = String(getPresetFurnitureAddonIds(preset)[0] || "");
-  if (prevWidth !== nextWidth || prevCount !== nextCount || prevRodCount !== nextRodCount) {
+  const wasPendingAdd = isPendingEdge(shelf);
+  const shouldMergeWithInlineInsertHistory =
+    String(inlineInsertPendingFirstSaveEdgeId || "") === String(shelf.id || "");
+  if (wasPendingAdd) {
+    pushBuilderHistory("add-normal-preset");
+  } else if (
+    !shouldMergeWithInlineInsertHistory &&
+    (prevWidth !== nextWidth || prevCount !== nextCount || prevRodCount !== nextRodCount)
+  ) {
     pushBuilderHistory("update-normal-preset");
-  } else if (prevFurnitureAddonId !== nextFurnitureAddonId) {
+  } else if (!shouldMergeWithInlineInsertHistory && prevFurnitureAddonId !== nextFurnitureAddonId) {
     pushBuilderHistory("update-normal-preset");
   }
+  if (wasPendingAdd) delete shelf.pendingAdd;
+  if (shouldMergeWithInlineInsertHistory) inlineInsertPendingFirstSaveEdgeId = "";
   shelf.width = nextWidth;
   shelf.count = nextCount;
   shelf.composeTab = "preset";
@@ -2935,7 +2945,10 @@ function applyPreviewPresetToExistingCorner(edgeId, preset, selectedFilterKey = 
   const prevCustomSecondaryMm = Number(corner.customSecondaryMm || 0);
   const prevFurnitureAddonId = getSelectedFurnitureAddonId(corner.id);
   const nextFurnitureAddonId = String(getPresetFurnitureAddonIds(preset)[0] || "");
-  if (
+  const wasPendingAdd = isPendingEdge(corner);
+  if (wasPendingAdd) {
+    pushBuilderHistory("add-corner-preset");
+  } else if (
     prevSwap !== nextSwap ||
     prevCount !== nextCount ||
     prevRodCount !== nextRodCount ||
@@ -2947,6 +2960,7 @@ function applyPreviewPresetToExistingCorner(edgeId, preset, selectedFilterKey = 
   } else if (prevFurnitureAddonId !== nextFurnitureAddonId) {
     pushBuilderHistory("update-corner-preset");
   }
+  if (wasPendingAdd) delete corner.pendingAdd;
   corner.swap = nextSwap;
   corner.count = nextCount;
   corner.customProcessing = false;
@@ -3131,6 +3145,18 @@ function savePresetModuleOptionModal() {
     else saveBayOptionModal();
     return;
   }
+  if (runtimeUiPlan.route === "preset") {
+    const isEditMode = normalizePresetModuleOptionMode(modalState?.mode) === "edit";
+    const modalEdgeId = String(modalState?.edgeId || "");
+    const modalEdge = modalEdgeId ? findShelfById(modalEdgeId) : null;
+    if (isEditMode && (!modalEdgeId || !modalEdge)) {
+      setPresetModuleOptionError("적용할 모듈을 찾지 못했습니다. 모듈을 다시 선택해주세요.");
+      return;
+    }
+    if (isPendingEdge(modalEdge)) {
+      suppressPendingOptionModalCleanupOnce = true;
+    }
+  }
   applyPresetModuleOptionPresetSaveRuntimePlan(runtimeUiPlan);
 }
 
@@ -3199,38 +3225,36 @@ function getPreviewModuleActionModalElements() {
     modal: $("#previewModuleActionModal"),
     titleEl: $("#previewModuleActionModalTitle"),
     descEl: $("#previewModuleActionModalDesc"),
-    selectedTypeEl: $("#previewModuleActionModalSelectedType"),
-    presetBtn: $("#previewModuleActionPresetBtn"),
-    customBtn: $("#previewModuleActionCustomBtn"),
-    removeBtn: $("#previewModuleActionRemoveBtn"),
+    editBtn: $("#previewModuleActionEditBtn"),
+    addRightBtn: $("#previewModuleActionAddRightBtn"),
+    addLeftBtn: $("#previewModuleActionAddLeftBtn"),
   };
 }
 
 function applyPreviewModuleActionModalOpenUiView(openDispatchPlan, elements = {}) {
   const viewState = openDispatchPlan?.modalViewState;
   if (!viewState) return;
-  const { titleEl, descEl, selectedTypeEl, presetBtn, customBtn, removeBtn } = elements || {};
+  const { titleEl, descEl, editBtn, addRightBtn, addLeftBtn } = elements || {};
   if (titleEl) titleEl.textContent = viewState.title;
   if (descEl) descEl.textContent = viewState.description;
-  if (selectedTypeEl) selectedTypeEl.textContent = viewState.selectedTypeText;
   const buttonResetState = viewState.buttonState || {};
-  [presetBtn, customBtn, removeBtn].forEach((btn) => {
+  [editBtn, addRightBtn, addLeftBtn].forEach((btn) => {
     if (!btn) return;
-    if (btn === presetBtn) btn.disabled = Boolean(buttonResetState.presetDisabled);
-    else if (btn === customBtn) btn.disabled = Boolean(buttonResetState.customDisabled);
+    if (btn === editBtn) btn.disabled = Boolean(buttonResetState.presetDisabled);
+    else if (btn === addRightBtn) btn.disabled = Boolean(buttonResetState.customDisabled);
     else btn.disabled = Boolean(buttonResetState.removeDisabled);
   });
 }
 
 function focusPreviewModuleActionModalInitialTarget(openDispatchPlan, elements = {}) {
   const focusKey = String(openDispatchPlan?.modalViewState?.initialFocusKey || "title");
-  const { presetBtn, customBtn, titleEl } = elements || {};
-  if (focusKey === "preset" && presetBtn) {
-    presetBtn.focus();
+  const { editBtn, addRightBtn, titleEl } = elements || {};
+  if (focusKey === "preset" && editBtn) {
+    editBtn.focus();
     return;
   }
-  if (focusKey === "custom" && customBtn) {
-    customBtn.focus();
+  if (focusKey === "custom" && addRightBtn) {
+    addRightBtn.focus();
     return;
   }
   titleEl?.focus();
@@ -3255,70 +3279,438 @@ function closePreviewModuleActionModal({ returnFocus = false, clearTarget = true
   applyPreviewModuleActionCloseUiDispatchPlanToRuntime(closeUiPlan);
 }
 
+function getPreviewModuleActionTargetEdge() {
+  const targetEdgeId = String(previewModuleActionFlowState?.target?.edgeId || "");
+  return targetEdgeId ? findShelfById(targetEdgeId) : null;
+}
+
+function resolveBayHorizontalEndpointSide(edge, direction = "right") {
+  const sideHint = String(direction || "").toLowerCase() === "left" ? "left" : "right";
+  const startEndpoint = buildBayEndpointFromPlacement(edge, "start");
+  const endEndpoint = buildBayEndpointFromPlacement(edge, "end");
+  const startX = Number(startEndpoint?.x || 0);
+  const endX = Number(endEndpoint?.x || 0);
+  if (Math.abs(startX - endX) > 1e-6) {
+    const leftSide = startX <= endX ? "start" : "end";
+    return sideHint === "left" ? leftSide : leftSide === "start" ? "end" : "start";
+  }
+  return sideHint === "left" ? "start" : "end";
+}
+
+function collectEdgesAnchoredToEndpoint(parentEdgeId, endpointSide = "end") {
+  const parentId = String(parentEdgeId || "");
+  const side = endpointSide === "start" ? "start" : "end";
+  const canonicalAnchor = `${parentId}:${side}`;
+  if (!parentId) return [];
+  const edges = getOrderedCommittedGraphEdges();
+  return edges.filter((edge) => {
+    const edgeId = String(edge?.id || "");
+    if (!edgeId || edgeId === parentId) return false;
+    const canonical = resolveAnchorForDirection(String(edge?.anchorEndpointId || ""));
+    return canonical === canonicalAnchor;
+  });
+}
+
+function parseCanonicalEndpointId(endpointId = "") {
+  const match = String(endpointId || "").match(/^(.+):(start|end)$/);
+  if (!match) return null;
+  return {
+    edgeId: String(match[1] || ""),
+    side: match[2] === "start" ? "start" : "end",
+  };
+}
+
+function areEndpointsNear(a, b, thresholdMm = 1) {
+  if (!a || !b) return false;
+  const ax = Number(a.x);
+  const ay = Number(a.y);
+  const bx = Number(b.x);
+  const by = Number(b.y);
+  if (!Number.isFinite(ax) || !Number.isFinite(ay) || !Number.isFinite(bx) || !Number.isFinite(by)) {
+    return false;
+  }
+  return Math.hypot(ax - bx, ay - by) <= Math.max(0.1, Number(thresholdMm || 1));
+}
+
+function getEndpointDistanceMm(a, b) {
+  if (!a || !b) return Number.POSITIVE_INFINITY;
+  const ax = Number(a.x);
+  const ay = Number(a.y);
+  const bx = Number(b.x);
+  const by = Number(b.y);
+  if (!Number.isFinite(ax) || !Number.isFinite(ay) || !Number.isFinite(bx) || !Number.isFinite(by)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return Math.hypot(ax - bx, ay - by);
+}
+
+function findBayEndpointNeighborsByPlacement(targetEdge, endpointSide = "end", thresholdMm = 2) {
+  if (!targetEdge || targetEdge.type !== "bay") {
+    return {
+      targetEndpoint: null,
+      neighbors: [],
+    };
+  }
+  const targetId = String(targetEdge.id || "");
+  const targetEndpoint = buildBayEndpointFromPlacement(targetEdge, endpointSide);
+  if (!targetEndpoint) {
+    return {
+      targetEndpoint: null,
+      neighbors: [],
+    };
+  }
+  const maxDistance = Math.max(0.1, Number(thresholdMm || 2));
+  const bestByEdgeId = new Map();
+  const edges = getOrderedCommittedGraphEdges();
+  edges.forEach((edge) => {
+    const neighborId = String(edge?.id || "");
+    if (!neighborId || neighborId === targetId || edge.type !== "bay") return;
+    ["start", "end"].forEach((side) => {
+      const endpoint = buildBayEndpointFromPlacement(edge, side);
+      if (!endpoint) return;
+      const distanceMm = getEndpointDistanceMm(endpoint, targetEndpoint);
+      if (!Number.isFinite(distanceMm) || distanceMm > maxDistance) return;
+      const prev = bestByEdgeId.get(neighborId);
+      if (!prev || distanceMm < prev.distanceMm) {
+        bestByEdgeId.set(neighborId, {
+          edge,
+          side,
+          endpoint,
+          distanceMm,
+        });
+      }
+    });
+  });
+  return {
+    targetEndpoint,
+    neighbors: Array.from(bestByEdgeId.values()).sort((a, b) => a.distanceMm - b.distanceMm),
+  };
+}
+
+function addBayAdjacentToModuleEdge(edgeId, { direction = "right" } = {}) {
+  const targetId = String(edgeId || "");
+  normalizeDanglingAnchorIds();
+  const targetEdge = targetId ? findShelfById(targetId) : null;
+  if (!targetEdge || targetEdge.type !== "bay") {
+    return {
+      ok: false,
+      message: "일반 모듈에서만 좌/우 추가가 가능합니다.",
+      shelfId: "",
+    };
+  }
+
+  const endpointSide = resolveBayHorizontalEndpointSide(targetEdge, direction);
+  const canonicalTargetEndpointId = `${targetId}:${endpointSide}`;
+  const sourceEndpoint = buildBayEndpointFromPlacement(targetEdge, endpointSide);
+  if (!sourceEndpoint) {
+    return {
+      ok: false,
+      message: "추가할 기준 위치를 찾지 못했습니다.",
+      shelfId: "",
+    };
+  }
+
+  const anchoredEdges = collectEdgesAnchoredToEndpoint(targetId, endpointSide);
+  if (anchoredEdges.length > 1) {
+    return {
+      ok: false,
+      message: "해당 방향에 연결된 모듈이 많아 자동 추가할 수 없습니다.",
+      shelfId: "",
+    };
+  }
+  const anchoredChild = anchoredEdges[0] || null;
+  if (anchoredChild && anchoredChild.type !== "bay") {
+    return {
+      ok: false,
+      message: "코너가 연결된 방향은 좌/우 추가를 지원하지 않습니다.",
+      shelfId: "",
+    };
+  }
+
+  const targetAnchorCanonical = resolveAnchorForDirection(String(targetEdge.anchorEndpointId || ""));
+  const targetAnchorInfo = parseCanonicalEndpointId(targetAnchorCanonical);
+  let parentNeighbor = null;
+  if (targetAnchorInfo) {
+    const parentEdge = findShelfById(targetAnchorInfo.edgeId);
+    if (parentEdge?.type === "bay") {
+      const targetStartEndpoint = buildBayEndpointFromPlacement(targetEdge, "start");
+      const targetEndEndpoint = buildBayEndpointFromPlacement(targetEdge, "end");
+      const alternateSide = targetAnchorInfo.side === "start" ? "end" : "start";
+      const candidateSides = [targetAnchorInfo.side, alternateSide];
+      let bestParentCandidate = null;
+      candidateSides.forEach((candidateSide) => {
+        const parentEndpoint = buildBayEndpointFromPlacement(parentEdge, candidateSide);
+        if (!parentEndpoint) return;
+        let connectedTargetSide = "";
+        if (targetStartEndpoint && areEndpointsNear(parentEndpoint, targetStartEndpoint, 2.5)) {
+          connectedTargetSide = "start";
+        } else if (targetEndEndpoint && areEndpointsNear(parentEndpoint, targetEndEndpoint, 2.5)) {
+          connectedTargetSide = "end";
+        }
+        if (connectedTargetSide !== endpointSide) return;
+        const distanceMm = getEndpointDistanceMm(parentEndpoint, sourceEndpoint);
+        if (
+          !bestParentCandidate ||
+          distanceMm < bestParentCandidate.distanceMm ||
+          (Math.abs(distanceMm - bestParentCandidate.distanceMm) < 1e-6 &&
+            candidateSide === targetAnchorInfo.side)
+        ) {
+          bestParentCandidate = {
+            side: candidateSide,
+            endpoint: parentEndpoint,
+            distanceMm,
+          };
+        }
+      });
+      if (!bestParentCandidate && typeof targetEdge.attachAtStart === "boolean") {
+        const connectedTargetSide = targetEdge.attachAtStart ? "start" : "end";
+        if (connectedTargetSide === endpointSide) {
+          const fallbackParentEndpoint = buildBayEndpointFromPlacement(parentEdge, targetAnchorInfo.side);
+          if (fallbackParentEndpoint) {
+            bestParentCandidate = {
+              side: targetAnchorInfo.side,
+              endpoint: fallbackParentEndpoint,
+              distanceMm: getEndpointDistanceMm(fallbackParentEndpoint, sourceEndpoint),
+            };
+          }
+        }
+      }
+      if (bestParentCandidate) {
+        const parentEndpointId = `${targetAnchorInfo.edgeId}:${bestParentCandidate.side}`;
+        parentNeighbor = {
+          edge: parentEdge,
+          parentEndpointId,
+          sourceEndpoint: {
+            ...bestParentCandidate.endpoint,
+            endpointId: parentEndpointId,
+          },
+        };
+      }
+    }
+  }
+
+  let betweenPlan = null;
+  if (anchoredChild && parentNeighbor) {
+    return {
+      ok: false,
+      message: "해당 방향에 연결된 모듈이 많아 자동 추가할 수 없습니다.",
+      shelfId: "",
+    };
+  }
+  if (anchoredChild) {
+    betweenPlan = {
+      parentEdgeId: targetId,
+      childEdgeId: String(anchoredChild.id || ""),
+      parentEndpointId: canonicalTargetEndpointId,
+      sourceEndpoint: {
+        ...sourceEndpoint,
+        endpointId: canonicalTargetEndpointId,
+      },
+      insertId: `insert:${targetId}:${endpointSide}:${String(anchoredChild.id || "")}`,
+    };
+  } else if (parentNeighbor) {
+    betweenPlan = {
+      parentEdgeId: String(parentNeighbor.edge.id || ""),
+      childEdgeId: targetId,
+      parentEndpointId: parentNeighbor.parentEndpointId,
+      sourceEndpoint: parentNeighbor.sourceEndpoint,
+      insertId: `insert:${String(parentNeighbor.edge.id || "")}:${targetId}`,
+    };
+  }
+
+  if (!betweenPlan) {
+    const geometryNeighborsResult = findBayEndpointNeighborsByPlacement(targetEdge, endpointSide, 2.5);
+    const geometryNeighbors = Array.isArray(geometryNeighborsResult.neighbors)
+      ? geometryNeighborsResult.neighbors
+      : [];
+    if (geometryNeighbors.length > 1) {
+      return {
+        ok: false,
+        message: "해당 방향에 연결된 모듈이 많아 자동 추가할 수 없습니다.",
+        shelfId: "",
+      };
+    }
+    if (geometryNeighbors.length === 1) {
+      const geometryNeighbor = geometryNeighbors[0];
+      const neighborEdge = geometryNeighbor.edge;
+      const neighborId = String(neighborEdge?.id || "");
+      if (!neighborId) {
+        return {
+          ok: false,
+          message: "모듈 추가에 실패했습니다.",
+          shelfId: "",
+        };
+      }
+      const neighborAnchorCanonical = resolveAnchorForDirection(String(neighborEdge.anchorEndpointId || ""));
+      const neighborAnchorInfo = parseCanonicalEndpointId(neighborAnchorCanonical);
+      const targetAnchoredToNeighbor = Boolean(targetAnchorInfo && targetAnchorInfo.edgeId === neighborId);
+      const neighborAnchoredToTarget = Boolean(neighborAnchorInfo && neighborAnchorInfo.edgeId === targetId);
+      if (targetAnchoredToNeighbor && neighborAnchoredToTarget) {
+        return {
+          ok: false,
+          message: "해당 방향에 연결된 모듈이 많아 자동 추가할 수 없습니다.",
+          shelfId: "",
+        };
+      }
+      if (targetAnchoredToNeighbor) {
+        const parentEndpointId = `${neighborId}:${geometryNeighbor.side}`;
+        betweenPlan = {
+          parentEdgeId: neighborId,
+          childEdgeId: targetId,
+          parentEndpointId,
+          sourceEndpoint: {
+            ...geometryNeighbor.endpoint,
+            endpointId: parentEndpointId,
+          },
+          insertId: `insert:${neighborId}:${targetId}`,
+        };
+      } else if (neighborAnchoredToTarget) {
+        betweenPlan = {
+          parentEdgeId: targetId,
+          childEdgeId: neighborId,
+          parentEndpointId: canonicalTargetEndpointId,
+          sourceEndpoint: {
+            ...sourceEndpoint,
+            endpointId: canonicalTargetEndpointId,
+          },
+          insertId: `insert:${targetId}:${endpointSide}:${neighborId}`,
+        };
+      } else {
+        return {
+          ok: false,
+          message: "해당 방향의 연결 상태를 확인할 수 없습니다. 다시 시도해주세요.",
+          shelfId: "",
+        };
+      }
+    }
+  }
+
+  if (betweenPlan) {
+    const insertedShelfId = insertBayBetweenModulesByTarget({
+      id: betweenPlan.insertId,
+      parentEdgeId: betweenPlan.parentEdgeId,
+      childEdgeId: betweenPlan.childEdgeId,
+      parentEndpointId: betweenPlan.parentEndpointId,
+      sourceEndpoint: betweenPlan.sourceEndpoint,
+      pushHistory: false,
+      initialCount: 1,
+      pendingAdd: true,
+    });
+    if (!insertedShelfId) {
+      return {
+        ok: false,
+        message: "모듈 사이 추가에 실패했습니다.",
+        shelfId: "",
+      };
+    }
+    return {
+      ok: true,
+      message: "",
+      shelfId: insertedShelfId,
+    };
+  }
+
+  const insertedShelfId = addShelfFromEndpoint(
+    {
+      ...sourceEndpoint,
+      endpointId: canonicalTargetEndpointId,
+    },
+    {
+      endpointId: canonicalTargetEndpointId,
+      attachAtStart: Boolean(sourceEndpoint.attachAtStart),
+    },
+    { pushHistory: false, skipRender: true, initialCount: 1, pendingAdd: true }
+  );
+  if (!insertedShelfId) {
+    return {
+      ok: false,
+      message: "모듈 추가에 실패했습니다.",
+      shelfId: "",
+    };
+  }
+  inlineInsertPendingFirstSaveEdgeId = insertedShelfId;
+  normalizeDanglingAnchorIds();
+  renderBayInputs();
+  return {
+    ok: true,
+    message: "",
+    shelfId: insertedShelfId,
+  };
+}
+
 function openPreviewModuleActionModal(edgeId, edgeType = "bay", anchorEl = null) {
   const targetId = String(edgeId || "");
   const edge = targetId ? findShelfById(targetId) : null;
   if (!edge) return;
-  const moduleType =
-    normalizePreviewEdgeType(edgeType) === "corner" ? "corner" : "normal";
-  const seedDraft = buildPresetModuleOptionDraftSeedFromEdge(targetId);
-  if (seedDraft) {
-    patchPresetModuleOptionFlowState(presetModuleOptionFlowState, {
-      draft: seedDraft,
-    });
-  }
-  openPresetModuleOptionModal(moduleType, {
-    mode: "edit",
-    edgeId: targetId,
-    returnFocusEl: anchorEl instanceof Element ? anchorEl : null,
-    preserveDraft: Boolean(seedDraft),
-    initialTab: seedDraft?.activeTab || "preset",
-    backContext: null,
-  });
-}
-
-function openPresetModuleOptionFromPreviewModuleAction(initialTab = "preset") {
-  const targetEdgeId = String(previewModuleActionFlowState?.target?.edgeId || "");
-  const seedDraft = buildPresetModuleOptionDraftSeedFromEdge(targetEdgeId, {
-    preferredTab: initialTab,
-  });
-  const nextOpen = buildPresetModuleOptionOpenFromPreviewModuleActionFlow(
-    previewModuleActionFlowState,
-    { initialTab: seedDraft?.activeTab || initialTab }
-  );
-  const dispatchPlan = buildPresetModuleOptionOpenFromPreviewModuleActionUiDispatchPlan(nextOpen);
-  if (dispatchPlan.route !== "open" || !dispatchPlan.nextOpen) return;
-  if (seedDraft) {
-    patchPresetModuleOptionFlowState(presetModuleOptionFlowState, {
-      draft: seedDraft,
-    });
-    dispatchPlan.nextOpen.options = {
-      ...dispatchPlan.nextOpen.options,
-      preserveDraft: true,
-      initialTab: seedDraft.activeTab,
-    };
-  }
-  closePreviewModuleActionModal();
-  openPresetModuleOptionModal(dispatchPlan.nextOpen.moduleType, dispatchPlan.nextOpen.options);
-}
-
-function handlePreviewModuleActionPresetSelect() {
-  openPresetModuleOptionFromPreviewModuleAction("preset");
-}
-
-function handlePreviewModuleActionCustomCompose() {
-  openPresetModuleOptionFromPreviewModuleAction("custom");
-}
-
-function handlePreviewModuleActionRemove() {
-  const removeTransition = buildPreviewModuleActionRemoveTransition(previewModuleActionFlowState);
-  if (!removeTransition) return;
-  closePreviewModuleActionModal();
-  if (removeTransition.edgeType === "corner") {
-    removeCornerById(removeTransition.edgeId);
+  const normalizedEdgeType =
+    normalizePreviewEdgeType(edgeType) === "corner" || edge.type === "corner"
+      ? "corner"
+      : "bay";
+  const modalElements = getPreviewModuleActionModalElements();
+  if (!modalElements.modal) {
+    if (normalizedEdgeType === "corner") openCornerOptionModal(targetId);
+    else openBayOptionModal(targetId, { initialTab: "preset" });
     return;
   }
-  removeBayById(removeTransition.edgeId);
+  setPreviewModuleActionFlowTarget(
+    previewModuleActionFlowState,
+    targetId,
+    normalizedEdgeType,
+    anchorEl instanceof Element ? anchorEl : null
+  );
+  const canAddSide =
+    normalizedEdgeType === "bay" && isPreviewBuilderReady(readCurrentInputs());
+  if (modalElements.titleEl) modalElements.titleEl.textContent = "모듈 작업";
+  if (modalElements.descEl) {
+    modalElements.descEl.textContent =
+      normalizedEdgeType === "bay"
+        ? "선택한 모듈을 수정하거나 좌/우로 새 모듈을 추가하세요."
+        : "코너 모듈은 모듈수정만 가능합니다.";
+  }
+  if (modalElements.editBtn) modalElements.editBtn.disabled = false;
+  if (modalElements.addLeftBtn) modalElements.addLeftBtn.disabled = !canAddSide;
+  if (modalElements.addRightBtn) modalElements.addRightBtn.disabled = !canAddSide;
+  setPreviewModuleActionModalError("");
+  openModal("#previewModuleActionModal", { focusTarget: "#previewModuleActionModalTitle" });
+}
+
+function handlePreviewModuleActionEdit() {
+  const targetEdge = getPreviewModuleActionTargetEdge();
+  if (!targetEdge) return;
+  const preferredTab = targetEdge.composeTab === "custom" ? "custom" : "preset";
+  const seedDraft = buildPresetModuleOptionDraftSeedFromEdge(targetEdge.id, {
+    preferredTab,
+  });
+  if (seedDraft) {
+    patchPresetModuleOptionFlowState(presetModuleOptionFlowState, {
+      draft: seedDraft,
+    });
+  }
+  const preserveDraft = Boolean(seedDraft);
+  closePreviewModuleActionModal();
+  if (targetEdge.type === "corner") {
+    openCornerOptionModal(targetEdge.id, { initialTab: preferredTab, preserveDraft });
+    return;
+  }
+  openBayOptionModal(targetEdge.id, { initialTab: preferredTab, preserveDraft });
+}
+
+function handlePreviewModuleActionAddSide(direction = "right") {
+  const targetEdge = getPreviewModuleActionTargetEdge();
+  if (!targetEdge) return;
+  if (targetEdge.type !== "bay") {
+    setPreviewModuleActionModalError("코너 모듈은 좌/우 추가를 지원하지 않습니다.", { isError: true });
+    return;
+  }
+  const result = addBayAdjacentToModuleEdge(targetEdge.id, { direction });
+  if (!result.ok || !result.shelfId) {
+    setPreviewModuleActionModalError(result.message || "모듈 추가에 실패했습니다.", {
+      isError: true,
+    });
+    return;
+  }
+  closePreviewModuleActionModal();
+  openBayOptionModal(result.shelfId, { initialTab: "preset" });
 }
 
 function handlePresetModuleOptionModalRemove() {
@@ -3355,14 +3747,18 @@ function getPreviewOrderedEdges(edges = []) {
       const id = String(edge.id || "");
       if (!remaining.has(id)) return;
       const anchorId = String(edge.anchorEndpointId || "");
-      if (!anchorId || anchorId === "root-endpoint") {
+      const canonicalAnchorId = anchorId
+        ? resolveAnchorForDirection(anchorId, null, { includePending: true })
+        : "";
+      const normalizedAnchorId = String(canonicalAnchorId || anchorId || "");
+      if (!normalizedAnchorId || normalizedAnchorId === "root-endpoint") {
         ordered.push(edge);
         remaining.delete(id);
         placed.add(id);
         progressed = true;
         return;
       }
-      const match = anchorId.match(/^(.+):(start|end)$/);
+      const match = normalizedAnchorId.match(/^(.+):(start|end)$/);
       if (!match) {
         ordered.push(edge);
         remaining.delete(id);
@@ -4542,6 +4938,96 @@ function addShelfFromEndpoint(
   return shelfId;
 }
 
+function moveEdgeBeforeInOrder(edgeId, beforeEdgeId) {
+  const targetId = String(edgeId || "");
+  const beforeId = String(beforeEdgeId || "");
+  if (!targetId || !beforeId || targetId === beforeId) return;
+  ensureGraph();
+  const order = ensureEdgeOrder();
+  const fromIndex = order.indexOf(targetId);
+  const toIndex = order.indexOf(beforeId);
+  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+  order.splice(fromIndex, 1);
+  const nextToIndex = order.indexOf(beforeId);
+  order.splice(nextToIndex < 0 ? order.length : nextToIndex, 0, targetId);
+}
+
+function insertBayBetweenModulesByTarget(target) {
+  const parentEdgeId = String(target?.parentEdgeId || "");
+  const childEdgeId = String(target?.childEdgeId || "");
+  if (!parentEdgeId || !childEdgeId || parentEdgeId === childEdgeId) return "";
+  const parentEndpointId = resolveAnchorForDirection(
+    String(target?.parentEndpointId || "")
+  );
+  const sourceEndpointBase = target?.sourceEndpoint && typeof target.sourceEndpoint === "object"
+    ? target.sourceEndpoint
+    : null;
+  const sourceEndpoint = sourceEndpointBase
+    ? {
+        ...sourceEndpointBase,
+        endpointId: parentEndpointId || String(sourceEndpointBase.endpointId || ""),
+      }
+    : null;
+  if (!parentEndpointId || !sourceEndpoint) return "";
+
+  ensureGraph();
+  const parent = state.graph?.edges?.[parentEdgeId];
+  const child = state.graph?.edges?.[childEdgeId];
+  if (!parent || !child || parent.type !== "bay" || child.type !== "bay") return "";
+
+  const childAnchorCanonical = resolveAnchorForDirection(String(child.anchorEndpointId || ""));
+  if (childAnchorCanonical !== parentEndpointId) {
+    const childAnchorInfo = parseCanonicalEndpointId(childAnchorCanonical);
+    const parentAnchorInfo = parseCanonicalEndpointId(parentEndpointId);
+    const canRetargetChildToParentEndpoint =
+      childAnchorInfo &&
+      parentAnchorInfo &&
+      childAnchorInfo.edgeId === parentAnchorInfo.edgeId;
+    if (!canRetargetChildToParentEndpoint) return "";
+    child.anchorEndpointId = parentEndpointId;
+    child.placement = null;
+    clearRootAnchorVector(child);
+  }
+
+  const shouldPushHistory = target?.pushHistory !== false;
+  if (shouldPushHistory) pushBuilderHistory("insert-normal");
+  const normalizedInitialCount = Math.max(0, Math.floor(Number(target?.initialCount ?? 1) || 0));
+  const pendingAdd = Boolean(target?.pendingAdd);
+  const shelfId = addShelfFromEndpoint(
+    sourceEndpoint,
+    {
+      endpointId: parentEndpointId,
+      attachAtStart: Boolean(sourceEndpoint.attachAtStart),
+    },
+    {
+      pushHistory: false,
+      skipRender: true,
+      initialCount: normalizedInitialCount,
+      pendingAdd,
+    }
+  );
+  if (!shelfId) return "";
+
+  const inserted = state.graph?.edges?.[shelfId];
+  const nextChild = state.graph?.edges?.[childEdgeId];
+  if (!inserted || !nextChild) {
+    unregisterEdge(shelfId);
+    normalizeDanglingAnchorIds();
+    renderBayInputs();
+    return "";
+  }
+
+  nextChild.anchorEndpointId = `${shelfId}:end`;
+  nextChild.attachAtStart = false;
+  clearRootAnchorVector(nextChild);
+  nextChild.placement = null;
+  moveEdgeBeforeInOrder(shelfId, childEdgeId);
+  inlineInsertPendingFirstSaveEdgeId = shelfId;
+  normalizeDanglingAnchorIds();
+  renderBayInputs();
+  return shelfId;
+}
+
 function buildRectBounds(startX, startY, dir, inward, length, depth) {
   const x1 = startX;
   const y1 = startY;
@@ -4806,8 +5292,8 @@ function isOppositeEndpointDirection(a, b) {
   return ad.dx === -bd.dx && ad.dy === -bd.dy;
 }
 
-function readBayInputs() {
-  return getOrderedCommittedGraphEdges().map((edge) => {
+function readBayInputs({ includePending = false } = {}) {
+  return getOrderedGraphEdges({ includePending }).map((edge) => {
     const isCorner = edge.type === "corner";
     const dir = hasValidPlacement(edge.placement)
       ? normalizeDirection(edge.placement.dirDx, edge.placement.dirDy)
@@ -5318,7 +5804,12 @@ function showPreviewGhostForEndpoint(endpoint, preferType = "normal") {
   renderPreviewGhostNormal(placement, container);
 }
 
-function bindAddButtonPreviewInteractions(btn, endpoint, canAddFromPreview) {
+function bindAddButtonPreviewInteractions(
+  btn,
+  endpoint,
+  canAddFromPreview,
+  { showGhost = true } = {}
+) {
   if (!btn || !endpoint) return;
   const allowedTypes = Array.isArray(endpoint.allowedTypes)
     ? endpoint.allowedTypes
@@ -5328,9 +5819,15 @@ function bindAddButtonPreviewInteractions(btn, endpoint, canAddFromPreview) {
     allowedTypes.includes("normal") || !allowedTypes.length ? "normal" : allowedTypes[0];
   const show = () => {
     if (!canAddFromPreview || btn.disabled) return;
-    showPreviewGhostForEndpoint(endpoint, preferredType);
+    if (showGhost) {
+      showPreviewGhostForEndpoint(endpoint, preferredType);
+    } else {
+      clearPreviewGhost();
+    }
   };
-  const hide = () => clearPreviewGhost();
+  const hide = () => {
+    if (showGhost) clearPreviewGhost();
+  };
   const showDisabledReason = () => {
     if (!btn.disabled) return;
     const reason = String(btn.dataset.disabledReason || "").trim();
@@ -5362,9 +5859,36 @@ function cloneBuilderStateSnapshot() {
   const graphClone = state.graph ? JSON.parse(JSON.stringify(state.graph)) : null;
   const addonClone = state.shelfAddons ? JSON.parse(JSON.stringify(state.shelfAddons)) : {};
   if (graphClone?.edges && typeof graphClone.edges === "object") {
+    const reanchorCloneChildrenBeforePendingRemoval = (removedEdgeId, replacementAnchorId) => {
+      const removedId = String(removedEdgeId || "");
+      if (!removedId) return;
+      const nextAnchor = String(replacementAnchorId || "root-endpoint");
+      Object.entries(graphClone.edges).forEach(([candidateId, candidateEdge]) => {
+        const childId = String(candidateId || "");
+        if (!childId || childId === removedId || !candidateEdge) return;
+        const anchorId = String(candidateEdge.anchorEndpointId || "");
+        if (!anchorId) return;
+        const canonicalAnchor = resolveAnchorForDirection(anchorId, null, { includePending: true });
+        const isAnchoredToPending =
+          anchorId.startsWith(`${removedId}:`) ||
+          String(canonicalAnchor || "").startsWith(`${removedId}:`);
+        if (!isAnchoredToPending) return;
+        candidateEdge.anchorEndpointId = nextAnchor;
+        candidateEdge.placement = null;
+      });
+    };
     Object.keys(graphClone.edges).forEach((edgeId) => {
       const edge = graphClone.edges[edgeId];
       if (edge?.pendingAdd) {
+        const rawReplacementAnchor = String(edge.anchorEndpointId || "");
+        const resolvedReplacementAnchor = resolveAnchorForDirection(rawReplacementAnchor, null, {
+          includePending: true,
+        });
+        const replacementAnchor =
+          resolvedReplacementAnchor && !resolvedReplacementAnchor.startsWith(`${String(edgeId || "")}:`)
+            ? resolvedReplacementAnchor
+            : "root-endpoint";
+        reanchorCloneChildrenBeforePendingRemoval(edgeId, replacementAnchor);
         delete graphClone.edges[edgeId];
         if (Array.isArray(graphClone.edgeOrder)) {
           graphClone.edgeOrder = graphClone.edgeOrder.filter((id) => id !== edgeId);
@@ -5435,6 +5959,7 @@ function restoreBuilderSnapshot(snapshot) {
     resetPreviewPresetPickerFlowState(previewPresetPickerFlowState);
     activeCornerOptionId = null;
     activeBayOptionId = null;
+    inlineInsertPendingFirstSaveEdgeId = "";
     normalizeDanglingAnchorIds();
     renderBayInputs();
   } finally {
@@ -5525,6 +6050,59 @@ function collectOpenEndpointsFromCandidates(candidates = []) {
     });
   });
   return endpoints;
+}
+
+function buildBayEndpointFromPlacement(edge, endpointSide = "end") {
+  if (!edge || edge.type !== "bay" || !hasValidPlacement(edge.placement)) return null;
+  const placement = edge.placement;
+  const drawDir = normalizeDirection(placement.dirDx, placement.dirDy);
+  let drawInwardNorm = normalizeDirection(placement.inwardX, placement.inwardY);
+  const dot = drawDir.dx * drawInwardNorm.dx + drawDir.dy * drawInwardNorm.dy;
+  if (Math.abs(dot) > 0.9) drawInwardNorm = { dx: -drawDir.dy, dy: drawDir.dx };
+  const drawInward = { x: drawInwardNorm.dx, y: drawInwardNorm.dy };
+  const px = Number(placement.startX || 0);
+  const py = Number(placement.startY || 0);
+  const widthMm = (Number(edge.width || 0) || 0) + SUPPORT_VISIBLE_MM * 2;
+  const startCenterX = px + drawDir.dx * (-COLUMN_ENDPOINT_HALF_MM);
+  const startCenterY = py + drawDir.dy * (-COLUMN_ENDPOINT_HALF_MM);
+  const endCenterX = px + drawDir.dx * (widthMm + COLUMN_ENDPOINT_HALF_MM);
+  const endCenterY = py + drawDir.dy * (widthMm + COLUMN_ENDPOINT_HALF_MM);
+  const startSideIndex = directionToSideIndex(-drawDir.dx, -drawDir.dy);
+  const endSideIndex = directionToSideIndex(drawDir.dx, drawDir.dy);
+
+  if (endpointSide === "start") {
+    return {
+      x: startCenterX,
+      y: startCenterY,
+      sideIndex: startSideIndex,
+      attachSideIndex: startSideIndex,
+      attachAtStart: true,
+      prepend: true,
+      extendDx: -drawDir.dx,
+      extendDy: -drawDir.dy,
+      inwardX: drawInward.x,
+      inwardY: drawInward.y,
+      postBarWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
+      allowedTypes: ["normal", "corner"],
+      endpointId: `${String(edge.id || "")}:start`,
+    };
+  }
+
+  return {
+    x: endCenterX,
+    y: endCenterY,
+    sideIndex: endSideIndex,
+    attachSideIndex: endSideIndex,
+    attachAtStart: false,
+    prepend: false,
+    extendDx: drawDir.dx,
+    extendDy: drawDir.dy,
+    inwardX: drawInward.x,
+    inwardY: drawInward.y,
+    postBarWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
+    allowedTypes: ["normal", "corner"],
+    endpointId: `${String(edge.id || "")}:end`,
+  };
 }
 
 function buildRootEndpoint() {
@@ -5656,10 +6234,12 @@ function getEdgeEndpointDirections(edge) {
   };
 }
 
-function resolveAnchorForDirection(anchorId, preferredDir = null) {
+function resolveAnchorForDirection(anchorId, preferredDir = null, { includePending = false } = {}) {
   const raw = String(anchorId || "");
   if (!raw || raw === "root-endpoint") return "root-endpoint";
-  const edges = getOrderedCommittedGraphEdges();
+  const edges = includePending
+    ? getOrderedGraphEdges({ includePending: true })
+    : getOrderedCommittedGraphEdges();
   let parent = null;
   let canonical = "";
 
@@ -5724,7 +6304,7 @@ function clearRootAnchorVector(edge) {
 }
 
 function normalizeDanglingAnchorIds() {
-  const edges = getOrderedCommittedGraphEdges();
+  const edges = getOrderedGraphEdges({ includePending: true });
   const existingIds = new Set(edges.map((it) => String(it?.id || "")));
   edges.forEach((edge) => {
     const currentAnchor = String(edge.anchorEndpointId || "");
@@ -5748,7 +6328,9 @@ function normalizeDanglingAnchorIds() {
     const preferredDir = hasValidPlacement(edge.placement)
       ? normalizeDirection(edge.placement.dirDx, edge.placement.dirDy)
       : null;
-    const normalizedAnchor = resolveAnchorForDirection(currentAnchor, preferredDir);
+    const normalizedAnchor = resolveAnchorForDirection(currentAnchor, preferredDir, {
+      includePending: true,
+    });
     if (!normalizedAnchor) {
       edge.anchorEndpointId = "root-endpoint";
       edge.placement = null;
@@ -6004,8 +6586,8 @@ function updatePreview() {
     col.style.display = "none";
   });
 
-  const bays = readBayInputs();
-  const edges = getPreviewOrderedEdges(getOrderedCommittedGraphEdges());
+  const bays = readBayInputs({ includePending: true });
+  const edges = getPreviewOrderedEdges(getOrderedGraphEdges({ includePending: true }));
   const hasShelfBase = Boolean(shelfMat && input.shelf.thickness);
   const hasColumn = Boolean(columnMat && input.column.minLength && input.column.maxLength);
   let canAddFromPreview = false;
@@ -6926,6 +7508,11 @@ function updatePreview() {
   const placedAddBtnBoxes = [];
   const nextPlacementHints = new Map();
   const addBtnRadius = addBtnSize / 2;
+  const infoLabelBoxesPx = Array.from(
+    shelvesEl.querySelectorAll(".system-dimension-label, .system-module-label, .system-section-width-label")
+  )
+    .map((el) => getBoundingRectOnParent(el, shelvesEl))
+    .filter((rect) => Boolean(rect));
   const isSingleStraightBayLayout =
     edges.length === 1 && String(edges[0]?.type || "") === "bay" && addButtons.length === 2;
   const framePad = Math.max(8, addBtnRadius + 2);
@@ -6936,22 +7523,35 @@ function updatePreview() {
   const clampToFrame = (value, min, max) => Math.min(max, Math.max(min, Number(value || 0)));
   const rectOverlapsCircle = (rect, cx, cy, r) =>
     cx + r > rect.left && cx - r < rect.right && cy + r > rect.top && cy - r < rect.bottom;
-  const isBlockedPointForPlacement = (x, y, r, { ignoreColumns = false } = {}) => {
+  const isBlockedPointForPlacement = (
+    x,
+    y,
+    r,
+    { ignoreColumns = false, ignoreShelves = false, ignoreInfoLabels = true } = {}
+  ) => {
     if (x < framePad || x > frameW - framePad || y < framePad || y > frameH - framePad) {
       return true;
     }
-    if (shelfBoxesPx.some((rect) => rectOverlapsCircle(rect, x, y, r))) return true;
+    if (!ignoreShelves && shelfBoxesPx.some((rect) => rectOverlapsCircle(rect, x, y, r))) return true;
     if (!ignoreColumns && columnBoxesPx.some((rect) => rectOverlapsCircle(rect, x, y, r))) return true;
+    if (!ignoreInfoLabels && infoLabelBoxesPx.some((rect) => rectOverlapsCircle(rect, x, y, r))) return true;
     if (placedAddBtnBoxes.some((rect) => rectOverlapsCircle(rect, x, y, r))) return true;
     return false;
   };
   const fallbackAngles = [0, 45, 90, 135, 180, 225, 270, 315].map(
     (deg) => (deg * Math.PI) / 180
   );
-  const findNearestAvailablePoint = (originX, originY, r, { ignoreColumns = false } = {}) => {
+  const findNearestAvailablePoint = (
+    originX,
+    originY,
+    r,
+    { ignoreColumns = false, ignoreShelves = false, ignoreInfoLabels = true } = {}
+  ) => {
     const baseX = clampToFrame(originX, minBtnX, maxBtnX);
     const baseY = clampToFrame(originY, minBtnY, maxBtnY);
-    if (!isBlockedPointForPlacement(baseX, baseY, r, { ignoreColumns })) return { x: baseX, y: baseY };
+    if (!isBlockedPointForPlacement(baseX, baseY, r, { ignoreColumns, ignoreShelves, ignoreInfoLabels })) {
+      return { x: baseX, y: baseY };
+    }
     const radialSteps = [
       Math.max(8, addBtnSize * 0.55),
       Math.max(14, addBtnSize * 1.05),
@@ -6964,7 +7564,13 @@ function updatePreview() {
         const angle = fallbackAngles[j];
         const candidateX = clampToFrame(baseX + Math.cos(angle) * radius, minBtnX, maxBtnX);
         const candidateY = clampToFrame(baseY + Math.sin(angle) * radius, minBtnY, maxBtnY);
-        if (!isBlockedPointForPlacement(candidateX, candidateY, r, { ignoreColumns })) {
+        if (
+          !isBlockedPointForPlacement(candidateX, candidateY, r, {
+            ignoreColumns,
+            ignoreShelves,
+            ignoreInfoLabels,
+          })
+        ) {
           return { x: candidateX, y: candidateY };
         }
       }
@@ -7381,6 +7987,7 @@ function applyLayoutShapeTypeChange(nextShape) {
   state.shelfAddons = {};
   resetPreviewAddFlowState(previewAddFlowState);
   previewOpenEndpoints = new Map();
+  inlineInsertPendingFirstSaveEdgeId = "";
   clearPreviewGhost();
   resetBuilderHistoryState();
   renderShapeSizeInputs();
@@ -7891,6 +8498,7 @@ function discardPendingEdge(edgeOrId) {
   if (!edge || !isPendingEdge(edge)) return false;
   const edgeId = String(edge.id || "");
   if (!edgeId) return false;
+  reanchorChildrenAfterEdgeRemoval(edge);
   unregisterEdge(edgeId);
   normalizeDanglingAnchorIds();
   delete state.shelfAddons[edgeId];
@@ -8067,7 +8675,10 @@ function syncCornerOptionModal() {
   renderCornerOptionFrontPreview();
 }
 
-function openCornerOptionModal(cornerId, { preserveDraft = false, backContext = null } = {}) {
+function openCornerOptionModal(
+  cornerId,
+  { preserveDraft = false, backContext = null, initialTab = "" } = {}
+) {
   const corner = findShelfById(cornerId);
   if (!corner) return;
   if (
@@ -8077,11 +8688,18 @@ function openCornerOptionModal(cornerId, { preserveDraft = false, backContext = 
   ) {
     cornerDirectComposeDraft = null;
   }
+  const resolvedInitialTab =
+    initialTab === "custom" || initialTab === "preset"
+      ? initialTab
+      : corner.composeTab === "preset" || corner.composeTab === "custom"
+        ? corner.composeTab
+        : "custom";
   activeCornerOptionId = cornerId;
   const nextOpen = buildPresetModuleOptionOpenFromDirectComposeEdge({
     moduleType: "corner",
     edgeId: cornerId,
     preserveDraft,
+    initialTab: resolvedInitialTab,
     backContext,
     cloneTargetSnapshot: clonePreviewAddTargetSnapshot,
     fallbackReturnFocusEl: previewAddFlowState.anchorEl,
@@ -8134,9 +8752,18 @@ function syncBayOptionModal() {
   renderBayOptionFrontPreview();
 }
 
-function openBayOptionModal(shelfId, { preserveDraft = false, backContext = null } = {}) {
+function openBayOptionModal(
+  shelfId,
+  { preserveDraft = false, backContext = null, initialTab = "" } = {}
+) {
   const shelf = findShelfById(shelfId);
   if (!shelf) return;
+  if (
+    inlineInsertPendingFirstSaveEdgeId &&
+    String(inlineInsertPendingFirstSaveEdgeId) !== String(shelfId)
+  ) {
+    inlineInsertPendingFirstSaveEdgeId = "";
+  }
   if (
     !preserveDraft ||
     !bayDirectComposeDraft ||
@@ -8144,11 +8771,18 @@ function openBayOptionModal(shelfId, { preserveDraft = false, backContext = null
   ) {
     bayDirectComposeDraft = null;
   }
+  const resolvedInitialTab =
+    initialTab === "custom" || initialTab === "preset"
+      ? initialTab
+      : shelf.composeTab === "preset" || shelf.composeTab === "custom"
+        ? shelf.composeTab
+        : "custom";
   activeBayOptionId = shelfId;
   const nextOpen = buildPresetModuleOptionOpenFromDirectComposeEdge({
     moduleType: "normal",
     edgeId: shelfId,
     preserveDraft,
+    initialTab: resolvedInitialTab,
     backContext,
     cloneTargetSnapshot: clonePreviewAddTargetSnapshot,
     fallbackReturnFocusEl: previewAddFlowState.anchorEl,
@@ -9291,12 +9925,21 @@ function saveBayOptionModal() {
   const prevCount = Number(shelf.count || 1);
   const prevRodCount = getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID);
   const wasPendingAdd = isPendingEdge(shelf);
+  const shouldMergeWithInlineInsertHistory =
+    !wasPendingAdd &&
+    String(inlineInsertPendingFirstSaveEdgeId || "") === String(shelf.id || "");
   if (wasPendingAdd) {
     pushBuilderHistory("add-normal");
-  } else if (prevWidth !== width || prevCount !== count || prevRodCount !== rodCount) {
+  } else if (
+    !shouldMergeWithInlineInsertHistory &&
+    (prevWidth !== width || prevCount !== count || prevRodCount !== rodCount)
+  ) {
     pushBuilderHistory("update-normal");
   }
   if (wasPendingAdd) delete shelf.pendingAdd;
+  if (String(inlineInsertPendingFirstSaveEdgeId || "") === String(shelf.id || "")) {
+    inlineInsertPendingFirstSaveEdgeId = "";
+  }
   shelf.width = width;
   shelf.count = count;
   shelf.composeTab = "custom";
@@ -9369,6 +10012,9 @@ function removeBayById(id) {
   normalizeDanglingAnchorIds();
   delete state.shelfAddons[id];
   if (activeBayOptionId === id) activeBayOptionId = null;
+  if (String(inlineInsertPendingFirstSaveEdgeId || "") === String(id || "")) {
+    inlineInsertPendingFirstSaveEdgeId = "";
+  }
   renderBayInputs();
 }
 
@@ -10491,9 +11137,13 @@ function init() {
     closePreviewModuleActionModal({ returnFocus: true })
   );
   $("#previewModuleActionModalBackdrop")?.addEventListener("click", () => closePreviewModuleActionModal());
-  $("#previewModuleActionPresetBtn")?.addEventListener("click", handlePreviewModuleActionPresetSelect);
-  $("#previewModuleActionCustomBtn")?.addEventListener("click", handlePreviewModuleActionCustomCompose);
-  $("#previewModuleActionRemoveBtn")?.addEventListener("click", handlePreviewModuleActionRemove);
+  $("#previewModuleActionEditBtn")?.addEventListener("click", handlePreviewModuleActionEdit);
+  $("#previewModuleActionAddLeftBtn")?.addEventListener("click", () =>
+    handlePreviewModuleActionAddSide("left")
+  );
+  $("#previewModuleActionAddRightBtn")?.addEventListener("click", () =>
+    handlePreviewModuleActionAddSide("right")
+  );
   $("#closePreviewPresetModuleModal")?.addEventListener("click", () => closePreviewPresetModuleModal());
   $("#previewPresetModuleModalBackdrop")?.addEventListener("click", () => closePreviewPresetModuleModal());
   $("#previewPresetModuleCards")?.addEventListener("click", (e) => {
