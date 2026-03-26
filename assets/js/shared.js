@@ -195,6 +195,141 @@ export function validateServiceStepSelection({
   return "";
 }
 
+function normalizeCustomerPayload(customer = {}) {
+  return {
+    name: String(customer?.name || "").trim(),
+    phone: String(customer?.phone || "").trim(),
+    email: String(customer?.email || "").trim(),
+    postcode: String(customer?.postcode || "").trim(),
+    address: String(customer?.address || "").trim(),
+    detailAddress: String(customer?.detailAddress || "").trim(),
+    memo: String(customer?.memo || "").trim(),
+  };
+}
+
+export function buildCustomerAddressLine(customer = {}) {
+  const normalized = normalizeCustomerPayload(customer);
+  return `${normalized.postcode || "-"} ${normalized.address || ""} ${normalized.detailAddress || ""}`.trim();
+}
+
+function normalizeCustomerPhotoPayload(customerPhotoUploads = []) {
+  return (Array.isArray(customerPhotoUploads) ? customerPhotoUploads : []).map((photo) => ({
+    name: String(photo?.originalName || "").trim(),
+    url: String(photo?.secureUrl || "").trim(),
+    publicId: String(photo?.publicId || "").trim(),
+  }));
+}
+
+function formatCustomerPhotoUploadErrors(customerPhotoErrors = []) {
+  return (Array.isArray(customerPhotoErrors) ? customerPhotoErrors : [])
+    .map((error) => {
+      const name = String(error?.name || "파일").trim() || "파일";
+      const reason = String(error?.reason || "업로드 실패").trim() || "업로드 실패";
+      return `${name}(${reason})`;
+    })
+    .join(" / ");
+}
+
+export function buildCustomerEmailSectionLines({
+  customer = {},
+  customerPhotoUploads = [],
+  customerPhotoErrors = [],
+} = {}) {
+  const normalizedCustomer = normalizeCustomerPayload(customer);
+  const uploadedPhotos = Array.isArray(customerPhotoUploads) ? customerPhotoUploads : [];
+  const uploadErrors = Array.isArray(customerPhotoErrors) ? customerPhotoErrors : [];
+
+  const lines = [];
+  lines.push("=== 고객 정보 ===");
+  lines.push(`이름: ${normalizedCustomer.name || "-"}`);
+  lines.push(`연락처: ${normalizedCustomer.phone || "-"}`);
+  lines.push(`이메일: ${normalizedCustomer.email || "-"}`);
+  lines.push(`주소: ${buildCustomerAddressLine(normalizedCustomer)}`);
+  lines.push(`요청사항: ${normalizedCustomer.memo || "-"}`);
+  if (uploadedPhotos.length || uploadErrors.length) {
+    lines.push("");
+    lines.push("=== 공간/가구 사진 ===");
+    if (uploadedPhotos.length) {
+      uploadedPhotos.forEach((photo, index) => {
+        lines.push(`${index + 1}) ${photo?.originalName || `사진 ${index + 1}`}`);
+        lines.push(`- ${photo?.secureUrl || "-"}`);
+      });
+    }
+    if (uploadErrors.length) {
+      lines.push(`업로드 실패: ${formatCustomerPhotoUploadErrors(uploadErrors)}`);
+    }
+  }
+  return lines;
+}
+
+export function buildOrderPayloadBase({
+  pageKey = "",
+  customer = {},
+  summary = {},
+  customerPhotoUploads = [],
+} = {}) {
+  const normalizedCustomer = normalizeCustomerPayload(customer);
+  const fulfillment = summary?.fulfillment && typeof summary.fulfillment === "object" ? summary.fulfillment : {};
+  const hasCustomPrice = Boolean(summary?.hasConsult);
+
+  return {
+    schemaVersion: ORDER_PAYLOAD_SCHEMA_VERSION,
+    pageKey: String(pageKey || "").trim(),
+    createdAt: new Date().toISOString(),
+    customer: normalizedCustomer,
+    customerPhotos: normalizeCustomerPhotoPayload(customerPhotoUploads),
+    totals: {
+      grandTotal: Number(summary?.grandTotal || 0),
+      subtotal: Number(summary?.subtotal || 0),
+      fulfillmentType: String(fulfillment?.type || "").trim(),
+      fulfillmentRegion: String(fulfillment?.region?.label || "").trim(),
+      fulfillmentCost: Number(summary?.fulfillmentCost || 0),
+      fulfillmentConsult: Boolean(fulfillment?.isConsult),
+      hasCustomPrice,
+      displayPriceLabel: hasCustomPrice ? `${CONSULT_DISPLAY_PRICE_LABEL}${CONSULT_EXCLUDED_SUFFIX}` : null,
+    },
+  };
+}
+
+export function resolveThreePhaseNextTransition({
+  currentPhase = 1,
+  phase1Ready = true,
+  phase1ErrorMessage = "",
+  validatePhase2,
+} = {}) {
+  const normalizedPhase = Number(currentPhase) || 1;
+  if (normalizedPhase === 1) {
+    if (!phase1Ready) {
+      return {
+        nextPhase: 1,
+        errorMessage: String(phase1ErrorMessage || "").trim(),
+        errorStage: "phase1",
+      };
+    }
+    return { nextPhase: 2, errorMessage: "", errorStage: "" };
+  }
+  if (normalizedPhase === 2) {
+    const serviceError =
+      typeof validatePhase2 === "function" ? String(validatePhase2() || "").trim() : "";
+    if (serviceError) {
+      return {
+        nextPhase: 2,
+        errorMessage: serviceError,
+        errorStage: "phase2",
+      };
+    }
+    return { nextPhase: 3, errorMessage: "", errorStage: "" };
+  }
+  return { nextPhase: normalizedPhase, errorMessage: "", errorStage: "" };
+}
+
+export function resolveThreePhasePrevPhase(currentPhase = 1) {
+  const normalizedPhase = Number(currentPhase) || 1;
+  if (normalizedPhase <= 1) return 1;
+  if (normalizedPhase === 3) return 2;
+  return 1;
+}
+
 export function calcGroupedAmount(count = 0, groupSize = 1, groupPrice = 0) {
   const normalizedCount = Math.max(0, Math.floor(Number(count) || 0));
   const normalizedGroupSize = Math.max(1, Math.floor(Number(groupSize) || 1));

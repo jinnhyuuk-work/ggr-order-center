@@ -120,14 +120,17 @@ import {
   initCollapsibleSections,
   renderItemPriceDisplay,
   renderItemPriceNotice,
-  ORDER_PAYLOAD_SCHEMA_VERSION,
-  CONSULT_EXCLUDED_SUFFIX,
   calcGroupedAmount,
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   getRuntimeHostBlockedReason,
   UI_COLOR_FALLBACKS,
   validateServiceStepSelection,
+  buildCustomerEmailSectionLines,
+  buildOrderPayloadBase,
+  resolveThreePhaseNextTransition,
+  resolveThreePhasePrevPhase,
+  buildCustomerAddressLine,
 } from "./shared.js";
 import {
   normalizeFulfillmentType,
@@ -11111,26 +11114,11 @@ function buildEmailContent({
   const displayItems = buildSystemGroupDisplayItems(state.items);
   const builderRows = buildBuilderEdgeRows();
 
-  const lines = [];
-  lines.push("=== 고객 정보 ===");
-  lines.push(`이름: ${customer.name || "-"}`);
-  lines.push(`연락처: ${customer.phone || "-"}`);
-  lines.push(`이메일: ${customer.email || "-"}`);
-  lines.push(`주소: ${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim());
-  lines.push(`요청사항: ${customer.memo || "-"}`);
-  if (customerPhotoUploads.length || customerPhotoErrors.length) {
-    lines.push("");
-    lines.push("=== 공간/가구 사진 ===");
-    if (customerPhotoUploads.length) {
-      customerPhotoUploads.forEach((photo, index) => {
-        lines.push(`${index + 1}) ${photo.originalName || `사진 ${index + 1}`}`);
-        lines.push(`- ${photo.secureUrl || "-"}`);
-      });
-    }
-    if (customerPhotoErrors.length) {
-      lines.push(`업로드 실패: ${customerPhotoErrors.map((error) => `${error.name}(${error.reason})`).join(" / ")}`);
-    }
-  }
+  const lines = buildCustomerEmailSectionLines({
+    customer,
+    customerPhotoUploads,
+    customerPhotoErrors,
+  });
   lines.push("");
   lines.push("=== 주문 내역 ===");
 
@@ -11196,40 +11184,18 @@ function buildOrderPayload({
   const summary = buildGrandSummary();
   const displayItems = buildSystemGroupDisplayItems(state.items);
   const builderRows = buildBuilderEdgeRows();
-  const hasCustomPrice = summary.hasConsult;
 
   return {
-    schemaVersion: ORDER_PAYLOAD_SCHEMA_VERSION,
-    pageKey: "system",
-    createdAt: new Date().toISOString(),
-    customer: {
-      name: customer.name || "",
-      phone: customer.phone || "",
-      email: customer.email || "",
-      postcode: customer.postcode || "",
-      address: customer.address || "",
-      detailAddress: customer.detailAddress || "",
-      memo: customer.memo || "",
-    },
-    customerPhotos: (Array.isArray(customerPhotoUploads) ? customerPhotoUploads : []).map((photo) => ({
-      name: String(photo?.originalName || "").trim(),
-      url: String(photo?.secureUrl || "").trim(),
-      publicId: String(photo?.publicId || "").trim(),
-    })),
+    ...buildOrderPayloadBase({
+      pageKey: "system",
+      customer,
+      summary,
+      customerPhotoUploads,
+    }),
     preview: {
       imageUrl: String(previewImageUrl || "").trim(),
       imagePublicId: String(previewImagePublicId || "").trim(),
       imageError: String(previewImageError || "").trim(),
-    },
-    totals: {
-      grandTotal: Number(summary.grandTotal || 0),
-      subtotal: Number(summary.subtotal || 0),
-      fulfillmentType: summary.fulfillment.type || "",
-      fulfillmentRegion: summary.fulfillment.region?.label || "",
-      fulfillmentCost: Number(summary.fulfillmentCost || 0),
-      fulfillmentConsult: Boolean(summary.fulfillment.isConsult),
-      hasCustomPrice,
-      displayPriceLabel: hasCustomPrice ? `상담안내${CONSULT_EXCLUDED_SUFFIX}` : null,
     },
     items: displayItems.map((item) => ({
       lineId: item.id,
@@ -11371,24 +11337,30 @@ function updateStepVisibility(scrollTarget) {
 }
 
 function goToNextStep() {
-  if (currentPhase === 1) {
-    if (!state.items.length) {
-      showInfoModal("먼저 시스템 수납장을 구성해주세요.");
-      return;
+  const transition = resolveThreePhaseNextTransition({
+    currentPhase,
+    phase1Ready: state.items.length > 0,
+    phase1ErrorMessage: "먼저 시스템 수납장을 구성해주세요.",
+    validatePhase2: validateServiceStep,
+  });
+
+  if (transition.errorMessage) {
+    if (transition.errorStage === "phase2") {
+      setServiceStepError(transition.errorMessage);
     }
+    showInfoModal(transition.errorMessage);
+    return;
+  }
+
+  if (transition.nextPhase === 2 && currentPhase !== 2) {
     currentPhase = 2;
     updateStepVisibility($("#step4"));
     updateServiceStepUI();
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
-  if (currentPhase === 2) {
-    const serviceError = validateServiceStep();
-    if (serviceError) {
-      setServiceStepError(serviceError);
-      showInfoModal(serviceError);
-      return;
-    }
+
+  if (transition.nextPhase === 3 && currentPhase !== 3) {
     currentPhase = 3;
     updateStepVisibility($("#step5"));
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -11396,14 +11368,10 @@ function goToNextStep() {
 }
 
 function goToPrevStep() {
-  if (currentPhase === 1) return;
-  if (currentPhase === 3) {
-    currentPhase = 2;
-    updateStepVisibility($("#step4"));
-  } else {
-    currentPhase = 1;
-    updateStepVisibility($("#stepShape"));
-  }
+  const prevPhase = resolveThreePhasePrevPhase(currentPhase);
+  if (prevPhase === currentPhase) return;
+  currentPhase = prevPhase;
+  updateStepVisibility(currentPhase === 2 ? $("#step4") : $("#stepShape"));
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -11529,7 +11497,7 @@ async function sendQuote() {
     previewImageError,
     customerPhotoUploads,
   });
-  const addressLine = `${customer.postcode || "-"} ${customer.address || ""} ${customer.detailAddress || ""}`.trim();
+  const addressLine = buildCustomerAddressLine(customer);
   const templateParams = {
     name: customer.name || "-",
     time: orderTimeText,
