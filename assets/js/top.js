@@ -305,7 +305,9 @@ function setFulfillmentType(nextType) {
 function setServiceStepError(message = "") {
   const errorEl = $("#serviceStepError");
   if (!errorEl) return;
-  errorEl.textContent = String(message || "").trim();
+  const text = String(message || "").trim();
+  errorEl.textContent = text;
+  errorEl.classList.toggle("error", Boolean(text));
 }
 
 function getTopProductItems() {

@@ -270,7 +270,7 @@
               <p><strong>제12조(권익침해 구제 방법)</strong><br />정보주체는 아래의 기관에 대해 개인정보 침해에 대한 피해구제, 상담 등을 문의하실 수 있습니다.<br /><br />▶ 개인정보 침해신고센터 (한국인터넷진흥원 운영)<br />- 소관 업무 : 개인정보 침해사실 신고, 상담 신청<br />- 홈페이지 : privacy.kisa.or.kr<br />- 전화 : (국번없이) 118<br />- 주소 : (58324) 전남 나주시 진흥길 9(빛가람동 301-2) 3층 개인정보침해신고센터<br /><br />▶ 개인정보 분쟁조정위원회<br />- 소관업무 : 개인정보 분쟁조정신청, 집단분쟁조정 (민사적 해결)<br />- 홈페이지 : www.kopico.go.kr<br />- 전화 : (국번없이) 1833-6972<br />- 주소 : (03171)서울특별시 종로구 세종대로 209 정부서울청사 4층<br /><br />▶ 대검찰청 사이버범죄수사단 : 02-3480-3573 (www.spo.go.kr)<br />▶ 경찰청 사이버안전국 : 182 (http://cyberbureau.police.go.kr)</p>
               <p><strong>제13조(개인정보 처리방침 시행 및 변경)</strong><br />이 개인정보 처리방침은 2024. 9. 1부터 적용됩니다.</p>
             </div>
-            <label class="consent-check">
+            <label class="consent-check" for="privacyConsent">
               <input type="checkbox" id="privacyConsent" />
               개인정보 처리방침에 동의합니다.
             </label>
@@ -547,14 +547,14 @@
       <div class="modal-body">
         <div id="presetModuleOptionPresetTabPanel" role="tabpanel" aria-labelledby="presetModuleOptionPresetTabBtn">
           <div class="form-row">
-            <label id="presetModuleOptionFilterLabel">선반 폭 (mm)</label>
+            <label id="presetModuleOptionFilterLabel" for="presetModuleOptionFilterSelect">선반 폭 (mm)</label>
             <div class="field-col">
               <select id="presetModuleOptionFilterSelect" class="select-caret"></select>
               <div id="presetModuleOptionFilterNote" class="field-note">선반 폭을 먼저 선택해주세요.</div>
             </div>
           </div>
           <div class="form-row">
-            <label>모듈</label>
+            <label for="openPresetModulePickerBtn">모듈</label>
             <div class="field-col">
               <button type="button" id="openPresetModulePickerBtn">모듈 선택</button>
               <div
@@ -573,7 +573,7 @@
         >
           <div id="presetModuleOptionCustomBayPanel" class="hidden">
             <div class="form-row">
-              <label>선반 폭 (mm)</label>
+              <label for="bayWidthPresetSelect">선반 폭 (mm)</label>
               <div class="field-col">
                 <select id="bayWidthPresetSelect" class="select-caret">
                   <option value="400">400</option>
@@ -593,20 +593,20 @@
               </div>
             </div>
             <div class="form-row">
-              <label>선반 갯수</label>
+              <label for="bayCountInput">선반 갯수</label>
               <div class="field-col">
                 <input type="number" id="bayCountInput" min="0" />
                 <div class="error-msg" id="bayCountError"></div>
               </div>
             </div>
             <div class="form-row">
-              <label>구성품 (행거)</label>
+              <label for="bayRodCountInput">구성품 (행거)</label>
               <div class="field-col">
                 <input type="number" id="bayRodCountInput" min="0" />
               </div>
             </div>
             <div class="form-row">
-              <label>가구</label>
+              <label for="bayAddonBtn">가구</label>
               <div class="field-col">
                 <button type="button" id="bayAddonBtn">가구 선택</button>
                 <div
@@ -619,7 +619,7 @@
           </div>
           <div id="presetModuleOptionCustomCornerPanel" class="hidden">
             <div class="form-row">
-              <label>코너 방향</label>
+              <label for="cornerSwapSelect">코너 방향</label>
               <div class="field-col">
                 <select id="cornerSwapSelect" class="select-caret">
                   <option value="default">800 × 600</option>
@@ -630,7 +630,7 @@
               </div>
             </div>
             <div class="form-row" id="cornerCustomCutRow">
-              <label>직접입력 (mm)</label>
+              <label for="cornerCustomPrimaryInput">직접입력 (mm)</label>
               <div class="field-col">
                 <div id="cornerCustomCutInputs" class="field-stack hidden">
                   <div class="space-extra-row">
@@ -643,20 +643,20 @@
               </div>
             </div>
             <div class="form-row">
-              <label>선반 갯수</label>
+              <label for="cornerCountInput">선반 갯수</label>
               <div class="field-col">
                 <input type="number" id="cornerCountInput" min="0" />
                 <div class="error-msg" id="cornerCountError"></div>
               </div>
             </div>
             <div class="form-row">
-              <label>구성품 (행거)</label>
+              <label for="cornerRodCountInput">구성품 (행거)</label>
               <div class="field-col">
                 <input type="number" id="cornerRodCountInput" min="0" />
               </div>
             </div>
             <div class="form-row hidden">
-              <label>가구</label>
+              <label for="cornerAddonBtn">가구</label>
               <div class="field-col">
                 <button type="button" id="cornerAddonBtn">가구 선택</button>
                 <div

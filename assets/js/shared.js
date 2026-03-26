@@ -1447,52 +1447,61 @@ export function createServiceModalController({
       holes.length > 0
         ? holes
             .map(
-              (hole, idx) => `
-                <div class="service-row">
-                  <div class="service-row-header">
-                    <span>${srv.label} ${idx + 1}</span>
-                    <button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>
+              (hole, idx) => {
+                const rowIdPrefix = `service-hole-${String(serviceId).replace(/[^a-zA-Z0-9_-]/g, "_")}-${idx}`;
+                const edgeId = `${rowIdPrefix}-edge`;
+                const distanceId = `${rowIdPrefix}-distance`;
+                const verticalRefId = `${rowIdPrefix}-vertical-ref`;
+                const verticalDistanceId = `${rowIdPrefix}-vertical-distance`;
+                return `
+                  <div class="service-row">
+                    <div class="service-row-header">
+                      <span>${srv.label} ${idx + 1}</span>
+                      <button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>
+                    </div>
+                    <div class="service-field-grid">
+                      <div>
+                        <label for="${edgeId}">측면</label>
+                        <select id="${edgeId}" class="service-input select-caret" data-field="edge" data-index="${idx}">
+                          <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
+                          <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label for="${distanceId}">가로(mm)</label>
+                        <input
+                          id="${distanceId}"
+                          type="number"
+                          class="service-input"
+                          data-field="distance"
+                          data-index="${idx}"
+                          value="${hole.distance ?? ""}"
+                          min="1"
+                        />
+                      </div>
+                      <div>
+                        <label for="${verticalRefId}">세로 기준</label>
+                        <select id="${verticalRefId}" class="service-input select-caret" data-field="verticalRef" data-index="${idx}">
+                          <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
+                          <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label for="${verticalDistanceId}">세로(mm)</label>
+                        <input
+                          id="${verticalDistanceId}"
+                          type="number"
+                          class="service-input"
+                          data-field="verticalDistance"
+                          data-index="${idx}"
+                          value="${hole.verticalDistance ?? ""}"
+                          min="1"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div class="service-field-grid">
-                    <div>
-                      <label>측면</label>
-                      <select class="service-input select-caret" data-field="edge" data-index="${idx}">
-                        <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
-                        <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label>가로(mm)</label>
-                      <input
-                        type="number"
-                        class="service-input"
-                        data-field="distance"
-                        data-index="${idx}"
-                        value="${hole.distance ?? ""}"
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <label>세로 기준</label>
-                      <select class="service-input select-caret" data-field="verticalRef" data-index="${idx}">
-                        <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
-                        <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label>세로(mm)</label>
-                      <input
-                        type="number"
-                        class="service-input"
-                        data-field="verticalDistance"
-                        data-index="${idx}"
-                        value="${hole.verticalDistance ?? ""}"
-                        min="1"
-                      />
-                    </div>
-                  </div>
-                </div>
-              `
+                `;
+              }
             )
             .join("")
         : `<div class="service-empty">등록된 위치가 없습니다. 아래의 "위치 추가"를 눌러주세요.</div>`;
@@ -1504,7 +1513,7 @@ export function createServiceModalController({
         <button type="button" data-add-hole>위치 추가</button>
       </div>
       <div>
-        <label>추가 메모 (선택)</label>
+        <label for="${noteId}">추가 메모 (선택)</label>
         <textarea class="service-textarea" id="${noteId}">${draft?.note || ""}</textarea>
       </div>
     `;
@@ -1753,13 +1762,35 @@ export function initCollapsibleSections({
     if (!section) return;
     const openLabel = btn.dataset.openText || openText;
     const closedLabel = btn.dataset.closedText || closedText;
+    const titleText = String(
+      btn.dataset.a11yLabel ||
+        section.querySelector(".step-card-header h2, .estimate-header h2, h2")?.textContent ||
+        ""
+    ).trim();
+    const controlTarget =
+      section.querySelector(".accordion-body[id], .estimate-body[id]") ||
+      section.querySelector(".accordion-body, .estimate-body");
+    if (controlTarget) {
+      if (!controlTarget.id && targetId) controlTarget.id = `${targetId}Panel`;
+      if (controlTarget.id) btn.setAttribute("aria-controls", controlTarget.id);
+    } else if (targetId) {
+      btn.setAttribute("aria-controls", targetId);
+    }
+
+    const applyState = (collapsed) => {
+      const actionText = collapsed ? closedLabel : openLabel;
+      btn.textContent = actionText;
+      btn.setAttribute("aria-expanded", String(!collapsed));
+      if (titleText) {
+        btn.setAttribute("aria-label", `${titleText} ${actionText}`);
+      }
+    };
+
     const isCollapsed = section.classList.contains(collapsedClass);
-    btn.textContent = isCollapsed ? closedLabel : openLabel;
-    btn.setAttribute("aria-expanded", String(!isCollapsed));
+    applyState(isCollapsed);
     btn.addEventListener("click", () => {
       const nowCollapsed = section.classList.toggle(collapsedClass);
-      btn.textContent = nowCollapsed ? closedLabel : openLabel;
-      btn.setAttribute("aria-expanded", String(!nowCollapsed));
+      applyState(nowCollapsed);
     });
   });
 }

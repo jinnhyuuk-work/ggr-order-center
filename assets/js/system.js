@@ -696,7 +696,9 @@ function setFulfillmentType(nextType) {
 function setServiceStepError(message = "") {
   const errorEl = $("#serviceStepError");
   if (!errorEl) return;
-  errorEl.textContent = String(message || "").trim();
+  const text = String(message || "").trim();
+  errorEl.textContent = text;
+  errorEl.classList.toggle("error", Boolean(text));
 }
 
 function getSystemColumnsItems() {
@@ -8323,20 +8325,20 @@ function renderShapeSizeInputs() {
     </ul>
     </div>
     <div class="form-row">
-      <label>가장 낮은 천장 높이 (mm)</label>
+      <label for="spaceMin-${i}">가장 낮은 천장 높이 (mm)</label>
       <div class="field-col">
         <input type="number" id="spaceMin-${i}" placeholder="${LIMITS.column.minLength}mm 이상" value="${Number(previousSpace.min || 0) > 0 ? Number(previousSpace.min) : ""}" />
       </div>
     </div>
     <div class="form-row">
-      <label>가장 높은 천장 높이 (mm)</label>
+      <label for="spaceMax-${i}">가장 높은 천장 높이 (mm)</label>
       <div class="field-col">
         <input type="number" id="spaceMax-${i}" placeholder="${LIMITS.column.minLength}mm 이상" value="${Number(previousSpace.max || 0) > 0 ? Number(previousSpace.max) : ""}" />
         <div class="error-msg" id="spaceHeightError-${i}"></div>
       </div>
     </div>
     <div class="form-row">
-      <label>개별높이 (mm)</label>
+      <label for="addSpaceExtra-${i}">개별높이 (mm)</label>
       <div class="field-col">
         <button type="button" class="ghost-btn space-extra-add-btn" id="addSpaceExtra-${i}">개별높이 추가</button>
         <div id="spaceExtraList-${i}" class="field-stack"></div>
@@ -8429,34 +8431,38 @@ function renderBayInputs() {
 
 function buildShelfItem(shelf) {
   const clothesRodQty = getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID);
+  const widthPresetId = `shelfWidthPreset-${shelf.id}`;
+  const widthInputId = `shelfWidth-${shelf.id}`;
+  const countInputId = `shelfCount-${shelf.id}`;
+  const rodCountInputId = `shelfRodCount-${shelf.id}`;
   const el = document.createElement("div");
   el.className = "shelf-item";
   el.innerHTML = `
     <div class="form-row">
-      <label>선반 폭 (mm)</label>
+      <label for="${widthPresetId}">선반 폭 (mm)</label>
       <div class="field-col">
-        <select class="select-caret" data-shelf-preset="${shelf.id}">
+        <select id="${widthPresetId}" class="select-caret" data-shelf-preset="${shelf.id}">
           <option value="">선택</option>
           <option value="400">400</option>
           <option value="600">600</option>
           <option value="800">800</option>
           <option value="custom">직접 입력</option>
         </select>
-        <input type="number" class="bay-width-input" data-shelf-width="${shelf.id}" min="${MODULE_SHELF_WIDTH_LIMITS.min}" max="${MODULE_SHELF_WIDTH_LIMITS.max}" placeholder="직접 입력 (${MODULE_SHELF_WIDTH_LIMITS.min}~${MODULE_SHELF_WIDTH_LIMITS.max}mm)" value="${shelf.width || ""}" />
+        <input id="${widthInputId}" type="number" class="bay-width-input" data-shelf-width="${shelf.id}" min="${MODULE_SHELF_WIDTH_LIMITS.min}" max="${MODULE_SHELF_WIDTH_LIMITS.max}" placeholder="직접 입력 (${MODULE_SHELF_WIDTH_LIMITS.min}~${MODULE_SHELF_WIDTH_LIMITS.max}mm)" value="${shelf.width || ""}" />
         <div class="error-msg" data-shelf-width-error="${shelf.id}"></div>
       </div>
     </div>
     <div class="form-row">
-      <label>선반 갯수</label>
+      <label for="${countInputId}">선반 갯수</label>
       <div class="field-col">
-        <input type="number" min="1" value="${shelf.count || 1}" data-shelf-count="${shelf.id}" />
+        <input id="${countInputId}" type="number" min="1" value="${shelf.count || 1}" data-shelf-count="${shelf.id}" />
         <div class="error-msg" data-shelf-count-error="${shelf.id}"></div>
       </div>
     </div>
     <div class="form-row">
-      <label>구성품 (행거)</label>
+      <label for="${rodCountInputId}">구성품 (행거)</label>
       <div class="field-col">
-        <input type="number" min="0" value="${clothesRodQty}" data-shelf-rod-count="${shelf.id}" />
+        <input id="${rodCountInputId}" type="number" min="0" value="${clothesRodQty}" data-shelf-rod-count="${shelf.id}" />
       </div>
     </div>
     <div class="bay-addon-section">
@@ -8473,29 +8479,32 @@ function buildShelfItem(shelf) {
 function buildCornerShelfItem(corner) {
   const clothesRodQty = getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID);
   clearFurnitureAddonsForEdge(corner.id);
+  const cornerSwapId = `cornerSwap-${corner.id}`;
+  const cornerCountInputId = `cornerCount-${corner.id}`;
+  const cornerRodCountInputId = `cornerRodCount-${corner.id}`;
   const el = document.createElement("div");
   el.className = "shelf-item corner-item";
   el.innerHTML = `
     <div class="form-row">
-      <label>코너 선반</label>
+      <label for="${cornerSwapId}">코너 선반</label>
       <div class="field-col">
-        <select class="select-caret" data-corner-swap="${corner.id}">
+        <select id="${cornerSwapId}" class="select-caret" data-corner-swap="${corner.id}">
           <option value="default"${corner.swap ? "" : " selected"}>800 × 600</option>
           <option value="swap"${corner.swap ? " selected" : ""}>600 × 800</option>
         </select>
       </div>
     </div>
     <div class="form-row">
-      <label>선반 갯수</label>
+      <label for="${cornerCountInputId}">선반 갯수</label>
       <div class="field-col">
-        <input type="number" min="1" value="${corner.count || 1}" data-shelf-count="${corner.id}" />
+        <input id="${cornerCountInputId}" type="number" min="1" value="${corner.count || 1}" data-shelf-count="${corner.id}" />
         <div class="error-msg" data-shelf-count-error="${corner.id}"></div>
       </div>
     </div>
     <div class="form-row">
-      <label>구성품 (행거)</label>
+      <label for="${cornerRodCountInputId}">구성품 (행거)</label>
       <div class="field-col">
-        <input type="number" min="0" value="${clothesRodQty}" data-shelf-rod-count="${corner.id}" />
+        <input id="${cornerRodCountInputId}" type="number" min="0" value="${clothesRodQty}" data-shelf-rod-count="${corner.id}" />
       </div>
     </div>
   `;

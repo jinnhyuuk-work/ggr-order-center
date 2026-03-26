@@ -631,6 +631,11 @@ section {
   font-weight: 600;
 }
 
+.form-row .form-row-label {
+  width: 180px;
+  font-weight: 600;
+}
+
 .form-row .grid-cards {
   flex: 1;
 }
@@ -3489,6 +3494,10 @@ button.card-base:active {
     width: auto;
   }
 
+  .form-row .form-row-label {
+    width: auto;
+  }
+
   .form-row input[type="number"],
   .form-row input[type="text"],
   .form-row input[type="tel"],
@@ -3685,6 +3694,10 @@ button.card-base:active {
 
   .grid-cards--keep-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .selection-service-grid.grid-cards--keep-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
   #serviceModal .service-field-grid,
