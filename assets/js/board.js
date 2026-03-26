@@ -37,6 +37,8 @@ import {
   renderItemPriceNotice,
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
+  UI_COLOR_FALLBACKS,
+  validateServiceStepSelection,
 } from "./shared.js";
 import {
   normalizeFulfillmentType,
@@ -407,6 +409,8 @@ const previewSummaryConfig = {
 const HAS_OPTION_SELECTIONS = BOARD_OPTIONS.length > 0;
 const HAS_PROCESSING_SELECTIONS = Object.keys(SERVICES).length > 0;
 const HAS_ADDITIONAL_SELECTIONS = HAS_OPTION_SELECTIONS || HAS_PROCESSING_SELECTIONS;
+const SWATCH_FALLBACK = UI_COLOR_FALLBACKS.swatch;
+const SWATCH_MUTED_FALLBACK = UI_COLOR_FALLBACKS.swatchMuted;
 
 function getFulfillmentType() {
   return normalizeFulfillmentType(String($("#fulfillmentType")?.value || ""));
@@ -513,14 +517,11 @@ function updateServiceStepUI({ showError = false } = {}) {
 }
 
 function validateServiceStep() {
-  const customer = getCustomerInfo();
-  if (!isServiceAddressReady(customer)) {
-    return "서비스 진행을 위해 주소를 입력해주세요.";
-  }
-  if (!getFulfillmentType()) {
-    return "배송 또는 시공 서비스를 선택해주세요.";
-  }
-  return "";
+  return validateServiceStepSelection({
+    customer: getCustomerInfo(),
+    fulfillmentType: getFulfillmentType(),
+    isAddressReady: isServiceAddressReady,
+  });
 }
 
 function clearProcessingServices() {
@@ -667,7 +668,7 @@ function renderServiceCards() {
     });
     label.innerHTML = `
       <input type="checkbox" name="service" value="${srv.id}" />
-      <div class="material-visual" style="background: ${srv.swatch || "#eee"}"></div>
+      <div class="material-visual" style="background: ${srv.swatch || SWATCH_MUTED_FALLBACK}"></div>
       <div class="name">${srv.label}</div>
       <div class="price${isConsultService ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(srv.description)}
@@ -754,7 +755,7 @@ function renderOptionCards() {
     });
     label.innerHTML = `
       <input type="checkbox" name="boardOption" value="${opt.id}" />
-      <div class="material-visual" style="background: #eee"></div>
+      <div class="material-visual" style="background: ${SWATCH_MUTED_FALLBACK}"></div>
       <div class="name">${opt.name}</div>
       <div class="price${isConsultOption ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(opt.description)}
@@ -818,7 +819,7 @@ function renderMaterialCards() {
       <input type="radio" name="material" value="${mat.id}" ${
         selectedMaterialId === mat.id ? "checked" : ""
       } />
-      <div class="material-visual" style="background: ${mat.swatch || "#ddd"}"></div>
+      <div class="material-visual" style="background: ${mat.swatch || SWATCH_FALLBACK}"></div>
       <div class="name">${mat.name}</div>
       <div class="material-tier-heading">가격 기준</div>
       <div class="material-tier-line">㎡당 ${getPricePerM2(mat).toLocaleString()}원</div>
@@ -1738,14 +1739,14 @@ function updatePreview() {
   const input = readCurrentInputs();
   const mat = MATERIALS[input.materialId];
   if (!mat || !input.width || !input.length || !input.thickness) {
-    colorEl.style.background = "#ddd";
+    colorEl.style.background = SWATCH_FALLBACK;
     colorEl.style.width = "120px";
     colorEl.style.height = "120px";
     textEl.textContent = "합판과 사이즈를 선택하면 미리보기가 표시됩니다.";
     clearPreviewHoles();
     return;
   }
-  colorEl.style.background = mat.swatch || "#ddd";
+  colorEl.style.background = mat.swatch || SWATCH_FALLBACK;
   const { maxPx, minPx } = getPreviewScaleBounds(colorEl, { fallbackMax: 180, fallbackMin: 40 });
   const { w, h } = getPreviewDimensions(input.width, input.length, maxPx, minPx);
   colorEl.style.width = `${w}px`;

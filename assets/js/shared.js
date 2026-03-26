@@ -123,6 +123,14 @@ export const SERVICE_REGION_LABELS = Object.freeze({
   incheon: "인천광역시",
   other: "수도권 외",
 });
+export const UI_COLOR_FALLBACKS = Object.freeze({
+  swatch: "#ddd",
+  swatchMuted: "#eee",
+});
+export const SERVICE_STEP_VALIDATION_MESSAGES = Object.freeze({
+  addressRequired: "서비스 진행을 위해 주소를 입력해주세요.",
+  fulfillmentRequired: "배송 또는 시공 서비스를 선택해주세요.",
+});
 
 const MODAL_FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -162,6 +170,29 @@ export function resolveServiceRegionByAddress(address = "") {
     return { key: "incheon", label: SERVICE_REGION_LABELS.incheon, isSupported: true };
   }
   return { key: "other", label: SERVICE_REGION_LABELS.other, isSupported: false };
+}
+
+export function validateServiceStepSelection({
+  customer = {},
+  fulfillmentType = "",
+  isAddressReady,
+  messages = SERVICE_STEP_VALIDATION_MESSAGES,
+} = {}) {
+  const checker =
+    typeof isAddressReady === "function"
+      ? isAddressReady
+      : (value) => Boolean(value?.postcode && value?.address);
+  const safeMessages = messages || SERVICE_STEP_VALIDATION_MESSAGES;
+  if (!checker(customer)) {
+    return String(safeMessages.addressRequired || "").trim() || SERVICE_STEP_VALIDATION_MESSAGES.addressRequired;
+  }
+  if (!fulfillmentType) {
+    return (
+      String(safeMessages.fulfillmentRequired || "").trim() ||
+      SERVICE_STEP_VALIDATION_MESSAGES.fulfillmentRequired
+    );
+  }
+  return "";
 }
 
 export function calcGroupedAmount(count = 0, groupSize = 1, groupPrice = 0) {
@@ -1677,8 +1708,12 @@ export function renderSelectedCard({
   `;
 }
 
-export function buildMaterialVisualInlineStyle({ swatch = "#ddd", imageUrl = "" } = {}) {
-  const safeSwatch = String(swatch || "#ddd").trim() || "#ddd";
+export function buildMaterialVisualInlineStyle({
+  swatch = UI_COLOR_FALLBACKS.swatch,
+  imageUrl = "",
+} = {}) {
+  const safeSwatch =
+    String(swatch || UI_COLOR_FALLBACKS.swatch).trim() || UI_COLOR_FALLBACKS.swatch;
   const safeImageUrl = String(imageUrl || "").trim();
   if (!safeImageUrl) return `background: ${safeSwatch};`;
   const encodedImageUrl = safeImageUrl.replace(/'/g, "%27");
@@ -1697,7 +1732,7 @@ export function renderSelectedAddonChips({
   addons = [],
   allItems = [],
   formatPrice,
-  swatch = "#ddd",
+  swatch = UI_COLOR_FALLBACKS.swatch,
 } = {}) {
   const target = targetId ? document.getElementById(targetId) : null;
   if (!target) return;

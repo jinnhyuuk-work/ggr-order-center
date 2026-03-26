@@ -126,6 +126,8 @@ import {
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   getRuntimeHostBlockedReason,
+  UI_COLOR_FALLBACKS,
+  validateServiceStepSelection,
 } from "./shared.js";
 import {
   normalizeFulfillmentType,
@@ -145,6 +147,7 @@ import { createMeasurementGuideModalController } from "./measurement-guide-core.
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
+const SWATCH_FALLBACK = UI_COLOR_FALLBACKS.swatch;
 
 const SHELF_PANEL_LIMITS = Object.freeze({
   minWidth: 460,
@@ -946,14 +949,11 @@ function updateServiceStepUI({ showError = false } = {}) {
 }
 
 function validateServiceStep() {
-  const customer = getCustomerInfo();
-  if (!isServiceAddressReady(customer)) {
-    return "서비스 진행을 위해 주소를 입력해주세요.";
-  }
-  if (!getFulfillmentType()) {
-    return "배송 또는 시공 서비스를 선택해주세요.";
-  }
-  return "";
+  return validateServiceStepSelection({
+    customer: getCustomerInfo(),
+    fulfillmentType: getFulfillmentType(),
+    isAddressReady: isServiceAddressReady,
+  });
 }
 
 let currentPhase = 1;
@@ -1266,7 +1266,7 @@ function renderMaterialCards(picker) {
       picker.selectedMaterialId === mat.id ? " selected" : ""
     }`;
     const visualStyle = buildMaterialVisualInlineStyle({
-      swatch: mat.swatch || "#ddd",
+      swatch: mat.swatch || SWATCH_FALLBACK,
       imageUrl: mat.thumbnail || "",
     });
     const limits = LIMITS[picker.key];
@@ -1904,7 +1904,7 @@ function renderPresetModuleOptionSelectionSummary() {
     furnitureSummary === "-" ? "없음" : furnitureSummary
   }`;
   const visualStyle = buildMaterialVisualInlineStyle({
-    swatch: "#ddd",
+    swatch: SWATCH_FALLBACK,
     imageUrl: preset?.thumbnail || "",
   });
   target.innerHTML = `
@@ -2838,7 +2838,7 @@ function renderPreviewPresetModuleCards() {
         componentSummary === "-" ? "없음" : componentSummary
       } · 가구 ${furnitureSummary === "-" ? "없음" : furnitureSummary}`;
       const visualStyle = buildMaterialVisualInlineStyle({
-        swatch: "#ddd",
+        swatch: SWATCH_FALLBACK,
         imageUrl: item?.thumbnail || "",
       });
       return `
@@ -4812,7 +4812,7 @@ function buildShelfAddonChipsHtml(id, emptyText = "선택된 가구 없음") {
         : formatWon(Math.max(0, Number(priceInfo.unitPrice || 0)) * count);
       return `
         <div class="addon-chip">
-          <div class="material-visual" style="background:#ddd;"></div>
+          <div class="material-visual" style="background:${SWATCH_FALLBACK};"></div>
           <div class="info">
             <div class="name">${escapeHtml(name)}</div>
             <div class="meta">${escapeHtml(totalPriceLabel)}</div>
@@ -7355,7 +7355,7 @@ function updatePreview() {
           cornerRadiusPx
         );
         pathEl.setAttribute("d", pathD);
-        pathEl.setAttribute("fill", shelfMat.swatch || "#ddd");
+        pathEl.setAttribute("fill", shelfMat.swatch || SWATCH_FALLBACK);
         pathEl.setAttribute("stroke", "rgba(0, 0, 0, 0.28)");
         pathEl.setAttribute("stroke-width", "1.25");
         pathEl.setAttribute("stroke-linejoin", "round");
@@ -7371,11 +7371,11 @@ function updatePreview() {
           armEl.style.top = `${(arm.minY - item.minY) * scale}px`;
           armEl.style.width = `${(arm.maxX - arm.minX) * scale}px`;
           armEl.style.height = `${(arm.maxY - arm.minY) * scale}px`;
-          armEl.style.background = shelfMat.swatch || "#ddd";
+          armEl.style.background = shelfMat.swatch || SWATCH_FALLBACK;
           shelf.appendChild(armEl);
         });
       } else {
-        shelf.style.background = shelfMat.swatch || "#ddd";
+        shelf.style.background = shelfMat.swatch || SWATCH_FALLBACK;
       }
       shelf.addEventListener("mouseenter", () => {
         setPreviewEdgeHoverState(item.id, true);

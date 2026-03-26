@@ -29,6 +29,8 @@ import {
   renderItemPriceNotice,
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
+  UI_COLOR_FALLBACKS,
+  validateServiceStepSelection,
 } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
 import { TOP_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
@@ -286,6 +288,8 @@ const previewSummaryConfig = {
 const HAS_OPTION_SELECTIONS = TOP_OPTIONS.length > 0;
 const HAS_PROCESSING_SELECTIONS = Object.keys(SERVICES).length > 0;
 const HAS_ADDITIONAL_SELECTIONS = HAS_OPTION_SELECTIONS || HAS_PROCESSING_SELECTIONS;
+const SWATCH_FALLBACK = UI_COLOR_FALLBACKS.swatch;
+const SWATCH_MUTED_FALLBACK = UI_COLOR_FALLBACKS.swatchMuted;
 
 function getFulfillmentType() {
   return normalizeFulfillmentType(String($("#fulfillmentType")?.value || ""));
@@ -409,14 +413,11 @@ function updateServiceStepUI({ showError = false } = {}) {
 }
 
 function validateServiceStep() {
-  const customer = getCustomerInfo();
-  if (!isServiceAddressReady(customer)) {
-    return "서비스 진행을 위해 주소를 입력해주세요.";
-  }
-  if (!getFulfillmentType()) {
-    return "배송 또는 시공 서비스를 선택해주세요.";
-  }
-  return "";
+  return validateServiceStepSelection({
+    customer: getCustomerInfo(),
+    fulfillmentType: getFulfillmentType(),
+    isAddressReady: isServiceAddressReady,
+  });
 }
 
 function clearProcessingServices() {
@@ -897,7 +898,7 @@ function renderTopTypeCards() {
     label.className = `card-base material-card${selectedTopType === t.id ? " selected" : ""}`;
     label.innerHTML = `
       <input type="radio" name="topType" value="${t.id}" ${selectedTopType === t.id ? "checked" : ""} />
-      <div class="material-visual" style="background: ${t.swatch || "#ddd"}"></div>
+      <div class="material-visual" style="background: ${t.swatch || SWATCH_FALLBACK}"></div>
       <div class="name">${t.name}</div>
       <div class="material-tier-heading">12T 기준</div>
       <div class="material-tier-line">${standardPriceLine}</div>
@@ -1090,7 +1091,7 @@ function renderServiceCards() {
     });
     label.innerHTML = `
       <input type="checkbox" name="service" value="${srv.id}" />
-      <div class="material-visual" style="background: ${srv.swatch || "#eee"}"></div>
+      <div class="material-visual" style="background: ${srv.swatch || SWATCH_MUTED_FALLBACK}"></div>
       <div class="name">${srv.label}</div>
       <div class="price${isConsultService ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(srv.description)}
@@ -1531,7 +1532,7 @@ function updateTopPreview(input, detail) {
   colorEl.style.clipPath = "none";
 
   if (!type || !hasSize || !detail) {
-    colorEl.style.background = "#ddd";
+    colorEl.style.background = SWATCH_FALLBACK;
     colorEl.style.width = "120px";
     colorEl.style.height = "120px";
     colorEl.style.setProperty("--cutout-alpha", "0");
@@ -1547,7 +1548,7 @@ function updateTopPreview(input, detail) {
     engineered: "linear-gradient(135deg, #f2f7ff 0%, #d6e4ff 100%)",
     stainless: "linear-gradient(135deg, #f0f0f0 0%, #c7c7c7 100%)",
   };
-  const swatch = type.swatch || swatchMap[type.id] || "#ddd";
+  const swatch = type.swatch || swatchMap[type.id] || SWATCH_FALLBACK;
   const { maxPx, minPx } = getPreviewScaleBounds(colorEl, { fallbackMax: 180, fallbackMin: 40 });
 
   if (input.shape === "u") {
