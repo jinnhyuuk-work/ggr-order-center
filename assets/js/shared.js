@@ -1,14 +1,117 @@
-export const EMAILJS_CONFIG = {
+const DEFAULT_EMAILJS_CONFIG = Object.freeze({
   serviceId: "service_8iw3ovj",
   templateId: "template_iaid1xl",
   publicKey: "dUvt2iF9ciN8bvf6r",
-};
+});
 
-export const CLOUDINARY_CONFIG = {
+const DEFAULT_CLOUDINARY_CONFIG = Object.freeze({
   enabled: true,
   cloudName: "dpw2svbf6",
   uploadPreset: "ggr_order_center",
   folder: "ggr-order-center/system-preview",
+});
+
+const DEFAULT_FRONTEND_SECURITY_CONFIG = Object.freeze({
+  enforceAllowedHosts: true,
+  allowedHosts: Object.freeze(["order-center.ggr.kr", "ggr.kr", "localhost", "127.0.0.1"]),
+  allowedHostSuffixes: Object.freeze([".ggr.kr"]),
+});
+
+function readRuntimeOrderCenterConfig() {
+  if (typeof window === "undefined") return {};
+  const cfg = window.__ORDER_CENTER_CONFIG__;
+  return cfg && typeof cfg === "object" ? cfg : {};
+}
+
+function readRuntimeOrderCenterSection(key) {
+  const cfg = readRuntimeOrderCenterConfig();
+  const section = cfg?.[key];
+  return section && typeof section === "object" ? section : {};
+}
+
+function normalizeHostList(values = []) {
+  if (!Array.isArray(values)) return [];
+  return values
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function getRuntimeSecurityConfig() {
+  const runtime = readRuntimeOrderCenterSection("security");
+  const enforceAllowedHosts =
+    typeof runtime.enforceAllowedHosts === "boolean"
+      ? runtime.enforceAllowedHosts
+      : DEFAULT_FRONTEND_SECURITY_CONFIG.enforceAllowedHosts;
+
+  const allowedHostsRuntime = normalizeHostList(runtime.allowedHosts);
+  const allowedHostSuffixesRuntime = normalizeHostList(runtime.allowedHostSuffixes);
+
+  return {
+    enforceAllowedHosts,
+    allowedHosts: allowedHostsRuntime.length
+      ? allowedHostsRuntime
+      : [...DEFAULT_FRONTEND_SECURITY_CONFIG.allowedHosts],
+    allowedHostSuffixes: allowedHostSuffixesRuntime.length
+      ? allowedHostSuffixesRuntime
+      : [...DEFAULT_FRONTEND_SECURITY_CONFIG.allowedHostSuffixes],
+  };
+}
+
+function resolveCurrentHostname() {
+  if (typeof window === "undefined") return "";
+  return String(window.location?.hostname || "").trim().toLowerCase();
+}
+
+function isAllowedHostByPolicy(hostname = "", { allowedHosts = [], allowedHostSuffixes = [] } = {}) {
+  if (!hostname) return false;
+  if (allowedHosts.includes(hostname)) return true;
+  return allowedHostSuffixes.some((suffix) => {
+    if (!suffix) return false;
+    const normalizedSuffix = String(suffix).toLowerCase();
+    if (!normalizedSuffix) return false;
+    if (!normalizedSuffix.startsWith(".")) {
+      return hostname === normalizedSuffix || hostname.endsWith(`.${normalizedSuffix}`);
+    }
+    const suffixWithoutDot = normalizedSuffix.slice(1);
+    return hostname === suffixWithoutDot || hostname.endsWith(normalizedSuffix);
+  });
+}
+
+export function isAllowedRuntimeHost() {
+  const policy = getRuntimeSecurityConfig();
+  if (!policy.enforceAllowedHosts) return true;
+  const hostname = resolveCurrentHostname();
+  return isAllowedHostByPolicy(hostname, policy);
+}
+
+export function getRuntimeHostBlockedReason() {
+  if (isAllowedRuntimeHost()) return "";
+  const hostname = resolveCurrentHostname();
+  if (hostname) {
+    return `허용되지 않은 접속 도메인(${hostname})에서는 주문 전송/이미지 업로드가 차단됩니다.`;
+  }
+  return "현재 접속 환경에서는 주문 전송/이미지 업로드가 차단됩니다.";
+}
+
+const runtimeEmailConfig = readRuntimeOrderCenterSection("emailjs");
+const runtimeCloudinaryConfig = readRuntimeOrderCenterSection("cloudinary");
+
+export const EMAILJS_CONFIG = {
+  serviceId: String(runtimeEmailConfig.serviceId || DEFAULT_EMAILJS_CONFIG.serviceId).trim(),
+  templateId: String(runtimeEmailConfig.templateId || DEFAULT_EMAILJS_CONFIG.templateId).trim(),
+  publicKey: String(runtimeEmailConfig.publicKey || DEFAULT_EMAILJS_CONFIG.publicKey).trim(),
+};
+
+export const CLOUDINARY_CONFIG = {
+  enabled:
+    typeof runtimeCloudinaryConfig.enabled === "boolean"
+      ? runtimeCloudinaryConfig.enabled
+      : DEFAULT_CLOUDINARY_CONFIG.enabled,
+  cloudName: String(runtimeCloudinaryConfig.cloudName || DEFAULT_CLOUDINARY_CONFIG.cloudName).trim(),
+  uploadPreset: String(
+    runtimeCloudinaryConfig.uploadPreset || DEFAULT_CLOUDINARY_CONFIG.uploadPreset
+  ).trim(),
+  folder: String(runtimeCloudinaryConfig.folder || DEFAULT_CLOUDINARY_CONFIG.folder).trim(),
 };
 
 export const ORDER_PAYLOAD_SCHEMA_VERSION = "v2";
@@ -858,6 +961,7 @@ async function compressCustomerPhoto(file) {
 }
 
 export function isCloudinaryUploadReady() {
+  if (!isAllowedRuntimeHost()) return false;
   if (!CLOUDINARY_CONFIG || typeof CLOUDINARY_CONFIG !== "object") return false;
   if (CLOUDINARY_CONFIG.enabled === false) return false;
   const cloudName = String(CLOUDINARY_CONFIG.cloudName || "").trim();
@@ -875,6 +979,17 @@ export async function uploadCustomerPhotoFilesToCloudinary({
   const uploaded = [];
   const failed = [];
   if (!selectedFiles.length) return { uploaded, failed, skipped: "no_files" };
+
+  const blockedReason = getRuntimeHostBlockedReason();
+  if (blockedReason) {
+    selectedFiles.forEach((file) => {
+      failed.push({
+        name: String(file?.name || "이미지"),
+        reason: blockedReason,
+      });
+    });
+    return { uploaded, failed, skipped: "host_blocked" };
+  }
 
   if (!isCloudinaryUploadReady()) {
     selectedFiles.forEach((file) => {
@@ -940,9 +1055,30 @@ export async function uploadCustomerPhotoFilesToCloudinary({
   return { uploaded, failed, skipped: "" };
 }
 
+function normalizePhoneDigits(value = "") {
+  return String(value || "").replace(/\D/g, "");
+}
+
+export function isValidCustomerEmail(email = "") {
+  const text = String(email || "").trim();
+  if (!text) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
+}
+
+export function isValidCustomerPhone(phone = "") {
+  const digits = normalizePhoneDigits(phone);
+  return digits.length >= 9 && digits.length <= 11;
+}
+
 export function validateCustomerInfo(customer) {
   if (!customer?.name || !customer?.phone || !customer?.email) {
     return "이름, 연락처, 이메일을 입력해주세요.";
+  }
+  if (!isValidCustomerPhone(customer.phone)) {
+    return "연락처 형식을 확인해주세요. 숫자 9~11자리로 입력해주세요.";
+  }
+  if (!isValidCustomerEmail(customer.email)) {
+    return "이메일 형식을 확인해주세요.";
   }
   if (!customer?.postcode || !customer?.address || !customer?.detailAddress) {
     return "주소를 입력해주세요.";
@@ -973,10 +1109,16 @@ export function updateSendButtonEnabled({
       customer.address &&
       customer.detailAddress
   );
-  btn.disabled = !(hasRequired && hasItems && onFinalStep && hasConsent) || sending;
+  const hasValidFormat = isValidCustomerPhone(customer.phone) && isValidCustomerEmail(customer.email);
+  btn.disabled = !(hasRequired && hasValidFormat && hasItems && onFinalStep && hasConsent) || sending;
 }
 
 export function getEmailJSInstance(showInfoModal) {
+  const blockedReason = getRuntimeHostBlockedReason();
+  if (blockedReason) {
+    showInfoModal?.(blockedReason);
+    return null;
+  }
   if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.templateId || !EMAILJS_CONFIG.publicKey) {
     showInfoModal?.("EmailJS 설정(서비스ID/템플릿ID/publicKey)을 입력해주세요.");
     return null;

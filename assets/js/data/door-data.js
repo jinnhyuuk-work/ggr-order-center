@@ -839,7 +839,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/door/05-original-pet/09-og-pet-satin-skyblue-matte.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/09-og-pet-satin-sky-blue-matte.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_10",
@@ -852,7 +852,7 @@ const ORIGINAL_PET_ITEMS = [
     maxWidth: 1200,
     minLength: 100,
     maxLength: 2400,
-    swatch: "url('assets/img/product/door/05-original-pet/10-og-pet-satin-skyblue-glossy.jpg') center/cover no-repeat",
+    swatch: "url('assets/img/product/door/05-original-pet/10-og-pet-satin-sky-blue-glossy.jpg') center/cover no-repeat",
   },
   {
     id: "original_pet_11",

@@ -125,6 +125,7 @@ import {
   calcGroupedAmount,
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
+  getRuntimeHostBlockedReason,
 } from "./shared.js";
 import {
   normalizeFulfillmentType,
@@ -10917,6 +10918,7 @@ function renderSummary() {
 }
 
 function isCloudinaryUploadReady() {
+  if (getRuntimeHostBlockedReason()) return false;
   if (!CLOUDINARY_CONFIG || typeof CLOUDINARY_CONFIG !== "object") return false;
   if (CLOUDINARY_CONFIG.enabled === false) return false;
   const cloudName = String(CLOUDINARY_CONFIG.cloudName || "").trim();
@@ -11048,6 +11050,10 @@ async function captureSystemPreviewImageDataUrl() {
 }
 
 async function uploadSystemPreviewToCloudinary() {
+  const blockedReason = getRuntimeHostBlockedReason();
+  if (blockedReason) {
+    return { secureUrl: "", publicId: "", skipped: "host_blocked", reason: blockedReason };
+  }
   if (!isCloudinaryUploadReady()) {
     return { secureUrl: "", publicId: "", skipped: "not_configured" };
   }
@@ -11474,6 +11480,8 @@ async function sendQuote() {
       const skippedReason = String(uploadResult?.skipped || "").trim();
       if (skippedReason === "capture_empty") {
         previewImageError = "미리보기 캡처 결과가 비어 있습니다.";
+      } else if (skippedReason === "host_blocked") {
+        previewImageError = String(uploadResult?.reason || getRuntimeHostBlockedReason() || "").trim();
       } else if (skippedReason === "not_configured") {
         previewImageError = "Cloudinary 설정이 비어 있습니다.";
       }
