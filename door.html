@@ -40,7 +40,7 @@
           <div class="step-card-header">
             <h2>도어의 종류를 선택해주세요.</h2>
             <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step1" aria-expanded="false">열기</button>
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step1" aria-controls="step1" aria-expanded="false">열기</button>
             </div>
           </div>
           <div class="accordion-body" id="step1Body">
@@ -58,7 +58,7 @@
           <div class="step-card-header">
             <h2>사이즈와 경첩 위치를 입력해주세요.</h2>
             <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step2" aria-expanded="false">열기</button>
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step2" aria-controls="step2" aria-expanded="false">열기</button>
             </div>
           </div>
           <div class="accordion-body" id="step2Body">
@@ -109,7 +109,7 @@
               <div class="form-row">
                 <label for="widthInput">폭 (mm)</label>
                 <div class="field-col">
-                  <input type="number" id="widthInput" placeholder="폭 100~800mm" />
+                  <input type="number" id="widthInput" min="100" max="1200" placeholder="폭 100~1200mm" />
                   <div class="error-msg" id="widthError"></div>
                 </div>
               </div>
@@ -117,7 +117,7 @@
               <div class="form-row">
                 <label for="lengthInput">길이 (mm)</label>
                 <div class="field-col">
-                  <input type="number" id="lengthInput" placeholder="길이 200~2400mm" />
+                  <input type="number" id="lengthInput" min="100" max="2400" placeholder="길이 100~2400mm" />
                   <div class="error-msg" id="lengthError"></div>
                 </div>
               </div>
@@ -173,7 +173,7 @@
           <div class="step-card-header">
             <h2>추가 선택사항을 설정해주세요.</h2>
             <div class="step-card-meta">
-              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step3Additional" aria-expanded="false">열기</button>
+              <button type="button" class="ghost-btn accordion-toggle" data-toggle-target="step3Additional" aria-controls="step3Additional" aria-expanded="false">열기</button>
             </div>
           </div>
           <div class="accordion-body" id="step3AdditionalBody">
@@ -358,7 +358,7 @@
       <aside id="stepFinal" class="step-card estimate-panel is-collapsed">
         <div class="estimate-header">
           <h2>주문 예정 항목을 확인해주세요.</h2>
-          <button type="button" class="ghost-btn accordion-toggle estimate-toggle" data-toggle-target="stepFinal" data-open-text="닫기" data-closed-text="열기" aria-expanded="false">열기</button>
+          <button type="button" class="ghost-btn accordion-toggle estimate-toggle" data-toggle-target="stepFinal" aria-controls="stepFinal" data-open-text="닫기" data-closed-text="열기" aria-expanded="false">열기</button>
         </div>
         <div class="input-tip">
           <ul class="input-tip-list">

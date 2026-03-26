@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SHARED_FILE="assets/js/shared.js"
 
 PAGE_FILES=(
   "assets/js/top.js"
@@ -21,15 +22,42 @@ COMMON_TEMPLATE_KEYS=(
   "order_payload_json"
 )
 
-REQUIRED_LOGIC_TOKENS=(
+PAGE_REQUIRED_TOKENS=(
+  "buildSendQuoteTemplateParams("
   "initCustomerPhotoUploader"
   "uploadCustomerPhotoFilesToCloudinary"
-  "customerPhotos"
+  "templateParams"
+  "emailjsInstance.send"
+)
+
+SHARED_REQUIRED_TOKENS=(
+  "export function buildSendQuoteTemplateParams"
+  "customerPhotos:"
 )
 
 fail_count=0
 
 echo "== EmailJS template params verify =="
+
+shared_abs="${ROOT_DIR}/${SHARED_FILE}"
+if [[ ! -f "${shared_abs}" ]]; then
+  echo "[FAIL] missing file: ${SHARED_FILE}"
+  exit 1
+fi
+
+for key in "${COMMON_TEMPLATE_KEYS[@]}"; do
+  if ! rg -q "${key}\\s*:" "${shared_abs}"; then
+    echo "[FAIL] ${SHARED_FILE}: missing template param key '${key}'"
+    fail_count=$((fail_count + 1))
+  fi
+done
+
+for token in "${SHARED_REQUIRED_TOKENS[@]}"; do
+  if ! rg -qF "${token}" "${shared_abs}"; then
+    echo "[FAIL] ${SHARED_FILE}: missing token '${token}'"
+    fail_count=$((fail_count + 1))
+  fi
+done
 
 for rel_file in "${PAGE_FILES[@]}"; do
   abs_file="${ROOT_DIR}/${rel_file}"
@@ -39,15 +67,8 @@ for rel_file in "${PAGE_FILES[@]}"; do
     continue
   fi
 
-  for key in "${COMMON_TEMPLATE_KEYS[@]}"; do
-    if ! rg -q "${key}\\s*:" "${abs_file}"; then
-      echo "[FAIL] ${rel_file}: missing template param key '${key}'"
-      fail_count=$((fail_count + 1))
-    fi
-  done
-
-  for token in "${REQUIRED_LOGIC_TOKENS[@]}"; do
-    if ! rg -q "${token}" "${abs_file}"; then
+  for token in "${PAGE_REQUIRED_TOKENS[@]}"; do
+    if ! rg -qF "${token}" "${abs_file}"; then
       echo "[FAIL] ${rel_file}: missing logic token '${token}'"
       fail_count=$((fail_count + 1))
     fi
