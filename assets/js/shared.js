@@ -330,6 +330,107 @@ export function resolveThreePhasePrevPhase(currentPhase = 1) {
   return 1;
 }
 
+function toggleHiddenStepClass(target, hidden) {
+  if (!target) return;
+  target.classList.toggle("hidden-step", Boolean(hidden));
+}
+
+function setStepControlVisibility(target, visible) {
+  if (!target) return;
+  const show = Boolean(visible);
+  target.classList.toggle("hidden-step", !show);
+  target.style.display = show ? "" : "none";
+}
+
+export function applyThreePhaseStepVisibility({
+  currentPhase = 1,
+  orderCompleted = false,
+  resetOrderCompleteUI,
+  phase1Elements = [],
+  additionalPhase1Element = null,
+  showAdditionalPhase1 = true,
+  phase2Element = null,
+  phase3Element = null,
+  summaryCard = null,
+  summaryCompleteClass = "",
+  restoreSummaryOnActive = false,
+  orderCompleteElement = null,
+  navActionsElement = null,
+  prevButton = null,
+  nextButton = null,
+  sendButton = null,
+  backToCenterButton = null,
+  completedHiddenElements = [],
+  completedActionButtons = [],
+  onActiveRender,
+  scrollTarget = null,
+} = {}) {
+  if (!orderCompleted && typeof resetOrderCompleteUI === "function") {
+    resetOrderCompleteUI();
+  }
+
+  const normalizedPhase = Number(currentPhase) || 1;
+  const showPhase1 = normalizedPhase === 1;
+  const showPhase2 = normalizedPhase === 2;
+  const showPhase3 = normalizedPhase === 3;
+
+  if (orderCompleted) {
+    const resolvedCompletedHiddenElements =
+      Array.isArray(completedHiddenElements) && completedHiddenElements.length
+        ? completedHiddenElements
+        : [...phase1Elements, additionalPhase1Element, phase2Element, phase3Element, summaryCard];
+
+    resolvedCompletedHiddenElements.forEach((el) => toggleHiddenStepClass(el, true));
+    toggleHiddenStepClass(navActionsElement, true);
+    toggleHiddenStepClass(orderCompleteElement, false);
+
+    const actionButtons = Array.isArray(completedActionButtons) ? completedActionButtons : [];
+    actionButtons.forEach((button) => toggleHiddenStepClass(button, true));
+
+    if (summaryCard && summaryCompleteClass) {
+      summaryCard.classList.add(summaryCompleteClass);
+    }
+    return;
+  }
+
+  (Array.isArray(phase1Elements) ? phase1Elements : []).forEach((el) =>
+    toggleHiddenStepClass(el, !showPhase1)
+  );
+  if (additionalPhase1Element) {
+    toggleHiddenStepClass(additionalPhase1Element, !showPhase1 || !showAdditionalPhase1);
+  }
+  toggleHiddenStepClass(phase2Element, !showPhase2);
+  toggleHiddenStepClass(phase3Element, !showPhase3);
+
+  if (summaryCard && restoreSummaryOnActive) {
+    summaryCard.classList.remove("hidden-step");
+    if (summaryCompleteClass) {
+      summaryCard.classList.remove(summaryCompleteClass);
+    }
+  }
+
+  toggleHiddenStepClass(orderCompleteElement, true);
+  toggleHiddenStepClass(navActionsElement, false);
+
+  setStepControlVisibility(prevButton, normalizedPhase !== 1);
+  setStepControlVisibility(sendButton, showPhase3);
+  setStepControlVisibility(backToCenterButton, showPhase1);
+  setStepControlVisibility(nextButton, !showPhase3);
+
+  if (typeof onActiveRender === "function") {
+    onActiveRender({
+      currentPhase: normalizedPhase,
+      showPhase1,
+      showPhase2,
+      showPhase3,
+    });
+  }
+
+  if (scrollTarget && typeof scrollTarget.scrollIntoView === "function") {
+    scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 export function calcGroupedAmount(count = 0, groupSize = 1, groupPrice = 0) {
   const normalizedCount = Math.max(0, Math.floor(Number(count) || 0));
   const normalizedGroupSize = Math.max(1, Math.floor(Number(groupSize) || 1));

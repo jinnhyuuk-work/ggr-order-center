@@ -35,6 +35,7 @@ import {
   resolveThreePhaseNextTransition,
   resolveThreePhasePrevPhase,
   buildCustomerAddressLine,
+  applyThreePhaseStepVisibility,
 } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
 import { TOP_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
@@ -1903,13 +1904,26 @@ function updateStepVisibility(scrollTarget) {
   const summaryCard = $("#stepFinal");
   const orderComplete = $("#orderComplete");
   const navActions = document.querySelector(".nav-actions");
-
-  const showPhase1 = currentPhase === 1;
-  const showPhase2 = currentPhase === 2;
-  const showPhase3 = currentPhase === 3;
-
-  if (orderCompleted) {
-    [
+  applyThreePhaseStepVisibility({
+    currentPhase,
+    orderCompleted,
+    resetOrderCompleteUI,
+    phase1Elements: [step1, step2, stepPreview, actionCard],
+    additionalPhase1Element: step3Additional,
+    showAdditionalPhase1: HAS_ADDITIONAL_SELECTIONS,
+    phase2Element: step4,
+    phase3Element: step5,
+    summaryCard,
+    summaryCompleteClass: "order-complete-visible",
+    restoreSummaryOnActive: true,
+    orderCompleteElement: orderComplete,
+    navActionsElement: navActions,
+    prevButton: navPrev,
+    nextButton: navNext,
+    sendButton: sendBtn,
+    backToCenterButton: backToCenterBtn,
+    completedActionButtons: [sendBtn, navNext],
+    completedHiddenElements: [
       step1,
       step2,
       stepPreview,
@@ -1918,39 +1932,9 @@ function updateStepVisibility(scrollTarget) {
       step5,
       actionCard,
       summaryCard,
-    ].forEach((el) => el?.classList.add("hidden-step"));
-    navActions?.classList.add("hidden-step");
-    orderComplete?.classList.remove("hidden-step");
-    return;
-  }
-
-  [step1, step2, stepPreview, actionCard].forEach((el) => {
-    el?.classList.toggle("hidden-step", !showPhase1);
+    ],
+    scrollTarget,
   });
-  step3Additional?.classList.toggle("hidden-step", !showPhase1 || !HAS_ADDITIONAL_SELECTIONS);
-  step4?.classList.toggle("hidden-step", !showPhase2 || orderCompleted);
-  step5?.classList.toggle("hidden-step", !showPhase3);
-
-  if (navPrev) {
-    navPrev.classList.toggle("hidden-step", currentPhase === 1);
-    navPrev.style.display = currentPhase === 1 ? "none" : "";
-  }
-  if (sendBtn) {
-    sendBtn.classList.toggle("hidden-step", !showPhase3);
-    sendBtn.style.display = showPhase3 ? "" : "none";
-  }
-  if (backToCenterBtn) {
-    backToCenterBtn.classList.toggle("hidden-step", !showPhase1);
-    backToCenterBtn.style.display = showPhase1 ? "" : "none";
-  }
-  if (navNext) {
-    navNext.classList.toggle("hidden-step", showPhase3);
-    navNext.style.display = showPhase3 ? "none" : "";
-  }
-
-  if (scrollTarget) {
-    scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
 }
 
 function goToNextStep() {
@@ -1998,12 +1982,14 @@ function resetOrderCompleteUI() {
   orderCompleted = false;
   const orderComplete = $("#orderComplete");
   const navActions = document.querySelector(".nav-actions");
+  const summaryCard = document.getElementById("stepFinal");
   ["step1", "step2", "stepPreview", "step3Additional", "step5", "stepFinal"].forEach(
     (id) => document.getElementById(id)?.classList.remove("hidden-step")
   );
   document.getElementById("step4")?.classList.add("hidden-step");
   navActions?.classList.remove("hidden-step");
   orderComplete?.classList.add("hidden-step");
+  summaryCard?.classList.remove("order-complete-visible");
 }
 
 function showOrderComplete() {
