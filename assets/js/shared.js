@@ -291,6 +291,80 @@ export function buildOrderPayloadBase({
   };
 }
 
+function buildCustomerPhotoUploadUrlsText(customerPhotoUploads = []) {
+  return (Array.isArray(customerPhotoUploads) ? customerPhotoUploads : [])
+    .map((photo) => String(photo?.secureUrl || "").trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+function formatCustomerPhotoUploadErrorsForTemplate(customerPhotoErrors = []) {
+  return (Array.isArray(customerPhotoErrors) ? customerPhotoErrors : [])
+    .map((error) => {
+      const name = String(error?.name || "파일").trim() || "파일";
+      const reason = String(error?.reason || "업로드 실패").trim() || "업로드 실패";
+      return `${name}: ${reason}`;
+    })
+    .join(" / ");
+}
+
+function normalizeTemplatePreviewValue(value = "") {
+  return String(value || "").trim() || "-";
+}
+
+export function buildSendQuoteTemplateParams({
+  customer = {},
+  orderTimeText = "",
+  subject = "",
+  message = "",
+  orderLines = [],
+  payload = {},
+  payloadJson = "",
+  customerPhotoUploads = [],
+  customerPhotoErrors = [],
+  customerAddress = "",
+  previewImageUrl = "",
+  previewImagePublicId = "",
+  previewImageError = "",
+  extraParams = {},
+} = {}) {
+  const normalizedCustomer = normalizeCustomerPayload(customer);
+  const addressLine = String(customerAddress || buildCustomerAddressLine(normalizedCustomer)).trim();
+  const orderLinesText = Array.isArray(orderLines) ? orderLines.join("\n") : String(orderLines || "");
+  const payloadText = (() => {
+    const customPayloadText = String(payloadJson || "");
+    if (customPayloadText) return customPayloadText;
+    try {
+      return JSON.stringify(payload || {}, null, 2) || "{}";
+    } catch (_error) {
+      return "{}";
+    }
+  })();
+  const photoUrlsText = buildCustomerPhotoUploadUrlsText(customerPhotoUploads);
+  const photoErrorsText = formatCustomerPhotoUploadErrorsForTemplate(customerPhotoErrors);
+
+  return {
+    name: normalizedCustomer.name || "-",
+    time: String(orderTimeText || ""),
+    subject: String(subject || ""),
+    message: String(message || ""),
+    customer_name: normalizedCustomer.name,
+    customer_phone: normalizedCustomer.phone,
+    customer_email: normalizedCustomer.email,
+    customer_address: addressLine || "-",
+    customer_memo: normalizedCustomer.memo || "-",
+    customer_photo_count: String(Array.isArray(customerPhotoUploads) ? customerPhotoUploads.length : 0),
+    customer_photo_urls: photoUrlsText || "-",
+    customer_photo_upload_error: photoErrorsText || "-",
+    preview_image_url: normalizeTemplatePreviewValue(previewImageUrl),
+    preview_image_public_id: normalizeTemplatePreviewValue(previewImagePublicId),
+    preview_image_error: normalizeTemplatePreviewValue(previewImageError),
+    order_lines: orderLinesText,
+    order_payload_json: payloadText,
+    ...(extraParams && typeof extraParams === "object" ? extraParams : {}),
+  };
+}
+
 export function resolveThreePhaseNextTransition({
   currentPhase = 1,
   phase1Ready = true,

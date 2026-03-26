@@ -34,8 +34,8 @@ import {
   buildOrderPayloadBase,
   resolveThreePhaseNextTransition,
   resolveThreePhasePrevPhase,
-  buildCustomerAddressLine,
   applyThreePhaseStepVisibility,
+  buildSendQuoteTemplateParams,
 } from "./shared.js";
 import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
 import { TOP_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
@@ -2143,27 +2143,16 @@ async function sendQuote() {
     timeZone: "Asia/Seoul",
   }).format(new Date());
   const payload = buildOrderPayload({ customerPhotoUploads });
-  const addressLine = buildCustomerAddressLine(customer);
-  const templateParams = {
-    name: customer.name || "-",
-    time: orderTimeText,
+  const templateParams = buildSendQuoteTemplateParams({
+    customer,
+    orderTimeText,
     subject,
     message: body,
-    customer_name: customer.name,
-    customer_phone: customer.phone,
-    customer_email: customer.email,
-    customer_address: addressLine || "-",
-    customer_memo: customer.memo || "-",
-    customer_photo_count: String(customerPhotoUploads.length || 0),
-    customer_photo_urls: customerPhotoUploads.map((photo) => photo.secureUrl).join("\n") || "-",
-    customer_photo_upload_error:
-      customerPhotoErrors.map((error) => `${error.name}: ${error.reason}`).join(" / ") || "-",
-    preview_image_url: "-",
-    preview_image_public_id: "-",
-    preview_image_error: "-",
-    order_lines: lines.join("\n"),
-    order_payload_json: JSON.stringify(payload, null, 2),
-  };
+    orderLines: lines,
+    payload,
+    customerPhotoUploads,
+    customerPhotoErrors,
+  });
 
   try {
     await emailjsInstance.send(

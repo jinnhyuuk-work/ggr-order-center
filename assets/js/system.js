@@ -130,8 +130,8 @@ import {
   buildOrderPayloadBase,
   resolveThreePhaseNextTransition,
   resolveThreePhasePrevPhase,
-  buildCustomerAddressLine,
   applyThreePhaseStepVisibility,
+  buildSendQuoteTemplateParams,
 } from "./shared.js";
 import {
   normalizeFulfillmentType,
@@ -11469,27 +11469,19 @@ async function sendQuote() {
     previewImageError,
     customerPhotoUploads,
   });
-  const addressLine = buildCustomerAddressLine(customer);
-  const templateParams = {
-    name: customer.name || "-",
-    time: orderTimeText,
+  const templateParams = buildSendQuoteTemplateParams({
+    customer,
+    orderTimeText,
     subject,
     message: body,
-    customer_name: customer.name,
-    customer_phone: customer.phone,
-    customer_email: customer.email,
-    customer_address: addressLine || "-",
-    customer_memo: customer.memo || "-",
-    customer_photo_count: String(customerPhotoUploads.length || 0),
-    customer_photo_urls: customerPhotoUploads.map((photo) => photo.secureUrl).join("\n") || "-",
-    customer_photo_upload_error:
-      customerPhotoErrors.map((error) => `${error.name}: ${error.reason}`).join(" / ") || "-",
-    order_lines: lines.join("\n"),
-    order_payload_json: JSON.stringify(payload, null, 2),
-    preview_image_url: previewImageUrl || "-",
-    preview_image_public_id: previewImagePublicId || "-",
-    preview_image_error: previewImageError || "-",
-  };
+    orderLines: lines,
+    payload,
+    customerPhotoUploads,
+    customerPhotoErrors,
+    previewImageUrl,
+    previewImagePublicId,
+    previewImageError,
+  });
 
   try {
     await emailjsInstance.send(
