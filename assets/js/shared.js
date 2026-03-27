@@ -144,6 +144,7 @@ const MODAL_FOCUSABLE_SELECTOR = [
 let activeModalState = null;
 let modalKeyHandlerBound = false;
 let autoModalTitleIdSeq = 0;
+let embeddedViewportClassBound = false;
 const ESTIMATE_DETAIL_OPEN_STATE = new Map();
 const CUSTOMER_PHOTO_MAX_COUNT = 5;
 const CUSTOMER_PHOTO_MAX_FILE_SIZE_MB = 10;
@@ -2094,6 +2095,72 @@ export function updateServiceSummaryChip({
     : noDetailText;
 }
 
+function isEmbeddedContext() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.self !== window.top;
+  } catch (_err) {
+    return true;
+  }
+}
+
+function isMobileViewport() {
+  if (typeof window === "undefined") return false;
+  if (typeof window.matchMedia === "function") {
+    return window.matchMedia("(max-width: 900px)").matches;
+  }
+  return Number(window.innerWidth || 0) <= 900;
+}
+
+function syncEmbeddedViewportClass() {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (!root) return;
+  const embedded = isEmbeddedContext();
+  root.classList.toggle("oc-embedded", embedded);
+  root.classList.toggle("oc-embedded-mobile", embedded && isMobileViewport());
+}
+
+function findScrollableParent(element) {
+  if (typeof window === "undefined" || typeof document === "undefined") return null;
+  let parent = element?.parentElement || null;
+  while (parent && parent !== document.body) {
+    const style = window.getComputedStyle(parent);
+    const overflowY = style?.overflowY || "";
+    const canScroll = overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay";
+    if (canScroll && parent.scrollHeight > parent.clientHeight + 1) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  return document.scrollingElement || document.documentElement || null;
+}
+
+function keepAccordionSectionInViewport(section) {
+  if (typeof window === "undefined") return;
+  if (!isMobileViewport()) return;
+  const headerEl = section?.querySelector(".step-card-header, .estimate-header") || section;
+  if (!headerEl || typeof headerEl.getBoundingClientRect !== "function") return;
+  const rect = headerEl.getBoundingClientRect();
+  const viewportHeight = Number(window.visualViewport?.height || window.innerHeight || 0);
+  if (!viewportHeight) return;
+  const topGap = 12;
+  const bottomGap = 12;
+  const isOutOfView = rect.top < topGap || rect.bottom > viewportHeight - bottomGap;
+  if (!isOutOfView) return;
+
+  const scrollHost = findScrollableParent(section);
+  if (!scrollHost) return;
+  const targetOffset = Math.max(0, rect.top - topGap);
+  if (scrollHost === document.scrollingElement || scrollHost === document.documentElement) {
+    const targetTop = Math.max(0, (window.scrollY || 0) + targetOffset);
+    window.scrollTo({ top: targetTop, behavior: "smooth" });
+    return;
+  }
+  const currentTop = Number(scrollHost.scrollTop || 0);
+  scrollHost.scrollTo({ top: Math.max(0, currentTop + targetOffset), behavior: "smooth" });
+}
+
 export function initCollapsibleSections({
   toggleSelector = ".accordion-toggle",
   collapsedClass = "is-collapsed",
@@ -2101,6 +2168,12 @@ export function initCollapsibleSections({
   closedText = "열기",
 } = {}) {
   if (typeof document === "undefined") return;
+  syncEmbeddedViewportClass();
+  if (typeof window !== "undefined" && !embeddedViewportClassBound) {
+    window.addEventListener("resize", syncEmbeddedViewportClass, { passive: true });
+    window.addEventListener("orientationchange", syncEmbeddedViewportClass);
+    embeddedViewportClassBound = true;
+  }
   document.querySelectorAll(toggleSelector).forEach((btn) => {
     const targetId = btn.dataset.toggleTarget;
     const section = targetId ? document.getElementById(targetId) : null;
@@ -2136,6 +2209,9 @@ export function initCollapsibleSections({
     btn.addEventListener("click", () => {
       const nowCollapsed = section.classList.toggle(collapsedClass);
       applyState(nowCollapsed);
+      if (!nowCollapsed) {
+        requestAnimationFrame(() => keepAccordionSectionInViewport(section));
+      }
     });
   });
 }

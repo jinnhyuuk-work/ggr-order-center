@@ -4,6 +4,7 @@ import {
   BOARD_OPTIONS,
   BOARD_ADDON_ITEMS,
   MATERIAL_CATEGORIES_DESC,
+  BOARD_DIMENSION_LIMITS,
 } from "./data/board-data.js";
 import {
   initEmailJS,
@@ -395,12 +396,21 @@ function calcOrderSummary(items) {
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
-const WIDTH_MIN = 100;
-const WIDTH_MAX = 1200;
-const LENGTH_MIN = 200;
-const LENGTH_MAX = 2400;
-const BOARD_CUSTOM_WIDTH_MAX = 1200;
-const BOARD_CUSTOM_LENGTH_MAX = 2400;
+const WIDTH_MIN = BOARD_DIMENSION_LIMITS.minWidth;
+const WIDTH_MAX = BOARD_DIMENSION_LIMITS.maxWidth;
+const LENGTH_MIN = BOARD_DIMENSION_LIMITS.minLength;
+const LENGTH_MAX = BOARD_DIMENSION_LIMITS.maxLength;
+const BOARD_CUSTOM_WIDTH_MAX = BOARD_DIMENSION_LIMITS.maxWidth;
+const BOARD_CUSTOM_LENGTH_MAX = BOARD_DIMENSION_LIMITS.maxLength;
+
+function getBoardDimensionLimits(mat) {
+  return {
+    minWidth: Number(mat?.minWidth ?? WIDTH_MIN),
+    maxWidth: Number(mat?.maxWidth ?? WIDTH_MAX),
+    minLength: Number(mat?.minLength ?? LENGTH_MIN),
+    maxLength: Number(mat?.maxLength ?? LENGTH_MAX),
+  };
+}
 
 const state = {
   items: [], // {id, materialId, thickness, width, length, quantity, services, ...계산 결과}
@@ -993,11 +1003,13 @@ function validateInputs(input) {
   if (!materialId) return "합판을 선택해주세요.";
   if (!thickness) return "두께를 선택해주세요.";
   if (!width) return "폭을 입력해주세요.";
-  const widthMin = mat?.minWidth ?? WIDTH_MIN;
+  const { minWidth: widthMin, maxWidth: widthMax, minLength: lengthMin, maxLength: lengthMax } =
+    getBoardDimensionLimits(mat);
   if (width < widthMin) return `폭은 ${widthMin}mm 이상 입력해주세요.`;
+  if (width > widthMax) return `폭은 ${widthMax}mm 이하로 입력해주세요.`;
   if (!length) return "길이를 입력해주세요.";
-  const lengthMin = mat?.minLength ?? LENGTH_MIN;
   if (length < lengthMin) return `길이는 ${lengthMin}mm 이상 입력해주세요.`;
+  if (length > lengthMax) return `길이는 ${lengthMax}mm 이하로 입력해주세요.`;
 
   const material = mat;
   if (!material.availableThickness?.includes(thickness)) {
@@ -1601,10 +1613,8 @@ function updateThicknessOptions(materialId) {
 function validateSizeFields() {
   const calcBtn = $("#calcItemBtn");
   const mat = MATERIALS[selectedMaterialId];
-  const widthMin = mat?.minWidth ?? WIDTH_MIN;
-  const widthMax = mat?.maxWidth ?? WIDTH_MAX;
-  const lengthMin = mat?.minLength ?? LENGTH_MIN;
-  const lengthMax = mat?.maxLength ?? LENGTH_MAX;
+  const { minWidth: widthMin, maxWidth: widthMax, minLength: lengthMin, maxLength: lengthMax } =
+    getBoardDimensionLimits(mat);
 
   const { valid } = updateSizeErrors({
     widthId: "widthInput",
@@ -1875,13 +1885,18 @@ function updateSizePlaceholders(mat) {
   const widthEl = $("#widthInput");
   const lengthEl = $("#lengthInput");
   if (!widthEl || !lengthEl) return;
+  const limits = getBoardDimensionLimits(mat);
+  widthEl.min = String(limits.minWidth);
+  widthEl.max = String(limits.maxWidth);
+  lengthEl.min = String(limits.minLength);
+  lengthEl.max = String(limits.maxLength);
   if (!mat) {
-    widthEl.placeholder = "합판을 선택해주세요.";
-    lengthEl.placeholder = "합판을 선택해주세요.";
+    widthEl.placeholder = `폭 ${limits.minWidth}~${limits.maxWidth}mm`;
+    lengthEl.placeholder = `길이 ${limits.minLength}~${limits.maxLength}mm`;
     return;
   }
-  widthEl.placeholder = `폭 ${mat.minWidth}~${mat.maxWidth}mm`;
-  lengthEl.placeholder = `길이 ${mat.minLength}~${mat.maxLength}mm`;
+  widthEl.placeholder = `폭 ${limits.minWidth}~${limits.maxWidth}mm`;
+  lengthEl.placeholder = `길이 ${limits.minLength}~${limits.maxLength}mm`;
 }
 
 let initialized = false;

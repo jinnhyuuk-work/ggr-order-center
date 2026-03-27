@@ -5,9 +5,15 @@ import {
   createDataItemMetaMap,
   createDatasetMeta,
 } from "./common-data.js";
+import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constraints.js";
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
+
+export const BOARD_DIMENSION_LIMITS = ORDER_DIMENSION_LIMITS.board;
+
+const applyBoardDimensionLimits = (items = []) =>
+  items.map((item) => withDimensionLimits(item, BOARD_DIMENSION_LIMITS));
 
 const LPM_ITEMS = [
   {
@@ -81,8 +87,8 @@ const PP_ITEMS = [
 ];
 
 export const MATERIALS = {
-  ...arrayToMap(LPM_ITEMS),
-  ...arrayToMap(PP_ITEMS),
+  ...arrayToMap(applyBoardDimensionLimits(LPM_ITEMS)),
+  ...arrayToMap(applyBoardDimensionLimits(PP_ITEMS)),
 };
 
 export const MATERIAL_CATEGORIES_DESC = {

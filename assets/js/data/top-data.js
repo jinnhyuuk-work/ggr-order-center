@@ -4,6 +4,7 @@ import {
   createDataItemMetaMap,
   createDatasetMeta,
 } from "./common-data.js";
+import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constraints.js";
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
@@ -12,7 +13,9 @@ export const TOP_PROCESSING_SERVICES = {
   ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.TOP),
 };
 
-export const TOP_TYPES = [
+export const TOP_DIMENSION_LIMITS = ORDER_DIMENSION_LIMITS.top;
+
+const TOP_TYPES_SOURCE = [
   {
     id: "artificial_01",
     name: "스노우 스톤",
@@ -590,6 +593,10 @@ export const TOP_TYPES = [
     swatch: "url('assets/img/product/top/02-himacs/32-himacs-gravilla-cream-gm02.jpg') center/cover no-repeat",
   },
 ];
+
+export const TOP_TYPES = TOP_TYPES_SOURCE.map((item) =>
+  withDimensionLimits(item, TOP_DIMENSION_LIMITS)
+);
 
 export const TOP_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.TOP);
 

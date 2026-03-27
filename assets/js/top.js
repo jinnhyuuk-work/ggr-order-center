@@ -37,7 +37,13 @@ import {
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
 } from "./shared.js";
-import { TOP_PROCESSING_SERVICES, TOP_TYPES, TOP_OPTIONS, TOP_ADDON_ITEMS } from "./data/top-data.js";
+import {
+  TOP_PROCESSING_SERVICES,
+  TOP_TYPES,
+  TOP_OPTIONS,
+  TOP_ADDON_ITEMS,
+  TOP_DIMENSION_LIMITS,
+} from "./data/top-data.js";
 import { TOP_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
   normalizeFulfillmentType,
@@ -456,7 +462,7 @@ let customerPhotoUploader = null;
 let stickyOffsetTimer = null;
 let previewResizeTimer = null;
 const DEFAULT_TOP_THICKNESSES = [12, 24, 30, 40, 50];
-const TOP_CUSTOM_LENGTH_MAX = 3000;
+const TOP_CUSTOM_LENGTH_MAX = TOP_DIMENSION_LIMITS.maxLength;
 const TOP_STANDARD_THICKNESS = 12;
 const TOP_STANDARD_WIDTH_MAX = 760;
 const TOP_BACK_HEIGHT_MAX = 100;
@@ -517,6 +523,16 @@ function needsSecondLength(shape) {
 
 function needsThirdLength(shape) {
   return shape === "u";
+}
+
+function getTopDimensionLimits(typeId) {
+  const type = TOP_TYPES.find((item) => item.id === typeId);
+  return {
+    minWidth: Number(type?.minWidth ?? TOP_DIMENSION_LIMITS.minWidth),
+    maxWidth: Number(type?.maxWidth ?? TOP_DIMENSION_LIMITS.maxWidth),
+    minLength: Number(type?.minLength ?? TOP_DIMENSION_LIMITS.minLength),
+    maxLength: Number(type?.maxLength ?? TOP_DIMENSION_LIMITS.maxLength),
+  };
 }
 
 function hasBackShelfService(services = []) {
@@ -664,14 +680,14 @@ function validateTopInputs({
   }
   if (needsThirdLength(shape) && !length3) return "ㄷ자 형태일 때 길이3을 입력해주세요.";
   if (!thickness) return "두께를 입력해주세요.";
-  const type = TOP_TYPES.find((t) => t.id === typeId);
-  if (type?.minWidth && width < type.minWidth) return `깊이는 최소 ${type.minWidth}mm 입니다.`;
-  if (type?.minLength && length < type.minLength) return `길이는 최소 ${type.minLength}mm 입니다.`;
+  const limits = getTopDimensionLimits(typeId);
+  if (width < limits.minWidth) return `깊이는 최소 ${limits.minWidth}mm 입니다.`;
+  if (length < limits.minLength) return `길이는 최소 ${limits.minLength}mm 입니다.`;
   if (needsSecondLength(shape)) {
-    if (type?.minLength && length2 < type.minLength) return `길이2는 최소 ${type.minLength}mm 입니다.`;
+    if (length2 < limits.minLength) return `길이2는 최소 ${limits.minLength}mm 입니다.`;
   }
   if (needsThirdLength(shape)) {
-    if (type?.minLength && length3 < type.minLength) return `길이3은 최소 ${type.minLength}mm 입니다.`;
+    if (length3 < limits.minLength) return `길이3은 최소 ${limits.minLength}mm 입니다.`;
   }
   if (useBackHeight) {
     const validation = validateBackHeightValue(backHeight);
@@ -843,18 +859,34 @@ function updateTopSizePlaceholders(typeId) {
   const length2El = $("#topLength2");
   const length3El = $("#topLength3");
   if (!widthEl || !lengthEl) return;
-  const type = TOP_TYPES.find((t) => t.id === typeId);
-  if (!type?.minWidth || !type?.maxWidth || !type?.minLength || !type?.maxLength) {
+  const limits = getTopDimensionLimits(typeId);
+  const hasSelectedType = Boolean(typeId);
+
+  widthEl.min = String(limits.minWidth);
+  widthEl.max = String(limits.maxWidth);
+  lengthEl.min = String(limits.minLength);
+  lengthEl.max = String(limits.maxLength);
+  if (length2El) {
+    length2El.min = String(limits.minLength);
+    length2El.max = String(limits.maxLength);
+  }
+  if (length3El) {
+    length3El.min = String(limits.minLength);
+    length3El.max = String(limits.maxLength);
+  }
+
+  if (!hasSelectedType) {
     widthEl.placeholder = "상판 타입을 선택해주세요.";
     lengthEl.placeholder = "상판 타입을 선택해주세요.";
     if (length2El) length2El.placeholder = "상판 타입을 선택해주세요.";
     if (length3El) length3El.placeholder = "상판 타입을 선택해주세요.";
     return;
   }
-  widthEl.placeholder = `깊이 ${type.minWidth}~${type.maxWidth}mm`;
-  lengthEl.placeholder = `길이 ${type.minLength}~${type.maxLength}mm`;
-  if (length2El) length2El.placeholder = `길이2 ${type.minLength}~${type.maxLength}mm`;
-  if (length3El) length3El.placeholder = `길이3 ${type.minLength}~${type.maxLength}mm`;
+
+  widthEl.placeholder = `깊이 ${limits.minWidth}~${limits.maxWidth}mm`;
+  lengthEl.placeholder = `길이 ${limits.minLength}~${limits.maxLength}mm`;
+  if (length2El) length2El.placeholder = `길이2 ${limits.minLength}~${limits.maxLength}mm`;
+  if (length3El) length3El.placeholder = `길이3 ${limits.minLength}~${limits.maxLength}mm`;
 }
 
 function renderTopTypeTabs() {
@@ -1343,6 +1375,7 @@ function refreshTopEstimate() {
   const priceEl = $("#topEstimateText");
   const input = readTopInputs();
   const type = TOP_TYPES.find((t) => t.id === input.typeId);
+  const sizeLimits = getTopDimensionLimits(input.typeId);
   const needsSecond = needsSecondLength(input.shape);
   updateSizeErrors({
     widthId: "topDepth",
@@ -1351,11 +1384,11 @@ function refreshTopEstimate() {
     widthErrorId: "topDepthError",
     lengthErrorId: "topLengthError",
     length2ErrorId: "topLength2Error",
-    widthMin: type?.minWidth,
+    widthMin: sizeLimits.minWidth,
     widthMax: null,
-    lengthMin: type?.minLength,
+    lengthMin: sizeLimits.minLength,
     lengthMax: null,
-    length2Min: type?.minLength,
+    length2Min: sizeLimits.minLength,
     length2Max: null,
     enableLength2: needsSecond,
   });

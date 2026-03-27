@@ -7,6 +7,7 @@ import {
   DOOR_PRICE_TIERS_BY_CATEGORY,
   DOOR_TYPE_OPTIONS,
   DOOR_SIDE_THICKNESS_OPTIONS,
+  DOOR_DIMENSION_LIMITS,
 } from "./data/door-data.js";
 import { DOOR_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
@@ -400,10 +401,10 @@ function calcOrderSummary(items) {
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
-const WIDTH_MIN = 100;
-const WIDTH_MAX = 800;
-const LENGTH_MIN = 200;
-const LENGTH_MAX = 2400;
+const WIDTH_MIN = DOOR_DIMENSION_LIMITS.minWidth;
+const WIDTH_MAX = DOOR_DIMENSION_LIMITS.maxWidth;
+const LENGTH_MIN = DOOR_DIMENSION_LIMITS.minLength;
+const LENGTH_MAX = DOOR_DIMENSION_LIMITS.maxLength;
 const DOOR_HINGE_PRICE_PER_HOLE = 1500;
 const DOOR_HINGE_MIN_COUNT = 2;
 const DOOR_HINGE_MAX_COUNT = 4;
@@ -411,6 +412,15 @@ const DOOR_HINGE_DEFAULT_EDGE_DISTANCE = 22;
 const DOOR_HINGE_AUTO_TOP_OFFSET = 100;
 const DOOR_HINGE_AUTO_BOTTOM_OFFSET = 100;
 const DOOR_HINGE_AUTO_INTERIOR_RISE = 100;
+
+function getDoorDimensionLimits(mat) {
+  return {
+    minWidth: Number(mat?.minWidth ?? WIDTH_MIN),
+    maxWidth: Number(mat?.maxWidth ?? WIDTH_MAX),
+    minLength: Number(mat?.minLength ?? LENGTH_MIN),
+    maxLength: Number(mat?.maxLength ?? LENGTH_MAX),
+  };
+}
 
 const PROCESSING_SERVICES = Object.entries(SERVICES).reduce((acc, [id, service]) => {
   if (id === "proc_hinge_hole") return acc;
@@ -1550,13 +1560,11 @@ function validateInputs(input) {
   if (!thickness) return "두께를 선택해주세요.";
   if (!sideThickness) return "측면 두께를 선택해주세요.";
   if (!width) return "폭을 입력해주세요.";
-  const widthMin = mat?.minWidth ?? WIDTH_MIN;
-  const widthMax = mat?.maxWidth ?? WIDTH_MAX;
+  const { minWidth: widthMin, maxWidth: widthMax, minLength: lengthMin, maxLength: lengthMax } =
+    getDoorDimensionLimits(mat);
   if (width < widthMin) return `폭은 최소 ${widthMin}mm 이상이어야 합니다.`;
   if (width > widthMax) return `폭은 최대 ${widthMax}mm 이하만 가능합니다.`;
   if (!length) return "길이를 입력해주세요.";
-  const lengthMin = mat?.minLength ?? LENGTH_MIN;
-  const lengthMax = mat?.maxLength ?? LENGTH_MAX;
   if (length < lengthMin) return `길이는 최소 ${lengthMin}mm 이상이어야 합니다.`;
   if (length > lengthMax) return `길이는 최대 ${lengthMax}mm 이하만 가능합니다.`;
 
@@ -2259,10 +2267,8 @@ function renderSideThicknessOptions() {
 function validateSizeFields() {
   const calcBtn = $("#calcItemBtn");
   const mat = MATERIALS[selectedMaterialId];
-  const widthMin = mat?.minWidth ?? WIDTH_MIN;
-  const widthMax = mat?.maxWidth ?? WIDTH_MAX;
-  const lengthMin = mat?.minLength ?? LENGTH_MIN;
-  const lengthMax = mat?.maxLength ?? LENGTH_MAX;
+  const { minWidth: widthMin, maxWidth: widthMax, minLength: lengthMin, maxLength: lengthMax } =
+    getDoorDimensionLimits(mat);
 
   const { valid } = updateSizeErrors({
     widthId: "widthInput",
@@ -2551,13 +2557,18 @@ function updateSizePlaceholders(mat) {
   const widthEl = $("#widthInput");
   const lengthEl = $("#lengthInput");
   if (!widthEl || !lengthEl) return;
+  const limits = getDoorDimensionLimits(mat);
+  widthEl.min = String(limits.minWidth);
+  widthEl.max = String(limits.maxWidth);
+  lengthEl.min = String(limits.minLength);
+  lengthEl.max = String(limits.maxLength);
   if (!mat) {
-    widthEl.placeholder = "도어를 선택해주세요.";
-    lengthEl.placeholder = "도어를 선택해주세요.";
+    widthEl.placeholder = `폭 ${limits.minWidth}~${limits.maxWidth}mm`;
+    lengthEl.placeholder = `길이 ${limits.minLength}~${limits.maxLength}mm`;
     return;
   }
-  widthEl.placeholder = `폭 ${mat.minWidth}~${mat.maxWidth}mm`;
-  lengthEl.placeholder = `길이 ${mat.minLength}~${mat.maxLength}mm`;
+  widthEl.placeholder = `폭 ${limits.minWidth}~${limits.maxWidth}mm`;
+  lengthEl.placeholder = `길이 ${limits.minLength}~${limits.maxLength}mm`;
 }
 
 function handleDoorHingeUiChange({ rerenderRows = false, preserveExistingValues = true } = {}) {

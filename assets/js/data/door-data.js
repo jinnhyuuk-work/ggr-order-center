@@ -5,9 +5,15 @@ import {
   createDataItemMetaMap,
   createDatasetMeta,
 } from "./common-data.js";
+import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constraints.js";
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
+
+export const DOOR_DIMENSION_LIMITS = ORDER_DIMENSION_LIMITS.door;
+
+const applyDoorDimensionLimits = (items = []) =>
+  items.map((item) => withDimensionLimits(item, DOOR_DIMENSION_LIMITS));
 
 const LX_SMR_PET_ITEMS = [
   {
@@ -1159,13 +1165,12 @@ const LPM_ITEMS = [
 ];
 
 export const DOOR_MATERIALS = {
-  ...arrayToMap(LX_SMR_PET_ITEMS),
-  ...arrayToMap(LX_TEXTURE_PET_ITEMS),
-  ...arrayToMap(LX_PET_ITEMS),
-  ...arrayToMap(HANSOL_PET_ITEMS),
-  ...arrayToMap(ORIGINAL_PET_ITEMS),
-  ...arrayToMap(LPM_ITEMS),
-
+  ...arrayToMap(applyDoorDimensionLimits(LX_SMR_PET_ITEMS)),
+  ...arrayToMap(applyDoorDimensionLimits(LX_TEXTURE_PET_ITEMS)),
+  ...arrayToMap(applyDoorDimensionLimits(LX_PET_ITEMS)),
+  ...arrayToMap(applyDoorDimensionLimits(HANSOL_PET_ITEMS)),
+  ...arrayToMap(applyDoorDimensionLimits(ORIGINAL_PET_ITEMS)),
+  ...arrayToMap(applyDoorDimensionLimits(LPM_ITEMS)),
 };
 
 export const DOOR_MATERIAL_CATEGORIES_DESC = {
