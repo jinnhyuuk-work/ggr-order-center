@@ -1,6 +1,7 @@
 :root {
   --font-ko: "Pretendard Variable", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-en: "acumin-pro-condensed", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  /* 핵심 배경/텍스트/보더 토큰. 의미 토큰은 이 베이스 값을 참조해 유지합니다. */
   --color-surface: #fff;
   --color-surface-alt: #fbfbfb;
   --color-surface-muted: #fafafa;
@@ -78,10 +79,12 @@
   --color-status-ok-border: #d8eadb;
   --color-status-consult-bg: #fff8ef;
   --color-status-consult-border: #f0d8b7;
+  /* invalid 상태 배경은 error 배경 토큰을 의도적으로 재사용합니다. */
   --color-status-invalid-bg: var(--color-error-bg);
   --color-status-invalid-border: #f1c8c1;
   --color-hole-primary: #8b5a2b;
   --color-hole-secondary: #2f5fb8;
+  /* 치수 칩 토큰은 프리뷰 라벨과 축약형 변형이 함께 사용합니다. */
   --preview-chip-padding-y: 2px;
   --preview-chip-padding-x: 6px;
   --preview-chip-radius: 999px;
@@ -96,6 +99,7 @@
   --preview-chip-z-index: 1;
   --preview-chip-corner-bg: rgba(255, 247, 235, 0.96);
   --preview-chip-compact-min-width: 20px;
+  /* 축약형 변형은 기본값을 따르며, 필요할 때만 개별 값으로 분기합니다. */
   --preview-chip-compact-padding-y: var(--preview-chip-padding-y);
   --preview-chip-compact-padding-x: var(--preview-chip-padding-x);
   --preview-chip-compact-border-width: var(--preview-chip-border-width);
@@ -115,7 +119,7 @@ html.wf-active body { visibility: visible; }
 
 html,
 body {
-  scrollbar-width: thin; /* Firefox */
+  scrollbar-width: thin; /* 파이어폭스 */
   scrollbar-color: rgba(0, 0, 0, 0.28) transparent;
 }
 
@@ -1237,6 +1241,7 @@ input[type="number"]::-webkit-outer-spin-button {
   pointer-events: none;
 }
 
+/* 라벨별 실행 중 재정의 값은 --preview-dim-*로 주입되며, 없으면 기본 토큰을 대체값으로 사용합니다. */
 .system-dimension-label {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -1993,6 +1998,7 @@ input[type="number"]::-webkit-outer-spin-button {
   font-weight: var(--fw-bold);
 }
 
+/* 전역 버튼 규칙: 변형 버튼은 --btn-* 커스텀 속성만 재정의하도록 유지합니다. */
 :where(button, .btn) {
   --btn-bg: var(--color-surface);
   --btn-color: var(--color-brand-ink);
@@ -2443,7 +2449,7 @@ th, td {
 }
 
 
-/* card grids */
+/* 카드 그리드 */
 .grid-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2451,7 +2457,7 @@ th, td {
   margin-top: 12px;
 }
 
-/* grid modifiers */
+/* 그리드 변형 */
 .grid-cards--2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -2585,7 +2591,7 @@ th, td {
   /* 전용 훅: 가공 카드 커스텀 여지 */
 }
 
-/* Modal */
+/* 모달 */
 .modal.hidden {
   display: none;
 }
@@ -3352,7 +3358,7 @@ th, td {
   overflow-y: auto;
   min-height: 0;
   overflow-anchor: none;
-  scrollbar-width: thin; /* Firefox */
+  scrollbar-width: thin; /* 파이어폭스 */
   scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
 }
 
@@ -3872,7 +3878,7 @@ button.card-base:active {
   }
 }
 
-/* Fallback: iframe/모달 감지 실패 시에도 작은 높이 모바일에서는 안전 레이아웃 강제 */
+/* 예비 규칙: iframe/모달 감지 실패 시에도 작은 높이 모바일에서 안전 레이아웃을 강제 */
 @media (max-width: 900px) and (max-height: 920px) {
   body {
     padding-bottom: 0;
