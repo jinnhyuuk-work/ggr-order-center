@@ -44,7 +44,7 @@
   --shadow-preview-module: 0 0 0 1.25px rgba(0, 0, 0, 0.28), 0 1px 1px rgba(0, 0, 0, 0.16);
   --shadow-preview-module-hover: 0 0 0 1.5px rgba(0, 0, 0, 0.42), 0 4px 8px rgba(0, 0, 0, 0.22);
   --title-font-size: clamp(32px, 3vw, 48px);
-  --title-sub-font-size: clamp(30px, 2.8vw, 38px);
+  --title-sub-font-size: clamp(28px, 2.5vw, 34px);
   --font-size-body: clamp(15px, 1.2vw, 17px);
   --font-size-lg: clamp(18px, 1.6vw, 22px);
   --font-size-md: clamp(16px, 1.3vw, 18px);
