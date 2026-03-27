@@ -165,7 +165,7 @@ b[lang="en"],
   background: var(--color-surface);
   padding: 4vw;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  /*box-shadow: var(--shadow-card)*/;
 }
 
 .page-header {
