@@ -1530,13 +1530,13 @@ export function updateSizeErrors({
 
   const formatRangeError = (label, min, max) => {
     if (Number.isFinite(min) && Number.isFinite(max)) {
-      return `${label}은 ${min}~${max}mm 범위 내로 입력해주세요.`;
+      return `${label} ${min}~${max}mm 범위 내로 입력해주세요.`;
     }
     if (Number.isFinite(min)) {
-      return `${label}은 ${min}mm 이상으로 입력해주세요.`;
+      return `${label} ${min}mm 이상으로 입력해주세요.`;
     }
     if (Number.isFinite(max)) {
-      return `${label}은 ${max}mm 이하로 입력해주세요.`;
+      return `${label} ${max}mm 이하로 입력해주세요.`;
     }
     return `${label} 범위를 확인해주세요.`;
   };
