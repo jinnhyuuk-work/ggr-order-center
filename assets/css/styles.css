@@ -3525,8 +3525,19 @@ button.card-base:active {
     /*padding-bottom: clamp(180px, 28vh, 240px);*/
   }
 
-  html.oc-embedded-mobile body {
+  html.oc-constrained-ui body {
     padding-bottom: 0;
+    overflow: hidden;
+  }
+
+  html.oc-constrained-ui .container {
+    box-sizing: border-box;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
   }
 
   .form-row {
@@ -3598,7 +3609,7 @@ button.card-base:active {
     overflow: hidden;
   }
 
-  html.oc-embedded-mobile .estimate-panel {
+  html.oc-constrained-ui .estimate-panel {
     position: sticky;
     left: auto;
     right: auto;
@@ -3630,7 +3641,7 @@ button.card-base:active {
     display: inline-flex;
   }
 
-  html.oc-embedded-mobile .estimate-toggle {
+  html.oc-constrained-ui .estimate-toggle {
     display: none;
   }
 
@@ -3639,7 +3650,7 @@ button.card-base:active {
     overflow-y: auto;
   }
 
-  html.oc-embedded-mobile .estimate-panel .estimate-body {
+  html.oc-constrained-ui .estimate-panel .estimate-body {
     display: block;
     max-height: none;
     overflow: visible;
@@ -3649,11 +3660,11 @@ button.card-base:active {
     display: none;
   }
 
-  html.oc-embedded-mobile .estimate-panel.is-collapsed .estimate-body {
+  html.oc-constrained-ui .estimate-panel.is-collapsed .estimate-body {
     display: block;
   }
 
-  html.oc-embedded-mobile .step-card.is-accordion:not(.is-collapsed) .accordion-body {
+  html.oc-constrained-ui .step-card.is-accordion:not(.is-collapsed) .accordion-body {
     max-height: min(68dvh, calc(100dvh - 220px));
     overflow-y: auto;
     overscroll-behavior: contain;

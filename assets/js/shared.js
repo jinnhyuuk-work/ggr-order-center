@@ -145,6 +145,7 @@ let activeModalState = null;
 let modalKeyHandlerBound = false;
 let autoModalTitleIdSeq = 0;
 let embeddedViewportClassBound = false;
+const COMPACT_MOBILE_VIEWPORT_MAX_HEIGHT = 820;
 const ESTIMATE_DETAIL_OPEN_STATE = new Map();
 const CUSTOMER_PHOTO_MAX_COUNT = 5;
 const CUSTOMER_PHOTO_MAX_FILE_SIZE_MB = 10;
@@ -2112,13 +2113,39 @@ function isMobileViewport() {
   return Number(window.innerWidth || 0) <= 900;
 }
 
+function getViewportHeight() {
+  if (typeof window === "undefined") return 0;
+  return Number(window.visualViewport?.height || window.innerHeight || 0);
+}
+
+function hasEmbeddedModeHint() {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(String(window.location?.search || ""));
+  const hint = String(
+    params.get("embed") ||
+      params.get("embedded") ||
+      params.get("oc_embed") ||
+      params.get("oc_mode") ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+  return ["1", "true", "yes", "y", "modal", "embed", "embedded"].includes(hint);
+}
+
 function syncEmbeddedViewportClass() {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   if (!root) return;
   const embedded = isEmbeddedContext();
-  root.classList.toggle("oc-embedded", embedded);
-  root.classList.toggle("oc-embedded-mobile", embedded && isMobileViewport());
+  const embeddedLike = embedded || hasEmbeddedModeHint();
+  const mobile = isMobileViewport();
+  const compactHeight = getViewportHeight() > 0 && getViewportHeight() <= COMPACT_MOBILE_VIEWPORT_MAX_HEIGHT;
+  const constrainedUi = mobile && (embeddedLike || compactHeight);
+  root.classList.toggle("oc-embedded", embeddedLike);
+  root.classList.toggle("oc-embedded-mobile", embeddedLike && mobile);
+  root.classList.toggle("oc-compact-height", mobile && compactHeight);
+  root.classList.toggle("oc-constrained-ui", constrainedUi);
 }
 
 function findScrollableParent(element) {
