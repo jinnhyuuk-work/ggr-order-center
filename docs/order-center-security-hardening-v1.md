@@ -20,7 +20,13 @@
 
 ## 2. 런타임 설정 주입 방식
 
-아래 스크립트를 각 페이지의 모듈 스크립트(`assets/js/*.js`)보다 먼저 선언한다.
+공통 부트스트랩 스크립트 1개를 사용한다.
+
+```html
+<script src="assets/js/runtime-config-bootstrap.js"></script>
+```
+
+운영 배포에서 환경값을 덮어써야 하면, 아래 스니펫을 `runtime-config-bootstrap.js`보다 먼저 선언한다.
 
 ```html
 <script>
@@ -43,6 +49,7 @@
     }
   };
 </script>
+<script src="assets/js/runtime-config-bootstrap.js"></script>
 ```
 
 운영 원칙:
