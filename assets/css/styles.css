@@ -1884,6 +1884,15 @@ input[type="number"]::-webkit-outer-spin-button {
   box-shadow: var(--shadow-preview);
 }
 
+.preview-dimension-chip {
+  z-index: 4;
+  pointer-events: none;
+}
+
+.preview-dimension-chip--vertical {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
 .hole-dot {
   position: absolute;
   width: 20px;

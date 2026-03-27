@@ -125,6 +125,178 @@ function getPreviewScaleBounds(colorEl, { fallbackMax = 180, fallbackMin = 40 } 
   };
 }
 
+function parsePxValue(value, fallback = 0) {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function setPreviewDimensionChipPosition(chipEl, { x = 0, y = 0 } = {}) {
+  if (!(chipEl instanceof HTMLElement)) return;
+  chipEl.style.left = `${Math.round(Number(x || 0) * 10) / 10}px`;
+  chipEl.style.top = `${Math.round(Number(y || 0) * 10) / 10}px`;
+}
+
+function nudgePreviewDimensionChipIntoFrame(chipEl, frameEl, marginPx = 6) {
+  if (!(chipEl instanceof HTMLElement) || !(frameEl instanceof HTMLElement)) return;
+  const frameRect = frameEl.getBoundingClientRect();
+  const chipRect = chipEl.getBoundingClientRect();
+  if (!frameRect.width || !frameRect.height || !chipRect.width || !chipRect.height) return;
+  let dx = 0;
+  let dy = 0;
+  if (chipRect.left < frameRect.left + marginPx) {
+    dx = frameRect.left + marginPx - chipRect.left;
+  } else if (chipRect.right > frameRect.right - marginPx) {
+    dx = frameRect.right - marginPx - chipRect.right;
+  }
+  if (chipRect.top < frameRect.top + marginPx) {
+    dy = frameRect.top + marginPx - chipRect.top;
+  } else if (chipRect.bottom > frameRect.bottom - marginPx) {
+    dy = frameRect.bottom - marginPx - chipRect.bottom;
+  }
+  if (!dx && !dy) return;
+  setPreviewDimensionChipPosition(chipEl, {
+    x: parsePxValue(chipEl.style.left) + dx,
+    y: parsePxValue(chipEl.style.top) + dy,
+  });
+}
+
+function getPreviewDimensionChipCenter(chipEl, frameEl) {
+  if (!(chipEl instanceof HTMLElement) || !(frameEl instanceof HTMLElement)) {
+    return { x: 0, y: 0 };
+  }
+  const frameRect = frameEl.getBoundingClientRect();
+  const rect = chipEl.getBoundingClientRect();
+  return {
+    x: rect.left - frameRect.left + rect.width / 2,
+    y: rect.top - frameRect.top + rect.height / 2,
+  };
+}
+
+function arePreviewDimensionChipsOverlapping(firstEl, secondEl, gapPx = 4) {
+  if (!(firstEl instanceof HTMLElement) || !(secondEl instanceof HTMLElement)) return false;
+  const a = firstEl.getBoundingClientRect();
+  const b = secondEl.getBoundingClientRect();
+  return !(
+    a.right + gapPx <= b.left ||
+    a.left >= b.right + gapPx ||
+    a.bottom + gapPx <= b.top ||
+    a.top >= b.bottom + gapPx
+  );
+}
+
+function getPreviewDimensionDistanceScore(point = {}, target = {}) {
+  return Math.abs(Number(point.x || 0) - Number(target.x || 0)) +
+    Math.abs(Number(point.y || 0) - Number(target.y || 0));
+}
+
+function clearPreviewDimensionChips(colorEl) {
+  const frameEl = colorEl?.closest(".preview-frame");
+  if (!frameEl) return;
+  frameEl.querySelectorAll(".preview-dimension-chip").forEach((el) => el.remove());
+}
+
+function renderPreviewDimensionChips(colorEl, { widthMm = 0, lengthMm = 0 } = {}) {
+  const frameEl = colorEl?.closest(".preview-frame");
+  if (!frameEl) return;
+  clearPreviewDimensionChips(colorEl);
+  const roundedWidthMm = Math.round(Number(widthMm || 0));
+  const roundedLengthMm = Math.round(Number(lengthMm || 0));
+  if (roundedWidthMm <= 0 || roundedLengthMm <= 0) return;
+
+  const frameRect = frameEl.getBoundingClientRect();
+  const colorRect = colorEl.getBoundingClientRect();
+  const inlineWidth = parsePxValue(colorEl.style.width, 0);
+  const inlineHeight = parsePxValue(colorEl.style.height, 0);
+  const targetWidth = inlineWidth > 0 ? inlineWidth : colorRect.width;
+  const targetHeight = inlineHeight > 0 ? inlineHeight : colorRect.height;
+  if (!frameRect.width || !frameRect.height || !targetWidth || !targetHeight) return;
+
+  // Use target size from inline style to avoid chip jump while width/height transition is running.
+  const colorBox = {
+    left: (frameRect.width - targetWidth) / 2,
+    top: (frameRect.height - targetHeight) / 2,
+    width: targetWidth,
+    height: targetHeight,
+  };
+  colorBox.right = colorBox.left + colorBox.width;
+  colorBox.bottom = colorBox.top + colorBox.height;
+
+  const horizontalChip = document.createElement("div");
+  horizontalChip.className = "system-dimension-label preview-dimension-chip preview-dimension-chip--horizontal";
+  horizontalChip.textContent = `${roundedWidthMm}mm`;
+
+  const verticalChip = document.createElement("div");
+  verticalChip.className = "system-dimension-label preview-dimension-chip preview-dimension-chip--vertical";
+  verticalChip.textContent = `${roundedLengthMm}mm`;
+
+  frameEl.append(horizontalChip, verticalChip);
+
+  const gapPx = Math.max(5, Math.round(Math.min(colorBox.width, colorBox.height) * 0.08));
+  const innerInsetPx = Math.max(8, Math.round(gapPx * 0.75));
+  const preferredHorizontal = {
+    x: colorBox.left + colorBox.width / 2,
+    y: colorBox.top - gapPx,
+  };
+  const preferredVertical = {
+    x: colorBox.right + gapPx,
+    y: colorBox.top + colorBox.height / 2,
+  };
+
+  const horizontalCandidates = [
+    preferredHorizontal,
+    { x: colorBox.left + colorBox.width / 2, y: colorBox.bottom + gapPx },
+    { x: colorBox.left + colorBox.width / 2, y: colorBox.top + innerInsetPx },
+    { x: colorBox.left + colorBox.width / 2, y: colorBox.bottom - innerInsetPx },
+  ];
+  const verticalCandidates = [
+    preferredVertical,
+    { x: colorBox.left - gapPx, y: colorBox.top + colorBox.height / 2 },
+    { x: colorBox.right - innerInsetPx, y: colorBox.top + colorBox.height / 2 },
+    { x: colorBox.left + innerInsetPx, y: colorBox.top + colorBox.height / 2 },
+    { x: colorBox.right + gapPx, y: colorBox.top + innerInsetPx },
+    { x: colorBox.right + gapPx, y: colorBox.bottom - innerInsetPx },
+    { x: colorBox.left - gapPx, y: colorBox.top + innerInsetPx },
+    { x: colorBox.left - gapPx, y: colorBox.bottom - innerInsetPx },
+  ];
+
+  const marginPx = 4;
+  let bestLayout = null;
+  horizontalCandidates.forEach((horizontalPos) => {
+    setPreviewDimensionChipPosition(horizontalChip, horizontalPos);
+    nudgePreviewDimensionChipIntoFrame(horizontalChip, frameEl, marginPx);
+    verticalCandidates.forEach((verticalPos) => {
+      setPreviewDimensionChipPosition(verticalChip, verticalPos);
+      nudgePreviewDimensionChipIntoFrame(verticalChip, frameEl, marginPx);
+      const horizontalCenter = getPreviewDimensionChipCenter(horizontalChip, frameEl);
+      const verticalCenter = getPreviewDimensionChipCenter(verticalChip, frameEl);
+      const overlapPenalty = arePreviewDimensionChipsOverlapping(horizontalChip, verticalChip) ? 20000 : 0;
+      const score =
+        getPreviewDimensionDistanceScore(horizontalCenter, preferredHorizontal) +
+        getPreviewDimensionDistanceScore(verticalCenter, preferredVertical) +
+        overlapPenalty;
+      if (!bestLayout || score < bestLayout.score) {
+        bestLayout = {
+          score,
+          horizontal: {
+            x: parsePxValue(horizontalChip.style.left),
+            y: parsePxValue(horizontalChip.style.top),
+          },
+          vertical: {
+            x: parsePxValue(verticalChip.style.left),
+            y: parsePxValue(verticalChip.style.top),
+          },
+        };
+      }
+    });
+  });
+
+  if (!bestLayout) return;
+  setPreviewDimensionChipPosition(horizontalChip, bestLayout.horizontal);
+  setPreviewDimensionChipPosition(verticalChip, bestLayout.vertical);
+  nudgePreviewDimensionChipIntoFrame(horizontalChip, frameEl, marginPx);
+  nudgePreviewDimensionChipIntoFrame(verticalChip, frameEl, marginPx);
+}
+
 // 2) 가공비 계산
 function calcProcessingCost({
   quantity,
@@ -2196,6 +2368,7 @@ function updatePreview() {
   const colorEl = $("#previewColor");
   const textEl = $("#previewText");
   if (!colorEl || !textEl) return;
+  clearPreviewDimensionChips(colorEl);
 
   const input = readCurrentInputs();
   const mat = MATERIALS[input.materialId];
@@ -2221,6 +2394,7 @@ function updatePreview() {
   colorEl.style.height = `${h}px`;
   textEl.textContent = `${mat.name} / ${formatDoorTypeLabel(input.doorType)} / ${input.thickness}T / 측면 ${formatSideThicknessLabel(input.sideThickness)} / ${input.width}×${input.length}mm`;
   renderPreviewHoles(input);
+  renderPreviewDimensionChips(colorEl, { widthMm: input.width, lengthMm: input.length });
 }
 
 function clearPreviewHoles() {
