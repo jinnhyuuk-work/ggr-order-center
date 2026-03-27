@@ -1,8 +1,6 @@
 :root {
   --font-ko: "Pretendard Variable", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-en: "acumin-pro-condensed", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-sans: var(--font-ko);
-  --color-bg: #ffffff;
   --color-surface: #fff;
   --color-surface-alt: #fbfbfb;
   --color-surface-muted: #fafafa;
@@ -13,12 +11,12 @@
   --color-text-muted: #444;
   --color-text-meta: #555;
   --color-border: #000;
-  --color-border-soft: #000;
+  --color-border-soft: var(--color-border);
   --color-border-faint: #ddd;
   --color-border-muted: #d9dde3;
   --color-border-placeholder: #cfcfcf;
   --color-primary: #ff6400;
-  --color-accent: #000;
+  --color-accent: var(--color-border);
   --color-disabled: #999;
   --color-preview-bg: #f3f3f3;
   --color-info-bg: #f6f9ff;
@@ -26,9 +24,9 @@
   --color-tip-bg: #f7f9fb;
   --color-tip-border: #e6ebf0;
   --color-row-bg: #fbfcfd;
-  --color-row-border: #e6ebf0;
+  --color-row-border: var(--color-tip-border);
   --color-note-text: #2c3e50;
-  --color-error: #ff6400;
+  --color-error: var(--color-primary);
   --color-error-bg: #fff5f3;
   --radius-sm: 8px;
   --radius-md: 10px;
@@ -45,7 +43,6 @@
   --shadow-preview-module-hover: 0 0 0 1.5px rgba(0, 0, 0, 0.42), 0 4px 8px rgba(0, 0, 0, 0.22);
   --title-font-size: clamp(32px, 3vw, 48px);
   --title-sub-font-size: clamp(28px, 2.5vw, 34px);
-  --font-size-body: clamp(15px, 1.2vw, 17px);
   --font-size-lg: clamp(18px, 1.6vw, 22px);
   --font-size-md: clamp(16px, 1.3vw, 18px);
   --font-size-sm: clamp(12px, 1vw, 15px);
@@ -81,12 +78,10 @@
   --color-status-ok-border: #d8eadb;
   --color-status-consult-bg: #fff8ef;
   --color-status-consult-border: #f0d8b7;
-  --color-status-invalid-bg: #fff5f3;
+  --color-status-invalid-bg: var(--color-error-bg);
   --color-status-invalid-border: #f1c8c1;
   --color-hole-primary: #8b5a2b;
   --color-hole-secondary: #2f5fb8;
-  --color-swatch-fallback: #ddd;
-  --color-swatch-muted: #eee;
   --preview-chip-padding-y: 2px;
   --preview-chip-padding-x: 6px;
   --preview-chip-radius: 999px;
@@ -94,19 +89,19 @@
   --preview-chip-border-color: rgba(0, 0, 0, 0.2);
   --preview-chip-bg: rgba(255, 255, 255, 0.9);
   --preview-chip-color: var(--color-text-strong);
-  --preview-chip-font-size: 11px;
+  --preview-chip-font-size: var(--font-size-micro);
   --preview-chip-font-weight: var(--fw-bold);
   --preview-chip-line-height: var(--lh-snug);
   --preview-chip-letter-spacing: 0.01em;
   --preview-chip-z-index: 1;
   --preview-chip-corner-bg: rgba(255, 247, 235, 0.96);
   --preview-chip-compact-min-width: 20px;
-  --preview-chip-compact-padding-y: 2px;
-  --preview-chip-compact-padding-x: 6px;
-  --preview-chip-compact-border-width: 1px;
+  --preview-chip-compact-padding-y: var(--preview-chip-padding-y);
+  --preview-chip-compact-padding-x: var(--preview-chip-padding-x);
+  --preview-chip-compact-border-width: var(--preview-chip-border-width);
   --preview-chip-compact-border-color: rgba(0, 0, 0, 0.18);
   --preview-chip-compact-bg: rgba(255, 255, 255, 0.96);
-  --preview-chip-compact-color: #333;
+  --preview-chip-compact-color: var(--preview-chip-color);
   --preview-chip-compact-line-height: var(--lh-compact);
   --preview-chip-compact-z-index: 3;
   --preview-chip-column-bg: rgba(245, 245, 245, 0.96);
@@ -753,17 +748,15 @@ section {
   width: auto;
 }
 
-.space-extra-add-btn {
-  --btn-padding: 6px 10px;
-  font-size: var(--font-size-caption);
-  align-self: flex-start;
-  min-width: 0;
-}
-
+.space-extra-add-btn,
 .space-extra-row .ghost-btn {
   --btn-padding: 6px 10px;
   font-size: var(--font-size-caption);
   min-width: 0;
+}
+
+.space-extra-add-btn {
+  align-self: flex-start;
 }
 
 input[type="number"] {
@@ -896,7 +889,6 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .preview-box {
-  --preview-frame-aspect-ratio: 1 / 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2198,7 +2190,6 @@ th, td {
 .send-btn {
   margin-top: 0;
   width: auto;
-  --btn-bg: var(--color-primary);
 }
 
 .order-complete {
