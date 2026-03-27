@@ -44,7 +44,7 @@
   --shadow-preview-module: 0 0 0 1.25px rgba(0, 0, 0, 0.28), 0 1px 1px rgba(0, 0, 0, 0.16);
   --shadow-preview-module-hover: 0 0 0 1.5px rgba(0, 0, 0, 0.42), 0 4px 8px rgba(0, 0, 0, 0.22);
   --title-font-size: clamp(32px, 3vw, 48px);
-  --title-sub-font-size: clamp(28px, 2.5vw, 34px);
+  --title-sub-font-size: clamp(30px, 2.8vw, 38px);
   --font-size-body: clamp(15px, 1.2vw, 17px);
   --font-size-lg: clamp(18px, 1.6vw, 22px);
   --font-size-md: clamp(16px, 1.3vw, 18px);
@@ -168,8 +168,32 @@ b[lang="en"],
   /*box-shadow: var(--shadow-card)*/;
 }
 
+.brand-strip {
+  display: flex;
+  align-items: center;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
 .page-header {
   margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.header-logo-link {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  margin-bottom: 0;
+  text-decoration: none;
+}
+
+.header-logo {
+  display: block;
+  width: auto;
+  height: clamp(26px, 2.6vw, 36px);
 }
 
 .page-description {
@@ -378,7 +402,7 @@ section {
 
 .step-card-header h2 {
   margin: 0;
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
 }
 
 .step-card-meta {
@@ -3718,6 +3742,31 @@ button.card-base:active {
 }
 
 @media (min-width: 901px) {
+  .page-header .title-block {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .page-header .title-main {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    white-space: nowrap;
+    text-align: left;
+  }
+
+  .page-header .title-sub {
+    margin: 0;
+    flex: 0 0 auto;
+    text-align: right;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
   .estimate-toggle {
     display: none !important;
   }
