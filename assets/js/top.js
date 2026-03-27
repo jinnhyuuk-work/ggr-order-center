@@ -537,6 +537,153 @@ function renderPreviewDimensionChips(colorEl, { widthMm = 0, lengthMm = 0 } = {}
   nudgePreviewDimensionChipIntoFrame(verticalChip, frameEl, marginPx);
 }
 
+function renderUShapeDimensionChips(
+  colorEl,
+  {
+    widthMm = 0,
+    leftLengthMm = 0,
+    rightLengthMm = 0,
+    armWidthPx = 0,
+    leftLegPx = 0,
+    rightLegPx = 0,
+  } = {}
+) {
+  const frameEl = colorEl?.closest(".preview-frame");
+  if (!frameEl) return;
+  clearPreviewDimensionChips(colorEl);
+  const roundedWidthMm = Math.round(Number(widthMm || 0));
+  const roundedLeftLengthMm = Math.round(Number(leftLengthMm || 0));
+  const roundedRightLengthMm = Math.round(Number(rightLengthMm || 0));
+  if (roundedWidthMm <= 0 || roundedLeftLengthMm <= 0 || roundedRightLengthMm <= 0) return;
+
+  const frameRect = frameEl.getBoundingClientRect();
+  const colorRect = colorEl.getBoundingClientRect();
+  const inlineWidth = parsePxValue(colorEl.style.width, 0);
+  const inlineHeight = parsePxValue(colorEl.style.height, 0);
+  const targetWidth = inlineWidth > 0 ? inlineWidth : colorRect.width;
+  const targetHeight = inlineHeight > 0 ? inlineHeight : colorRect.height;
+  if (!frameRect.width || !frameRect.height || !targetWidth || !targetHeight) return;
+
+  const colorBox = {
+    left: (frameRect.width - targetWidth) / 2,
+    top: (frameRect.height - targetHeight) / 2,
+    width: targetWidth,
+    height: targetHeight,
+  };
+  colorBox.right = colorBox.left + colorBox.width;
+  colorBox.bottom = colorBox.top + colorBox.height;
+
+  const safeArmWidthPx = Math.max(0, Math.min(colorBox.width, colorBox.height, Number(armWidthPx || 0)));
+  const safeLeftLegPx = Math.max(safeArmWidthPx, Math.min(colorBox.height, Number(leftLegPx || 0)));
+  const safeRightLegPx = Math.max(safeArmWidthPx, Math.min(colorBox.height, Number(rightLegPx || 0)));
+
+  const horizontalChip = document.createElement("div");
+  horizontalChip.className = "system-dimension-label preview-dimension-chip preview-dimension-chip--horizontal";
+  horizontalChip.textContent = `${roundedWidthMm}mm`;
+
+  const leftVerticalChip = document.createElement("div");
+  leftVerticalChip.className = "system-dimension-label preview-dimension-chip preview-dimension-chip--vertical";
+  leftVerticalChip.textContent = `${roundedLeftLengthMm}mm`;
+
+  const rightVerticalChip = document.createElement("div");
+  rightVerticalChip.className = "system-dimension-label preview-dimension-chip preview-dimension-chip--vertical";
+  rightVerticalChip.textContent = `${roundedRightLengthMm}mm`;
+
+  frameEl.append(horizontalChip, leftVerticalChip, rightVerticalChip);
+
+  const gapPx = Math.max(4, Math.round(Math.min(colorBox.width, colorBox.height) * 0.05));
+  const innerInsetPx = Math.max(8, Math.round(gapPx * 2));
+  const leftMidY = colorBox.top + safeLeftLegPx / 2;
+  const rightMidY = colorBox.top + safeRightLegPx / 2;
+
+  const preferredHorizontal = {
+    x: colorBox.left + colorBox.width / 2,
+    y: colorBox.top - gapPx,
+  };
+  const preferredLeftVertical = {
+    x: colorBox.left - gapPx,
+    y: leftMidY,
+  };
+  const preferredRightVertical = {
+    x: colorBox.right + gapPx,
+    y: rightMidY,
+  };
+
+  const horizontalCandidates = [
+    preferredHorizontal,
+    { x: colorBox.left + colorBox.width / 2, y: colorBox.bottom + gapPx },
+    { x: colorBox.left + colorBox.width / 2, y: colorBox.top + Math.max(innerInsetPx, safeArmWidthPx / 2) },
+  ];
+  const leftVerticalCandidates = [
+    preferredLeftVertical,
+    { x: colorBox.left + innerInsetPx, y: leftMidY },
+    { x: colorBox.left + innerInsetPx, y: Math.max(colorBox.top + innerInsetPx, colorBox.top + safeArmWidthPx + gapPx) },
+    { x: colorBox.left + innerInsetPx, y: Math.min(colorBox.bottom - innerInsetPx, colorBox.top + safeLeftLegPx - innerInsetPx) },
+  ];
+  const rightVerticalCandidates = [
+    preferredRightVertical,
+    { x: colorBox.right - innerInsetPx, y: rightMidY },
+    { x: colorBox.right - innerInsetPx, y: Math.max(colorBox.top + innerInsetPx, colorBox.top + safeArmWidthPx + gapPx) },
+    { x: colorBox.right - innerInsetPx, y: Math.min(colorBox.bottom - innerInsetPx, colorBox.top + safeRightLegPx - innerInsetPx) },
+  ];
+
+  const marginPx = 4;
+  let bestLayout = null;
+  horizontalCandidates.forEach((horizontalPos) => {
+    setPreviewDimensionChipPosition(horizontalChip, horizontalPos);
+    nudgePreviewDimensionChipIntoFrame(horizontalChip, frameEl, marginPx);
+
+    leftVerticalCandidates.forEach((leftPos) => {
+      setPreviewDimensionChipPosition(leftVerticalChip, leftPos);
+      nudgePreviewDimensionChipIntoFrame(leftVerticalChip, frameEl, marginPx);
+
+      rightVerticalCandidates.forEach((rightPos) => {
+        setPreviewDimensionChipPosition(rightVerticalChip, rightPos);
+        nudgePreviewDimensionChipIntoFrame(rightVerticalChip, frameEl, marginPx);
+
+        const horizontalCenter = getPreviewDimensionChipCenter(horizontalChip, frameEl);
+        const leftCenter = getPreviewDimensionChipCenter(leftVerticalChip, frameEl);
+        const rightCenter = getPreviewDimensionChipCenter(rightVerticalChip, frameEl);
+        const overlapPenalty =
+          (arePreviewDimensionChipsOverlapping(horizontalChip, leftVerticalChip) ? 20000 : 0) +
+          (arePreviewDimensionChipsOverlapping(horizontalChip, rightVerticalChip) ? 20000 : 0) +
+          (arePreviewDimensionChipsOverlapping(leftVerticalChip, rightVerticalChip) ? 20000 : 0);
+        const score =
+          getPreviewDimensionDistanceScore(horizontalCenter, preferredHorizontal) +
+          getPreviewDimensionDistanceScore(leftCenter, preferredLeftVertical) +
+          getPreviewDimensionDistanceScore(rightCenter, preferredRightVertical) +
+          overlapPenalty;
+
+        if (!bestLayout || score < bestLayout.score) {
+          bestLayout = {
+            score,
+            horizontal: {
+              x: parsePxValue(horizontalChip.style.left),
+              y: parsePxValue(horizontalChip.style.top),
+            },
+            leftVertical: {
+              x: parsePxValue(leftVerticalChip.style.left),
+              y: parsePxValue(leftVerticalChip.style.top),
+            },
+            rightVertical: {
+              x: parsePxValue(rightVerticalChip.style.left),
+              y: parsePxValue(rightVerticalChip.style.top),
+            },
+          };
+        }
+      });
+    });
+  });
+
+  if (!bestLayout) return;
+  setPreviewDimensionChipPosition(horizontalChip, bestLayout.horizontal);
+  setPreviewDimensionChipPosition(leftVerticalChip, bestLayout.leftVertical);
+  setPreviewDimensionChipPosition(rightVerticalChip, bestLayout.rightVertical);
+  nudgePreviewDimensionChipIntoFrame(horizontalChip, frameEl, marginPx);
+  nudgePreviewDimensionChipIntoFrame(leftVerticalChip, frameEl, marginPx);
+  nudgePreviewDimensionChipIntoFrame(rightVerticalChip, frameEl, marginPx);
+}
+
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 function formatPrice(n) {
@@ -1629,10 +1776,10 @@ function updateTopPreview(input, detail) {
     const overallHeightMm = Math.max(input.length2, input.length3, input.width);
     const scale = Math.min(maxPx / Math.max(overallWidthMm, overallHeightMm), 1);
     const widthPx = Math.max(12, input.width * scale);
-    const length2Px = Math.max(widthPx, Math.max(minPx, input.length2 * scale));
-    const length3Px = Math.max(widthPx, Math.max(minPx, input.length3 * scale));
+    const rightLegPx = Math.max(widthPx, Math.max(minPx, input.length2 * scale));
+    const leftLegPx = Math.max(widthPx, Math.max(minPx, input.length3 * scale));
     const overallPxW = Math.max(minPx, overallWidthMm * scale);
-    const overallPxH = Math.max(length2Px, length3Px);
+    const overallPxH = Math.max(rightLegPx, leftLegPx);
 
     colorEl.classList.add("u-shape-preview");
     colorEl.style.background = swatch;
@@ -1641,18 +1788,27 @@ function updateTopPreview(input, detail) {
     colorEl.style.clipPath = `polygon(
       0px 0px,
       ${overallPxW}px 0px,
-      ${overallPxW}px ${length3Px}px,
-      ${overallPxW - widthPx}px ${length3Px}px,
+      ${overallPxW}px ${rightLegPx}px,
+      ${overallPxW - widthPx}px ${rightLegPx}px,
       ${overallPxW - widthPx}px ${widthPx}px,
       ${widthPx}px ${widthPx}px,
-      ${widthPx}px ${length2Px}px,
-      0px ${length2Px}px
+      ${widthPx}px ${leftLegPx}px,
+      0px ${leftLegPx}px
     )`;
     colorEl.style.setProperty("--cutout-alpha", "0");
     colorEl.style.setProperty("--cutout-w", "0px");
     colorEl.style.setProperty("--cutout-h", "0px");
     previewHorizontalMm = overallWidthMm;
     previewVerticalMm = overallHeightMm;
+
+    renderUShapeDimensionChips(colorEl, {
+      widthMm: overallWidthMm,
+      leftLengthMm: input.length3,
+      rightLengthMm: input.length2,
+      armWidthPx: widthPx,
+      leftLegPx,
+      rightLegPx,
+    });
   } else if (needsSecond) {
     const overallWidthMm = input.length;
     const overallHeightMm = Math.max(input.width, input.length2);
@@ -1715,9 +1871,13 @@ function updateTopPreview(input, detail) {
     colorEl.style.height = `${h}px`;
     previewHorizontalMm = input.length;
     previewVerticalMm = input.width;
+
+    renderPreviewDimensionChips(colorEl, { widthMm: previewHorizontalMm, lengthMm: previewVerticalMm });
   }
 
-  renderPreviewDimensionChips(colorEl, { widthMm: previewHorizontalMm, lengthMm: previewVerticalMm });
+  if (needsSecond && input.shape !== "u") {
+    renderPreviewDimensionChips(colorEl, { widthMm: previewHorizontalMm, lengthMm: previewVerticalMm });
+  }
 
   if (input.shape === "u") {
     textEl.textContent = `${type.name} / ${input.width}×${input.length} & ${input.width}×${input.length2} & ${input.width}×${input.length3}×${input.thickness}mm`;
