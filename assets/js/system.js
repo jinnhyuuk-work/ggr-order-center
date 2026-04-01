@@ -158,6 +158,8 @@ import { createSystemOrderHelpers } from "./system-order-helpers.js";
 import { createModuleFrontPreviewRuntimeHelpers } from "./system-module-front-preview-runtime.js";
 import { createSystemPreviewUploadHelpers } from "./system-preview-upload.js";
 import { createSystemPresetRuntimeDispatchHelpers } from "./system-preset-runtime-dispatch.js";
+import { createSystemPreviewPresetApplyHelpers } from "./system-preview-preset-apply.js";
+import { createSystemPresetAddonHelpers } from "./system-preset-addon-helpers.js";
 import { createSystemMaterialPickerHelpers } from "./system-material-picker.js";
 import { createSystemFulfillmentSummaryHelpers } from "./system-fulfillment-summary.js";
 import { createSystemOptionFrontPreviewHelpers } from "./system-option-front-preview.js";
@@ -171,6 +173,7 @@ import { createSystemOptionModalFlowHelpers } from "./system-option-modal-flow.j
 import { createSystemEdgeSaveRemoveHelpers } from "./system-edge-save-remove.js";
 import { createSystemPreviewPresetPickerHelpers } from "./system-preview-preset-picker.js";
 import { createSystemPreviewAddActionHelpers } from "./system-preview-add-actions.js";
+import { isSystemInitMountReady, runSystemInitSequence } from "./system-init-sequence.js";
 import {
   isCoarsePointerEnvironment,
   buildPreviewUiMetrics,
@@ -970,6 +973,7 @@ const previewAddFlowState = createPreviewAddFlowState();
 const previewPresetPickerFlowState = createPreviewPresetPickerFlowState();
 const presetModuleOptionFlowState = createPresetModuleOptionFlowState();
 const previewModuleActionFlowState = createPreviewModuleActionFlowState();
+let previewPresetApplyHelpers = null;
 let previewOpenEndpoints = new Map();
 let inlineInsertPendingFirstSaveEdgeId = "";
 let previewRenderTransform = { scale: 1, tx: 0, ty: 0, depthMm: 400 };
@@ -988,6 +992,15 @@ const previewUploadHelpers = createSystemPreviewUploadHelpers({
   setPreviewCaptureIndexOnlyMode: (nextValue) => {
     previewCaptureIndexOnlyMode = Boolean(nextValue);
   },
+});
+const {
+  buildRodAddonSummary,
+  buildFurnitureAddonSummary,
+  getPresetFurnitureAddonIds,
+  buildPresetAddonBreakdownFromPreset,
+} = createSystemPresetAddonHelpers({
+  ADDON_CLOTHES_ROD_ID,
+  getShelfAddonSummary,
 });
 const presetRuntimeDispatchHelpers = createSystemPresetRuntimeDispatchHelpers({
   escapeHtml,
@@ -2124,45 +2137,6 @@ function buildPresetModuleOptionDraftSeedFromEdge(edgeOrId, { preferredTab = "" 
   };
 }
 
-function buildRodAddonSummary(rodCount, emptyText = "-") {
-  const normalizedRodCount = Number.isFinite(Number(rodCount))
-    ? Math.max(0, Math.floor(Number(rodCount)))
-    : 0;
-  if (normalizedRodCount <= 0) return emptyText;
-  const addonIds = Array.from({ length: normalizedRodCount }, () => ADDON_CLOTHES_ROD_ID);
-  return getShelfAddonSummary(addonIds) || emptyText;
-}
-
-function buildFurnitureAddonSummary(addonIds = [], emptyText = "-") {
-  const normalizedIds = Array.isArray(addonIds)
-    ? addonIds.filter((addonId) => String(addonId || "") !== ADDON_CLOTHES_ROD_ID)
-    : [];
-  if (!normalizedIds.length) return emptyText;
-  return getShelfAddonSummary(normalizedIds) || emptyText;
-}
-
-function getPresetFurnitureAddonIds(preset) {
-  const presetFurnitureIds = Array.isArray(preset?.furnitureAddonIds)
-    ? preset.furnitureAddonIds
-    : preset?.furnitureAddonId
-      ? [preset.furnitureAddonId]
-      : [];
-  return presetFurnitureIds.map((id) => String(id || "")).filter(Boolean);
-}
-
-function buildPresetAddonBreakdownFromPreset(preset) {
-  const furnitureAddonIds = getPresetFurnitureAddonIds(preset);
-  const isCornerPreset = String(preset?.moduleType || "") === "corner";
-  const rodCount = Math.max(0, Math.floor(Number(preset?.rodCount || 0)));
-  const furnitureAddonId = isCornerPreset ? "" : String(furnitureAddonIds[0] || "");
-  return {
-    componentSummary: buildRodAddonSummary(rodCount, "-"),
-    furnitureSummary: isCornerPreset ? "적용 불가" : buildFurnitureAddonSummary(furnitureAddonIds, "-"),
-    rodCount,
-    furnitureAddonId,
-  };
-}
-
 function renderPreviewPresetModuleCards() {
   return previewPresetPickerHelpers.renderPreviewPresetModuleCards();
 }
@@ -2199,188 +2173,56 @@ function openPreviewPresetModuleModal(moduleType, { context = null } = {}) {
   applyPreviewPresetPickerOpenUiDispatchPlanToRuntime(openDispatchPlan);
 }
 
-function applyPreviewPresetToExistingBay(edgeId, preset, selectedFilterKey = "") {
-  const shelf = findShelfById(edgeId);
-  if (!shelf || shelf.type !== "bay") {
-    setPreviewPresetModuleError("변경 대상 일반 모듈을 찾을 수 없습니다.");
-    return;
-  }
-  const nextWidth = Math.max(1, Math.round(Number(selectedFilterKey || preset?.width || shelf.width || 400) || 400));
-  const nextCount = Math.max(1, Math.floor(Number(preset?.count || shelf.count || 1)));
-  const nextRodCount = Math.max(0, Math.floor(Number(preset?.rodCount || 0)));
-  const prevWidth = Number(shelf.width || 0);
-  const prevCount = Number(shelf.count || 0);
-  const prevRodCount = getShelfAddonQuantity(shelf.id, ADDON_CLOTHES_ROD_ID);
-  const prevFurnitureAddonId = getSelectedFurnitureAddonId(shelf.id);
-  const nextFurnitureAddonId = String(getPresetFurnitureAddonIds(preset)[0] || "");
-  const wasPendingAdd = isPendingEdge(shelf);
-  const shouldMergeWithInlineInsertHistory =
-    String(inlineInsertPendingFirstSaveEdgeId || "") === String(shelf.id || "");
-  if (wasPendingAdd) {
-    pushBuilderHistory("add-normal-preset");
-  } else if (
-    !shouldMergeWithInlineInsertHistory &&
-    (prevWidth !== nextWidth || prevCount !== nextCount || prevRodCount !== nextRodCount)
-  ) {
-    pushBuilderHistory("update-normal-preset");
-  } else if (!shouldMergeWithInlineInsertHistory && prevFurnitureAddonId !== nextFurnitureAddonId) {
-    pushBuilderHistory("update-normal-preset");
-  }
-  if (wasPendingAdd) delete shelf.pendingAdd;
-  if (shouldMergeWithInlineInsertHistory) inlineInsertPendingFirstSaveEdgeId = "";
-  shelf.width = nextWidth;
-  shelf.count = nextCount;
-  shelf.composeTab = "preset";
-  applyPresetAddonsToEdge(shelf.id, preset);
-  closePreviewPresetModuleModal({ returnFocus: false, clearTarget: true });
-  renderBayInputs();
-}
-
-function applyPreviewPresetToExistingCorner(edgeId, preset, selectedFilterKey = "") {
-  const corner = findShelfById(edgeId);
-  if (!corner || corner.type !== "corner") {
-    setPreviewPresetModuleError("변경 대상 코너 모듈을 찾을 수 없습니다.");
-    return;
-  }
-  const nextSwap = String(selectedFilterKey || "") === "600x800"
-    ? true
-    : String(selectedFilterKey || "") === "800x600"
-      ? false
-      : Boolean(preset?.swap);
-  const nextCount = Math.max(1, Math.floor(Number(preset?.count || corner.count || 1)));
-  const nextRodCount = Math.max(0, Math.floor(Number(preset?.rodCount || 0)));
-  const prevSwap = Boolean(corner.swap);
-  const prevCount = Number(corner.count || 0);
-  const prevRodCount = getShelfAddonQuantity(corner.id, ADDON_CLOTHES_ROD_ID);
-  const prevCustomProcessing = Boolean(corner.customProcessing);
-  const prevCustomPrimaryMm = Number(corner.customPrimaryMm || 0);
-  const prevCustomSecondaryMm = Number(corner.customSecondaryMm || 0);
-  const prevFurnitureAddonId = getSelectedFurnitureAddonId(corner.id);
-  const nextFurnitureAddonId = String(getPresetFurnitureAddonIds(preset)[0] || "");
-  const wasPendingAdd = isPendingEdge(corner);
-  if (wasPendingAdd) {
-    pushBuilderHistory("add-corner-preset");
-  } else if (
-    prevSwap !== nextSwap ||
-    prevCount !== nextCount ||
-    prevRodCount !== nextRodCount ||
-    prevCustomProcessing ||
-    prevCustomPrimaryMm > 0 ||
-    prevCustomSecondaryMm > 0
-  ) {
-    pushBuilderHistory("update-corner-preset");
-  } else if (prevFurnitureAddonId !== nextFurnitureAddonId) {
-    pushBuilderHistory("update-corner-preset");
-  }
-  if (wasPendingAdd) delete corner.pendingAdd;
-  corner.swap = nextSwap;
-  corner.count = nextCount;
-  corner.customProcessing = false;
-  delete corner.customPrimaryMm;
-  delete corner.customSecondaryMm;
-  corner.composeTab = "preset";
-  applyPresetAddonsToEdge(corner.id, preset);
-  closePreviewPresetModuleModal({ returnFocus: false, clearTarget: true });
-  renderBayInputs();
-}
-
-function applyPreviewPresetNormalModule(preset, selectedFilterKey = "") {
-  const sourceResolution = buildPreviewAddSourceResolutionResult({
-    source: resolveActivePreviewAddSourceTarget(previewAddFlowState.target),
-    errorMessage: "추가 대상 끝점을 찾을 수 없습니다. 다시 시도해주세요.",
-  });
-  const source = sourceResolution.source;
-  const shelfId = sourceResolution.ok ? addShelfFromEndpoint(source, previewAddFlowState.target) : "";
-  const normalAddUiPlan = buildPreviewPresetNormalAddUiExecutionPlan({
-    sourceResolution,
-    shelfId,
-    fallbackErrorMessage: "모듈을 추가하지 못했습니다. 다시 시도해주세요.",
-  });
-  if (normalAddUiPlan.route !== "apply-normal-preset") {
-    setPreviewPresetModuleError(normalAddUiPlan.errorMessage);
-    return;
-  }
-  const shelf = findShelfById(normalAddUiPlan.shelfId);
-  if (shelf) {
-    shelf.width = Math.max(
-      1,
-      Math.round(Number(selectedFilterKey || preset?.width || shelf.width || 400) || 400)
-    );
-    shelf.count = Math.max(1, Math.floor(Number(preset?.count || shelf.count || 1)));
-    shelf.composeTab = "preset";
-    applyPresetAddonsToEdge(shelf.id, preset);
-  }
-  closePreviewPresetModuleModal({ returnFocus: false, clearTarget: true });
-  renderBayInputs();
-}
-
-function applyPreviewPresetCornerModule(preset, selectedFilterKey = "") {
-  const sourceResolution = buildPreviewAddSourceResolutionResult({
-    source: resolveActivePreviewAddSourceTarget(previewAddFlowState.target),
-    errorMessage: "추가 대상 끝점을 찾을 수 없습니다. 다시 시도해주세요.",
-  });
-  const source = sourceResolution.source;
-  const cornerLimitState = getShapeCornerLimitState();
-  const cornerComposeValidation = buildPresetModuleOptionCustomCornerComposeValidation({
-    isRootSource: Boolean(source && isRootPreviewEndpointTarget(source)),
-    hasRootCornerStartDirection: hasSelectedRootCornerStartDirection(previewAddFlowState.target),
-    rootCornerDirectionRequiredMessage: getRootCornerDirectionRequiredMessage(),
-    canAddCornerByLimit: Boolean(cornerLimitState?.canAdd),
-    cornerLimitBlockedMessage: getCornerLimitBlockedMessage(cornerLimitState),
-    canAddCornerAtTarget: Boolean(source && canAddCornerAtTarget(source, getSelectedShape())),
-    cornerAttachSideBlockedMessage: source
-      ? getCornerAttachSideBlockedMessage(source, getSelectedShape())
-      : sourceResolution.errorMessage,
-  });
-  const placement = source ? buildPlacementFromEndpoint(source) : null;
-  const edge = source
-    ? buildPreviewPresetCornerEdge({
-        source,
-        preset,
-        selectedFilterKey,
-        placement,
-        normalizeDirection,
-        directionToSideIndex,
-        createdAt: Date.now(),
-      })
-    : null;
-  const cornerAddUiPlan = buildPreviewPresetCornerAddUiExecutionPlan({
-    sourceResolution,
-    cornerComposeValidation,
-    edge,
-    fallbackErrorMessage: "모듈을 추가하지 못했습니다. 다시 시도해주세요.",
-  });
-  if (cornerAddUiPlan.route !== "apply-corner-preset") {
-    setPreviewPresetModuleError(cornerAddUiPlan.errorMessage);
-    return;
-  }
-  pushBuilderHistory("add-corner-preset");
-  cornerAddUiPlan.edge.composeTab = "preset";
-  registerEdge(cornerAddUiPlan.edge);
-  applyPresetAddonsToEdge(cornerAddUiPlan.edge.id, preset);
-  closePreviewPresetModuleModal({ returnFocus: false, clearTarget: true });
-  renderBayInputs();
-}
+previewPresetApplyHelpers = createSystemPreviewPresetApplyHelpers({
+  previewAddFlowState,
+  previewPresetPickerFlowState,
+  presetModuleOptionFlowState,
+  findShelfById,
+  setPreviewPresetModuleError,
+  getShelfAddonQuantity,
+  ADDON_CLOTHES_ROD_ID,
+  getSelectedFurnitureAddonId,
+  getPresetFurnitureAddonIds,
+  isPendingEdge,
+  pushBuilderHistory,
+  resolveInlineInsertPendingFirstSaveEdgeId: () => inlineInsertPendingFirstSaveEdgeId,
+  clearInlineInsertPendingFirstSaveEdgeId: () => {
+    inlineInsertPendingFirstSaveEdgeId = "";
+  },
+  applyPresetAddonsToEdge,
+  closePreviewPresetModuleModal,
+  renderBayInputs,
+  buildPreviewAddSourceResolutionResult,
+  resolveActivePreviewAddSourceTarget,
+  addShelfFromEndpoint,
+  buildPreviewPresetNormalAddUiExecutionPlan,
+  getShapeCornerLimitState,
+  buildPresetModuleOptionCustomCornerComposeValidation,
+  isRootPreviewEndpointTarget,
+  hasSelectedRootCornerStartDirection,
+  getRootCornerDirectionRequiredMessage,
+  getCornerLimitBlockedMessage,
+  canAddCornerAtTarget,
+  getSelectedShape,
+  getCornerAttachSideBlockedMessage,
+  buildPlacementFromEndpoint,
+  buildPreviewPresetCornerEdge,
+  normalizeDirection,
+  directionToSideIndex,
+  registerEdge,
+  buildPreviewPresetCornerAddUiExecutionPlan,
+  buildPreviewPresetPickerCardClickUiExecutionPlan,
+  getFilteredPreviewPresetItems,
+  patchPreviewPresetPickerFlowState,
+  buildPreviewPresetPickerApplyRuntimeUiDispatchPlan,
+  getPreviewPresetSelectedPreset,
+  patchPresetModuleOptionFlowState,
+  buildPreviewPresetApplyRuntimeUiDispatchPlan,
+  renderPreviewPresetModuleCards,
+});
 
 function handlePreviewPresetModuleCardClick(buttonEl) {
-  if (!(buttonEl instanceof Element)) return;
-  const presetId = String(buttonEl.dataset.previewPresetId || "");
-  const type = String(buttonEl.dataset.previewPresetType || previewPresetPickerFlowState.moduleType || "normal");
-  const items = getFilteredPreviewPresetItems();
-  const uiPlan = buildPreviewPresetPickerCardClickUiExecutionPlan({
-    pickerFlowState: previewPresetPickerFlowState,
-    clickedPresetId: presetId,
-    clickedType: type,
-    filteredItems: items,
-  });
-  if (uiPlan.route === "error") {
-    setPreviewPresetModuleError(String(uiPlan.errorMessage || ""));
-    return;
-  }
-  setPreviewPresetModuleError("");
-  patchPreviewPresetPickerFlowState(previewPresetPickerFlowState, uiPlan.pickerStatePatch || {});
-  if (uiPlan.shouldRenderCards) renderPreviewPresetModuleCards();
-  if (uiPlan.shouldApplySelectedPreset) applySelectedPreviewPresetModule();
+  return previewPresetApplyHelpers?.handlePreviewPresetModuleCardClick(buttonEl);
 }
 
 function applyPreviewPresetByContext(
@@ -2389,49 +2231,16 @@ function applyPreviewPresetByContext(
   type = previewPresetPickerFlowState.moduleType,
   selectedFilterKey = previewPresetPickerFlowState.filterKey
 ) {
-  const runtimeUiPlan = buildPreviewPresetApplyRuntimeUiDispatchPlan({
+  return previewPresetApplyHelpers?.applyPreviewPresetByContext(
+    preset,
     presetContext,
-    moduleType: type,
-  });
-  if (runtimeUiPlan.route === "edit-corner") {
-    applyPreviewPresetToExistingCorner(runtimeUiPlan.edgeId, preset, selectedFilterKey);
-    return;
-  }
-  if (runtimeUiPlan.route === "edit-bay") {
-    applyPreviewPresetToExistingBay(runtimeUiPlan.edgeId, preset, selectedFilterKey);
-    return;
-  }
-  if (runtimeUiPlan.route === "add-corner") {
-    applyPreviewPresetCornerModule(preset, selectedFilterKey);
-    return;
-  }
-  applyPreviewPresetNormalModule(preset, selectedFilterKey);
+    type,
+    selectedFilterKey
+  );
 }
 
 function applySelectedPreviewPresetModule() {
-  const preset = getPreviewPresetSelectedPreset();
-  const runtimeUiPlan = buildPreviewPresetPickerApplyRuntimeUiDispatchPlan({
-    pickerFlowState: previewPresetPickerFlowState,
-    preset,
-  });
-  if (runtimeUiPlan.route === "error") {
-    setPreviewPresetModuleError(String(runtimeUiPlan.errorMessage || ""));
-    return;
-  }
-  setPreviewPresetModuleError("");
-  if (runtimeUiPlan.route === "return-to-preset-module-option") {
-    patchPresetModuleOptionFlowState(presetModuleOptionFlowState, {
-      draft: runtimeUiPlan.nextDraft,
-    });
-    closePreviewPresetModuleModal(runtimeUiPlan.closePickerOptions);
-    return;
-  }
-  applyPreviewPresetByContext(
-    preset,
-    runtimeUiPlan.applyContext,
-    runtimeUiPlan.applyType,
-    runtimeUiPlan.applyFilterKey
-  );
+  return previewPresetApplyHelpers?.applySelectedPreviewPresetModule();
 }
 
 function savePresetModuleOptionModal() {
@@ -5862,57 +5671,44 @@ let initialized = false;
 
 function init() {
   if (initialized) return;
-  const shelfCards = $(materialPickers.shelf.cardsId);
-  const columnCards = $(materialPickers.column.cardsId);
-  if (!shelfCards || !columnCards) {
+  if (!isSystemInitMountReady({ $, materialPickers })) {
     setTimeout(init, 50);
     return;
   }
   initialized = true;
 
-  try {
-    initEmailJS();
-    customerPhotoUploader = initCustomerPhotoUploader({
-      showInfoModal,
-      onChange: () => updateSendButtonEnabled(),
-    });
-    resetOrderCompleteUI();
-    initCollapsibleSections();
-    renderSystemAddonModalCards();
-    bindOptionModalFrontPreviewEvents();
-    bindPendingOptionModalCleanupOnClose();
-  } catch (err) {
-    console.error("init base setup failed", err);
-  }
-
-  try {
-    Object.values(materialPickers).forEach((picker) => {
-      picker.categories = buildCategories(picker.materials);
-      picker.selectedCategory = picker.categories[0] || "기타";
-      renderMaterialTabs(picker);
-      renderMaterialCards(picker);
-      updateSelectedMaterialCard(picker);
-      updateThicknessOptions(picker);
-    });
-  } catch (err) {
-    console.error("init material setup failed", err);
-  }
-
-  try {
-    initShelfStateForShape(getSelectedShape());
-    renderShapeSizeInputs();
-    renderBayInputs();
-    renderTable();
-    renderSummary();
-    refreshBuilderDerivedUI();
-    updateBayAddonAvailability();
-    updateStepVisibility();
-    updateBuilderHistoryButtons();
-    bindPreviewFrameResizeSync();
-    requestStickyOffsetUpdate();
-  } catch (err) {
-    console.error("init render failed", err);
-  }
+  runSystemInitSequence({
+    initEmailJS,
+    initCustomerPhotoUploader,
+    showInfoModal,
+    updateSendButtonEnabled,
+    assignCustomerPhotoUploader: (uploader) => {
+      customerPhotoUploader = uploader;
+    },
+    resetOrderCompleteUI,
+    initCollapsibleSections,
+    renderSystemAddonModalCards,
+    bindOptionModalFrontPreviewEvents,
+    bindPendingOptionModalCleanupOnClose,
+    materialPickers,
+    buildCategories,
+    renderMaterialTabs,
+    renderMaterialCards,
+    updateSelectedMaterialCard,
+    updateThicknessOptions,
+    initShelfStateForShape,
+    getSelectedShape,
+    renderShapeSizeInputs,
+    renderBayInputs,
+    renderTable,
+    renderSummary,
+    refreshBuilderDerivedUI,
+    updateBayAddonAvailability,
+    updateStepVisibility,
+    updateBuilderHistoryButtons,
+    bindPreviewFrameResizeSync,
+    requestStickyOffsetUpdate,
+  });
 
   bindSystemInitEvents({
     $,
