@@ -127,6 +127,26 @@ export function createSystemOrderHelpers({
     return rows.length ? rows.join(", ") : emptyText;
   };
 
+  const buildSystemColumnExtraHeightLine = (column = null, layoutSpec = null) => {
+    const rawGroups = Array.isArray(column?.spaceExtraHeights) ? column.spaceExtraHeights : [];
+    const normalizedGroups = rawGroups
+      .map((group, index) => {
+        const values = (Array.isArray(group) ? group : [group])
+          .map((value) => Math.round(Number(value || 0)))
+          .filter((value) => Number.isFinite(value) && value > 0);
+        if (!values.length) return "";
+        const label = String(layoutSpec?.sections?.[index]?.label || `설치공간${index + 1}`);
+        const valuesText = values.map((value) => `${value}mm`).join(", ");
+        return { label, valuesText };
+      })
+      .filter(Boolean);
+    if (!normalizedGroups.length) return "";
+    if (normalizedGroups.length === 1) {
+      return `개별높이 ${normalizedGroups[0].valuesText}`;
+    }
+    return `개별높이 ${normalizedGroups.map((group) => `${group.label} ${group.valuesText}`).join(" | ")}`;
+  };
+
   const buildSystemGroupDisplayItems = (items = []) => {
     const groupMap = new Map();
     (Array.isArray(items) ? items : []).forEach((item) => {
@@ -186,6 +206,8 @@ export function createSystemOrderHelpers({
 
     if (column) {
       lines.push(`포스트바 컬러 ${columnMat?.name || "-"} · ${formatColumnSize(column)}`);
+      const extraHeightLine = buildSystemColumnExtraHeightLine(column, groupItem?.layoutSpec);
+      if (extraHeightLine) lines.push(extraHeightLine);
     }
 
     lines.push(
