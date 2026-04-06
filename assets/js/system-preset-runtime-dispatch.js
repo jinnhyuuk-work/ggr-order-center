@@ -493,20 +493,46 @@ export function createSystemPresetRuntimeDispatchHelpers(deps = {}) {
     const { componentSummary, furnitureSummary, rodCount, furnitureAddonId } =
       buildPresetAddonBreakdownFromPreset(preset);
     const previewColors = getModuleFrontPreviewMaterialColors();
-    container.innerHTML = buildModuleFrontPreviewHtml({
-      moduleLabel: moduleType === "corner" ? "코너 모듈" : "일반 모듈",
-      sizeLabel,
-      shelfCount: Number(preset.count || 1),
-      rodCount,
-      furnitureAddonId,
-      componentSummary,
-      furnitureSummary,
-      type: moduleType === "corner" ? "corner" : "bay",
-      averageHeightMm,
-      shelfWidthMm,
-      shelfColor: previewColors.shelfColor,
-      postBarColor: previewColors.postBarColor,
-    });
+    try {
+      container.innerHTML = buildModuleFrontPreviewHtml({
+        moduleLabel: moduleType === "corner" ? "코너 모듈" : "일반 모듈",
+        sizeLabel,
+        shelfCount: Number(preset.count || 1),
+        rodCount,
+        furnitureAddonId,
+        isExtendedModule: String(preset.categoryKey || "") === "etc",
+        componentSummary,
+        furnitureSummary,
+        type: moduleType === "corner" ? "corner" : "bay",
+        averageHeightMm,
+        shelfWidthMm,
+        shelfColor: previewColors.shelfColor,
+        postBarColor: previewColors.postBarColor,
+      });
+    } catch (err) {
+      console.error("[system] Failed to render preset module front preview", {
+        presetId: String(preset?.id || ""),
+        moduleType,
+      }, err);
+      container.innerHTML = `
+        <div class="module-front-preview-card">
+          <div class="module-front-preview-head">
+            <div class="module-front-preview-title">모듈 미리보기</div>
+            ${sizeLabel ? `<span class="module-front-preview-chip">${escapeHtml(sizeLabel)}</span>` : ""}
+          </div>
+          <div class="module-front-preview-canvas" aria-hidden="true">
+            <div class="module-front-preview-empty-guide">선택한 모듈 미리보기를 불러오지 못했습니다.</div>
+          </div>
+          <div class="module-front-preview-meta">
+            <div class="module-front-preview-row">
+              <span class="label">선택 모듈</span>
+              <span class="value">${escapeHtml(String(preset?.label || "-"))}</span>
+            </div>
+          </div>
+          <div class="module-front-preview-note">다시 선택하거나 맞춤구성 탭에서 직접 구성할 수 있습니다.</div>
+        </div>
+      `;
+    }
   };
 
   const ensurePresetModuleOptionCustomComposeSession = () => {

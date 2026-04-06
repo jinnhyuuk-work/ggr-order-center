@@ -3012,6 +3012,12 @@ th, td {
   flex: 0 0 auto;
 }
 
+.module-front-preview-stage {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
 .module-front-preview-box--corner {
   background: transparent;
 }
@@ -3060,6 +3066,10 @@ th, td {
   display: inline-flex;
   align-items: center;
   pointer-events: none;
+}
+
+.module-front-preview-dimension--floor-clear {
+  transform: translate(-50%, 0);
 }
 
 .module-front-preview-dimension-label {

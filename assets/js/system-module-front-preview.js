@@ -12,6 +12,7 @@ export function createModuleFrontPreviewHelpers(deps = {}) {
     MODULE_FRONT_PREVIEW_GSH1_LOWER_CLEAR_MM,
     MODULE_FRONT_PREVIEW_HANGER_OFFSET_MM,
     MODULE_FRONT_PREVIEW_REFERENCE_HEIGHT_MM,
+    getModuleFrontPreviewShelfAnchorsMm,
     buildModuleFrontPreviewGeometry,
     buildModuleFrontPreviewAlphaColor,
     escapeHtml,
@@ -259,6 +260,7 @@ function buildModuleFrontPreviewHtml({
   shelfCount = 1,
   rodCount = 0,
   furnitureAddonId = "",
+  isExtendedModule = false,
   componentSummary = "-",
   furnitureSummary = "-",
   type = "bay",
@@ -449,23 +451,6 @@ function buildModuleFrontPreviewHtml({
       });
     }
   }
-  if (layout.shelfTopPositionsMm.length === 1) {
-    const onlyShelfTopMm = Number(layout.shelfTopPositionsMm[0] || 0);
-    const floorGapDimension = getModuleFrontPreviewClearDimensionBetweenShelves({
-      upperShelfTopMm: onlyShelfTopMm,
-      lowerShelfTopMm: Number(geometry.heightMm || 0),
-      shelfThicknessMm: geometry.shelfThicknessMm,
-      furnitureBox: layout.furnitureBox,
-    });
-    const floorClearMm = Math.max(0, Number(floorGapDimension.clearMm || 0));
-    const floorCenterMm = Number(floorGapDimension.centerMm || 0);
-    const roundedFloorClearMm = Math.max(0, Math.round(floorClearMm / 10) * 10);
-    dimensionEntries.push({
-      key: "clear-floor-0",
-      label: `${roundedFloorClearMm}mm`,
-      centerMm: floorCenterMm,
-    });
-  }
   for (let index = 0; index < layout.shelfTopPositionsMm.length - 1; index += 1) {
     const upperShelfTopMm = Number(layout.shelfTopPositionsMm[index] || 0);
     const lowerShelfTopMm = Number(layout.shelfTopPositionsMm[index + 1] || 0);
@@ -500,13 +485,57 @@ function buildModuleFrontPreviewHtml({
       centerMm,
     });
   });
+  const lowestShelfTopMm = layout.shelfTopPositionsMm.length
+    ? Number(layout.shelfTopPositionsMm[layout.shelfTopPositionsMm.length - 1] || 0)
+    : null;
+  const lowestShelfUndersideMm =
+    Number.isFinite(lowestShelfTopMm) && lowestShelfTopMm !== null
+      ? lowestShelfTopMm + Number(geometry.shelfThicknessMm || 0)
+      : null;
+  const hasFloorFurniture = String(layout.furnitureBox?.kind || "") === "floor";
+  const hasFurnitureBelowLowestShelf =
+    Number.isFinite(lowestShelfUndersideMm) &&
+    layout.furnitureBox &&
+    Number(layout.furnitureBox.bottomMm || 0) > Number(lowestShelfUndersideMm || 0) &&
+    Number(layout.furnitureBox.topMm || 0) < Number(geometry.heightMm || 0);
+  if (
+    Number.isFinite(lowestShelfUndersideMm) &&
+    !hasFloorFurniture &&
+    !Boolean(isExtendedModule) &&
+    !hasFurnitureBelowLowestShelf
+  ) {
+    const floorClearMm = Math.max(
+      0,
+      Number(geometry.heightMm || 0) - Number(lowestShelfUndersideMm || 0)
+    );
+    const roundedFloorClearMm = Math.max(0, Math.round(floorClearMm / 10) * 10);
+    if (roundedFloorClearMm > 0) {
+      dimensionEntries.push({
+        key: "clear-floor",
+        label: `${roundedFloorClearMm}mm`,
+        centerMm: Number(lowestShelfUndersideMm || 0) + floorClearMm / 2,
+        className: "module-front-preview-dimension--floor-clear",
+        renderBelowFrame: true,
+      });
+    }
+  }
   const dimensionAnchorLeftPx = Math.round(geometry.totalWidthPx / 2);
+  const hasBelowFrameDimension = dimensionEntries.some((entry) => Boolean(entry.renderBelowFrame));
+  const belowFrameDimensionGutterPx = hasBelowFrameDimension ? 24 : 0;
   const dimensionEntriesHtml = dimensionEntries
     .map((entry) => {
-      const topPx = clampModuleFrontPreviewValue(mmToPx(entry.centerMm), 6, frameHeightPx - 6);
+      const topPx = entry.renderBelowFrame
+        ? frameHeightPx + 8
+        : clampModuleFrontPreviewValue(mmToPx(entry.centerMm), 6, frameHeightPx - 6);
+      const className = [
+        "module-front-preview-dimension",
+        String(entry.className || "").trim(),
+      ]
+        .filter(Boolean)
+        .join(" ");
       return `
         <div
-          class="module-front-preview-dimension"
+          class="${className}"
           style="top:${topPx}px; left:${dimensionAnchorLeftPx}px;"
         >
           <span class="module-front-preview-dimension-label">${escapeHtml(entry.label)}</span>
@@ -536,15 +565,20 @@ function buildModuleFrontPreviewHtml({
       </div>
       <div class="module-front-preview-canvas" aria-hidden="true">
         <div
-          class="module-front-preview-box module-front-preview-box--${escapeHtml(type)}"
-          style="width:${geometry.totalWidthPx}px; height:${geometry.heightPx}px; margin-left:${dimensionGutterPx}px;"
+          class="module-front-preview-stage"
+          style="width:${geometry.totalWidthPx}px; height:${geometry.heightPx + belowFrameDimensionGutterPx}px; margin-left:${dimensionGutterPx}px;"
         >
-          <div class="module-front-preview-side module-front-preview-side--left" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
-          <div class="module-front-preview-side module-front-preview-side--right" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
-          ${furnitureHtml}
-          ${shelfLinesHtml}
-          ${hangerLinesHtml}
-          ${dimensionEntriesHtml}
+          <div
+            class="module-front-preview-box module-front-preview-box--${escapeHtml(type)}"
+            style="width:${geometry.totalWidthPx}px; height:${geometry.heightPx}px;"
+          >
+            <div class="module-front-preview-side module-front-preview-side--left" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
+            <div class="module-front-preview-side module-front-preview-side--right" style="width:${geometry.columnThicknessPx}px; background:${postBarColor};"></div>
+            ${furnitureHtml}
+            ${shelfLinesHtml}
+            ${hangerLinesHtml}
+            ${dimensionEntriesHtml}
+          </div>
         </div>
         ${overflowChipsHtml}
       </div>

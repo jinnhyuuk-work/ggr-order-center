@@ -1981,8 +1981,13 @@ function reopenPresetModuleOptionModalAfterPresetPicker() {
       presetModuleOptionFlowState.draft
     ),
   });
-  syncPresetModuleOptionModal();
   openModal("#presetModuleOptionModal", { focusTarget: "#presetModuleOptionModalTitle" });
+  try {
+    syncPresetModuleOptionModal();
+  } catch (err) {
+    console.error("[system] Failed to reopen preset module option modal after preset picker", err);
+    setPresetModuleOptionError("선택한 모듈 정보를 불러오지 못했습니다. 다시 선택해주세요.");
+  }
 }
 
 function handlePresetModuleOptionFilterChange() {
@@ -2023,7 +2028,13 @@ function openPresetPickerFromPresetModuleOptionModal() {
     suppressPendingOptionModalCleanupOnce = true;
   }
   closePresetModuleOptionModal({ returnFocus: false, clearState: false });
-  openPreviewPresetModuleModal(nextOpen.moduleType, nextOpen.options);
+  try {
+    openPreviewPresetModuleModal(nextOpen.moduleType, nextOpen.options);
+  } catch (err) {
+    console.error("[system] Failed to open preview preset module modal from preset module option", err);
+    reopenPresetModuleOptionModalAfterPresetPicker();
+    setPresetModuleOptionError("모듈 선택 창을 열지 못했습니다. 다시 시도해주세요.");
+  }
 }
 
 const previewPresetPickerHelpers = createSystemPreviewPresetPickerHelpers({
