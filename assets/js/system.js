@@ -3600,11 +3600,22 @@ function buildBuilderEdgeRows() {
     const widthText = isCorner
       ? `${cornerPrimaryMm} × ${cornerSecondaryMm}mm${edge.customProcessing ? " (비규격)" : ""}`
       : `${Number(edge.width || 0)}mm`;
+    const presetDraft = buildPresetModuleOptionDraftSeedFromEdge(edge.id);
+    const moduleLabel =
+      presetDraft?.activeTab === "preset" && presetDraft?.presetId
+        ? String(
+            getPreviewPresetItemsForType(presetDraft.moduleType).find(
+              (item) => String(item?.id || "") === String(presetDraft.presetId || "")
+            )?.label || ""
+          )
+        : "";
+    const moduleLabelText = moduleLabel ? `모듈명 ${moduleLabel} / ` : "";
     rows.push({
       id: edge.id,
       isCorner,
+      moduleLabel,
       title: `${isCorner ? "코너" : "모듈"} ${idx + 1}`,
-      meta: `${widthText} / 선반 ${Number(edge.count || 1)}개 / ${addonText}`,
+      meta: `${moduleLabelText}${widthText} / 선반 ${Number(edge.count || 1)}개 / ${addonText}`,
     });
   });
   return rows;

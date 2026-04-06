@@ -29,6 +29,7 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
     const customer = getCustomerInfo();
     const summary = buildGrandSummary();
     const displayItems = systemOrderHelpers.buildSystemGroupDisplayItems(getStateItems());
+    const builderRows = buildBuilderEdgeRows();
     const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
 
     const itemsHtml =
@@ -42,6 +43,13 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
                 detailInline ? ` · ${escapeHtml(detailInline)}` : ""
               } · 금액 ${amountText}</p>`;
             })
+            .join("");
+
+    const builderRowsHtml =
+      builderRows.length === 0
+        ? '<p class="item-line">구성된 모듈이 없습니다.</p>'
+        : builderRows
+            .map((row) => `<p class="item-line">${escapeHtml(row.title)} · ${escapeHtml(row.meta)}</p>`)
             .join("");
 
     container.innerHTML = `
@@ -58,11 +66,14 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
         ${itemsHtml}
       </div>
       <div class="complete-section">
+        <h4>모듈 내역</h4>
+        ${builderRowsHtml}
+      </div>
+      <div class="complete-section">
         <h4>합계</h4>
         <p>서비스: ${escapeHtml(formatFulfillmentLine(summary.fulfillment))}</p>
         <p>예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}</p>
         <p>자재비: ${summary.materialsTotal.toLocaleString()}원</p>
-        <p>예상무게: ${summary.totalWeight.toFixed(2)}kg</p>
       </div>
     `;
   };

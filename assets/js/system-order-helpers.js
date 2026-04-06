@@ -188,7 +188,6 @@ export function createSystemOrderHelpers({
         furnitureCost: addonCost.furnitureCost,
         subtotal: sumNumericField(entries, "subtotal"),
         vat: sumNumericField(entries, "vat"),
-        weightKg: sumNumericField(entries, "weightKg"),
         isCustomPrice: entries.some((item) => Boolean(item?.isCustomPrice)),
         column: columnsItem?.column || null,
         layoutSpec: columnsItem?.layoutSpec || bays[0]?.layoutSpec || null,
@@ -390,6 +389,7 @@ export function createSystemOrderHelpers({
       id: String(row.id || ""),
       title: String(row.title || ""),
       meta: String(row.meta || ""),
+      moduleLabel: String(row.moduleLabel || ""),
       isCorner: Boolean(row.isCorner),
     })),
   });
