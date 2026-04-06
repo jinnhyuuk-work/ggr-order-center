@@ -24,6 +24,7 @@ function buildModuleFrontPreviewLayout({
   shelfCount = 0,
   rodCount = 0,
   furnitureAddonId = "",
+  layoutPresetId = "",
   moduleType = "bay",
   geometry,
 } = {}) {
@@ -151,6 +152,20 @@ function buildModuleFrontPreviewLayout({
     });
     if (
       String(moduleType || "bay") === "bay" &&
+      String(layoutPresetId || "").toUpperCase() === "GS-3" &&
+      visibleShelfCount === 3 &&
+      normalizedRodCount === 0
+    ) {
+      const gs5TopShelfPositionsMm = buildModuleFrontPreviewSteppedShelfPositionsMm({
+        shelfCount: 5,
+        topShelfTopMm,
+        bottomShelfTopMm,
+        shelfThicknessMm,
+      });
+      shelfTopPositionsMm = gs5TopShelfPositionsMm.slice(0, 3);
+    }
+    if (
+      String(moduleType || "bay") === "bay" &&
       visibleShelfCount === 3 &&
       normalizedRodCount === 1
     ) {
@@ -260,6 +275,7 @@ function buildModuleFrontPreviewHtml({
   shelfCount = 1,
   rodCount = 0,
   furnitureAddonId = "",
+  layoutPresetId = "",
   isExtendedModule = false,
   componentSummary = "-",
   furnitureSummary = "-",
@@ -284,6 +300,7 @@ function buildModuleFrontPreviewHtml({
     shelfCount: normalizedShelfCount,
     rodCount: normalizedRodCount,
     furnitureAddonId,
+    layoutPresetId,
     moduleType: type,
     geometry,
   });
@@ -501,7 +518,6 @@ function buildModuleFrontPreviewHtml({
   if (
     Number.isFinite(lowestShelfUndersideMm) &&
     !hasFloorFurniture &&
-    !Boolean(isExtendedModule) &&
     !hasFurnitureBelowLowestShelf
   ) {
     const floorClearMm = Math.max(

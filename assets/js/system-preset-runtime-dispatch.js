@@ -500,6 +500,7 @@ export function createSystemPresetRuntimeDispatchHelpers(deps = {}) {
         shelfCount: Number(preset.count || 1),
         rodCount,
         furnitureAddonId,
+        layoutPresetId: String(preset.id || ""),
         isExtendedModule: String(preset.categoryKey || "") === "etc",
         componentSummary,
         furnitureSummary,
