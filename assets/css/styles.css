@@ -3835,13 +3835,62 @@ button.card-base:active {
 
 @media (max-width: 768px) {
   .modal-content {
-    width: min(520px, calc(100vw - 15vw));
-    margin: 14px auto;
+    width: min(560px, calc(100vw - 24px));
+    margin: 10px auto;
     padding: 16px;
-    max-height: 78vh;
-    max-height: min(78dvh, calc(100dvh - 28px));
+    max-height: 90vh;
+    max-height: min(90dvh, calc(100dvh - 20px));
     min-height: auto;
     border-radius: var(--radius-lg);
+  }
+
+  #shelfMaterialModal .modal-content,
+  #columnMaterialModal .modal-content,
+  #systemAddonModal .modal-content,
+  #previewPresetModuleModal .modal-content,
+  #presetModuleOptionModal .modal-content {
+    min-height: min(78dvh, 720px);
+  }
+
+  .modal .material-tabs {
+    gap: 6px;
+    margin: 8px 0 12px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .modal .material-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .modal .material-tab {
+    flex: 0 0 auto;
+    padding: 7px 11px;
+    min-height: 34px;
+    font-size: var(--font-size-caption);
+    white-space: nowrap;
+  }
+
+  .modal-tabs {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .modal .material-category-header {
+    margin-bottom: 6px;
+  }
+
+  .modal .material-category-title {
+    font-size: var(--font-size-sm);
+  }
+
+  .modal .material-category-desc {
+    margin-bottom: 0;
+    font-size: var(--font-size-caption);
   }
 
   .preview-action-modal .modal-content {
@@ -3856,10 +3905,26 @@ button.card-base:active {
   }
 
   .modal-content {
-    width: calc(100vw - 15vw);
-    margin: 12px auto;
-    padding: 14px;
+    width: calc(100vw - 16px);
+    margin: 8px auto;
+    padding: 12px;
+    max-height: 92vh;
+    max-height: min(92dvh, calc(100dvh - 16px));
     border-radius: var(--radius-md);
+  }
+
+  #shelfMaterialModal .modal-content,
+  #columnMaterialModal .modal-content,
+  #systemAddonModal .modal-content,
+  #previewPresetModuleModal .modal-content,
+  #presetModuleOptionModal .modal-content {
+    min-height: min(84dvh, calc(100dvh - 16px));
+  }
+
+  .modal .material-tab {
+    padding: 6px 10px;
+    min-height: 32px;
+    font-size: var(--font-size-micro);
   }
 
   .preview-action-modal .modal-content {
