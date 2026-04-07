@@ -281,7 +281,7 @@ const COLUMN_ENDPOINT_HALF_MM = COLUMN_ENDPOINT_WIDTH_MM / 2;
 const SYSTEM_SHAPE_DEFAULT = "i_single";
 const SYSTEM_SHAPE_KEYS = Object.freeze(["i_single", "l_shape", "rl_shape", "u_shape", "box_shape"]);
 const SYSTEM_LAYOUT_TYPE_LABELS = Object.freeze({
-  i_single: "ㅣ자",
+  i_single: "ㅡ자",
   l_shape: "ㄱ자",
   rl_shape: "역ㄱ자",
   u_shape: "ㄷ자",

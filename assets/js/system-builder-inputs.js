@@ -46,7 +46,7 @@ export function renderShapeSizeInputsView({
     <div class="input-tip">
       <ul class="input-tip-list">
          <li>레이아웃 타입은 코너를 사용해 연결되는 구성을 기준으로 합니다.</li>
-         <li>연결되지 않은 구성을 원하실 경우 ㅣ자로 개별 구성해주세요.</li>
+         <li>연결되지 않은 구성을 원하실 경우 ㅡ자로 개별 구성해주세요.</li>
        </ul>
     </div>
     <div class="layout-type-grid" role="group" aria-label="레이아웃 타입 선택">
