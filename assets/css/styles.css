@@ -2672,7 +2672,6 @@ th, td {
   bottom: 0;
   background: var(--color-surface);
   padding-top: 10px;
-  margin-top: 10px;
   display: flex;
   justify-content: flex-end;
 }
@@ -3367,7 +3366,6 @@ th, td {
 #topServiceModal .modal-footer {
   gap: 8px;
   padding-top: 12px;
-  margin-top: 12px;
   border-top: 1px solid var(--color-border-faint);
 }
 
