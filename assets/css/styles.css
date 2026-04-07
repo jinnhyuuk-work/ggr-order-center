@@ -3835,7 +3835,7 @@ button.card-base:active {
 
 @media (max-width: 768px) {
   .modal-content {
-    width: min(560px, calc(100vw - 24px));
+    width: min(560px, calc(94vw - 24px));
     margin: 10px auto;
     padding: 16px;
     max-height: 90vh;
