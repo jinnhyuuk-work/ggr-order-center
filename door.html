@@ -145,18 +145,18 @@
                 <ul class="input-tip-list">
                   <li>자동 계산된 경첩 위치가 선반에 걸릴 수 있으니 선반의 위치를 확인해주세요.</li>
                   <li>기존 도어가 있다면 기존 도어에 맞춰 경첩 위치를 수정해주세요.</li>
-                  <li>경첩 방향은 도어가 열리는 방향이 아닌 경첩이 고정될 방향입니다.</li>
+                  <li>문 위치를 선택하면 좌측문은 우측경첩, 우측문은 좌측경첩으로 적용됩니다.</li>
                 </ul>
               </div>
               <div id="doorHingeFields">
                 <div class="form-row">
-                  <div id="doorHingeSideLabel" class="form-row-label">경첩 방향</div>
+                  <div id="doorHingeSideLabel" class="form-row-label">문 위치</div>
                   <div class="field-col">
                     <div class="door-hinge-side-toggle" role="group" aria-labelledby="doorHingeSideLabel">
-                      <button type="button" class="door-hinge-toggle-btn is-active" data-door-hinge-side="left" aria-pressed="true">좌측</button>
-                      <button type="button" class="door-hinge-toggle-btn" data-door-hinge-side="right" aria-pressed="false">우측</button>
+                      <button type="button" class="door-hinge-toggle-btn is-active" data-door-hinge-side="right" aria-pressed="true">좌측문</button>
+                      <button type="button" class="door-hinge-toggle-btn" data-door-hinge-side="left" aria-pressed="false">우측문</button>
                     </div>
-                    <input type="hidden" id="doorHingeSide" value="left" />
+                    <input type="hidden" id="doorHingeSide" value="right" />
                   </div>
                 </div>
 

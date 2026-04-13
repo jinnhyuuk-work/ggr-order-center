@@ -699,7 +699,7 @@ function resolveDoorHingeCountByLength(length) {
 function createDefaultDoorHingeConfig() {
   return {
     enabled: true,
-    side: "left",
+    side: "right",
     count: DOOR_HINGE_MIN_COUNT,
     edgeDistance: DOOR_HINGE_DEFAULT_EDGE_DISTANCE,
     holes: [],

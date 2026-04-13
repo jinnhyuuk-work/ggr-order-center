@@ -39,7 +39,7 @@ export const DOOR_MEASUREMENT_GUIDES = Object.freeze({
   },
   "door-hinge": {
     title: "경첩 위치 측정법",
-    intro: "경첩 위치는 문이 열리는 방향보다 경첩 고정 방향 기준으로 잡는 것이 중요합니다.",
+    intro: "경첩 위치는 문 위치에 따라 반대편 경첩 방향으로 잡는 것이 중요합니다.",
     images: [
       {
         src: "assets/img/page/door/measure/hinge-measure-01.jpg",
@@ -52,9 +52,9 @@ export const DOOR_MEASUREMENT_GUIDES = Object.freeze({
     ],
     sections: [
       {
-        title: "1. 경첩 방향 먼저 선택",
+        title: "1. 문 위치 먼저 선택",
         items: [
-          "좌측/우측 중 경첩이 고정될 측면을 먼저 정하세요.",
+          "좌측문/우측문 중 문 위치를 먼저 정하세요. 좌측문은 우측경첩, 우측문은 좌측경첩으로 적용됩니다.",
           "방향이 바뀌면 모든 위치 기준점이 함께 바뀝니다.",
         ],
       },
