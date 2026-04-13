@@ -2,6 +2,7 @@ export function createSystemOrderHelpers({
   SHELF_LENGTH_MM = 400,
   ADDON_CLOTHES_ROD_ID = "clothes_rod",
   SYSTEM_ADDON_ITEMS = [],
+  SYSTEM_SHELF_MATERIALS = {},
   SYSTEM_COLUMN_MATERIALS = {},
   calcAddonCostBreakdown,
   buildLayoutSpecLinesFromSnapshot,
@@ -28,8 +29,18 @@ export function createSystemOrderHelpers({
       const length = Math.max(0, Number(SHELF_LENGTH_MM || 0));
       const count = Math.max(0, Number(qty || 0));
       if (!count || !width || !length) return;
-      const key = `${thickness}T-${width}x${length}`;
-      const prev = bucket.get(key) || { thickness, width, length, count: 0, materialCost: 0 };
+      const materialId = String(shelf?.materialId || "");
+      const materialName = SYSTEM_SHELF_MATERIALS[materialId]?.name || materialId || "-";
+      const key = `${materialId}:${thickness}T-${width}x${length}`;
+      const prev = bucket.get(key) || {
+        materialId,
+        materialName,
+        thickness,
+        width,
+        length,
+        count: 0,
+        materialCost: 0,
+      };
       prev.count += count;
       prev.materialCost += Math.max(0, Number(materialCost || 0));
       bucket.set(key, prev);
@@ -98,11 +109,17 @@ export function createSystemOrderHelpers({
 
     return {
       normalShelf: Array.from(normalShelfMap.values()).sort((a, b) => {
+        if (a.materialName !== b.materialName) {
+          return String(a.materialName || "").localeCompare(String(b.materialName || ""), "ko");
+        }
         if (a.width !== b.width) return a.width - b.width;
         if (a.length !== b.length) return a.length - b.length;
         return a.thickness - b.thickness;
       }),
       cornerShelf: Array.from(cornerShelfMap.values()).sort((a, b) => {
+        if (a.materialName !== b.materialName) {
+          return String(a.materialName || "").localeCompare(String(b.materialName || ""), "ko");
+        }
         if (a.width !== b.width) return a.width - b.width;
         if (a.length !== b.length) return a.length - b.length;
         return a.thickness - b.thickness;
@@ -127,7 +144,34 @@ export function createSystemOrderHelpers({
     return rows.length ? rows.join(", ") : emptyText;
   };
 
-  const buildSystemColumnExtraHeightLine = (column = null, layoutSpec = null) => {
+  const formatMm = (value) => {
+    const mm = Math.round(Number(value || 0));
+    return Number.isFinite(mm) && mm > 0 ? `${mm}mm` : "-";
+  };
+
+  const uniqueTextValues = (values = []) =>
+    Array.from(
+      new Set(
+        (Array.isArray(values) ? values : [])
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+  const buildLayoutSectionWidthText = (layoutSpec = null) => {
+    const sections = Array.isArray(layoutSpec?.sections) ? layoutSpec.sections : [];
+    const rows = sections
+      .map((section, idx) => {
+        const lengthMm = Math.round(Number(section?.lengthMm || 0));
+        if (!Number.isFinite(lengthMm) || lengthMm <= 0) return "";
+        const label = String(section?.label || `설치공간${idx + 1}`);
+        return sections.length === 1 ? `${lengthMm}mm` : `${label} ${lengthMm}mm`;
+      })
+      .filter(Boolean);
+    return rows.length ? rows.join(" / ") : "-";
+  };
+
+  const buildSystemColumnExtraHeightValue = (column = null, layoutSpec = null) => {
     const rawGroups = Array.isArray(column?.spaceExtraHeights) ? column.spaceExtraHeights : [];
     const normalizedGroups = rawGroups
       .map((group, index) => {
@@ -137,14 +181,86 @@ export function createSystemOrderHelpers({
         if (!values.length) return "";
         const label = String(layoutSpec?.sections?.[index]?.label || `설치공간${index + 1}`);
         const valuesText = values.map((value) => `${value}mm`).join(", ");
-        return { label, valuesText };
+        return `${label} ${valuesText}`;
       })
       .filter(Boolean);
-    if (!normalizedGroups.length) return "";
-    if (normalizedGroups.length === 1) {
-      return `개별높이 ${normalizedGroups[0].valuesText}`;
-    }
-    return `개별높이 ${normalizedGroups.map((group) => `${group.label} ${group.valuesText}`).join(" | ")}`;
+    return normalizedGroups.length ? normalizedGroups.join(" / ") : "없음";
+  };
+
+  const buildSystemPostBarInfoText = (groupItem = null) => {
+    const breakdown = groupItem?.breakdown || {};
+    const column = groupItem?.column || null;
+    if (!column) return "없음";
+    const columnMat = SYSTEM_COLUMN_MATERIALS[column.materialId] || null;
+    const postBarRows = [...(breakdown.basePostBars || []), ...(breakdown.cornerPostBars || [])];
+    const countText = formatSystemGroupedCountText(
+      postBarRows,
+      (entry) => `${entry.kindLabel} 포스트바${entry.tierLabel ? `(${entry.tierLabel})` : ""} ${entry.count}개`
+    );
+    return `컬러: ${columnMat?.name || "-"} / 수량: ${countText}`;
+  };
+
+  const buildSystemShelfInfoText = (entries = []) => {
+    const rows = Array.isArray(entries) ? entries : [];
+    if (!rows.length) return "없음";
+    const colorText = uniqueTextValues(rows.map((entry) => entry.materialName || "-")).join(", ") || "-";
+    const sizeText = rows
+      .map((entry) => `${entry.thickness}T ${entry.width}×${entry.length}mm ${entry.count}개`)
+      .join(", ");
+    return `컬러: ${colorText} / 사이즈·수량: ${sizeText}`;
+  };
+
+  const buildSystemCornerShelfInfoText = (breakdown = {}) => {
+    const rows = Array.isArray(breakdown.cornerShelf) ? breakdown.cornerShelf : [];
+    const baseText = buildSystemShelfInfoText(rows);
+    const cutText = formatSystemGroupedCountText(
+      breakdown.cornerCustomCuts,
+      (entry) => `${entry.primaryMm}×${entry.secondaryMm}mm ${entry.count}개`,
+      ""
+    );
+    if (!cutText) return baseText;
+    return baseText === "없음" ? `비규격 절단: ${cutText}` : `${baseText} / 비규격 절단: ${cutText}`;
+  };
+
+  const buildSystemHangerInfoText = (breakdown = {}) => {
+    const hangerCount = Math.max(0, Math.floor(Number(breakdown.hangerCount || 0)));
+    if (!hangerCount) return "없음";
+    const hangerItem = SYSTEM_ADDON_ITEMS.find((item) => String(item?.id || "") === ADDON_CLOTHES_ROD_ID);
+    return `${hangerItem?.name || "행거"} ${hangerCount}개`;
+  };
+
+  const buildSystemFurnitureInfoText = (breakdown = {}) =>
+    formatSystemGroupedCountText(
+      breakdown.furniture,
+      (entry) => `${entry.label} ${entry.count}개`
+    );
+
+  const buildSystemColumnExtraHeightLine = (column = null, layoutSpec = null) => {
+    const valueText = buildSystemColumnExtraHeightValue(column, layoutSpec);
+    return valueText === "없음" ? "" : `개별높이 ${valueText}`;
+  };
+
+  const buildSystemOrderCompleteDetailRows = (groupItem = {}) => {
+    const layoutSpec = groupItem?.layoutSpec || {};
+    const column = groupItem?.column || null;
+    const breakdown = groupItem?.breakdown || {};
+    const quantity = Math.max(1, Math.floor(Number(groupItem?.quantity || 1)));
+    const shapeLabel = String(
+      layoutSpec?.shapeLabel || layoutSpec?.layoutTypeLabel || layoutSpec?.shapeType || ""
+    ).trim();
+    return [
+      { label: "품목명", value: `시스템 수납장 ${quantity}세트` },
+      { label: "레이아웃 타입", value: shapeLabel || "-" },
+      { label: "설치공간 너비", value: buildLayoutSectionWidthText(layoutSpec) },
+      { label: "가장 낮은 높이", value: formatMm(layoutSpec?.lowestHeightMm) },
+      { label: "가장 높은 높이", value: formatMm(layoutSpec?.highestHeightMm) },
+      { label: "개별 높이", value: buildSystemColumnExtraHeightValue(column, layoutSpec) },
+      { label: "포스트바 정보", value: buildSystemPostBarInfoText(groupItem) },
+      { label: "선반 정보", value: buildSystemShelfInfoText(breakdown.normalShelf) },
+      { label: "코너선반 정보", value: buildSystemCornerShelfInfoText(breakdown) },
+      { label: "행거 정보", value: buildSystemHangerInfoText(breakdown) },
+      { label: "가구 정보", value: buildSystemFurnitureInfoText(breakdown) },
+    ];
   };
 
   const buildSystemGroupDisplayItems = (items = []) => {
@@ -299,12 +415,10 @@ export function createSystemOrderHelpers({
       lines.push("- 담긴 항목 없음");
     } else {
       displayItems.forEach((item, idx) => {
-        const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-        const detailInline = buildSystemGroupDetailLines(item).join(" · ");
-        lines.push(`${idx + 1}) 시스템 구성`);
-        lines.push(`- 수량: ${item.quantity}`);
-        if (detailInline) lines.push(`- 구성: ${detailInline}`);
-        lines.push(`- 금액: ${amountText}`);
+        lines.push(`${idx + 1}) 품목`);
+        buildSystemOrderCompleteDetailRows(item).forEach((row) => {
+          lines.push(`- ${row.label}: ${row.value}`);
+        });
         if (idx < displayItems.length - 1) {
           lines.push("");
           lines.push("------------------------------");
@@ -334,8 +448,12 @@ export function createSystemOrderHelpers({
     lines.push("");
     lines.push("=== 합계 ===");
     const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
+    const productHasConsult = displayItems.some((item) => Boolean(item?.isCustomPrice));
+    const productSuffix = productHasConsult ? "(상담 필요 품목 미포함)" : "";
+    const productTotal = Number(summary.subtotal || 0);
     const naverUnits = Math.ceil(summary.grandTotal / 1000) || 0;
-    lines.push(`서비스: ${formatFulfillmentLine(summary.fulfillment)}`);
+    lines.push(`예상 제품금액: ${productTotal.toLocaleString()}원${productSuffix}`);
+    lines.push(`배송/시공 서비스: ${formatFulfillmentLine(summary.fulfillment)}`);
     lines.push(`예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}`);
     lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
 
@@ -397,6 +515,7 @@ export function createSystemOrderHelpers({
   return {
     buildSystemGroupDisplayItems,
     buildSystemGroupDetailLines,
+    buildSystemOrderCompleteDetailRows,
     buildEmailContent,
     buildOrderPayload,
   };

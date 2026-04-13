@@ -1989,7 +1989,7 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
   const hasConsult = summary.hasConsult;
   const suffix = hasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
   const naverUnits = Math.ceil(summary.grandTotal / 1000) || 0;
-  lines.push(`서비스: ${formatFulfillmentLine(summary.fulfillment)}`);
+  lines.push(`배송/시공 서비스: ${formatFulfillmentLine(summary.fulfillment)}`);
   lines.push(`예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}`);
   lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
 
@@ -2189,7 +2189,7 @@ function renderOrderCompleteDetails() {
       <p>예상 결제금액: ${summary.grandTotal.toLocaleString()}원${
         summary.hasConsult ? CONSULT_EXCLUDED_SUFFIX : ""
       }</p>
-      <p>서비스: ${escapeHtml(formatFulfillmentLine(summary.fulfillment))}</p>
+      <p>배송/시공 서비스: ${escapeHtml(formatFulfillmentLine(summary.fulfillment))}</p>
       <p>도어비: ${summary.materialsTotal.toLocaleString()}원</p>
       <p>예상무게: ${summary.totalWeight.toFixed(2)}kg</p>
     </div>

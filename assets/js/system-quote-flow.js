@@ -31,17 +31,34 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
     const displayItems = systemOrderHelpers.buildSystemGroupDisplayItems(getStateItems());
     const builderRows = buildBuilderEdgeRows();
     const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
+    const productHasConsult = displayItems.some((item) => Boolean(item?.isCustomPrice));
+    const productSuffix = productHasConsult ? "(상담 필요 품목 미포함)" : "";
+    const productTotal = Number(summary.subtotal || 0);
 
     const itemsHtml =
       displayItems.length === 0
         ? '<p class="item-line">담긴 항목이 없습니다.</p>'
         : displayItems
             .map((item, idx) => {
-              const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-              const detailInline = systemOrderHelpers.buildSystemGroupDetailLines(item).join(" · ");
-              return `<p class="item-line">${idx + 1}. 시스템 구성 x${item.quantity}${
-                detailInline ? ` · ${escapeHtml(detailInline)}` : ""
-              } · 금액 ${amountText}</p>`;
+              const detailRows = systemOrderHelpers.buildSystemOrderCompleteDetailRows(item);
+              const detailRowsHtml = detailRows
+                .map(
+                  (row) => `
+                    <div class="complete-detail-row">
+                      <span class="complete-detail-label">${escapeHtml(row.label)}</span>
+                      <span class="complete-detail-value">${escapeHtml(row.value)}</span>
+                    </div>
+                  `
+                )
+                .join("");
+              return `
+                <div class="complete-order-item">
+                  <p class="complete-item-title">품목 ${idx + 1}</p>
+                  <div class="complete-detail-list">
+                    ${detailRowsHtml}
+                  </div>
+                </div>
+              `;
             })
             .join("");
 
@@ -71,9 +88,9 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
       </div>
       <div class="complete-section">
         <h4>합계</h4>
-        <p>서비스: ${escapeHtml(formatFulfillmentLine(summary.fulfillment))}</p>
+        <p>예상 제품금액: ${productTotal.toLocaleString()}원${productSuffix}</p>
+        <p>배송/시공 서비스: ${escapeHtml(formatFulfillmentLine(summary.fulfillment))}</p>
         <p>예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}</p>
-        <p>자재비: ${summary.materialsTotal.toLocaleString()}원</p>
       </div>
     `;
   };

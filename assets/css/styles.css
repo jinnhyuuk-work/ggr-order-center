@@ -2280,6 +2280,42 @@ th, td {
   font-size: var(--font-size-xs);
 }
 
+.order-complete .complete-order-item + .complete-order-item {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.order-complete .complete-item-title {
+  margin: 0 0 6px;
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-strong);
+}
+
+.order-complete .complete-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-complete .complete-detail-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.34fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-size: var(--font-size-xs);
+}
+
+.order-complete .complete-detail-label {
+  color: var(--color-text-muted);
+  font-weight: var(--fw-semibold);
+}
+
+.order-complete .complete-detail-value {
+  color: var(--color-text-strong);
+  overflow-wrap: anywhere;
+}
+
 .order-complete-visible #estimateTable,
 .order-complete-visible .summary,
 .order-complete-visible .nav-actions,

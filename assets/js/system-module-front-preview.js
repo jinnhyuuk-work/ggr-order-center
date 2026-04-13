@@ -152,7 +152,6 @@ function buildModuleFrontPreviewLayout({
     });
     if (
       String(moduleType || "bay") === "bay" &&
-      String(layoutPresetId || "").toUpperCase() === "GS-3" &&
       visibleShelfCount === 3 &&
       normalizedRodCount === 0
     ) {

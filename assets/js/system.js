@@ -329,6 +329,7 @@ const systemOrderHelpers = createSystemOrderHelpers({
   SHELF_LENGTH_MM,
   ADDON_CLOTHES_ROD_ID,
   SYSTEM_ADDON_ITEMS,
+  SYSTEM_SHELF_MATERIALS,
   SYSTEM_COLUMN_MATERIALS,
   calcAddonCostBreakdown,
   buildLayoutSpecLinesFromSnapshot,
