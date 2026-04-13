@@ -1445,6 +1445,11 @@ function renderSummary() {
   const grandTotal = summary.grandTotal;
   const hasConsult = summary.hasConsult;
   const suffix = hasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
+  const productHasConsult = hasConsultLineItem(state.items);
+  const productSuffix = productHasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
+  const productTotal = Number(summary.subtotal || 0);
+  const productTotalEl = $("#productTotal");
+  if (productTotalEl) productTotalEl.textContent = `${productTotal.toLocaleString()}${productSuffix}`;
   const grandEl = $("#grandTotal");
   if (grandEl) grandEl.textContent = `${grandTotal.toLocaleString()}${suffix}`;
   const serviceCostEl = $("#serviceCost");

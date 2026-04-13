@@ -129,7 +129,12 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
   const renderSummary = () => {
     const summary = buildGrandSummary();
     const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
+    const productHasConsult = state.items.some((item) => Boolean(item?.isCustomPrice));
+    const productSuffix = productHasConsult ? "(상담 필요 품목 미포함)" : "";
+    const productTotal = Number(summary.subtotal || 0);
 
+    const productTotalEl = $("#productTotal");
+    if (productTotalEl) productTotalEl.textContent = `${productTotal.toLocaleString()}${productSuffix}`;
     const materialsTotalEl = $("#materialsTotal");
     if (materialsTotalEl) materialsTotalEl.textContent = summary.materialsTotal.toLocaleString();
     $("#grandTotal").textContent = `${summary.grandTotal.toLocaleString()}${suffix}`;
