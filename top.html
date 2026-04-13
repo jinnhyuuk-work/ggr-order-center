@@ -242,21 +242,21 @@
         <section id="step5" class="step-card hidden-step">
           <h2>고객 정보를 입력해주세요.</h2>
           <div class="form-row">
-            <label for="customerName">이름</label>
+            <label for="customerName" class="required-field-label">이름</label>
             <div class="field-col">
-              <input type="text" id="customerName" placeholder="홍길동" />
+              <input type="text" id="customerName" placeholder="홍길동" required aria-required="true" />
             </div>
           </div>
           <div class="form-row">
-            <label for="customerPhone">연락처</label>
+            <label for="customerPhone" class="required-field-label">연락처</label>
             <div class="field-col">
-              <input type="tel" id="customerPhone" placeholder="010-1234-5678" />
+              <input type="tel" id="customerPhone" placeholder="010-1234-5678" required aria-required="true" />
             </div>
           </div>
           <div class="form-row">
-            <label for="customerEmail">이메일</label>
+            <label for="customerEmail" class="required-field-label">이메일</label>
             <div class="field-col">
-              <input type="email" id="customerEmail" placeholder="you@example.com" />
+              <input type="email" id="customerEmail" placeholder="you@example.com" required aria-required="true" />
             </div>
           </div>
           <div class="form-row">

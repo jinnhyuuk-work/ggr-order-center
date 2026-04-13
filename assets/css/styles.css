@@ -717,6 +717,17 @@ section {
   font-weight: var(--fw-semibold);
 }
 
+.required-field-label::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  vertical-align: 0.18em;
+}
+
 .form-row .form-row-label {
   width: 180px;
   font-weight: var(--fw-semibold);
