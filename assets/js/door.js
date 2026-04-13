@@ -999,6 +999,20 @@ function calcDoorHingeCost({ quantity, doorHingeConfig }) {
   return holeCount * DOOR_HINGE_PRICE_PER_HOLE * quantity;
 }
 
+function formatDoorPanelSideLabel(doorHingeConfig = {}) {
+  const config = doorHingeConfig && typeof doorHingeConfig === "object" ? doorHingeConfig : {};
+  return config.side === "left" ? "우측문" : "좌측문";
+}
+
+function formatDoorEstimateName(materialName, item = {}) {
+  const baseName = String(materialName || "").trim();
+  if (!baseName || (item && item.type === "addon")) return baseName;
+  const panelSideLabel = formatDoorPanelSideLabel(
+    item && item.doorHingeConfig ? item.doorHingeConfig : createDefaultDoorHingeConfig()
+  );
+  return panelSideLabel ? baseName + "(" + panelSideLabel + ")" : baseName;
+}
+
 function formatDoorHingeConfig(doorHingeConfig, { includeNote = false } = {}) {
   const holes = Array.isArray(doorHingeConfig.holes) ? doorHingeConfig.holes : [];
   if (holes.length === 0) return "경첩 위치 미입력";
@@ -1821,7 +1835,7 @@ function renderTable() {
       const materialName = isAddon
         ? addonInfo?.name || "부자재"
         : MATERIALS[item.materialId].name;
-      return escapeHtml(materialName);
+      return escapeHtml(formatDoorEstimateName(materialName, item));
     },
     getTotalText: (item) => formatItemTotal(item),
     getDetailLines: (item) => {
