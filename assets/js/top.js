@@ -1461,26 +1461,57 @@ function renderSummary() {
   updateSendButtonEnabled();
 }
 
+function buildCompleteDetailRowsHtml(rows = []) {
+  return (Array.isArray(rows) ? rows : [])
+    .map(
+      (row) => `
+        <div class="complete-detail-row">
+          <span class="complete-detail-label">${escapeHtml(row.label)}</span>
+          <span class="complete-detail-value">${escapeHtml(row.value)}</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function buildTopOrderCompleteDetailRows(item = {}) {
+  const isAddon = item.type === "addon";
+  const servicesText = isAddon
+    ? "-"
+    : formatServiceList(item.services, item.serviceDetails, { includeNote: true }) || "-";
+  return [
+    { label: "품목명", value: `${isAddon ? "부자재" : "상판"} ${item.typeName || "-"}` },
+    { label: "수량", value: `${Math.max(1, Number(item.quantity || 1))}개` },
+    { label: "사이즈", value: isAddon ? "-" : item.displaySize || "-" },
+    { label: "옵션", value: isAddon ? "-" : item.optionsLabel || "-" },
+    { label: "가공서비스", value: servicesText },
+  ];
+}
+
 function renderOrderCompleteDetails() {
   const container = $("#orderCompleteDetails");
   if (!container) return;
   const customer = getCustomerInfo();
   const summary = buildGrandSummary();
-  const materialsTotal = summary.materialsTotal;
   const grandTotal = summary.grandTotal;
+  const productHasConsult = hasConsultLineItem(state.items);
+  const productSuffix = productHasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
+  const productTotal = Number(summary.subtotal || 0);
 
   const itemsHtml =
     state.items.length === 0
       ? '<p class="item-line">담긴 항목이 없습니다.</p>'
       : state.items
           .map((item, idx) => {
-            const servicesText = formatServiceList(item.services, item.serviceDetails, { includeNote: true });
-            const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-            return `<p class="item-line">${idx + 1}. ${item.type === "addon" ? "부자재" : "상판"} ${escapeHtml(item.typeName)} x${item.quantity}${
-              item.type === "addon"
-                ? ""
-                : ` · 크기 ${escapeHtml(item.displaySize)} · 옵션 ${escapeHtml(item.optionsLabel)} · 가공 ${escapeHtml(servicesText || "-")}`
-            } · 금액 ${amountText}</p>`;
+            const detailRowsHtml = buildCompleteDetailRowsHtml(buildTopOrderCompleteDetailRows(item));
+            return `
+              <div class="complete-order-item">
+                <p class="complete-item-title">품목 ${idx + 1}</p>
+                <div class="complete-detail-list">
+                  ${detailRowsHtml}
+                </div>
+              </div>
+            `;
           })
           .join("");
 
@@ -1499,10 +1530,11 @@ function renderOrderCompleteDetails() {
     </div>
     <div class="complete-section">
       <h4>합계</h4>
+      <p>예상 제품금액: ${productTotal.toLocaleString()}원${productSuffix}</p>
+      <p>배송/시공 서비스: ${escapeHtml(formatFulfillmentLine(summary.fulfillment))}</p>
       <p>예상 결제금액: ${grandTotal.toLocaleString()}원${
         summary.hasConsult ? CONSULT_EXCLUDED_SUFFIX : ""
       }</p>
-      <p>배송/시공 서비스: ${escapeHtml(formatFulfillmentLine(summary.fulfillment))}</p>
     </div>
   `;
 }
@@ -2267,14 +2299,10 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
     lines.push("- 담긴 항목 없음");
   } else {
     state.items.forEach((item, idx) => {
-      const servicesText = formatServiceList(item.services, item.serviceDetails, { includeNote: true });
-      const amountText = item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
-      lines.push(`${idx + 1}) ${item.typeName}`);
-      lines.push(`- 수량: ${item.quantity}`);
-      lines.push(`- 크기: ${item.displaySize || "-"}`);
-      lines.push(`- 옵션: ${item.optionsLabel || "-"}`);
-      lines.push(`- 가공: ${servicesText || "-"}`);
-      lines.push(`- 금액: ${amountText}`);
+      lines.push(`${idx + 1}) 품목`);
+      buildTopOrderCompleteDetailRows(item).forEach((row) => {
+        lines.push(`- ${row.label}: ${row.value}`);
+      });
       if (idx < state.items.length - 1) {
         lines.push("");
         lines.push("------------------------------");
@@ -2287,7 +2315,11 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
   lines.push("=== 합계 ===");
   const hasConsult = summary.hasConsult;
   const suffix = hasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
+  const productHasConsult = hasConsultLineItem(state.items);
+  const productSuffix = productHasConsult ? CONSULT_EXCLUDED_SUFFIX : "";
+  const productTotal = Number(summary.subtotal || 0);
   const naverUnits = Math.ceil(grandTotal / 1000) || 0;
+  lines.push(`예상 제품금액: ${productTotal.toLocaleString()}원${productSuffix}`);
   lines.push(`배송/시공 서비스: ${formatFulfillmentLine(summary.fulfillment)}`);
   lines.push(`예상 결제금액: ${grandTotal.toLocaleString()}원${suffix}`);
   lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
