@@ -54,8 +54,8 @@ export function bindSystemInitEvents({
   sendQuote,
   updateSendButtonEnabled,
   setFulfillmentType,
-  setServiceStepError,
-  updateServiceStepUI,
+  setFulfillmentStepError,
+  updateFulfillmentStepUI,
   renderSummary,
   refreshBuilderDerivedUI,
   clearPreviewGhost,
@@ -247,15 +247,15 @@ export function bindSystemInitEvents({
   document.querySelectorAll("[data-fulfillment-type]").forEach((btn) => {
     btn.addEventListener("click", () => {
       setFulfillmentType(btn.dataset.fulfillmentType);
-      setServiceStepError("");
-      updateServiceStepUI();
+      setFulfillmentStepError("");
+      updateFulfillmentStepUI();
       renderSummary();
     });
   });
   ["#sample6_postcode", "#sample6_address", "#sample6_detailAddress"].forEach((sel) => {
     $(sel)?.addEventListener("input", () => {
-      setServiceStepError("");
-      updateServiceStepUI();
+      setFulfillmentStepError("");
+      updateFulfillmentStepUI();
       renderSummary();
       updateSendButtonEnabled();
     });
@@ -357,7 +357,7 @@ export function bindSystemInitEvents({
   });
 
   setFulfillmentType(getFulfillmentType());
-  updateServiceStepUI();
+  updateFulfillmentStepUI();
   updateSendButtonEnabled();
   window.addEventListener("scroll", hidePreviewAddTooltip, { passive: true });
   window.addEventListener("resize", () => {

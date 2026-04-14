@@ -17,7 +17,7 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
 
   const getSystemBayItems = () => getStateItems().filter((item) => item.type === "bay");
 
-  const getPostBarRowsForService = (columnItem) => {
+  const getPostBarRowsForFulfillment = (columnItem) => {
     const rows = [];
     const baseRows = Array.isArray(columnItem?.basePostBars) && columnItem.basePostBars.length
       ? columnItem.basePostBars
@@ -42,7 +42,7 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
   };
 
   const getSystemPostBarSummary = () => {
-    const rows = getSystemColumnsItems().flatMap((item) => getPostBarRowsForService(item));
+    const rows = getSystemColumnsItems().flatMap((item) => getPostBarRowsForFulfillment(item));
     return {
       totalCount: rows.reduce((sum, row) => sum + Number(row.countTotal || 0), 0),
       hasOverHeight: rows.some((row) => Number(row.countTotal || 0) > 0 && Number(row.heightMm || 0) > 2400),
@@ -87,7 +87,7 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
       return sum + perUnitLength * quantity;
     }, 0);
 
-  const evaluateFulfillmentService = (nextType = getFulfillmentType()) => {
+  const evaluateFulfillment = (nextType = getFulfillmentType()) => {
     const customer = getCustomerInfo();
     const hasProducts = getStateItems().length > 0;
     return evaluateFulfillmentPolicy({
@@ -188,7 +188,7 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
 
   const buildGrandSummary = () => {
     const baseSummary = calcOrderSummary(getStateItems());
-    const fulfillment = evaluateFulfillmentService();
+    const fulfillment = evaluateFulfillment();
     const fulfillmentCost = fulfillment.isConsult ? 0 : Number(fulfillment.amount || 0);
     const grandTotal = Number(baseSummary.grandTotal || 0) + fulfillmentCost;
     const hasConsult =
@@ -205,8 +205,8 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
 
   const updateFulfillmentCardPriceUI = () => {
     const cardEntries = [
-      { id: "#serviceCardPriceDelivery", fulfillment: evaluateFulfillmentService("delivery") },
-      { id: "#serviceCardPriceInstallation", fulfillment: evaluateFulfillmentService("installation") },
+      { id: "#fulfillmentCardPriceDelivery", fulfillment: evaluateFulfillment("delivery") },
+      { id: "#fulfillmentCardPriceInstallation", fulfillment: evaluateFulfillment("installation") },
     ];
     cardEntries.forEach(({ id, fulfillment }) => {
       const priceEl = $(id);
@@ -221,12 +221,12 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
   return {
     getSystemColumnsItems,
     getSystemBayItems,
-    getPostBarRowsForService,
+    getPostBarRowsForFulfillment,
     getSystemPostBarSummary,
     getSystemShelfSummary,
     hasSystemCornerOrFurniture,
     getSystemSectionLengthSumMm,
-    evaluateFulfillmentService,
+    evaluateFulfillment,
     buildGrandSummary,
     updateFulfillmentCardPriceUI,
   };

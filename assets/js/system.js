@@ -126,7 +126,7 @@ import {
   uploadCustomerPhotoFilesToCloudinary,
   getRuntimeHostBlockedReason,
   UI_COLOR_FALLBACKS,
-  validateServiceStepSelection,
+  validateFulfillmentStepSelection,
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
   resolveThreePhaseNextTransition,
@@ -136,9 +136,9 @@ import {
 } from "./shared.js";
 import {
   normalizeFulfillmentType,
-  isServiceAddressReady,
+  isFulfillmentAddressReady,
   evaluateFulfillmentPolicy,
-  formatServiceCostText,
+  formatFulfillmentCostText,
   formatFulfillmentLine,
   formatFulfillmentCardPriceText,
 } from "./fulfillment-policy.js";
@@ -860,8 +860,8 @@ function setFulfillmentType(nextType) {
   });
 }
 
-function setServiceStepError(message = "") {
-  const errorEl = $("#serviceStepError");
+function setFulfillmentStepError(message = "") {
+  const errorEl = $("#fulfillmentStepError");
   if (!errorEl) return;
   const text = String(message || "").trim();
   errorEl.textContent = text;
@@ -876,8 +876,8 @@ function getSystemBayItems() {
   return fulfillmentSummaryHelpers.getSystemBayItems();
 }
 
-function getPostBarRowsForService(columnItem) {
-  return fulfillmentSummaryHelpers.getPostBarRowsForService(columnItem);
+function getPostBarRowsForFulfillment(columnItem) {
+  return fulfillmentSummaryHelpers.getPostBarRowsForFulfillment(columnItem);
 }
 
 function getSystemPostBarSummary() {
@@ -896,8 +896,8 @@ function getSystemSectionLengthSumMm() {
   return fulfillmentSummaryHelpers.getSystemSectionLengthSumMm();
 }
 
-function evaluateFulfillmentService(nextType = getFulfillmentType()) {
-  return fulfillmentSummaryHelpers.evaluateFulfillmentService(nextType);
+function evaluateFulfillment(nextType = getFulfillmentType()) {
+  return fulfillmentSummaryHelpers.evaluateFulfillment(nextType);
 }
 
 function buildGrandSummary() {
@@ -908,10 +908,10 @@ function updateFulfillmentCardPriceUI() {
   return fulfillmentSummaryHelpers.updateFulfillmentCardPriceUI();
 }
 
-function updateServiceStepUI({ showError = false } = {}) {
+function updateFulfillmentStepUI({ showError = false } = {}) {
   const customer = getCustomerInfo();
-  const addressReady = isServiceAddressReady(customer);
-  const regionHintEl = $("#serviceRegionHint");
+  const addressReady = isFulfillmentAddressReady(customer);
+  const regionHintEl = $("#fulfillmentRegionHint");
   const travelZone = resolveInstallationTravelZoneByAddress(customer);
   if (regionHintEl) {
     if (!addressReady) {
@@ -923,8 +923,8 @@ function updateServiceStepUI({ showError = false } = {}) {
     }
   }
 
-  const fulfillment = evaluateFulfillmentService();
-  const priceHintEl = $("#servicePriceHint");
+  const fulfillment = evaluateFulfillment();
+  const priceHintEl = $("#fulfillmentPriceHint");
   if (priceHintEl) {
     if (!fulfillment.type) {
       priceHintEl.textContent = "서비스를 선택하면 예상 서비스비가 표시됩니다.";
@@ -937,17 +937,17 @@ function updateServiceStepUI({ showError = false } = {}) {
   updateFulfillmentCardPriceUI();
 
   if (showError) {
-    setServiceStepError(validateServiceStep());
+    setFulfillmentStepError(validateFulfillmentStep());
   } else {
-    setServiceStepError("");
+    setFulfillmentStepError("");
   }
 }
 
-function validateServiceStep() {
-  return validateServiceStepSelection({
+function validateFulfillmentStep() {
+  return validateFulfillmentStepSelection({
     customer: getCustomerInfo(),
     fulfillmentType: getFulfillmentType(),
-    isAddressReady: isServiceAddressReady,
+    isAddressReady: isFulfillmentAddressReady,
   });
 }
 
@@ -5572,16 +5572,16 @@ const systemOrderUiFlowHelpers = createSystemOrderUiFlowHelpers({
   isLayoutConsultStatus,
   buildGrandSummary,
   $,
-  formatServiceCostText,
-  updateServiceStepUI,
+  formatFulfillmentCostText,
+  updateFulfillmentStepUI,
   getCustomerInfo,
   updateSendButtonEnabledShared,
   isConsentChecked,
   renderOrderCompleteDetails,
   applyThreePhaseStepVisibility,
   resolveThreePhaseNextTransition,
-  validateServiceStep,
-  setServiceStepError,
+  validateFulfillmentStep,
+  setFulfillmentStepError,
   showInfoModal,
   resolveThreePhasePrevPhase,
 });
@@ -5774,8 +5774,8 @@ function init() {
     sendQuote,
     updateSendButtonEnabled,
     setFulfillmentType,
-    setServiceStepError,
-    updateServiceStepUI,
+    setFulfillmentStepError,
+    updateFulfillmentStepUI,
     renderSummary,
     refreshBuilderDerivedUI,
     clearPreviewGhost,

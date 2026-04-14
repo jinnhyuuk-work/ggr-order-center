@@ -183,8 +183,8 @@
           </div>
           <div class="input-tip" aria-live="polite">
               <ul class="input-tip-list">
-                <li id="serviceRegionHint">주소를 입력하면 서비스 권역을 안내합니다.</li>
-                <li id="servicePriceHint">서비스를 선택하면 예상 서비스비가 표시됩니다.</li>
+                <li id="fulfillmentRegionHint">주소를 입력하면 서비스 권역을 안내합니다.</li>
+                <li id="fulfillmentPriceHint">서비스를 선택하면 예상 서비스비가 표시됩니다.</li>
                 <li>안내된 금액은 예상 금액으로, 정확한 배송비와 시공비는 상담 후 확인 가능합니다.</li>
                 <li>엘리베이터 사용이 불가능할 경우 양중/사다리차 비용이 추가로 발생할 수 있으며, 별도 안내드립니다.</li>
               </ul>
@@ -195,26 +195,26 @@
               <span class="selection-block-badge selection-block-badge--input">입력 필요</span>
             </div>
             <p class="selection-block-hint">배송 또는 시공을 선택하면 서비스비가 자동 반영됩니다.</p>
-            <div class="selection-service-grid grid-cards grid-cards--2 grid-cards--keep-2" role="group" aria-label="서비스 선택">
-              <button type="button" class="card-base selection-service-card selection-service-card--delivery" data-fulfillment-type="delivery" aria-pressed="false">
-                <div class="material-visual selection-service-media selection-service-media--delivery" aria-hidden="true"></div>
-                <div class="selection-service-copy">
+            <div class="fulfillment-grid grid-cards grid-cards--2 grid-cards--keep-2" role="group" aria-label="서비스 선택">
+              <button type="button" class="card-base fulfillment-card fulfillment-card--delivery" data-fulfillment-type="delivery" aria-pressed="false">
+                <div class="material-visual fulfillment-media fulfillment-media--delivery" aria-hidden="true"></div>
+                <div class="fulfillment-copy">
                   <div class="name">배송</div>
-                  <div class="price is-placeholder" id="serviceCardPriceDelivery">상품 담기 후 계산</div>
+                  <div class="price is-placeholder" id="fulfillmentCardPriceDelivery">상품 담기 후 계산</div>
                   <div class="description">품목/수량/지역 기준 배송비 계산</div>
                 </div>
               </button>
-              <button type="button" class="card-base selection-service-card selection-service-card--installation" data-fulfillment-type="installation" aria-pressed="false">
-                <div class="material-visual selection-service-media selection-service-media--installation" aria-hidden="true"></div>
-                <div class="selection-service-copy">
+              <button type="button" class="card-base fulfillment-card fulfillment-card--installation" data-fulfillment-type="installation" aria-pressed="false">
+                <div class="material-visual fulfillment-media fulfillment-media--installation" aria-hidden="true"></div>
+                <div class="fulfillment-copy">
                   <div class="name">시공</div>
-                  <div class="price is-placeholder" id="serviceCardPriceInstallation">상품 담기 후 계산</div>
+                  <div class="price is-placeholder" id="fulfillmentCardPriceInstallation">상품 담기 후 계산</div>
                   <div class="description">품목/수량/지역 기준 시공비 계산</div>
                 </div>
               </button>
             </div>
             <input type="hidden" id="fulfillmentType" value="" />
-            <div class="error-msg" id="serviceStepError" role="alert" aria-live="polite"></div>
+            <div class="error-msg" id="fulfillmentStepError" role="alert" aria-live="polite"></div>
           </div>
         </section>
 
@@ -306,7 +306,7 @@
 
         <div class="summary">
           <p>예상 제품금액: <span id="productTotal">0</span> 원</p>
-          <p>배송/시공 서비스: <span id="serviceCost">미선택</span></p>
+          <p>배송/시공 서비스: <span id="fulfillmentCost">미선택</span></p>
           <p>예상 결제금액: <span id="grandTotal">0</span> 원</p>
           <p>예상 네이버 결제수량: <span id="naverUnits">0</span> 개</p>
         </div>

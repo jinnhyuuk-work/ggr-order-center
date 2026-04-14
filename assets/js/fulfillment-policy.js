@@ -1,4 +1,4 @@
-import { resolveServiceRegionByAddress } from "./shared.js";
+import { resolveFulfillmentRegionByAddress } from "./shared.js";
 import { FULFILLMENT_POLICY_MESSAGES } from "./data/fulfillment-policy-data.js";
 import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
 
@@ -11,7 +11,7 @@ export function normalizeFulfillmentType(value) {
   return value === "installation" ? "installation" : value === "delivery" ? "delivery" : "";
 }
 
-export function isServiceAddressReady(customer = {}) {
+export function isFulfillmentAddressReady(customer = {}) {
   return Boolean(customer?.postcode && customer?.address);
 }
 
@@ -60,8 +60,8 @@ export function evaluateFulfillmentPolicy({
   evaluateSupportedPolicy,
 } = {}) {
   const type = normalizeFulfillmentType(nextType);
-  const region = resolveServiceRegionByAddress(customer?.address);
-  const addressReady = isServiceAddressReady(customer);
+  const region = resolveFulfillmentRegionByAddress(customer?.address);
+  const addressReady = isFulfillmentAddressReady(customer);
 
   if (!type || !hasProducts) {
     return createFulfillmentResult({
@@ -159,7 +159,7 @@ export function evaluateFulfillmentPolicy({
   });
 }
 
-export function formatServiceCostText(fulfillment) {
+export function formatFulfillmentCostText(fulfillment) {
   if (!fulfillment?.type) return "미선택";
   if (fulfillment.isConsult) return "상담 안내";
   return `${Number(fulfillment.amount || 0).toLocaleString()}원`;

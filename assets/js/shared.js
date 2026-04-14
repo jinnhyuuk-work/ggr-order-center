@@ -117,7 +117,7 @@ export const CLOUDINARY_CONFIG = {
 export const ORDER_PAYLOAD_SCHEMA_VERSION = "v2";
 export const CONSULT_DISPLAY_PRICE_LABEL = "상담안내";
 export const CONSULT_EXCLUDED_SUFFIX = "(상담 필요 항목 미포함)";
-export const SERVICE_REGION_LABELS = Object.freeze({
+export const FULFILLMENT_REGION_LABELS = Object.freeze({
   seoul: "서울특별시",
   gyeonggi: "경기도",
   incheon: "인천광역시",
@@ -127,8 +127,8 @@ export const UI_COLOR_FALLBACKS = Object.freeze({
   swatch: "#ddd",
   swatchMuted: "#eee",
 });
-export const SERVICE_STEP_VALIDATION_MESSAGES = Object.freeze({
-  addressRequired: "서비스 진행을 위해 주소를 입력해주세요.",
+export const FULFILLMENT_STEP_VALIDATION_MESSAGES = Object.freeze({
+  addressRequired: "배송/시공 진행을 위해 주소를 입력해주세요.",
   fulfillmentRequired: "배송 또는 시공 서비스를 선택해주세요.",
 });
 
@@ -157,41 +157,41 @@ export function formatPrice(value) {
   return Number(value || 0).toLocaleString();
 }
 
-export function resolveServiceRegionByAddress(address = "") {
+export function resolveFulfillmentRegionByAddress(address = "") {
   const text = String(address || "").trim();
   if (!text) {
     return { key: "", label: "주소 미입력", isSupported: false };
   }
   if (/(^|\s)(서울특별시|서울시|서울)(\s|$)/.test(text)) {
-    return { key: "seoul", label: SERVICE_REGION_LABELS.seoul, isSupported: true };
+    return { key: "seoul", label: FULFILLMENT_REGION_LABELS.seoul, isSupported: true };
   }
   if (/(^|\s)(경기도|경기)(\s|$)/.test(text)) {
-    return { key: "gyeonggi", label: SERVICE_REGION_LABELS.gyeonggi, isSupported: true };
+    return { key: "gyeonggi", label: FULFILLMENT_REGION_LABELS.gyeonggi, isSupported: true };
   }
   if (/(^|\s)(인천광역시|인천시|인천)(\s|$)/.test(text)) {
-    return { key: "incheon", label: SERVICE_REGION_LABELS.incheon, isSupported: true };
+    return { key: "incheon", label: FULFILLMENT_REGION_LABELS.incheon, isSupported: true };
   }
-  return { key: "other", label: SERVICE_REGION_LABELS.other, isSupported: false };
+  return { key: "other", label: FULFILLMENT_REGION_LABELS.other, isSupported: false };
 }
 
-export function validateServiceStepSelection({
+export function validateFulfillmentStepSelection({
   customer = {},
   fulfillmentType = "",
   isAddressReady,
-  messages = SERVICE_STEP_VALIDATION_MESSAGES,
+  messages = FULFILLMENT_STEP_VALIDATION_MESSAGES,
 } = {}) {
   const checker =
     typeof isAddressReady === "function"
       ? isAddressReady
       : (value) => Boolean(value?.postcode && value?.address);
-  const safeMessages = messages || SERVICE_STEP_VALIDATION_MESSAGES;
+  const safeMessages = messages || FULFILLMENT_STEP_VALIDATION_MESSAGES;
   if (!checker(customer)) {
-    return String(safeMessages.addressRequired || "").trim() || SERVICE_STEP_VALIDATION_MESSAGES.addressRequired;
+    return String(safeMessages.addressRequired || "").trim() || FULFILLMENT_STEP_VALIDATION_MESSAGES.addressRequired;
   }
   if (!fulfillmentType) {
     return (
       String(safeMessages.fulfillmentRequired || "").trim() ||
-      SERVICE_STEP_VALIDATION_MESSAGES.fulfillmentRequired
+      FULFILLMENT_STEP_VALIDATION_MESSAGES.fulfillmentRequired
     );
   }
   return "";
@@ -797,15 +797,19 @@ export function hasConsultLineItem(items = []) {
 export function buildStandardPriceBreakdownRows({
   itemCost = 0,
   optionCost = 0,
-  serviceCost = 0,
+  processingServiceCost,
+  serviceCost,
   itemHasConsult = false,
   optionHasConsult = false,
-  serviceHasConsult = false,
+  processingServiceHasConsult,
+  serviceHasConsult,
 } = {}) {
+  const resolvedProcessingServiceCost = Number(processingServiceCost ?? serviceCost ?? 0);
+  const resolvedProcessingServiceHasConsult = Boolean(processingServiceHasConsult ?? serviceHasConsult);
   return [
     { label: "품목", amount: itemCost, isConsult: itemHasConsult },
     { label: "옵션", amount: optionCost, isConsult: optionHasConsult },
-    { label: "가공서비스", amount: serviceCost, isConsult: serviceHasConsult },
+    { label: "가공서비스", amount: resolvedProcessingServiceCost, isConsult: resolvedProcessingServiceHasConsult },
   ];
 }
 
@@ -1793,18 +1797,18 @@ export function renderEstimateTable({
   });
 }
 
-export function createServiceModalController({
+export function createProcessingServiceModalController({
   modalId,
   titleId,
   bodyId,
   errorId,
   noteId,
   focusTarget,
-  services,
+  processingServices,
   state,
-  getDefaultServiceDetail,
-  cloneServiceDetails,
-  updateServiceSummary,
+  getDefaultProcessingServiceDetail,
+  cloneProcessingServiceDetails,
+  updateProcessingServiceSummary,
   openModal,
   closeModal,
   onRevertSelection,
@@ -1814,6 +1818,7 @@ export function createServiceModalController({
 } = {}) {
   let draft = null;
   let context = { serviceId: null, triggerCheckbox: null, mode: null };
+  const getProcessingServiceDetails = () => state?.processingServiceDetails || {};
   const createDefaultHole = () => ({
     edge: "left",
     distance: 100,
@@ -1828,7 +1833,7 @@ export function createServiceModalController({
 
   const renderHoleModal = (serviceId) => {
     const body = bodyId ? document.querySelector(bodyId) : null;
-    const srv = services?.[serviceId];
+    const srv = processingServices?.[serviceId];
     if (!body || !srv) return;
     const normalized = srv.normalizeDetail(draft);
     const holes = Array.isArray(normalized?.holes) ? normalized.holes : [];
@@ -1839,21 +1844,21 @@ export function createServiceModalController({
         ? holes
             .map(
               (hole, idx) => {
-                const rowIdPrefix = `service-hole-${String(serviceId).replace(/[^a-zA-Z0-9_-]/g, "_")}-${idx}`;
+                const rowIdPrefix = `processing-service-hole-${String(serviceId).replace(/[^a-zA-Z0-9_-]/g, "_")}-${idx}`;
                 const edgeId = `${rowIdPrefix}-edge`;
                 const distanceId = `${rowIdPrefix}-distance`;
                 const verticalRefId = `${rowIdPrefix}-vertical-ref`;
                 const verticalDistanceId = `${rowIdPrefix}-vertical-distance`;
                 return `
-                  <div class="service-row">
-                    <div class="service-row-header">
+                  <div class="processing-service-row">
+                    <div class="processing-service-row-header">
                       <span>${srv.label} ${idx + 1}</span>
                       <button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>
                     </div>
-                    <div class="service-field-grid">
+                    <div class="processing-service-field-grid">
                       <div>
                         <label for="${edgeId}">측면</label>
-                        <select id="${edgeId}" class="service-input select-caret" data-field="edge" data-index="${idx}">
+                        <select id="${edgeId}" class="processing-service-input select-caret" data-field="edge" data-index="${idx}">
                           <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
                           <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
                         </select>
@@ -1863,7 +1868,7 @@ export function createServiceModalController({
                         <input
                           id="${distanceId}"
                           type="number"
-                          class="service-input"
+                          class="processing-service-input"
                           data-field="distance"
                           data-index="${idx}"
                           value="${hole.distance ?? ""}"
@@ -1872,7 +1877,7 @@ export function createServiceModalController({
                       </div>
                       <div>
                         <label for="${verticalRefId}">세로 기준</label>
-                        <select id="${verticalRefId}" class="service-input select-caret" data-field="verticalRef" data-index="${idx}">
+                        <select id="${verticalRefId}" class="processing-service-input select-caret" data-field="verticalRef" data-index="${idx}">
                           <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
                           <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
                         </select>
@@ -1882,7 +1887,7 @@ export function createServiceModalController({
                         <input
                           id="${verticalDistanceId}"
                           type="number"
-                          class="service-input"
+                          class="processing-service-input"
                           data-field="verticalDistance"
                           data-index="${idx}"
                           value="${hole.verticalDistance ?? ""}"
@@ -1895,17 +1900,17 @@ export function createServiceModalController({
               }
             )
             .join("")
-        : `<div class="service-empty">등록된 위치가 없습니다. 아래의 "위치 추가"를 눌러주세요.</div>`;
+        : `<div class="processing-service-empty">등록된 위치가 없습니다. 아래의 "위치 추가"를 눌러주세요.</div>`;
 
     body.innerHTML = `
       <p class="input-tip">${srv.label} 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
       ${rowsHtml}
-      <div class="service-actions">
+      <div class="processing-service-actions">
         <button type="button" data-add-hole>위치 추가</button>
       </div>
       <div>
         <label for="${noteId}">추가 메모 (선택)</label>
-        <textarea class="service-textarea" id="${noteId}">${draft?.note || ""}</textarea>
+        <textarea class="processing-service-textarea" id="${noteId}">${draft?.note || ""}</textarea>
       </div>
     `;
 
@@ -1952,11 +1957,11 @@ export function createServiceModalController({
 
   const renderContent = (serviceId) => {
     const titleEl = titleId ? document.querySelector(titleId) : null;
-    const srv = services?.[serviceId];
+    const srv = processingServices?.[serviceId];
     if (titleEl) titleEl.textContent = srv?.label || "가공 옵션 설정";
     setError("");
     if (!draft) {
-      draft = getDefaultServiceDetail?.(serviceId) || { note: "" };
+      draft = getDefaultProcessingServiceDetail?.(serviceId) || { note: "" };
     }
     if (srv?.hasDetail()) {
       renderHoleModal(serviceId);
@@ -1969,12 +1974,12 @@ export function createServiceModalController({
   };
 
   const open = (serviceId, triggerCheckbox, mode = "change") => {
-    const srv = services?.[serviceId];
+    const srv = processingServices?.[serviceId];
     if (!srv?.hasDetail()) return;
     context = { serviceId, triggerCheckbox, mode };
     draft =
-      cloneServiceDetails?.(state?.serviceDetails?.[serviceId]) ||
-      getDefaultServiceDetail?.(serviceId) ||
+      cloneProcessingServiceDetails?.(getProcessingServiceDetails()?.[serviceId]) ||
+      getDefaultProcessingServiceDetail?.(serviceId) ||
       { note: "", holes: [] };
     renderContent(serviceId);
     openModal?.(modalId, { focusTarget });
@@ -1985,11 +1990,11 @@ export function createServiceModalController({
     setError("");
     if (revertSelection && context.mode === "change" && context.triggerCheckbox) {
       context.triggerCheckbox.checked = false;
-      context.triggerCheckbox.closest(".service-card")?.classList.remove("selected");
-      if (state?.serviceDetails) {
-        delete state.serviceDetails[context.serviceId];
+      context.triggerCheckbox.closest(".processing-service-card")?.classList.remove("selected");
+      if (state?.processingServiceDetails) {
+        delete state.processingServiceDetails[context.serviceId];
       }
-      updateServiceSummary?.(context.serviceId);
+      updateProcessingServiceSummary?.(context.serviceId);
       onRevertSelection?.();
     }
     draft = null;
@@ -1999,7 +2004,7 @@ export function createServiceModalController({
 
   const save = () => {
     const serviceId = context.serviceId;
-    const srv = services?.[serviceId];
+    const srv = processingServices?.[serviceId];
     if (!serviceId || !srv) return;
     setError("");
     if (srv.hasDetail()) {
@@ -2008,13 +2013,17 @@ export function createServiceModalController({
         setError(validation.message || "세부 옵션을 확인해주세요.");
         return;
       }
-      state.serviceDetails[serviceId] = cloneServiceDetails(validation.detail);
+      if (state?.processingServiceDetails) {
+        state.processingServiceDetails[serviceId] = cloneProcessingServiceDetails(validation.detail);
+      }
     } else {
-      state.serviceDetails[serviceId] = srv.normalizeDetail
-        ? cloneServiceDetails(srv.normalizeDetail(draft))
-        : null;
+      if (state?.processingServiceDetails) {
+        state.processingServiceDetails[serviceId] = srv.normalizeDetail
+          ? cloneProcessingServiceDetails(srv.normalizeDetail(draft))
+          : null;
+      }
     }
-    updateServiceSummary?.(serviceId);
+    updateProcessingServiceSummary?.(serviceId);
     onAfterSave?.();
     close(false);
   };
@@ -2024,12 +2033,12 @@ export function createServiceModalController({
     if (!serviceId) return;
     if (context.triggerCheckbox) {
       context.triggerCheckbox.checked = false;
-      context.triggerCheckbox.closest(".service-card")?.classList.remove("selected");
+      context.triggerCheckbox.closest(".processing-service-card")?.classList.remove("selected");
     }
-    if (state?.serviceDetails) {
-      delete state.serviceDetails[serviceId];
+    if (state?.processingServiceDetails) {
+      delete state.processingServiceDetails[serviceId];
     }
-    updateServiceSummary?.(serviceId);
+    updateProcessingServiceSummary?.(serviceId);
     onAfterRemove?.();
     close(false);
   };
@@ -2118,25 +2127,25 @@ export function renderSelectedAddonChips({
   target.innerHTML = chips;
 }
 
-export function updateServiceSummaryChip({
+export function updateProcessingServiceSummaryChip({
   serviceId,
-  services,
-  serviceDetails,
+  processingServices,
+  processingServiceDetails,
   formatSummaryText,
   emptyDetailText = "세부 옵션을 설정해주세요.",
   noDetailText = "추가 설정 없음",
   selector,
 } = {}) {
   const summaryEl = document.querySelector(
-    selector || `[data-service-summary="${serviceId}"]`
+    selector || `[data-processing-service-summary="${serviceId}"]`
   );
   if (!summaryEl) return;
-  const srv = services?.[serviceId];
+  const srv = processingServices?.[serviceId];
   if (!srv) {
     summaryEl.textContent = emptyDetailText;
     return;
   }
-  const detail = serviceDetails?.[serviceId];
+  const detail = processingServiceDetails?.[serviceId];
   summaryEl.textContent = detail
     ? formatSummaryText?.(serviceId, detail) || emptyDetailText
     : srv.hasDetail()
@@ -2293,39 +2302,39 @@ export function initCollapsibleSections({
 
 export function updatePreviewSummary({
   optionSelector,
-  serviceSelector,
+  processingServiceSelector,
   optionSummarySelector = "#previewOptionSummary",
-  serviceSummarySelector = "#previewServiceSummary",
+  processingServiceSummarySelector = "#previewProcessingServiceSummary",
   optionEmptyText = "옵션 선택 없음",
-  serviceEmptyText = "가공 선택 없음",
+  processingServiceEmptyText = "가공 선택 없음",
 } = {}) {
   if (typeof document === "undefined") return;
   const optionSummaryEl = document.querySelector(optionSummarySelector);
-  const serviceSummaryEl = document.querySelector(serviceSummarySelector);
-  if (!optionSummaryEl && !serviceSummaryEl) return;
+  const processingServiceSummaryEl = document.querySelector(processingServiceSummarySelector);
+  if (!optionSummaryEl && !processingServiceSummaryEl) return;
   const optionCount = optionSelector
     ? document.querySelectorAll(optionSelector).length
     : 0;
-  const serviceCount = serviceSelector
-    ? document.querySelectorAll(serviceSelector).length
+  const processingServiceCount = processingServiceSelector
+    ? document.querySelectorAll(processingServiceSelector).length
     : 0;
   if (optionSummaryEl) {
     optionSummaryEl.textContent = optionCount
       ? `옵션 ${optionCount}개 선택`
       : optionEmptyText;
   }
-  if (serviceSummaryEl) {
-    serviceSummaryEl.textContent = serviceCount
-      ? `가공 ${serviceCount}개 선택`
-      : serviceEmptyText;
+  if (processingServiceSummaryEl) {
+    processingServiceSummaryEl.textContent = processingServiceCount
+      ? `가공 ${processingServiceCount}개 선택`
+      : processingServiceEmptyText;
   }
 }
 
 export function buildEstimateDetailLines({
   sizeText,
   optionsText,
-  servicesText,
-  serviceLabel = "가공서비스",
+  processingServicesText,
+  processingServiceLabel = "가공서비스",
   materialLabel,
   materialCost,
   processingCost,
@@ -2334,9 +2343,12 @@ export function buildEstimateDetailLines({
   processingConsult = false,
 } = {}) {
   const lines = [];
+  const resolvedProcessingServiceLabel = processingServiceLabel || "가공서비스";
   if (sizeText) lines.push(`사이즈 ${sizeText}`);
   if (optionsText) lines.push(`옵션 ${optionsText}`);
-  if (servicesText) lines.push(`${serviceLabel} ${servicesText}`);
+  if (processingServicesText) {
+    lines.push(`${resolvedProcessingServiceLabel} ${processingServicesText}`);
+  }
   if (materialLabel) {
     if (materialConsult) {
       lines.push(`${materialLabel} 상담 안내`);
@@ -2344,7 +2356,7 @@ export function buildEstimateDetailLines({
       lines.push(`${materialLabel} ${materialCost.toLocaleString()}원`);
     }
   }
-  const resolvedProcessingCostLabel = processingCostLabel || `${serviceLabel}비`;
+  const resolvedProcessingCostLabel = processingCostLabel || `${resolvedProcessingServiceLabel}비`;
   if (processingConsult) {
     lines.push(`${resolvedProcessingCostLabel} 상담 안내`);
   } else if (Number.isFinite(processingCost)) {

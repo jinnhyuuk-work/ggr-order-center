@@ -13,10 +13,10 @@ import {
   getEmailJSInstance,
   updateSizeErrors,
   renderEstimateTable,
-  createServiceModalController,
+  createProcessingServiceModalController,
   renderSelectedCard,
   renderSelectedAddonChips,
-  updateServiceSummaryChip,
+  updateProcessingServiceSummaryChip,
   initCollapsibleSections,
   updatePreviewSummary,
   buildEstimateDetailLines,
@@ -31,7 +31,7 @@ import {
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   UI_COLOR_FALLBACKS,
-  validateServiceStepSelection,
+  validateFulfillmentStepSelection,
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
   resolveThreePhaseNextTransition,
@@ -49,9 +49,9 @@ import {
 import { TOP_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
   normalizeFulfillmentType,
-  isServiceAddressReady,
+  isFulfillmentAddressReady,
   evaluateFulfillmentPolicy,
-  formatServiceCostText,
+  formatFulfillmentCostText,
   formatFulfillmentLine,
   formatFulfillmentCardPriceText,
 } from "./fulfillment-policy.js";
@@ -63,22 +63,22 @@ import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zo
 import { createMeasurementGuideModalController } from "./measurement-guide-core.js";
 import { buildServiceModels } from "./service-models.js";
 
-const SERVICES = buildServiceModels(TOP_PROCESSING_SERVICES);
+const PROCESSING_SERVICES = buildServiceModels(TOP_PROCESSING_SERVICES);
 const OPTION_CATALOG = TOP_OPTIONS.reduce((acc, option) => {
   if (!option?.id) return acc;
   acc[option.id] = option;
   return acc;
 }, {});
 
-function cloneServiceDetails(details) {
+function cloneProcessingServiceDetails(details) {
   return JSON.parse(JSON.stringify(details || {}));
 }
 
-function getDefaultServiceDetail(serviceId) {
-  const srv = SERVICES[serviceId];
+function getDefaultProcessingServiceDetail(serviceId) {
+  const srv = PROCESSING_SERVICES[serviceId];
   if (!srv) return { note: "" };
   if (srv.hasDetail()) return { holes: [], note: "" };
-  return cloneServiceDetails(srv.defaultDetail ? srv.defaultDetail() : { note: "" });
+  return cloneProcessingServiceDetails(srv.defaultDetail ? srv.defaultDetail() : { note: "" });
 }
 
 function isBackShelfConsult({ serviceId, detail, width }) {
@@ -88,10 +88,10 @@ function isBackShelfConsult({ serviceId, detail, width }) {
   return height > getBackHeightLimit(width);
 }
 
-function calcServiceProcessingCost({ services = [], serviceDetails = {}, quantity = 1, width = 0 }) {
+function calcProcessingServiceCost({ services = [], serviceDetails = {}, quantity = 1, width = 0 }) {
   const { amount, hasConsult } = evaluateSelectionPricing({
     selectedIds: services,
-    resolveById: (id) => SERVICES[id],
+    resolveById: (id) => PROCESSING_SERVICES[id],
     quantity,
     availabilityContext: ({ id }) => ({
       serviceId: id,
@@ -118,8 +118,8 @@ function calcServiceProcessingCost({ services = [], serviceDetails = {}, quantit
   return { processingCost: amount, hasConsult };
 }
 
-function formatServiceDetail(serviceId, detail, { includeNote = false } = {}) {
-  const srv = SERVICES[serviceId];
+function formatProcessingServiceDetail(serviceId, detail, { includeNote = false } = {}) {
+  const srv = PROCESSING_SERVICES[serviceId];
   const name = srv?.label || serviceId;
   if (!srv) return name;
   if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
@@ -130,16 +130,16 @@ function formatServiceDetail(serviceId, detail, { includeNote = false } = {}) {
   return `${name} (${srv.formatDetail(detail, { includeNote })})`;
 }
 
-function formatServiceList(services, serviceDetails = {}, opts = {}) {
+function formatProcessingServiceList(services, serviceDetails = {}, opts = {}) {
   if (!services || services.length === 0) return "-";
   return services
-    .map((id) => formatServiceDetail(id, serviceDetails[id], opts))
+    .map((id) => formatProcessingServiceDetail(id, serviceDetails[id], opts))
     .filter(Boolean)
     .join(", ");
 }
 
-function formatServiceSummaryText(serviceId, detail) {
-  const srv = SERVICES[serviceId];
+function formatProcessingServiceSummaryText(serviceId, detail) {
+  const srv = PROCESSING_SERVICES[serviceId];
   if (!srv) return "세부 옵션을 설정해주세요.";
   if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
     const height = getBackHeightFromServiceDetail(detail);
@@ -154,13 +154,13 @@ let selectedTopType = "";
 const TOP_CATEGORIES = Array.from(new Set(TOP_TYPES.map((t) => t.category || "기타")));
 let selectedTopCategory = TOP_CATEGORIES[0] || "기타";
 let currentPhase = 1; // 1: 상판/가공, 2: 서비스, 3: 고객정보
-const state = { items: [], serviceDetails: {}, addons: [] };
+const state = { items: [], processingServiceDetails: {}, addons: [] };
 const previewSummaryConfig = {
   optionSelector: "#topOptionCards input:checked",
-  serviceSelector: 'input[name="service"]:checked',
+  processingServiceSelector: 'input[name="processingService"]:checked',
 };
 const HAS_OPTION_SELECTIONS = TOP_OPTIONS.length > 0;
-const HAS_PROCESSING_SELECTIONS = Object.keys(SERVICES).length > 0;
+const HAS_PROCESSING_SELECTIONS = Object.keys(PROCESSING_SERVICES).length > 0;
 const HAS_ADDITIONAL_SELECTIONS = HAS_OPTION_SELECTIONS || HAS_PROCESSING_SELECTIONS;
 const SWATCH_FALLBACK = UI_COLOR_FALLBACKS.swatch;
 const SWATCH_MUTED_FALLBACK = UI_COLOR_FALLBACKS.swatchMuted;
@@ -180,8 +180,8 @@ function setFulfillmentType(nextType) {
   });
 }
 
-function setServiceStepError(message = "") {
-  const errorEl = $("#serviceStepError");
+function setFulfillmentStepError(message = "") {
+  const errorEl = $("#fulfillmentStepError");
   if (!errorEl) return;
   const text = String(message || "").trim();
   errorEl.textContent = text;
@@ -192,7 +192,7 @@ function getTopProductItems() {
   return state.items.filter((item) => item.type !== "addon");
 }
 
-function evaluateFulfillmentService(nextType = getFulfillmentType()) {
+function evaluateFulfillment(nextType = getFulfillmentType()) {
   const customer = getCustomerInfo();
   const hasProducts = getTopProductItems().length > 0;
   return evaluateFulfillmentPolicy({
@@ -222,7 +222,7 @@ function buildGrandSummary() {
   const subtotal = state.items.reduce((sum, it) => sum + Number(it.subtotal || 0), 0);
   const materialsTotal = subtotal;
   const baseGrandTotal = state.items.reduce((sum, it) => sum + Number(it.total || 0), 0);
-  const fulfillment = evaluateFulfillmentService();
+  const fulfillment = evaluateFulfillment();
   const fulfillmentCost = fulfillment.isConsult ? 0 : Number(fulfillment.amount || 0);
   const grandTotal = baseGrandTotal + fulfillmentCost;
   const hasConsult = hasConsultLineItem(state.items) || (Boolean(fulfillment.type) && fulfillment.isConsult);
@@ -238,8 +238,8 @@ function buildGrandSummary() {
 
 function updateFulfillmentCardPriceUI() {
   const cardEntries = [
-    { id: "#serviceCardPriceDelivery", fulfillment: evaluateFulfillmentService("delivery") },
-    { id: "#serviceCardPriceInstallation", fulfillment: evaluateFulfillmentService("installation") },
+    { id: "#fulfillmentCardPriceDelivery", fulfillment: evaluateFulfillment("delivery") },
+    { id: "#fulfillmentCardPriceInstallation", fulfillment: evaluateFulfillment("installation") },
   ];
   cardEntries.forEach(({ id, fulfillment }) => {
     const priceEl = $(id);
@@ -251,10 +251,10 @@ function updateFulfillmentCardPriceUI() {
   });
 }
 
-function updateServiceStepUI({ showError = false } = {}) {
+function updateFulfillmentStepUI({ showError = false } = {}) {
   const customer = getCustomerInfo();
-  const addressReady = isServiceAddressReady(customer);
-  const regionHintEl = $("#serviceRegionHint");
+  const addressReady = isFulfillmentAddressReady(customer);
+  const regionHintEl = $("#fulfillmentRegionHint");
   const travelZone = resolveInstallationTravelZoneByAddress(customer);
   if (regionHintEl) {
     if (!addressReady) {
@@ -266,8 +266,8 @@ function updateServiceStepUI({ showError = false } = {}) {
     }
   }
 
-  const fulfillment = evaluateFulfillmentService();
-  const priceHintEl = $("#servicePriceHint");
+  const fulfillment = evaluateFulfillment();
+  const priceHintEl = $("#fulfillmentPriceHint");
   if (priceHintEl) {
     if (!fulfillment.type) {
       priceHintEl.textContent = "서비스를 선택하면 예상 서비스비가 표시됩니다.";
@@ -280,31 +280,31 @@ function updateServiceStepUI({ showError = false } = {}) {
   updateFulfillmentCardPriceUI();
 
   if (showError) {
-    setServiceStepError(validateServiceStep());
+    setFulfillmentStepError(validateFulfillmentStep());
   } else {
-    setServiceStepError("");
+    setFulfillmentStepError("");
   }
 }
 
-function validateServiceStep() {
-  return validateServiceStepSelection({
+function validateFulfillmentStep() {
+  return validateFulfillmentStepSelection({
     customer: getCustomerInfo(),
     fulfillmentType: getFulfillmentType(),
-    isAddressReady: isServiceAddressReady,
+    isAddressReady: isFulfillmentAddressReady,
   });
 }
 
 function clearProcessingServices() {
-  document.querySelectorAll('#topServiceCards input[name="service"]').forEach((input) => {
+  document.querySelectorAll('#topProcessingServiceCards input[name="processingService"]').forEach((input) => {
     input.checked = false;
-    input.closest(".service-card")?.classList.remove("selected");
+    input.closest(".processing-service-card")?.classList.remove("selected");
   });
-  state.serviceDetails = {};
-  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
+  state.processingServiceDetails = {};
+  Object.keys(PROCESSING_SERVICES).forEach((id) => updateProcessingServiceSummary(id));
 }
 
 function syncProcessingSectionVisibility() {
-  const container = $("#topServiceCards");
+  const container = $("#topProcessingServiceCards");
   if (!container) return;
   const section = container.closest(".selection-block--input");
   if (section) section.classList.toggle("hidden-step", !HAS_PROCESSING_SELECTIONS);
@@ -313,7 +313,7 @@ function syncProcessingSectionVisibility() {
     return;
   }
   container.classList.remove("hidden-step");
-  container.querySelectorAll('input[name="service"]').forEach((input) => {
+  container.querySelectorAll('input[name="processingService"]').forEach((input) => {
     input.disabled = false;
   });
   updatePreviewSummary(previewSummaryConfig);
@@ -717,7 +717,7 @@ function getTopDimensionLimits(typeId) {
   };
 }
 
-function hasBackShelfService(services = []) {
+function hasBackShelfProcessingService(services = []) {
   return Array.isArray(services) && services.includes(TOP_BACK_SHELF_SERVICE_ID);
 }
 
@@ -814,11 +814,11 @@ function readTopInputs() {
   const options = Array.from(document.querySelectorAll("#topOptionCards input:checked")).map(
     (el) => el.value
   );
-  const services = Array.from(document.querySelectorAll("#topServiceCards input:checked")).map(
+  const services = Array.from(document.querySelectorAll("#topProcessingServiceCards input:checked")).map(
     (el) => el.value
   );
-  const serviceDetails = cloneServiceDetails(state.serviceDetails);
-  const useBackHeight = hasBackShelfService(services);
+  const serviceDetails = cloneProcessingServiceDetails(state.processingServiceDetails);
+  const useBackHeight = hasBackShelfProcessingService(services);
   const backHeight = useBackHeight
     ? getBackHeightFromServiceDetail(serviceDetails?.[TOP_BACK_SHELF_SERVICE_ID])
     : 0;
@@ -917,7 +917,10 @@ function calcTopDetail(input) {
     selectedIds: options,
     resolveById: (id) => OPTION_CATALOG[id],
   });
-  const { processingCost: serviceProcessingCost, hasConsult: hasConsultService } = calcServiceProcessingCost({
+  const {
+    processingCost: processingServiceCost,
+    hasConsult: hasConsultProcessingService,
+  } = calcProcessingServiceCost({
     services,
     serviceDetails,
     quantity: 1,
@@ -925,17 +928,17 @@ function calcTopDetail(input) {
   });
   const itemCost = ceilToUnit((getChargeableLengthMm({ shape, width, length, length2, length3 }) / 1000) * getTopUnitPrice(type));
   const shapeFee = shape === "l" || shape === "rl" ? 30000 : 0;
-  const serviceCostRaw = shapeFee + serviceProcessingCost;
+  const processingServiceCostRaw = shapeFee + processingServiceCost;
   const optionHasConsult = Boolean(isCustomPrice || hasConsultOption);
-  const serviceHasConsult = Boolean(isCustomPrice || hasConsultService);
+  const processingServiceHasConsult = Boolean(isCustomPrice || hasConsultProcessingService);
   const appliedOptionCost = optionHasConsult ? 0 : optionPrice;
-  const appliedServiceCost = serviceHasConsult ? 0 : serviceCostRaw;
-  const appliedProcessingCost = appliedOptionCost + appliedServiceCost;
+  const appliedProcessingServiceCost = processingServiceHasConsult ? 0 : processingServiceCostRaw;
+  const appliedProcessingCost = appliedOptionCost + appliedProcessingServiceCost;
   const materialCost = isCustomPrice ? 0 : itemCost + appliedProcessingCost;
   const subtotal = materialCost;
   const vat = 0;
   const total = isCustomPrice ? 0 : ceilToUnit(subtotal);
-  const hasConsultItems = Boolean(isCustomPrice || optionHasConsult || serviceHasConsult);
+  const hasConsultItems = Boolean(isCustomPrice || optionHasConsult || processingServiceHasConsult);
 
   const displaySize = (() => {
     if (shape === "u") {
@@ -962,17 +965,19 @@ function calcTopDetail(input) {
     total,
     displaySize,
     optionsLabel: optionLabels.length === 0 ? "-" : optionLabels.join(", "),
-    servicesLabel: formatServiceList(services, serviceDetails, { includeNote: true }),
+    servicesLabel: formatProcessingServiceList(services, serviceDetails, { includeNote: true }),
     serviceDetails,
     services,
     isCustomPrice,
     hasConsultItems,
     itemCost: isCustomPrice ? 0 : itemCost,
     optionCost: appliedOptionCost,
-    serviceCost: appliedServiceCost,
+    processingServiceCost: appliedProcessingServiceCost,
+    serviceCost: appliedProcessingServiceCost,
     itemHasConsult: Boolean(isCustomPrice),
     optionHasConsult,
-    serviceHasConsult,
+    processingServiceHasConsult,
+    serviceHasConsult: processingServiceHasConsult,
     useBackHeight,
     backHeight,
     processingCost: appliedProcessingCost,
@@ -1275,24 +1280,24 @@ function syncTopAddonSelectionFromItems() {
   });
 }
 
-function updateServiceSummary(serviceId) {
-  updateServiceSummaryChip({
+function updateProcessingServiceSummary(serviceId) {
+  updateProcessingServiceSummaryChip({
     serviceId,
-    services: SERVICES,
-    serviceDetails: state.serviceDetails,
-    formatSummaryText: formatServiceSummaryText,
+    processingServices: PROCESSING_SERVICES,
+    processingServiceDetails: state.processingServiceDetails,
+    formatSummaryText: formatProcessingServiceSummaryText,
   });
   updatePreviewSummary(previewSummaryConfig);
 }
 
-function renderServiceCards() {
-  const container = $("#topServiceCards");
+function renderProcessingServiceCards() {
+  const container = $("#topProcessingServiceCards");
   if (!container) return;
   container.innerHTML = "";
 
-  Object.values(SERVICES).forEach((srv) => {
+  Object.values(PROCESSING_SERVICES).forEach((srv) => {
     const label = document.createElement("label");
-    label.className = "card-base service-card";
+    label.className = "card-base processing-service-card";
     const fallbackPriceText = srv.pricePerHole
       ? `개당 ${srv.pricePerHole.toLocaleString()}원`
       : srv.pricePerMeter
@@ -1305,13 +1310,13 @@ function renderServiceCards() {
       fallbackText: fallbackPriceText,
     });
     label.innerHTML = `
-      <input type="checkbox" name="service" value="${srv.id}" />
+      <input type="checkbox" name="processingService" value="${srv.id}" />
       <div class="material-visual" style="background: ${srv.swatch || SWATCH_MUTED_FALLBACK}"></div>
       <div class="name">${srv.label}</div>
       <div class="price${isConsultService ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(srv.description)}
-      <div class="service-actions">
-        <div class="service-detail-chip" data-service-summary="${srv.id}">
+      <div class="processing-service-actions">
+        <div class="processing-service-detail-chip" data-processing-service-summary="${srv.id}">
           ${srv.hasDetail() ? "세부 옵션을 설정해주세요." : "추가 설정 없음"}
         </div>
       </div>
@@ -1319,39 +1324,39 @@ function renderServiceCards() {
     container.appendChild(label);
   });
 
-  Object.keys(SERVICES).forEach((id) => updateServiceSummary(id));
+  Object.keys(PROCESSING_SERVICES).forEach((id) => updateProcessingServiceSummary(id));
   syncProcessingSectionVisibility();
   if (!HAS_PROCESSING_SELECTIONS) return;
 
   container.addEventListener("change", (e) => {
-    if (e.target.name === "service") {
+    if (e.target.name === "processingService") {
       const serviceId = e.target.value;
-      const srv = SERVICES[serviceId];
-      const card = e.target.closest(".service-card");
+      const srv = PROCESSING_SERVICES[serviceId];
+      const card = e.target.closest(".processing-service-card");
       if (e.target.checked) {
         card?.classList.add("selected");
         if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
-          openServiceModal(serviceId, e.target, "change");
+          openProcessingServiceModal(serviceId, e.target, "change");
           updatePreviewSummary(previewSummaryConfig);
           return;
         }
         if (srv?.hasDetail()) {
-          openServiceModal(serviceId, e.target, "change");
+          openProcessingServiceModal(serviceId, e.target, "change");
         } else {
-          state.serviceDetails[serviceId] = srv?.defaultDetail() || null;
-          updateServiceSummary(serviceId);
+          state.processingServiceDetails[serviceId] = srv?.defaultDetail() || null;
+          updateProcessingServiceSummary(serviceId);
           refreshTopEstimate();
         }
         updatePreviewSummary(previewSummaryConfig);
       } else {
         if (srv?.hasDetail()) {
           e.target.checked = true;
-          openServiceModal(serviceId, e.target, "edit");
+          openProcessingServiceModal(serviceId, e.target, "edit");
           return;
         }
         card?.classList.remove("selected");
-        delete state.serviceDetails[serviceId];
-        updateServiceSummary(serviceId);
+        delete state.processingServiceDetails[serviceId];
+        updateProcessingServiceSummary(serviceId);
         refreshTopEstimate();
         updatePreviewSummary(previewSummaryConfig);
       }
@@ -1359,9 +1364,9 @@ function renderServiceCards() {
   });
 
   container.addEventListener("click", (e) => {
-    const card = e.target.closest(".service-card");
+    const card = e.target.closest(".processing-service-card");
     if (!card) return;
-    const checkbox = card.querySelector('input[name="service"]');
+    const checkbox = card.querySelector('input[name="processingService"]');
     if (!checkbox) return;
     const serviceId = checkbox.value;
     if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
@@ -1372,10 +1377,10 @@ function renderServiceCards() {
         checkbox.checked = true;
         card.classList.add("selected");
       }
-      openServiceModal(serviceId, checkbox, wasChecked ? "edit" : "change");
+      openProcessingServiceModal(serviceId, checkbox, wasChecked ? "edit" : "change");
       return;
     }
-    const srv = SERVICES[serviceId];
+    const srv = PROCESSING_SERVICES[serviceId];
     if (!srv?.hasDetail()) return;
     e.preventDefault();
     e.stopPropagation();
@@ -1383,11 +1388,11 @@ function renderServiceCards() {
     if (!checkbox.checked) {
       checkbox.checked = true;
       card.classList.add("selected");
-      updateServiceSummary(serviceId);
+      updateProcessingServiceSummary(serviceId);
       refreshTopEstimate();
       updateAddButtonState();
     }
-    openServiceModal(serviceId, checkbox, wasChecked ? "edit" : "change");
+    openProcessingServiceModal(serviceId, checkbox, wasChecked ? "edit" : "change");
   });
 }
 
@@ -1410,12 +1415,12 @@ function renderTable() {
         ];
       }
       const baseCost = Math.max(0, item.materialCost - item.processingCost);
-      const servicesText = formatServiceList(item.services, item.serviceDetails, { includeNote: true });
+      const processingServicesText = formatProcessingServiceList(item.services, item.serviceDetails, { includeNote: true });
       const baseLines = buildEstimateDetailLines({
         sizeText: escapeHtml(item.displaySize),
         optionsText: escapeHtml(item.optionsLabel),
-        servicesText: escapeHtml(servicesText || "-"),
-        serviceLabel: "가공서비스",
+        processingServicesText: escapeHtml(processingServicesText || "-"),
+        processingServiceLabel: "가공서비스",
         materialLabel: "상판비",
         materialCost: item.isCustomPrice ? null : baseCost,
         materialConsult: item.isCustomPrice,
@@ -1451,12 +1456,12 @@ function renderSummary() {
   if (productTotalEl) productTotalEl.textContent = `${productTotal.toLocaleString()}${productSuffix}`;
   const grandEl = $("#grandTotal");
   if (grandEl) grandEl.textContent = `${grandTotal.toLocaleString()}${suffix}`;
-  const serviceCostEl = $("#serviceCost");
-  if (serviceCostEl) serviceCostEl.textContent = formatServiceCostText(summary.fulfillment);
+  const fulfillmentCostEl = $("#fulfillmentCost");
+  if (fulfillmentCostEl) fulfillmentCostEl.textContent = formatFulfillmentCostText(summary.fulfillment);
   const naverUnits = Math.ceil(grandTotal / 1000) || 0;
   const naverEl = $("#naverUnits");
   if (naverEl) naverEl.textContent = `${naverUnits}${suffix}`;
-  updateServiceStepUI();
+  updateFulfillmentStepUI();
   updateSendButtonEnabled();
 }
 
@@ -1475,15 +1480,15 @@ function buildCompleteDetailRowsHtml(rows = []) {
 
 function buildTopOrderCompleteDetailRows(item = {}) {
   const isAddon = item.type === "addon";
-  const servicesText = isAddon
+  const processingServicesText = isAddon
     ? "-"
-    : formatServiceList(item.services, item.serviceDetails, { includeNote: true }) || "-";
+    : formatProcessingServiceList(item.services, item.serviceDetails, { includeNote: true }) || "-";
   return [
     { label: "품목명", value: `${isAddon ? "부자재" : "상판"} ${item.typeName || "-"}` },
     { label: "수량", value: `${Math.max(1, Number(item.quantity || 1))}개` },
     { label: "사이즈", value: isAddon ? "-" : item.displaySize || "-" },
     { label: "옵션", value: isAddon ? "-" : item.optionsLabel || "-" },
-    { label: "가공서비스", value: servicesText },
+    { label: "가공서비스", value: processingServicesText },
   ];
 }
 
@@ -1623,7 +1628,7 @@ function refreshTopEstimate() {
       breakdownRows: buildStandardPriceBreakdownRows({
         itemHasConsult: true,
         optionHasConsult: true,
-        serviceHasConsult: true,
+        processingServiceHasConsult: true,
       }),
     });
     updateAddButtonState();
@@ -1638,10 +1643,10 @@ function refreshTopEstimate() {
     breakdownRows: buildStandardPriceBreakdownRows({
       itemCost: detail.itemCost,
       optionCost: detail.optionCost,
-      serviceCost: detail.serviceCost,
+      processingServiceCost: detail.processingServiceCost,
       itemHasConsult: detail.itemHasConsult,
       optionHasConsult: detail.optionHasConsult,
-      serviceHasConsult: detail.serviceHasConsult,
+      processingServiceHasConsult: detail.processingServiceHasConsult,
     }),
   });
   updateAddButtonState();
@@ -1672,7 +1677,7 @@ function addTopItem() {
     backHeight: input.backHeight,
     useBackHeight: input.useBackHeight,
     services: input.services,
-    serviceDetails: cloneServiceDetails(input.serviceDetails),
+    serviceDetails: cloneProcessingServiceDetails(input.serviceDetails),
     quantity: 1,
     ...detail,
   });
@@ -1924,18 +1929,18 @@ function updateTopPreview(input, detail) {
     : `${type.name} / ${input.width}×${input.length}×${input.thickness}mm`;
 }
 
-const serviceModalController = createServiceModalController({
-  modalId: "#topServiceModal",
-  titleId: "#topServiceModalTitle",
-  bodyId: "#topServiceModalBody",
-  errorId: "#topServiceModalError",
-  noteId: "topServiceNote",
-  focusTarget: "#topServiceModalTitle",
-  services: SERVICES,
+const processingServiceModalController = createProcessingServiceModalController({
+  modalId: "#topProcessingServiceModal",
+  titleId: "#topProcessingServiceModalTitle",
+  bodyId: "#topProcessingServiceModalBody",
+  errorId: "#topProcessingServiceModalError",
+  noteId: "topProcessingServiceNote",
+  focusTarget: "#topProcessingServiceModalTitle",
+  processingServices: PROCESSING_SERVICES,
   state,
-  getDefaultServiceDetail,
-  cloneServiceDetails,
-  updateServiceSummary,
+  getDefaultProcessingServiceDetail,
+  cloneProcessingServiceDetails,
+  updateProcessingServiceSummary,
   openModal,
   closeModal,
   onRevertSelection: () => {
@@ -1952,11 +1957,11 @@ const serviceModalController = createServiceModalController({
   },
 });
 
-let activeCustomServiceModalId = null;
+let activeCustomProcessingServiceModalId = null;
 let backHeightModalContext = { triggerCheckbox: null, mode: null };
 
-function setServiceModalError(message = "") {
-  const errEl = $("#topServiceModalError");
+function setProcessingServiceModalError(message = "") {
+  const errEl = $("#topProcessingServiceModalError");
   if (errEl) errEl.textContent = message || "";
 }
 
@@ -1995,9 +2000,9 @@ function updateBackHeightModalGuidance() {
 }
 
 function renderBackHeightModalBody() {
-  const bodyEl = $("#topServiceModalBody");
+  const bodyEl = $("#topProcessingServiceModalBody");
   if (!bodyEl) return;
-  const savedHeight = getBackHeightFromServiceDetail(state.serviceDetails?.[TOP_BACK_SHELF_SERVICE_ID]);
+  const savedHeight = getBackHeightFromServiceDetail(state.processingServiceDetails?.[TOP_BACK_SHELF_SERVICE_ID]);
   bodyEl.innerHTML = `
     <p class="input-tip">뒷턱 높이를 입력해주세요. 높이는 최대 ${TOP_BACK_HEIGHT_MAX}mm까지 가능합니다.</p>
     <div class="form-row">
@@ -2005,7 +2010,7 @@ function renderBackHeightModalBody() {
       <div class="field-col">
         <input
           type="number"
-          class="service-input"
+          class="processing-service-input"
           id="topBackHeightModalInput"
           placeholder="예: 40"
           min="0"
@@ -2020,102 +2025,102 @@ function renderBackHeightModalBody() {
   const modalInput = $("#topBackHeightModalInput");
   updateBackHeightModalGuidance();
   modalInput?.addEventListener("input", () => {
-    setServiceModalError("");
+    setProcessingServiceModalError("");
     updateBackHeightModalGuidance();
   });
 }
 
-function openBackHeightServiceModal(triggerCheckbox, mode = "change") {
-  activeCustomServiceModalId = TOP_BACK_SHELF_SERVICE_ID;
+function openBackHeightProcessingServiceModal(triggerCheckbox, mode = "change") {
+  activeCustomProcessingServiceModalId = TOP_BACK_SHELF_SERVICE_ID;
   backHeightModalContext = { triggerCheckbox, mode };
-  const titleEl = $("#topServiceModalTitle");
+  const titleEl = $("#topProcessingServiceModalTitle");
   if (titleEl) {
-    titleEl.textContent = SERVICES[TOP_BACK_SHELF_SERVICE_ID]?.label || "뒷턱/뒷선반 추가";
+    titleEl.textContent = PROCESSING_SERVICES[TOP_BACK_SHELF_SERVICE_ID]?.label || "뒷턱/뒷선반 추가";
   }
-  setServiceModalError("");
+  setProcessingServiceModalError("");
   renderBackHeightModalBody();
-  openModal("#topServiceModal", { focusTarget: "#topServiceModalTitle" });
+  openModal("#topProcessingServiceModal", { focusTarget: "#topProcessingServiceModalTitle" });
 }
 
-function closeBackHeightServiceModal(revertSelection = true) {
-  closeModal("#topServiceModal");
-  setServiceModalError("");
+function closeBackHeightProcessingServiceModal(revertSelection = true) {
+  closeModal("#topProcessingServiceModal");
+  setProcessingServiceModalError("");
   if (revertSelection && backHeightModalContext.mode === "change" && backHeightModalContext.triggerCheckbox) {
     backHeightModalContext.triggerCheckbox.checked = false;
-    backHeightModalContext.triggerCheckbox.closest(".service-card")?.classList.remove("selected");
-    delete state.serviceDetails[TOP_BACK_SHELF_SERVICE_ID];
-    updateServiceSummary(TOP_BACK_SHELF_SERVICE_ID);
+    backHeightModalContext.triggerCheckbox.closest(".processing-service-card")?.classList.remove("selected");
+    delete state.processingServiceDetails[TOP_BACK_SHELF_SERVICE_ID];
+    updateProcessingServiceSummary(TOP_BACK_SHELF_SERVICE_ID);
     updatePreviewSummary(previewSummaryConfig);
     refreshTopEstimate();
     updateAddButtonState();
   }
-  activeCustomServiceModalId = null;
+  activeCustomProcessingServiceModalId = null;
   backHeightModalContext = { triggerCheckbox: null, mode: null };
 }
 
-function saveBackHeightServiceModal() {
+function saveBackHeightProcessingServiceModal() {
   const heightInput = Number($("#topBackHeightModalInput")?.value || 0);
   const validation = validateBackHeightValue(heightInput);
   if (!validation.ok) {
-    setServiceModalError(validation.message);
+    setProcessingServiceModalError(validation.message);
     return;
   }
-  state.serviceDetails[TOP_BACK_SHELF_SERVICE_ID] = { height: validation.height };
-  updateServiceSummary(TOP_BACK_SHELF_SERVICE_ID);
+  state.processingServiceDetails[TOP_BACK_SHELF_SERVICE_ID] = { height: validation.height };
+  updateProcessingServiceSummary(TOP_BACK_SHELF_SERVICE_ID);
   refreshTopEstimate();
   updateAddButtonState();
-  closeBackHeightServiceModal(false);
+  closeBackHeightProcessingServiceModal(false);
 }
 
-function removeBackHeightServiceModal() {
+function removeBackHeightProcessingServiceModal() {
   const checkbox =
     backHeightModalContext.triggerCheckbox ||
     document.querySelector(
-      `#topServiceCards input[name="service"][value="${TOP_BACK_SHELF_SERVICE_ID}"]`
+      `#topProcessingServiceCards input[name="processingService"][value="${TOP_BACK_SHELF_SERVICE_ID}"]`
     );
   if (checkbox) {
     checkbox.checked = false;
-    checkbox.closest(".service-card")?.classList.remove("selected");
+    checkbox.closest(".processing-service-card")?.classList.remove("selected");
   }
-  delete state.serviceDetails[TOP_BACK_SHELF_SERVICE_ID];
-  updateServiceSummary(TOP_BACK_SHELF_SERVICE_ID);
+  delete state.processingServiceDetails[TOP_BACK_SHELF_SERVICE_ID];
+  updateProcessingServiceSummary(TOP_BACK_SHELF_SERVICE_ID);
   updatePreviewSummary(previewSummaryConfig);
   refreshTopEstimate();
   updateAddButtonState();
-  closeBackHeightServiceModal(false);
+  closeBackHeightProcessingServiceModal(false);
 }
 
-function openServiceModal(serviceId, triggerCheckbox, mode = "change") {
+function openProcessingServiceModal(serviceId, triggerCheckbox, mode = "change") {
   if (serviceId === TOP_BACK_SHELF_SERVICE_ID) {
-    openBackHeightServiceModal(triggerCheckbox, mode);
+    openBackHeightProcessingServiceModal(triggerCheckbox, mode);
     return;
   }
-  activeCustomServiceModalId = null;
-  serviceModalController.open(serviceId, triggerCheckbox, mode);
+  activeCustomProcessingServiceModalId = null;
+  processingServiceModalController.open(serviceId, triggerCheckbox, mode);
 }
 
-function closeServiceModal(revertSelection = true) {
-  if (activeCustomServiceModalId === TOP_BACK_SHELF_SERVICE_ID) {
-    closeBackHeightServiceModal(revertSelection);
+function closeProcessingServiceModal(revertSelection = true) {
+  if (activeCustomProcessingServiceModalId === TOP_BACK_SHELF_SERVICE_ID) {
+    closeBackHeightProcessingServiceModal(revertSelection);
     return;
   }
-  serviceModalController.close(revertSelection);
+  processingServiceModalController.close(revertSelection);
 }
 
-function saveServiceModal() {
-  if (activeCustomServiceModalId === TOP_BACK_SHELF_SERVICE_ID) {
-    saveBackHeightServiceModal();
+function saveProcessingServiceModal() {
+  if (activeCustomProcessingServiceModalId === TOP_BACK_SHELF_SERVICE_ID) {
+    saveBackHeightProcessingServiceModal();
     return;
   }
-  serviceModalController.save();
+  processingServiceModalController.save();
 }
 
-function removeServiceModal() {
-  if (activeCustomServiceModalId === TOP_BACK_SHELF_SERVICE_ID) {
-    removeBackHeightServiceModal();
+function removeProcessingServiceModal() {
+  if (activeCustomProcessingServiceModalId === TOP_BACK_SHELF_SERVICE_ID) {
+    removeBackHeightProcessingServiceModal();
     return;
   }
-  serviceModalController.remove();
+  processingServiceModalController.remove();
 }
 
 function updateItemQuantity(id, quantity) {
@@ -2203,12 +2208,12 @@ function goToNextStep() {
     currentPhase,
     phase1Ready: state.items.some((it) => it.type !== "addon"),
     phase1ErrorMessage: "상판을 하나 이상 담아주세요.",
-    validatePhase2: validateServiceStep,
+    validatePhase2: validateFulfillmentStep,
   });
 
   if (transition.errorMessage) {
     if (transition.errorStage === "phase2") {
-      setServiceStepError(transition.errorMessage);
+      setFulfillmentStepError(transition.errorMessage);
     }
     showInfoModal(transition.errorMessage);
     return;
@@ -2217,7 +2222,7 @@ function goToNextStep() {
   if (transition.nextPhase === 2 && currentPhase !== 2) {
     currentPhase = 2;
     updateStepVisibility(document.getElementById("step4"));
-    updateServiceStepUI();
+    updateFulfillmentStepUI();
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
@@ -2448,7 +2453,7 @@ function resetFlow() {
   });
   customerPhotoUploader?.clear?.();
   setFulfillmentType("");
-  setServiceStepError("");
+  setFulfillmentStepError("");
   renderTable();
   renderSummary();
   resetSelections();
@@ -2466,7 +2471,7 @@ function initTop() {
   renderTopTypeCards();
   renderOptions();
   renderTopAddonCards();
-  renderServiceCards();
+  renderProcessingServiceCards();
   syncProcessingSectionVisibility();
   initCollapsibleSections();
   renderTable();
@@ -2496,10 +2501,10 @@ function initTop() {
   });
   $("#sendQuoteBtn")?.addEventListener("click", sendQuote);
   $("#measurementGuideModalBody")?.addEventListener("click", handleMeasurementGuideCarouselClick);
-  $("#saveTopServiceModal")?.addEventListener("click", saveServiceModal);
-  $("#removeTopServiceModal")?.addEventListener("click", removeServiceModal);
-  $("#cancelTopServiceModal")?.addEventListener("click", () => closeServiceModal(true));
-  $("#topServiceModalBackdrop")?.addEventListener("click", () => closeServiceModal(true));
+  $("#saveTopProcessingServiceModal")?.addEventListener("click", saveProcessingServiceModal);
+  $("#removeTopProcessingServiceModal")?.addEventListener("click", removeProcessingServiceModal);
+  $("#cancelTopProcessingServiceModal")?.addEventListener("click", () => closeProcessingServiceModal(true));
+  $("#topProcessingServiceModalBackdrop")?.addEventListener("click", () => closeProcessingServiceModal(true));
 
   ["topDepth", "topLength", "topLength2", "topLength3", "topThickness", "kitchenShape"].forEach((id) => {
     const el = document.getElementById(id);
@@ -2515,16 +2520,16 @@ function initTop() {
   document.querySelectorAll("[data-fulfillment-type]").forEach((btn) => {
     btn.addEventListener("click", () => {
       setFulfillmentType(btn.dataset.fulfillmentType);
-      setServiceStepError("");
-      updateServiceStepUI();
+      setFulfillmentStepError("");
+      updateFulfillmentStepUI();
       renderSummary();
     });
   });
   ["#sample6_postcode", "#sample6_address", "#sample6_detailAddress"].forEach((sel) => {
     const el = document.querySelector(sel);
     el?.addEventListener("input", () => {
-      setServiceStepError("");
-      updateServiceStepUI();
+      setFulfillmentStepError("");
+      updateFulfillmentStepUI();
       renderSummary();
       updateSendButtonEnabled();
     });
@@ -2536,7 +2541,7 @@ function initTop() {
   updateAddButtonState();
   updateStepVisibility();
   setFulfillmentType(getFulfillmentType());
-  updateServiceStepUI();
+  updateFulfillmentStepUI();
   updateSendButtonEnabled();
   updateTopPreview(readTopInputs(), null);
   requestStickyOffsetUpdate();

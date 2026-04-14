@@ -19,16 +19,16 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
     isLayoutConsultStatus,
     buildGrandSummary,
     $,
-    formatServiceCostText,
-    updateServiceStepUI,
+    formatFulfillmentCostText,
+    updateFulfillmentStepUI,
     getCustomerInfo,
     updateSendButtonEnabledShared,
     isConsentChecked,
     renderOrderCompleteDetails,
     applyThreePhaseStepVisibility,
     resolveThreePhaseNextTransition,
-    validateServiceStep,
-    setServiceStepError,
+    validateFulfillmentStep,
+    setFulfillmentStepError,
     showInfoModal,
     resolveThreePhasePrevPhase,
   } = deps;
@@ -138,12 +138,12 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
     const materialsTotalEl = $("#materialsTotal");
     if (materialsTotalEl) materialsTotalEl.textContent = summary.materialsTotal.toLocaleString();
     $("#grandTotal").textContent = `${summary.grandTotal.toLocaleString()}${suffix}`;
-    const serviceCostEl = $("#serviceCost");
-    if (serviceCostEl) serviceCostEl.textContent = formatServiceCostText(summary.fulfillment);
+    const fulfillmentCostEl = $("#fulfillmentCost");
+    if (fulfillmentCostEl) fulfillmentCostEl.textContent = formatFulfillmentCostText(summary.fulfillment);
 
     const naverUnits = Math.ceil(summary.grandTotal / 1000);
     $("#naverUnits").textContent = `${naverUnits}${suffix}`;
-    updateServiceStepUI();
+    updateFulfillmentStepUI();
     updateSendButtonEnabled();
   };
 
@@ -168,13 +168,13 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
   const showOrderComplete = () => {
     const navActions = document.querySelector(".nav-actions");
     const completeEl = $("#orderComplete");
-    const serviceStep = $("#step4");
+    const fulfillmentStep = $("#step4");
     const customerStep = $("#step5");
     const summaryCard = $("#stepFinal");
     renderOrderCompleteDetails();
     setOrderCompleted(true);
     navActions?.classList.add("hidden-step");
-    serviceStep?.classList.add("hidden-step");
+    fulfillmentStep?.classList.add("hidden-step");
     customerStep?.classList.add("hidden-step");
     completeEl?.classList.remove("hidden-step");
     summaryCard?.classList.add("order-complete-visible");
@@ -234,12 +234,12 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
       currentPhase: getCurrentPhase(),
       phase1Ready: state.items.length > 0,
       phase1ErrorMessage: "먼저 시스템 수납장을 구성해주세요.",
-      validatePhase2: validateServiceStep,
+      validatePhase2: validateFulfillmentStep,
     });
 
     if (transition.errorMessage) {
       if (transition.errorStage === "phase2") {
-        setServiceStepError(transition.errorMessage);
+        setFulfillmentStepError(transition.errorMessage);
       }
       showInfoModal(transition.errorMessage);
       return;
@@ -248,7 +248,7 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
     if (transition.nextPhase === 2 && getCurrentPhase() !== 2) {
       setCurrentPhase(2);
       updateStepVisibility($("#step4"));
-      updateServiceStepUI();
+      updateFulfillmentStepUI();
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }

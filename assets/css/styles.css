@@ -1679,14 +1679,14 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 8px;
 }
 
-.selection-service-grid {
+.fulfillment-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   width: 100%;
 }
 
-.selection-service-card {
+.fulfillment-card {
   width: 100%;
   text-align: left;
   font: inherit;
@@ -1695,31 +1695,31 @@ input[type="number"]::-webkit-outer-spin-button {
   appearance: none;
 }
 
-.selection-service-media {
+.fulfillment-media {
   display: block;
   background-size: cover;
   background-position: center;
 }
 
-.selection-service-media--delivery {
+.fulfillment-media--delivery {
   background-color: var(--color-border-faint);
 }
 
-.selection-service-media--installation {
+.fulfillment-media--installation {
   background-color: var(--color-border-faint);
 }
 
-.selection-service-copy {
+.fulfillment-copy {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.selection-service-card .name {
+.fulfillment-card .name {
   margin-bottom: 0;
 }
 
-.selection-service-card .price {
+.fulfillment-card .price {
   margin: 0;
   color: var(--color-text-strong);
   font-weight: var(--fw-semibold);
@@ -1727,12 +1727,12 @@ input[type="number"]::-webkit-outer-spin-button {
   transition: color 0.2s ease;
 }
 
-.selection-service-card .price.is-placeholder {
+.fulfillment-card .price.is-placeholder {
   color: var(--color-text-sub);
   font-weight: var(--fw-medium);
 }
 
-.selection-service-card .description {
+.fulfillment-card .description {
   margin-top: 2px;
   color: var(--color-text-meta);
 }
@@ -2062,7 +2062,7 @@ input[type="number"]::-webkit-outer-spin-button {
   font-size: var(--font-size-xs);
 }
 
-:where(.service-detail-btn, .btn--service-detail) {
+:where(.processing-service-detail-btn, .btn--processing-service-detail) {
   --btn-padding: 9px 14px;
   --btn-border: 1px solid var(--color-accent);
   font-size: var(--font-size-xs);
@@ -2633,7 +2633,7 @@ th, td {
   /* 전용 훅: 재질 카드 커스텀 여지 */
 }
 
-.service-card {
+.processing-service-card {
   /* 전용 훅: 가공 카드 커스텀 여지 */
 }
 
@@ -2698,7 +2698,7 @@ th, td {
   --modal-min-height: auto;
 }
 
-.modal--service {
+.modal--processing-service {
   --modal-width: 760px;
   --modal-max-width: 760px;
 }
@@ -3279,28 +3279,28 @@ th, td {
   text-align: center;
 }
 
-.modal--service .modal-footer {
+.modal--processing-service .modal-footer {
   gap: 10px;
   align-items: center;
 }
 
-.modal--service .modal-footer button {
+.modal--processing-service .modal-footer button {
   margin-bottom: 0;
 }
 
-.modal--service .modal-primary-action {
+.modal--processing-service .modal-primary-action {
   padding: 12px 18px;
   min-width: 110px;
 }
 
-.modal--service .modal-header {
+.modal--processing-service .modal-header {
   align-items: flex-end;
   margin-bottom: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--color-border-faint);
 }
 
-.modal--service .modal-header h3 {
+.modal--processing-service .modal-header h3 {
   margin: 0;
   font-size: var(--font-size-md);
   font-weight: var(--fw-bold);
@@ -3308,97 +3308,97 @@ th, td {
   letter-spacing: -0.01em;
 }
 
-.modal--service .error-msg {
+.modal--processing-service .error-msg {
   margin: 0 0 10px;
   min-height: 18px;
   line-height: var(--lh-relaxed);
 }
 
-.modal--service .modal-body {
+.modal--processing-service .modal-body {
   padding-right: 2px;
 }
 
-.modal--service .modal-body > * + * {
+.modal--processing-service .modal-body > * + * {
   margin-top: 12px;
 }
 
-.modal--service .input-tip {
+.modal--processing-service .input-tip {
   margin: 0;
   padding: 12px 14px;
   font-size: var(--font-size-sm);
   line-height: var(--lh-spacious);
 }
 
-.modal--service .service-row {
+.modal--processing-service .processing-service-row {
   padding: 14px;
   margin-bottom: 0;
 }
 
-.modal--service .service-row-header {
+.modal--processing-service .processing-service-row-header {
   margin-bottom: 12px;
   font-size: var(--font-size-sm);
   line-height: var(--lh-normal);
 }
 
-.modal--service .service-field-grid {
+.modal--processing-service .processing-service-field-grid {
   gap: 12px 10px;
 }
 
-.modal--service .service-field-grid label {
+.modal--processing-service .processing-service-field-grid label {
   line-height: var(--lh-relaxed);
 }
 
-.modal--service .service-detail-chip {
+.modal--processing-service .processing-service-detail-chip {
   padding: 7px 11px;
   line-height: var(--lh-relaxed);
 }
 
-.modal--service .service-input,
-.modal--service .service-textarea {
+.modal--processing-service .processing-service-input,
+.modal--processing-service .processing-service-textarea {
   font-size: var(--font-size-sm);
   line-height: var(--lh-relaxed);
   padding: 11px 6px 9px 2px;
 }
 
-.modal--service .service-textarea {
+.modal--processing-service .processing-service-textarea {
   min-height: 88px;
 }
 
-.modal--service .modal-body > div > label {
+.modal--processing-service .modal-body > div > label {
   display: inline-block;
   margin-bottom: 6px;
   line-height: var(--lh-relaxed);
 }
 
-.modal--service .form-row {
+.modal--processing-service .form-row {
   margin-bottom: 0;
   gap: 14px;
   align-items: flex-start;
 }
 
-.modal--service .form-row label {
+.modal--processing-service .form-row label {
   width: 150px;
   line-height: var(--lh-relaxed);
   padding-top: 8px;
 }
 
-.modal--service .form-row input[type="number"],
-.modal--service .form-row input[type="text"],
-.modal--service .form-row textarea,
-.modal--service .form-row select {
+.modal--processing-service .form-row input[type="number"],
+.modal--processing-service .form-row input[type="text"],
+.modal--processing-service .form-row textarea,
+.modal--processing-service .form-row select {
   max-width: 280px;
   font-size: var(--font-size-sm);
   line-height: var(--lh-relaxed);
   padding: 10px 6px 8px 2px;
 }
 
-.modal--service .modal-footer {
+.modal--processing-service .modal-footer {
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--color-border-faint);
 }
 
-.modal--service .modal-footer button {
+.modal--processing-service .modal-footer button {
   min-height: 40px;
   padding: 10px 14px;
 }
@@ -3454,7 +3454,7 @@ button.card-base:active {
   transform: none;
 }
 
-.service-actions {
+.processing-service-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3462,7 +3462,7 @@ button.card-base:active {
   margin-top: 10px;
 }
 
-.service-detail-chip {
+.processing-service-detail-chip {
   flex: 1;
   padding: 6px 10px;
   background: var(--color-chip-bg);
@@ -3490,7 +3490,7 @@ button.card-base:active {
   margin-top: 4px;
 }
 
-.service-empty {
+.processing-service-empty {
   margin-bottom: 12px;
   padding: 12px;
   border: 1px dashed var(--color-border-faint);
@@ -3499,7 +3499,7 @@ button.card-base:active {
   font-size: var(--font-size-xs);
 }
 
-.service-row {
+.processing-service-row {
   border: 1px solid var(--color-row-border);
   border-radius: var(--radius-lg);
   padding: 12px;
@@ -3507,37 +3507,37 @@ button.card-base:active {
   background: var(--color-row-bg);
 }
 
-.service-row-header {
+.processing-service-row-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
   font-weight: var(--fw-semibold);
 }
-.service-row-header span { font-weight: inherit; }
+.processing-service-row-header span { font-weight: inherit; }
 
-.service-field-grid {
+.processing-service-field-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   align-items: flex-start;
 }
 
-.service-field-grid > div {
+.processing-service-field-grid > div {
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
 }
 
-.service-field-grid label {
+.processing-service-field-grid label {
   margin: 0;
   font-weight: var(--fw-semibold);
   color: var(--color-text);
 }
 
-.service-textarea,
-.service-input {
+.processing-service-textarea,
+.processing-service-input {
   width: 100%;
   box-sizing: border-box;
   padding: 10px 4px 8px 0;
@@ -3547,13 +3547,13 @@ button.card-base:active {
   background: transparent;
 }
 
-.service-textarea {
+.processing-service-textarea {
   min-height: 70px;
   resize: vertical;
 }
 
-.service-textarea:focus,
-.service-input:focus {
+.processing-service-textarea:focus,
+.processing-service-input:focus {
   outline: none;
   border-bottom-color: var(--color-accent);
 }
@@ -3791,19 +3791,19 @@ button.card-base:active {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .modal--service .form-row label {
+  .modal--processing-service .form-row label {
     width: auto;
     padding-top: 0;
   }
 
-  .modal--service .form-row input[type="number"],
-  .modal--service .form-row input[type="text"],
-  .modal--service .form-row textarea,
-  .modal--service .form-row select {
+  .modal--processing-service .form-row input[type="number"],
+  .modal--processing-service .form-row input[type="text"],
+  .modal--processing-service .form-row textarea,
+  .modal--processing-service .form-row select {
     max-width: none;
   }
 
-  .modal--service .service-field-grid {
+  .modal--processing-service .processing-service-field-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -3952,11 +3952,11 @@ button.card-base:active {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .selection-service-grid.grid-cards--keep-2 {
+  .fulfillment-grid.grid-cards--keep-2 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
-  .modal--service .service-field-grid {
+  .modal--processing-service .processing-service-field-grid {
     grid-template-columns: 1fr;
     gap: 10px;
   }
