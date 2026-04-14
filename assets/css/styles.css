@@ -2658,6 +2658,8 @@ th, td {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .modal-backdrop {
@@ -3406,23 +3408,13 @@ th, td {
   overflow-y: auto;
   min-height: 0;
   overflow-anchor: none;
-  scrollbar-width: thin; /* 파이어폭스 */
-  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
+.modal::-webkit-scrollbar,
 .modal-body::-webkit-scrollbar {
-  width: 10px;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-.modal-body::-webkit-scrollbar-track {
-  background: transparent;
+  display: none;
 }
 
 .modal--picker .system-addon-filter-tabs {
