@@ -3,6 +3,9 @@ import {
   initEmailJS,
   openModal,
   closeModal,
+  showInfoModal,
+  bindModalOpenTriggers,
+  bindModalCloseTriggers,
   getCustomerInfo,
   validateCustomerInfo,
   updateSendButtonEnabled as updateSendButtonEnabledShared,
@@ -798,10 +801,6 @@ function handleMeasurementGuideCarouselClick(event) {
 
 function openMeasurementGuideModal(guideKey) {
   measurementGuideController.open(guideKey);
-}
-
-function closeMeasurementGuideModal() {
-  measurementGuideController.close();
 }
 
 function readTopInputs() {
@@ -2151,17 +2150,6 @@ function updateItemQuantity(id, quantity) {
   renderSummary();
 }
 
-function showInfoModal(message) {
-  const modal = $("#infoModal");
-  const msgEl = $("#infoMessage");
-  if (msgEl) msgEl.textContent = message;
-  openModal(modal, { focusTarget: "#infoModalTitle" });
-}
-
-function closeInfoModal() {
-  closeModal("#infoModal");
-}
-
 function updateStepVisibility(scrollTarget) {
   const step1 = $("#step1");
   const step2 = $("#step2");
@@ -2498,23 +2486,15 @@ function initTop() {
   const priceEl = $("#topEstimateText");
   if (priceEl) renderItemPriceNotice({ target: priceEl, text: "상판 타입을 선택해주세요." });
 
+  bindModalOpenTriggers();
+  bindModalCloseTriggers();
   $("#calcTopBtn").addEventListener("click", addTopItem);
-  $("#openTopTypeModal").addEventListener("click", openTopTypeModal);
-  $("#closeTopTypeModal").addEventListener("click", closeTopTypeModal);
-  $("#topTypeModalBackdrop")?.addEventListener("click", closeTopTypeModal);
-  $("#openTopAddonModal")?.addEventListener("click", openTopAddonModal);
-  $("#closeTopAddonModal")?.addEventListener("click", closeTopAddonModal);
-  $("#topAddonModalBackdrop")?.addEventListener("click", closeTopAddonModal);
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
   $("#backToCenterBtn")?.addEventListener("click", () => {
     window.location.href = "index.html";
   });
   $("#sendQuoteBtn")?.addEventListener("click", sendQuote);
-  $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
-  $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
-  $("#closeMeasurementGuideModal")?.addEventListener("click", closeMeasurementGuideModal);
-  $("#measurementGuideModalBackdrop")?.addEventListener("click", closeMeasurementGuideModal);
   $("#measurementGuideModalBody")?.addEventListener("click", handleMeasurementGuideCarouselClick);
   $("#saveTopServiceModal")?.addEventListener("click", saveServiceModal);
   $("#removeTopServiceModal")?.addEventListener("click", removeServiceModal);
@@ -2573,20 +2553,8 @@ function initTop() {
   });
 }
 
-function openTopTypeModal() {
-  openModal("#topTypeModal", { focusTarget: "#topTypeModalTitle" });
-}
-
 function closeTopTypeModal() {
   closeModal("#topTypeModal");
-}
-
-function openTopAddonModal() {
-  openModal("#topAddonModal", { focusTarget: "#topAddonModalTitle" });
-}
-
-function closeTopAddonModal() {
-  closeModal("#topAddonModal");
 }
 
 if (document.readyState === "loading") {

@@ -11,6 +11,9 @@ import {
   EMAILJS_CONFIG,
   openModal,
   closeModal,
+  showInfoModal,
+  bindModalOpenTriggers,
+  bindModalCloseTriggers,
   getCustomerInfo,
   validateCustomerInfo,
   updateSendButtonEnabled as updateSendButtonEnabledShared,
@@ -1132,17 +1135,6 @@ function resetStepsAfterAdd() {
   updateAddItemState();
 }
 
-function showInfoModal(message) {
-  const modal = document.getElementById("infoModal");
-  const msgEl = document.getElementById("infoMessage");
-  if (msgEl) msgEl.textContent = message;
-  openModal(modal, { focusTarget: "#infoModalTitle" });
-}
-
-function closeInfoModal() {
-  closeModal("#infoModal");
-}
-
 function updateStepVisibility(scrollTarget) {
   const step1 = document.getElementById("step1");
   const step2 = document.getElementById("step2");
@@ -1892,20 +1884,8 @@ function removeServiceModal() {
   serviceModalController.remove();
 }
 
-function openMaterialModal() {
-  openModal("#materialModal", { focusTarget: "#materialModalTitle" });
-}
-
 function closeMaterialModal() {
   closeModal("#materialModal");
-}
-
-function openAddonModal() {
-  openModal("#addonModal", { focusTarget: "#addonModalTitle" });
-}
-
-function closeAddonModal() {
-  closeModal("#addonModal");
 }
 
 function updateModalCardPreviews() {
@@ -2005,8 +1985,8 @@ function init() {
   updateServiceStepUI();
   requestStickyOffsetUpdate();
 
-  $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
-  $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
+  bindModalOpenTriggers();
+  bindModalCloseTriggers();
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
 
@@ -2029,12 +2009,6 @@ function init() {
       updateSizePlaceholders(selected);
     }],
   });
-  $("#openMaterialModal").addEventListener("click", openMaterialModal);
-  $("#closeMaterialModal").addEventListener("click", closeMaterialModal);
-  $("#materialModalBackdrop")?.addEventListener("click", closeMaterialModal);
-  $("#openAddonModal")?.addEventListener("click", openAddonModal);
-  $("#closeAddonModal")?.addEventListener("click", closeAddonModal);
-  $("#addonModalBackdrop")?.addEventListener("click", closeAddonModal);
   $("#saveServiceModal")?.addEventListener("click", saveServiceModal);
   $("#removeServiceModal")?.addEventListener("click", removeServiceModal);
   $("#cancelServiceModal")?.addEventListener("click", () => closeServiceModal(true));

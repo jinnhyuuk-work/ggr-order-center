@@ -15,6 +15,9 @@ import {
   EMAILJS_CONFIG,
   openModal,
   closeModal,
+  showInfoModal,
+  bindModalOpenTriggers,
+  bindModalCloseTriggers,
   getCustomerInfo,
   validateCustomerInfo,
   updateSendButtonEnabled as updateSendButtonEnabledShared,
@@ -1178,10 +1181,6 @@ function openMeasurementGuideModal(guideKey) {
   measurementGuideController.open(guideKey);
 }
 
-function closeMeasurementGuideModal() {
-  measurementGuideController.close();
-}
-
 function formatHingeDetail(detail, { short = false, includeNote = false } = {}) {
   return formatHoleDetail(detail, { short, includeNote });
 }
@@ -1726,17 +1725,6 @@ function resetStepsAfterAdd() {
   updateDoorPreviewSummary();
   updateModalCardPreviews();
   updateAddItemState();
-}
-
-function showInfoModal(message) {
-  const modal = document.getElementById("infoModal");
-  const msgEl = document.getElementById("infoMessage");
-  if (msgEl) msgEl.textContent = message;
-  openModal(modal, { focusTarget: "#infoModalTitle" });
-}
-
-function closeInfoModal() {
-  closeModal("#infoModal");
 }
 
 function updateStepVisibility(scrollTarget) {
@@ -2574,20 +2562,8 @@ function removeServiceModal() {
   serviceModalController.remove();
 }
 
-function openMaterialModal() {
-  openModal("#materialModal", { focusTarget: "#materialModalTitle" });
-}
-
 function closeMaterialModal() {
   closeModal("#materialModal");
-}
-
-function openAddonModal() {
-  openModal("#addonModal", { focusTarget: "#addonModalTitle" });
-}
-
-function closeAddonModal() {
-  closeModal("#addonModal");
 }
 
 function updateModalCardPreviews() {
@@ -2737,10 +2713,8 @@ function init() {
   updateServiceStepUI();
   requestStickyOffsetUpdate();
 
-  $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
-  $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
-  $("#closeMeasurementGuideModal")?.addEventListener("click", closeMeasurementGuideModal);
-  $("#measurementGuideModalBackdrop")?.addEventListener("click", closeMeasurementGuideModal);
+  bindModalOpenTriggers();
+  bindModalCloseTriggers();
   $("#measurementGuideModalBody")?.addEventListener("click", handleMeasurementGuideCarouselClick);
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
@@ -2785,12 +2759,6 @@ function init() {
       updateAddItemState();
     });
   });
-  $("#openMaterialModal").addEventListener("click", openMaterialModal);
-  $("#closeMaterialModal").addEventListener("click", closeMaterialModal);
-  $("#materialModalBackdrop")?.addEventListener("click", closeMaterialModal);
-  $("#openAddonModal")?.addEventListener("click", openAddonModal);
-  $("#closeAddonModal")?.addEventListener("click", closeAddonModal);
-  $("#addonModalBackdrop")?.addEventListener("click", closeAddonModal);
   $("#saveServiceModal")?.addEventListener("click", saveServiceModal);
   $("#removeServiceModal")?.addEventListener("click", removeServiceModal);
   $("#cancelServiceModal")?.addEventListener("click", () => closeServiceModal(true));

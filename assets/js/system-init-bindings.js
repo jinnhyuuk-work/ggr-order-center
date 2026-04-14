@@ -1,3 +1,5 @@
+import { bindModalCloseTriggers, bindModalOpenTriggers } from "./shared.js";
+
 export function bindSystemInitEvents({
   $,
   $$,
@@ -45,8 +47,6 @@ export function bindSystemInitEvents({
   openCornerOptionModal,
   openBayOptionModal,
   setPreviewEdgeHoverState,
-  closeInfoModal,
-  closeMeasurementGuideModal,
   handleMeasurementGuideCarouselClick,
   goToNextStep,
   goToPrevStep,
@@ -57,8 +57,6 @@ export function bindSystemInitEvents({
   setServiceStepError,
   updateServiceStepUI,
   renderSummary,
-  openModal,
-  closeModal,
   refreshBuilderDerivedUI,
   clearPreviewGhost,
   isPreviewBuilderReady,
@@ -73,6 +71,8 @@ export function bindSystemInitEvents({
   hidePreviewAddTooltip,
   requestPreviewFrameRerender,
 } = {}) {
+  bindModalOpenTriggers();
+  bindModalCloseTriggers();
   $("#addEstimateBtn")?.addEventListener("click", commitBaysToEstimate);
   $("#closeSystemAddonModal")?.addEventListener("click", closeShelfAddonModalAndReturn);
   $("#systemAddonModalBackdrop")?.addEventListener("click", closeShelfAddonModalAndReturn);
@@ -229,10 +229,6 @@ export function bindSystemInitEvents({
     setPreviewEdgeHoverState("", false);
   });
 
-  $("#closeInfoModal")?.addEventListener("click", closeInfoModal);
-  $("#infoModalBackdrop")?.addEventListener("click", closeInfoModal);
-  $("#closeMeasurementGuideModal")?.addEventListener("click", closeMeasurementGuideModal);
-  $("#measurementGuideModalBackdrop")?.addEventListener("click", closeMeasurementGuideModal);
   $("#measurementGuideModalBody")?.addEventListener("click", handleMeasurementGuideCarouselClick);
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);
   $("#prevStepsBtn")?.addEventListener("click", goToPrevStep);
@@ -266,11 +262,6 @@ export function bindSystemInitEvents({
   });
 
   Object.values(materialPickers).forEach((picker) => {
-    $(picker.openBtn)?.addEventListener("click", () =>
-      openModal(picker.modalId, { focusTarget: `${picker.modalId}Title` })
-    );
-    $(picker.closeBtn)?.addEventListener("click", () => closeModal(picker.modalId));
-    $(picker.backdrop)?.addEventListener("click", () => closeModal(picker.modalId));
     $(picker.thicknessSelectId)?.addEventListener("change", () => {
       refreshBuilderDerivedUI({ preview: true, price: true });
     });

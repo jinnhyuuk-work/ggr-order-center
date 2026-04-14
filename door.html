@@ -50,7 +50,12 @@
           </div>
           <div class="accordion-body" id="step1Body">
             <div class="material-picker">
-              <button type="button" id="openMaterialModal">도어 선택하기</button>
+              <button
+                type="button"
+                id="openMaterialModal"
+                data-modal-open="#materialModal"
+                data-modal-focus="#materialModalTitle"
+              >도어 선택하기</button>
             </div>
             <div id="selectedMaterialCard" class="selected-material-card">
               <div class="placeholder">선택된 도어 없음</div>
@@ -375,8 +380,8 @@
     </div>
   </main>
 
-  <div id="materialModal" class="modal hidden">
-    <div class="modal-backdrop" id="materialModalBackdrop"></div>
+  <div id="materialModal" class="modal modal--picker hidden">
+    <div class="modal-backdrop" id="materialModalBackdrop" data-modal-close="#materialModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="materialModalTitle" tabindex="-1">도어 선택</h3>
@@ -392,13 +397,13 @@
         <div id="materialCards" class="grid-cards grid-cards--3"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeMaterialModal" class="modal-close">닫기</button>
+        <button type="button" id="closeMaterialModal" class="modal-close" data-modal-close="#materialModal">닫기</button>
       </div>
     </div>
   </div>
 
-  <div id="addonModal" class="modal hidden">
-    <div class="modal-backdrop" id="addonModalBackdrop"></div>
+  <div id="addonModal" class="modal modal--picker hidden">
+    <div class="modal-backdrop" id="addonModalBackdrop" data-modal-close="#addonModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="addonModalTitle" tabindex="-1">부자재 선택</h3>
@@ -407,12 +412,12 @@
         <div id="addonCards" class="grid-cards grid-cards--3 grid-cards--keep-2"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeAddonModal" class="modal-close">닫기</button>
+        <button type="button" id="closeAddonModal" class="modal-close" data-modal-close="#addonModal">닫기</button>
       </div>
     </div>
   </div>
 
-  <div id="serviceModal" class="modal hidden">
+  <div id="serviceModal" class="modal modal--service hidden">
     <div class="modal-backdrop" id="serviceModalBackdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
@@ -423,32 +428,32 @@
       <div class="modal-footer">
         <button type="button" id="removeServiceModal">옵션 제거</button>
         <button type="button" id="cancelServiceModal">취소</button>
-        <button type="button" id="saveServiceModal">적용</button>
+        <button type="button" id="saveServiceModal" class="modal-primary-action">적용</button>
       </div>
     </div>
   </div>
 
-  <div id="infoModal" class="modal hidden">
-    <div class="modal-backdrop" id="infoModalBackdrop"></div>
+  <div id="infoModal" class="modal modal--sm hidden">
+    <div class="modal-backdrop" id="infoModalBackdrop" data-modal-close="#infoModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="infoModalTitle" tabindex="-1">안내</h3>
       </div>
       <div id="infoMessage" class="info-message">안내 메시지</div>
       <div class="modal-footer">
-        <button type="button" id="closeInfoModal" class="modal-close">닫기</button>
+        <button type="button" id="closeInfoModal" class="modal-close" data-modal-close="#infoModal">닫기</button>
       </div>
     </div>
   </div>
 
   <div
     id="measurementGuideModal"
-    class="modal measurement-guide-modal hidden"
+    class="modal modal--guide measurement-guide-modal hidden"
     role="dialog"
     aria-modal="true"
     aria-labelledby="measurementGuideModalTitle"
   >
-    <div class="modal-backdrop" id="measurementGuideModalBackdrop"></div>
+    <div class="modal-backdrop" id="measurementGuideModalBackdrop" data-modal-close="#measurementGuideModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="measurementGuideModalTitle" tabindex="-1">측정 가이드</h3>
@@ -457,7 +462,12 @@
         <div id="measurementGuideModalBody" class="measurement-guide-body"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeMeasurementGuideModal" class="modal-close">닫기</button>
+        <button
+          type="button"
+          id="closeMeasurementGuideModal"
+          class="modal-close"
+          data-modal-close="#measurementGuideModal"
+        >닫기</button>
       </div>
     </div>
   </div>

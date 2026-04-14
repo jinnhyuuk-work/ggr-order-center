@@ -1126,21 +1126,6 @@ input[type="number"]::-webkit-outer-spin-button {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 
-.preview-action-modal {
-  z-index: 1200;
-}
-
-.preview-action-modal.modal {
-  z-index: 1200;
-}
-
-.preview-action-modal .modal-content {
-  max-width: 420px;
-  width: min(420px, calc(100vw - 32px));
-  min-height: auto;
-  max-height: min(80vh, 560px);
-}
-
 .preview-action-modal-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2658,6 +2643,15 @@ th, td {
 }
 
 .modal {
+  --modal-width: 720px;
+  --modal-max-width: var(--modal-width);
+  --modal-gutter: 32px;
+  --modal-viewport-width: calc(100vw - var(--modal-gutter));
+  --modal-margin: clamp(12px, 6vh, 60px) auto;
+  --modal-padding: 20px;
+  --modal-radius: var(--radius-xl);
+  --modal-max-height: min(80dvh, calc(100dvh - 24px));
+  --modal-min-height: min(60vh, 520px);
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -2676,17 +2670,43 @@ th, td {
   display: flex;
   flex-direction: column;
   position: relative;
-  max-width: 720px;
-  width: min(720px, calc(100vw - 32px));
-  margin: clamp(12px, 6vh, 60px) auto;
+  max-width: var(--modal-max-width);
+  width: min(var(--modal-width), var(--modal-viewport-width));
+  margin: var(--modal-margin);
   background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  padding: 20px;
+  border-radius: var(--modal-radius);
+  padding: var(--modal-padding);
   box-shadow: 0 12px 30px rgba(0,0,0,0.2);
   max-height: 80vh;
-  max-height: min(80dvh, calc(100dvh - 24px));
-  min-height: min(60vh, 520px);
+  max-height: var(--modal-max-height);
+  min-height: var(--modal-min-height);
   overflow: hidden;
+}
+
+/* 모달 크기 변형은 루트 .modal에 붙여 공통 레이아웃과 분리합니다. */
+.modal--sm {
+  --modal-width: 480px;
+  --modal-max-width: 480px;
+  --modal-min-height: auto;
+}
+
+.modal--guide {
+  --modal-width: 560px;
+  --modal-max-width: 560px;
+  --modal-min-height: auto;
+}
+
+.modal--service {
+  --modal-width: 760px;
+  --modal-max-width: 760px;
+}
+
+.modal.modal--action {
+  --modal-width: 420px;
+  --modal-max-width: 420px;
+  --modal-min-height: auto;
+  --modal-max-height: min(80vh, 560px);
+  z-index: 1200;
 }
 
 .modal-header {
@@ -2709,11 +2729,6 @@ th, td {
   color: var(--btn-color);
 }
 
-#infoModal .modal-content {
-  max-width: 480px;
-  min-height: auto;
-}
-
 .modal-footer {
   position: sticky;
   bottom: 0;
@@ -2721,11 +2736,6 @@ th, td {
   padding-top: 10px;
   display: flex;
   justify-content: flex-end;
-}
-
-.measurement-guide-modal .modal-content {
-  max-width: 560px;
-  min-height: auto;
 }
 
 .measurement-guide-body {
@@ -2938,7 +2948,7 @@ th, td {
   min-height: 36px;
 }
 
-.module-option-modal-footer #savePresetModuleOptionModal {
+.module-option-modal-footer .modal-primary-action {
   min-width: 76px;
 }
 
@@ -2946,30 +2956,30 @@ th, td {
   margin-top: 10px;
 }
 
-#presetModuleOptionModal .modal-body {
+.modal--module-option .modal-body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 16px;
   align-items: start;
 }
 
-#presetModuleOptionModal .modal-body > .form-row {
+.modal--module-option .modal-body > .form-row {
   grid-column: 1;
   margin-bottom: 0;
 }
 
-#presetModuleOptionModal .modal-body > #presetModuleOptionPresetTabPanel > .form-row {
+.modal--module-option .modal-body > #presetModuleOptionPresetTabPanel > .form-row {
   grid-column: 1;
   margin-bottom: 0;
 }
 
-#presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel .form-row {
+.modal--module-option .modal-body > #presetModuleOptionCustomTabPanel .form-row {
   grid-column: 1;
   margin-bottom: 0;
 }
 
-#presetModuleOptionModal .modal-body > #presetModuleOptionPresetTabPanel,
-#presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel {
+.modal--module-option .modal-body > #presetModuleOptionPresetTabPanel,
+.modal--module-option .modal-body > #presetModuleOptionCustomTabPanel {
   grid-column: 1;
 }
 
@@ -2991,7 +3001,7 @@ th, td {
   margin-top: 10px;
 }
 
-#presetModuleOptionModal .modal-body > .module-option-front-preview {
+.modal--module-option .modal-body > .module-option-front-preview {
   grid-column: 2;
   grid-row: 1 / span 8;
   align-self: start;
@@ -3000,8 +3010,8 @@ th, td {
   top: 0;
 }
 
-#presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomBayPanel > .module-option-front-preview,
-#presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomCornerPanel > .module-option-front-preview {
+.modal--module-option .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomBayPanel > .module-option-front-preview,
+.modal--module-option .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomCornerPanel > .module-option-front-preview {
   grid-column: 2;
   grid-row: 1 / span 8;
   align-self: start;
@@ -3267,38 +3277,28 @@ th, td {
   text-align: center;
 }
 
-#serviceModal .modal-footer,
-#topServiceModal .modal-footer {
+.modal--service .modal-footer {
   gap: 10px;
   align-items: center;
 }
 
-#serviceModal .modal-footer button,
-#topServiceModal .modal-footer button {
+.modal--service .modal-footer button {
   margin-bottom: 0;
 }
 
-#saveServiceModal,
-#saveTopServiceModal {
+.modal--service .modal-primary-action {
   padding: 12px 18px;
   min-width: 110px;
 }
 
-#serviceModal .modal-content,
-#topServiceModal .modal-content {
-  max-width: 760px;
-}
-
-#serviceModal .modal-header,
-#topServiceModal .modal-header {
+.modal--service .modal-header {
   align-items: flex-end;
   margin-bottom: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--color-border-faint);
 }
 
-#serviceModal .modal-header h3,
-#topServiceModal .modal-header h3 {
+.modal--service .modal-header h3 {
   margin: 0;
   font-size: var(--font-size-md);
   font-weight: var(--fw-bold);
@@ -3306,118 +3306,97 @@ th, td {
   letter-spacing: -0.01em;
 }
 
-#serviceModal .error-msg,
-#topServiceModal .error-msg {
+.modal--service .error-msg {
   margin: 0 0 10px;
   min-height: 18px;
   line-height: var(--lh-relaxed);
 }
 
-#serviceModal .modal-body,
-#topServiceModal .modal-body {
+.modal--service .modal-body {
   padding-right: 2px;
 }
 
-#serviceModal .modal-body > * + *,
-#topServiceModal .modal-body > * + * {
+.modal--service .modal-body > * + * {
   margin-top: 12px;
 }
 
-#serviceModal .input-tip,
-#topServiceModal .input-tip {
+.modal--service .input-tip {
   margin: 0;
   padding: 12px 14px;
   font-size: var(--font-size-sm);
   line-height: var(--lh-spacious);
 }
 
-#serviceModal .service-row,
-#topServiceModal .service-row {
+.modal--service .service-row {
   padding: 14px;
   margin-bottom: 0;
 }
 
-#serviceModal .service-row-header,
-#topServiceModal .service-row-header {
+.modal--service .service-row-header {
   margin-bottom: 12px;
   font-size: var(--font-size-sm);
   line-height: var(--lh-normal);
 }
 
-#serviceModal .service-field-grid,
-#topServiceModal .service-field-grid {
+.modal--service .service-field-grid {
   gap: 12px 10px;
 }
 
-#serviceModal .service-field-grid label,
-#topServiceModal .service-field-grid label {
+.modal--service .service-field-grid label {
   line-height: var(--lh-relaxed);
 }
 
-#serviceModal .service-detail-chip,
-#topServiceModal .service-detail-chip {
+.modal--service .service-detail-chip {
   padding: 7px 11px;
   line-height: var(--lh-relaxed);
 }
 
-#serviceModal .service-input,
-#topServiceModal .service-input,
-#serviceModal .service-textarea,
-#topServiceModal .service-textarea {
+.modal--service .service-input,
+.modal--service .service-textarea {
   font-size: var(--font-size-sm);
   line-height: var(--lh-relaxed);
   padding: 11px 6px 9px 2px;
 }
 
-#serviceModal .service-textarea,
-#topServiceModal .service-textarea {
+.modal--service .service-textarea {
   min-height: 88px;
 }
 
-#serviceModal .modal-body > div > label,
-#topServiceModal .modal-body > div > label {
+.modal--service .modal-body > div > label {
   display: inline-block;
   margin-bottom: 6px;
   line-height: var(--lh-relaxed);
 }
 
-#serviceModal .form-row,
-#topServiceModal .form-row {
+.modal--service .form-row {
   margin-bottom: 0;
   gap: 14px;
   align-items: flex-start;
 }
 
-#serviceModal .form-row label,
-#topServiceModal .form-row label {
+.modal--service .form-row label {
   width: 150px;
   line-height: var(--lh-relaxed);
   padding-top: 8px;
 }
 
-#serviceModal .form-row input[type="number"],
-#serviceModal .form-row input[type="text"],
-#serviceModal .form-row textarea,
-#serviceModal .form-row select,
-#topServiceModal .form-row input[type="number"],
-#topServiceModal .form-row input[type="text"],
-#topServiceModal .form-row textarea,
-#topServiceModal .form-row select {
+.modal--service .form-row input[type="number"],
+.modal--service .form-row input[type="text"],
+.modal--service .form-row textarea,
+.modal--service .form-row select {
   max-width: 280px;
   font-size: var(--font-size-sm);
   line-height: var(--lh-relaxed);
   padding: 10px 6px 8px 2px;
 }
 
-#serviceModal .modal-footer,
-#topServiceModal .modal-footer {
+.modal--service .modal-footer {
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--color-border-faint);
 }
 
-#serviceModal .modal-footer button,
-#topServiceModal .modal-footer button {
+.modal--service .modal-footer button {
   min-height: 40px;
   padding: 10px 14px;
 }
@@ -3446,7 +3425,7 @@ th, td {
   background: transparent;
 }
 
-#systemAddonModal .system-addon-filter-tabs {
+.modal--picker .system-addon-filter-tabs {
   margin-bottom: 12px;
 }
 
@@ -3706,17 +3685,17 @@ button.card-base:active {
     gap: 6px;
   }
 
-  #presetModuleOptionModal .modal-body {
+  .modal--module-option .modal-body {
     display: block;
   }
 
-  #presetModuleOptionModal .modal-body > .module-option-front-preview {
+  .modal--module-option .modal-body > .module-option-front-preview {
     position: static;
     margin-top: 10px;
   }
 
-  #presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomBayPanel > .module-option-front-preview,
-  #presetModuleOptionModal .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomCornerPanel > .module-option-front-preview {
+  .modal--module-option .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomBayPanel > .module-option-front-preview,
+  .modal--module-option .modal-body > #presetModuleOptionCustomTabPanel #presetModuleOptionCustomCornerPanel > .module-option-front-preview {
     position: static;
     margin-top: 10px;
   }
@@ -3820,25 +3799,19 @@ button.card-base:active {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  #serviceModal .form-row label,
-  #topServiceModal .form-row label {
+  .modal--service .form-row label {
     width: auto;
     padding-top: 0;
   }
 
-  #serviceModal .form-row input[type="number"],
-  #serviceModal .form-row input[type="text"],
-  #serviceModal .form-row textarea,
-  #serviceModal .form-row select,
-  #topServiceModal .form-row input[type="number"],
-  #topServiceModal .form-row input[type="text"],
-  #topServiceModal .form-row textarea,
-  #topServiceModal .form-row select {
+  .modal--service .form-row input[type="number"],
+  .modal--service .form-row input[type="text"],
+  .modal--service .form-row textarea,
+  .modal--service .form-row select {
     max-width: none;
   }
 
-  #serviceModal .service-field-grid,
-  #topServiceModal .service-field-grid {
+  .modal--service .service-field-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -3879,22 +3852,14 @@ button.card-base:active {
 }
 
 @media (max-width: 768px) {
-  .modal-content {
-    width: min(560px, calc(94vw - 24px));
-    margin: 10px auto;
-    padding: 16px;
-    max-height: 90vh;
-    max-height: min(90dvh, calc(100dvh - 20px));
-    min-height: auto;
-    border-radius: var(--radius-lg);
-  }
-
-  #shelfMaterialModal .modal-content,
-  #columnMaterialModal .modal-content,
-  #systemAddonModal .modal-content,
-  #previewPresetModuleModal .modal-content,
-  #presetModuleOptionModal .modal-content {
-    min-height: min(78dvh, 720px);
+  .modal {
+    --modal-width: 560px;
+    --modal-viewport-width: calc(94vw - 24px);
+    --modal-margin: 10px auto;
+    --modal-padding: 16px;
+    --modal-max-height: min(90dvh, calc(100dvh - 20px));
+    --modal-min-height: auto;
+    --modal-radius: var(--radius-lg);
   }
 
   .modal .material-tabs {
@@ -3938,9 +3903,10 @@ button.card-base:active {
     font-size: var(--font-size-caption);
   }
 
-  .preview-action-modal .modal-content {
-    width: min(400px, calc(100vw - 40px));
-    max-height: 72vh;
+  .modal.modal--action {
+    --modal-width: 400px;
+    --modal-viewport-width: calc(100vw - 40px);
+    --modal-max-height: 72vh;
   }
 }
 
@@ -3949,21 +3915,13 @@ button.card-base:active {
     grid-template-columns: 1fr 1fr;
   }
 
-  .modal-content {
-    width: calc(100vw - 16px);
-    margin: 8px auto;
-    padding: 12px;
-    max-height: 92vh;
-    max-height: min(92dvh, calc(100dvh - 16px));
-    border-radius: var(--radius-md);
-  }
-
-  #shelfMaterialModal .modal-content,
-  #columnMaterialModal .modal-content,
-  #systemAddonModal .modal-content,
-  #previewPresetModuleModal .modal-content,
-  #presetModuleOptionModal .modal-content {
-    min-height: min(84dvh, calc(100dvh - 16px));
+  .modal {
+    --modal-width: 100vw;
+    --modal-viewport-width: calc(100vw - 16px);
+    --modal-margin: 8px auto;
+    --modal-padding: 12px;
+    --modal-max-height: min(92dvh, calc(100dvh - 16px));
+    --modal-radius: var(--radius-md);
   }
 
   .modal .material-tab {
@@ -3972,8 +3930,9 @@ button.card-base:active {
     font-size: var(--font-size-micro);
   }
 
-  .preview-action-modal .modal-content {
-    width: min(360px, calc(100vw - 36px));
+  .modal.modal--action {
+    --modal-width: 360px;
+    --modal-viewport-width: calc(100vw - 36px);
   }
 
   .addon-card-display {
@@ -4005,8 +3964,7 @@ button.card-base:active {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
-  #serviceModal .service-field-grid,
-  #topServiceModal .service-field-grid {
+  .modal--service .service-field-grid {
     grid-template-columns: 1fr;
     gap: 10px;
   }

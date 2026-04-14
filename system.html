@@ -48,7 +48,12 @@
           </div>
           <div class="accordion-body" id="stepColumnMaterialBody">
             <div class="material-picker">
-              <button type="button" id="openColumnMaterialModal">포스트바 컬러 선택</button>
+              <button
+                type="button"
+                id="openColumnMaterialModal"
+                data-modal-open="#columnMaterialModal"
+                data-modal-focus="#columnMaterialModalTitle"
+              >포스트바 컬러 선택</button>
             </div>
             <div id="selectedColumnMaterialCard" class="selected-material-card">
               <div class="placeholder">선택된 포스트바 컬러 없음</div>
@@ -65,7 +70,12 @@
           </div>
           <div class="accordion-body" id="stepShelfMaterialBody">
             <div class="material-picker">
-              <button type="button" id="openShelfMaterialModal">선반 컬러 선택</button>
+              <button
+                type="button"
+                id="openShelfMaterialModal"
+                data-modal-open="#shelfMaterialModal"
+                data-modal-focus="#shelfMaterialModalTitle"
+              >선반 컬러 선택</button>
             </div>
             <div id="selectedShelfMaterialCard" class="selected-material-card">
               <div class="placeholder">선택된 선반 컬러 없음</div>
@@ -311,8 +321,8 @@
     </div>
   </main>
 
-  <div id="shelfMaterialModal" class="modal hidden">
-    <div class="modal-backdrop" id="shelfMaterialModalBackdrop"></div>
+  <div id="shelfMaterialModal" class="modal modal--picker hidden">
+    <div class="modal-backdrop" id="shelfMaterialModalBackdrop" data-modal-close="#shelfMaterialModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="shelfMaterialModalTitle" tabindex="-1">선반 컬러 선택</h3>
@@ -328,13 +338,18 @@
         <div id="shelfMaterialCards" class="grid-cards grid-cards--3"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeShelfMaterialModal" class="modal-close">닫기</button>
+        <button
+          type="button"
+          id="closeShelfMaterialModal"
+          class="modal-close"
+          data-modal-close="#shelfMaterialModal"
+        >닫기</button>
       </div>
     </div>
   </div>
 
-  <div id="columnMaterialModal" class="modal hidden">
-    <div class="modal-backdrop" id="columnMaterialModalBackdrop"></div>
+  <div id="columnMaterialModal" class="modal modal--picker hidden">
+    <div class="modal-backdrop" id="columnMaterialModalBackdrop" data-modal-close="#columnMaterialModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="columnMaterialModalTitle" tabindex="-1">포스트바 컬러 선택</h3>
@@ -350,32 +365,37 @@
         <div id="columnMaterialCards" class="grid-cards grid-cards--3"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeColumnMaterialModal" class="modal-close">닫기</button>
+        <button
+          type="button"
+          id="closeColumnMaterialModal"
+          class="modal-close"
+          data-modal-close="#columnMaterialModal"
+        >닫기</button>
       </div>
     </div>
   </div>
 
-  <div id="infoModal" class="modal hidden">
-    <div class="modal-backdrop" id="infoModalBackdrop"></div>
+  <div id="infoModal" class="modal modal--sm hidden">
+    <div class="modal-backdrop" id="infoModalBackdrop" data-modal-close="#infoModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="infoModalTitle" tabindex="-1">안내</h3>
       </div>
       <div id="infoMessage" class="info-message">안내 메시지</div>
       <div class="modal-footer">
-        <button type="button" id="closeInfoModal" class="modal-close">닫기</button>
+        <button type="button" id="closeInfoModal" class="modal-close" data-modal-close="#infoModal">닫기</button>
       </div>
     </div>
   </div>
 
   <div
     id="measurementGuideModal"
-    class="modal measurement-guide-modal hidden"
+    class="modal modal--guide measurement-guide-modal hidden"
     role="dialog"
     aria-modal="true"
     aria-labelledby="measurementGuideModalTitle"
   >
-    <div class="modal-backdrop" id="measurementGuideModalBackdrop"></div>
+    <div class="modal-backdrop" id="measurementGuideModalBackdrop" data-modal-close="#measurementGuideModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="measurementGuideModalTitle" tabindex="-1">측정 가이드</h3>
@@ -384,12 +404,17 @@
         <div id="measurementGuideModalBody" class="measurement-guide-body"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeMeasurementGuideModal" class="modal-close">닫기</button>
+        <button
+          type="button"
+          id="closeMeasurementGuideModal"
+          class="modal-close"
+          data-modal-close="#measurementGuideModal"
+        >닫기</button>
       </div>
     </div>
   </div>
 
-  <div id="systemAddonModal" class="modal hidden">
+  <div id="systemAddonModal" class="modal modal--picker hidden">
     <div class="modal-backdrop" id="systemAddonModalBackdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
@@ -412,7 +437,7 @@
 
   <div
     id="previewAddTypeModal"
-    class="preview-action-modal modal hidden"
+    class="modal modal--action preview-action-modal hidden"
     role="dialog"
     aria-modal="true"
     aria-labelledby="previewAddTypeModalTitle"
@@ -448,7 +473,7 @@
 
   <div
     id="previewModuleActionModal"
-    class="preview-action-modal modal hidden"
+    class="modal modal--action preview-action-modal hidden"
     role="dialog"
     aria-modal="true"
     aria-labelledby="previewModuleActionModalTitle"
@@ -474,7 +499,7 @@
     </div>
   </div>
 
-  <div id="previewPresetModuleModal" class="modal hidden">
+  <div id="previewPresetModuleModal" class="modal modal--picker hidden">
     <div class="modal-backdrop" id="previewPresetModuleModalBackdrop"></div>
     <div class="modal-content" id="previewPresetModuleModalContent">
       <div class="modal-header">
@@ -491,7 +516,7 @@
     </div>
   </div>
 
-  <div id="presetModuleOptionModal" class="modal hidden">
+  <div id="presetModuleOptionModal" class="modal modal--module-option hidden">
     <div class="modal-backdrop" id="presetModuleOptionModalBackdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
@@ -648,7 +673,7 @@
         <div id="presetModuleOptionFrontPreview" class="module-option-front-preview" aria-live="polite"></div>
       </div>
       <div class="modal-footer module-option-modal-footer">
-        <button type="button" id="savePresetModuleOptionModal" class="send-btn">적용</button>
+        <button type="button" id="savePresetModuleOptionModal" class="send-btn modal-primary-action">적용</button>
         <button type="button" id="removePresetModuleOptionModal" class="ghost-btn">모듈 삭제</button>
         <button type="button" id="backPresetModuleOptionModal" class="ghost-btn hidden">이전</button>
         <button type="button" id="closePresetModuleOptionModal" class="modal-close ghost-btn">닫기</button>

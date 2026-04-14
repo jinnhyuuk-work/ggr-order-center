@@ -48,7 +48,12 @@
           </div>
           <div class="accordion-body" id="step1Body">
             <div class="material-picker">
-              <button type="button" id="openTopTypeModal">상판 선택하기</button>
+              <button
+                type="button"
+                id="openTopTypeModal"
+                data-modal-open="#topTypeModal"
+                data-modal-focus="#topTypeModalTitle"
+              >상판 선택하기</button>
             </div>
             <div id="selectedTopTypeCard" class="selected-toptype-card">
               <div class="placeholder">선택된 상판 타입 없음</div>
@@ -337,8 +342,8 @@
     </div>
   </main>
 
-  <div id="topTypeModal" class="modal hidden">
-    <div class="modal-backdrop" id="topTypeModalBackdrop"></div>
+  <div id="topTypeModal" class="modal modal--picker hidden">
+    <div class="modal-backdrop" id="topTypeModalBackdrop" data-modal-close="#topTypeModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="topTypeModalTitle" tabindex="-1">상판 타입 선택</h3>
@@ -354,13 +359,13 @@
         <div id="topTypeCards" class="grid-cards grid-cards--3"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeTopTypeModal" class="modal-close">닫기</button>
+        <button type="button" id="closeTopTypeModal" class="modal-close" data-modal-close="#topTypeModal">닫기</button>
       </div>
     </div>
   </div>
 
-  <div id="topAddonModal" class="modal hidden">
-    <div class="modal-backdrop" id="topAddonModalBackdrop"></div>
+  <div id="topAddonModal" class="modal modal--picker hidden">
+    <div class="modal-backdrop" id="topAddonModalBackdrop" data-modal-close="#topAddonModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="topAddonModalTitle" tabindex="-1">부자재 선택</h3>
@@ -369,32 +374,32 @@
         <div id="topAddonCards" class="grid-cards grid-cards--3 grid-cards--keep-2"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeTopAddonModal" class="modal-close">닫기</button>
+        <button type="button" id="closeTopAddonModal" class="modal-close" data-modal-close="#topAddonModal">닫기</button>
       </div>
     </div>
   </div>
 
-  <div id="infoModal" class="modal hidden">
-    <div class="modal-backdrop" id="infoModalBackdrop"></div>
+  <div id="infoModal" class="modal modal--sm hidden">
+    <div class="modal-backdrop" id="infoModalBackdrop" data-modal-close="#infoModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="infoModalTitle" tabindex="-1">안내</h3>
       </div>
       <div id="infoMessage" class="info-message">안내 메시지</div>
       <div class="modal-footer">
-        <button type="button" id="closeInfoModal" class="modal-close">닫기</button>
+        <button type="button" id="closeInfoModal" class="modal-close" data-modal-close="#infoModal">닫기</button>
       </div>
     </div>
   </div>
 
   <div
     id="measurementGuideModal"
-    class="modal measurement-guide-modal hidden"
+    class="modal modal--guide measurement-guide-modal hidden"
     role="dialog"
     aria-modal="true"
     aria-labelledby="measurementGuideModalTitle"
   >
-    <div class="modal-backdrop" id="measurementGuideModalBackdrop"></div>
+    <div class="modal-backdrop" id="measurementGuideModalBackdrop" data-modal-close="#measurementGuideModal"></div>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="measurementGuideModalTitle" tabindex="-1">측정 가이드</h3>
@@ -403,12 +408,17 @@
         <div id="measurementGuideModalBody" class="measurement-guide-body"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeMeasurementGuideModal" class="modal-close">닫기</button>
+        <button
+          type="button"
+          id="closeMeasurementGuideModal"
+          class="modal-close"
+          data-modal-close="#measurementGuideModal"
+        >닫기</button>
       </div>
     </div>
   </div>
 
-  <div id="topServiceModal" class="modal hidden">
+  <div id="topServiceModal" class="modal modal--service hidden">
     <div class="modal-backdrop" id="topServiceModalBackdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
@@ -419,7 +429,7 @@
       <div class="modal-footer">
         <button type="button" id="removeTopServiceModal">옵션 제거</button>
         <button type="button" id="cancelTopServiceModal">취소</button>
-        <button type="button" id="saveTopServiceModal">적용</button>
+        <button type="button" id="saveTopServiceModal" class="modal-primary-action">적용</button>
       </div>
     </div>
   </div>

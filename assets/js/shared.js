@@ -1008,6 +1008,54 @@ export function closeModal(modal, { bodySelector = ".modal-body", resetScroll = 
   }
 }
 
+export function showInfoModal(message, {
+  modalSelector = "#infoModal",
+  messageSelector = "#infoMessage",
+  focusTarget = "#infoModalTitle",
+} = {}) {
+  if (typeof document === "undefined") return;
+  const modalEl = resolveElement(modalSelector);
+  const msgEl = resolveElement(messageSelector);
+  if (msgEl) msgEl.textContent = message;
+  openModal(modalEl, { focusTarget });
+}
+
+export function bindModalOpenTriggers({ root = null, selector = "[data-modal-open]" } = {}) {
+  if (typeof document === "undefined") return;
+  const rootEl = resolveElement(root) || document;
+  rootEl.querySelectorAll(selector).forEach((trigger) => {
+    if (!(trigger instanceof HTMLElement)) return;
+    if (trigger.dataset.modalOpenBound === "true") return;
+    trigger.dataset.modalOpenBound = "true";
+    trigger.addEventListener("click", (event) => {
+      const modalSelector = String(trigger.getAttribute("data-modal-open") || "").trim();
+      const modalEl = resolveElement(modalSelector);
+      if (!modalEl) return;
+      event.preventDefault();
+      openModal(modalEl, {
+        focusTarget: String(trigger.getAttribute("data-modal-focus") || "").trim() || null,
+      });
+    });
+  });
+}
+
+export function bindModalCloseTriggers({ root = null, selector = "[data-modal-close]" } = {}) {
+  if (typeof document === "undefined") return;
+  const rootEl = resolveElement(root) || document;
+  rootEl.querySelectorAll(selector).forEach((trigger) => {
+    if (!(trigger instanceof HTMLElement)) return;
+    if (trigger.dataset.modalCloseBound === "true") return;
+    trigger.dataset.modalCloseBound = "true";
+    trigger.addEventListener("click", (event) => {
+      const modalSelector = String(trigger.getAttribute("data-modal-close") || "").trim();
+      const modalEl = modalSelector ? resolveElement(modalSelector) : trigger.closest(".modal");
+      if (!modalEl) return;
+      event.preventDefault();
+      closeModal(modalEl);
+    });
+  });
+}
+
 export function getCustomerInfo({
   nameSelector = "#customerName",
   phoneSelector = "#customerPhone",

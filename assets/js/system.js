@@ -109,6 +109,7 @@ import {
   CLOUDINARY_CONFIG,
   openModal,
   closeModal,
+  showInfoModal,
   getCustomerInfo,
   validateCustomerInfo,
   updateSendButtonEnabled as updateSendButtonEnabledShared,
@@ -1119,10 +1120,6 @@ function openMeasurementGuideModal(guideKey) {
   measurementGuideController.open(guideKey);
 }
 
-function closeMeasurementGuideModal() {
-  measurementGuideController.close();
-}
-
 function formatColumnSize(column) {
   const maxLength = Number(column?.maxLength || 0);
   const minLength = Number(column?.minLength || 0);
@@ -1138,9 +1135,6 @@ const materialPickers = {
     materials: SYSTEM_SHELF_MATERIALS,
     inputName: "shelfMaterial",
     modalId: "#shelfMaterialModal",
-    openBtn: "#openShelfMaterialModal",
-    closeBtn: "#closeShelfMaterialModal",
-    backdrop: "#shelfMaterialModalBackdrop",
     tabsId: "#shelfMaterialTabs",
     cardsId: "#shelfMaterialCards",
     categoryNameId: "#shelfMaterialCategoryName",
@@ -1158,9 +1152,6 @@ const materialPickers = {
     materials: SYSTEM_COLUMN_MATERIALS,
     inputName: "columnMaterial",
     modalId: "#columnMaterialModal",
-    openBtn: "#openColumnMaterialModal",
-    closeBtn: "#closeColumnMaterialModal",
-    backdrop: "#columnMaterialModalBackdrop",
     tabsId: "#columnMaterialTabs",
     cardsId: "#columnMaterialCards",
     categoryNameId: "#columnMaterialCategoryName",
@@ -5631,16 +5622,6 @@ function goToPrevStep() {
   return systemOrderUiFlowHelpers.goToPrevStep();
 }
 
-function showInfoModal(message) {
-  const msgEl = $("#infoMessage");
-  if (msgEl) msgEl.textContent = message;
-  openModal("#infoModal", { focusTarget: "#infoModalTitle" });
-}
-
-function closeInfoModal() {
-  closeModal("#infoModal");
-}
-
 const systemQuoteFlowHelpers = createSystemQuoteFlowHelpers({
   $,
   getCustomerInfo,
@@ -5786,8 +5767,6 @@ function init() {
     openCornerOptionModal,
     openBayOptionModal,
     setPreviewEdgeHoverState,
-    closeInfoModal,
-    closeMeasurementGuideModal,
     handleMeasurementGuideCarouselClick,
     goToNextStep,
     goToPrevStep,
@@ -5798,8 +5777,6 @@ function init() {
     setServiceStepError,
     updateServiceStepUI,
     renderSummary,
-    openModal,
-    closeModal,
     refreshBuilderDerivedUI,
     clearPreviewGhost,
     isPreviewBuilderReady,
