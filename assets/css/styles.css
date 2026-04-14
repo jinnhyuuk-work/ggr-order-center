@@ -3634,7 +3634,7 @@ button.card-base:active {
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    padding-bottom: max(var(--sticky-offset, 0px), calc(16px + env(safe-area-inset-bottom, 0px)));
   }
 
   .form-row {
@@ -3706,19 +3706,12 @@ button.card-base:active {
     overflow: hidden;
   }
 
-  html.oc-constrained-ui .estimate-panel {
-    position: sticky;
-    left: auto;
-    right: auto;
-    bottom: auto;
-    top: 12px;
-    max-height: none;
-    border-radius: var(--radius-xl);
-    overflow: visible;
-  }
-
   .step-card {
     padding: 18px;
+  }
+
+  .estimate-panel.step-card {
+    padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
   }
 
   .step-card-header {
@@ -3738,27 +3731,13 @@ button.card-base:active {
     display: inline-flex;
   }
 
-  html.oc-constrained-ui .estimate-toggle {
-    display: none;
-  }
-
   .estimate-panel .estimate-body {
     max-height: 44vh;
     overflow-y: auto;
   }
 
-  html.oc-constrained-ui .estimate-panel .estimate-body {
-    display: block;
-    max-height: none;
-    overflow: visible;
-  }
-
   .estimate-panel.is-collapsed .estimate-body {
     display: none;
-  }
-
-  html.oc-constrained-ui .estimate-panel.is-collapsed .estimate-body {
-    display: block;
   }
 
   html.oc-constrained-ui .step-card.is-accordion:not(.is-collapsed) .accordion-body {
@@ -3782,6 +3761,79 @@ button.card-base:active {
   .estimate-panel .summary p {
     margin: 6px 0;
     padding: 6px 0;
+  }
+
+  .estimate-panel.is-collapsed {
+    padding: 12px 14px max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .estimate-panel.is-collapsed .estimate-header {
+    margin-bottom: 0;
+  }
+
+  .estimate-panel.is-collapsed .estimate-header h2 {
+    min-width: 0;
+    font-size: 0;
+    line-height: 0;
+  }
+
+  .estimate-panel.is-collapsed .estimate-header h2::before {
+    content: "주문 예정 항목 0개";
+    display: block;
+    overflow: hidden;
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    font-weight: var(--fw-bold);
+    line-height: var(--lh-comfy);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .estimate-panel.is-collapsed .estimate-header h2[data-estimate-item-count]::before {
+    content: "주문 예정 항목 " attr(data-estimate-item-count) "개";
+  }
+
+  .estimate-panel.is-collapsed .input-tip {
+    display: none;
+  }
+
+  .estimate-panel.is-collapsed .summary {
+    margin-top: 4px;
+  }
+
+  .estimate-panel.is-collapsed .summary p {
+    display: none;
+  }
+
+  .estimate-panel.is-collapsed .summary p:nth-child(3) {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border-bottom: none;
+    color: var(--color-text);
+    font-size: 0;
+    line-height: 0;
+  }
+
+  .estimate-panel.is-collapsed #grandTotal {
+    display: block;
+    overflow: hidden;
+    color: var(--color-text-strong);
+    font-size: var(--font-size-md);
+    font-weight: var(--fw-bold);
+    line-height: var(--lh-comfy);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .estimate-panel.is-collapsed #grandTotal::before {
+    content: "총 ";
+    color: var(--color-text-muted);
+    font-weight: var(--fw-semibold);
+  }
+
+  .estimate-panel.is-collapsed #grandTotal::after {
+    content: "원";
   }
 
   .grid-cards,
@@ -3959,53 +4011,6 @@ button.card-base:active {
   .modal--processing-service .processing-service-field-grid {
     grid-template-columns: 1fr;
     gap: 10px;
-  }
-}
-
-/* 예비 규칙: iframe/모달 감지 실패 시에도 작은 높이 모바일에서 안전 레이아웃을 강제 */
-@media (max-width: 900px) and (max-height: 920px) {
-  body {
-    padding-bottom: 0;
-    overflow: hidden;
-  }
-
-  .container {
-    box-sizing: border-box;
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
-  }
-
-  .estimate-panel {
-    position: sticky;
-    left: auto;
-    right: auto;
-    bottom: auto;
-    top: 12px;
-    max-height: none;
-    border-radius: var(--radius-xl);
-    overflow: visible;
-  }
-
-  .estimate-toggle {
-    display: none;
-  }
-
-  .estimate-panel .estimate-body,
-  .estimate-panel.is-collapsed .estimate-body {
-    display: block;
-    max-height: none;
-    overflow: visible;
-  }
-
-  .step-card.is-accordion:not(.is-collapsed) .accordion-body {
-    max-height: min(68dvh, calc(100dvh - 220px));
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
   }
 }
 

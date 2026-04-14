@@ -145,7 +145,6 @@ let activeModalState = null;
 let modalKeyHandlerBound = false;
 let autoModalTitleIdSeq = 0;
 let embeddedViewportClassBound = false;
-const COMPACT_MOBILE_VIEWPORT_MAX_HEIGHT = 920;
 const ESTIMATE_DETAIL_OPEN_STATE = new Map();
 const CUSTOMER_PHOTO_MAX_COUNT = 5;
 const CUSTOMER_PHOTO_MAX_FILE_SIZE_MB = 10;
@@ -1698,6 +1697,10 @@ export function renderEstimateTable({
   const tbody = document.querySelector(tbodySelector);
   if (!tbody) return;
   const emptyBanner = emptySelector ? document.querySelector(emptySelector) : null;
+  const estimatePanel = tbody.closest(".estimate-panel");
+  const estimateTitle = estimatePanel?.querySelector(".estimate-header h2");
+  if (estimatePanel) estimatePanel.dataset.estimateItemCount = String(items.length);
+  if (estimateTitle) estimateTitle.dataset.estimateItemCount = String(items.length);
   tbody.innerHTML = "";
 
   if (!items.length) {
@@ -2170,11 +2173,6 @@ function isMobileViewport() {
   return Number(window.innerWidth || 0) <= 900;
 }
 
-function getViewportHeight() {
-  if (typeof window === "undefined") return 0;
-  return Number(window.visualViewport?.height || window.innerHeight || 0);
-}
-
 function hasEmbeddedModeHint() {
   if (typeof window === "undefined") return false;
   const params = new URLSearchParams(String(window.location?.search || ""));
@@ -2197,11 +2195,9 @@ function syncEmbeddedViewportClass() {
   const embedded = isEmbeddedContext();
   const embeddedLike = embedded || hasEmbeddedModeHint();
   const mobile = isMobileViewport();
-  const compactHeight = getViewportHeight() > 0 && getViewportHeight() <= COMPACT_MOBILE_VIEWPORT_MAX_HEIGHT;
-  const constrainedUi = mobile && (embeddedLike || compactHeight);
+  const constrainedUi = mobile && embeddedLike;
   root.classList.toggle("oc-embedded", embeddedLike);
   root.classList.toggle("oc-embedded-mobile", embeddedLike && mobile);
-  root.classList.toggle("oc-compact-height", mobile && compactHeight);
   root.classList.toggle("oc-constrained-ui", constrainedUi);
 }
 
