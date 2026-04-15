@@ -3994,12 +3994,15 @@ button.card-base:active {
     --modal-max-width: none;
     --modal-viewport-width: 100%;
     --modal-margin: 0;
+    --modal-sheet-height: var(--modal-max-height);
     --modal-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
 
   .modal--mobile-sheet .modal-content {
     width: 100%;
+    height: var(--modal-sheet-height);
     max-width: none;
+    min-height: 0;
     margin: 0;
     border-radius: var(--modal-radius);
     padding-bottom: calc(var(--modal-padding) + env(safe-area-inset-bottom, 0px));
