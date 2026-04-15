@@ -4020,6 +4020,27 @@ button.card-base:active {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .selected-material-card:not(.addon-card-display),
+  .selected-toptype-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .selected-material-card:not(.addon-card-display) .material-visual,
+  .selected-toptype-card .material-visual {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    border-radius: var(--radius-sm);
+  }
+
+  .selected-material-card:not(.addon-card-display) .info,
+  .selected-toptype-card .info {
+    min-width: 0;
+  }
+
   .door-hinge-grid {
     grid-template-columns: 1fr;
     gap: 10px;
