@@ -119,6 +119,7 @@ html.wf-active body { visibility: visible; }
 
 html,
 body {
+  margin: 0;
   scrollbar-width: thin; /* 파이어폭스 */
   scrollbar-color: rgba(0, 0, 0, 0.28) transparent;
 }
@@ -185,6 +186,8 @@ b[lang="en"],
 }
 
 .container {
+  box-sizing: border-box;
+  width: 100%;
   max-width: 1440px;
   margin: auto;
   background: var(--color-surface);
@@ -196,6 +199,9 @@ b[lang="en"],
 .brand-strip {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
   padding-bottom: 12px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--color-border);
@@ -210,6 +216,7 @@ b[lang="en"],
 .header-logo-link {
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   line-height: 0;
   margin-bottom: 0;
   text-decoration: none;
@@ -219,6 +226,11 @@ b[lang="en"],
   display: block;
   width: auto;
   height: clamp(26px, 2.6vw, 36px);
+}
+
+.order-center-home-link {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .page-description {
