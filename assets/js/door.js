@@ -1014,13 +1014,15 @@ function formatDoorPanelSideLabel(doorHingeConfig = {}) {
   return config.side === "left" ? "우측문" : "좌측문";
 }
 
-function formatDoorEstimateName(materialName, item = {}) {
+function formatDoorEstimateNameHtml(materialName, item = {}) {
   const baseName = String(materialName || "").trim();
-  if (!baseName || (item && item.type === "addon")) return baseName;
+  if (!baseName || (item && item.type === "addon")) return escapeHtml(baseName);
   const panelSideLabel = formatDoorPanelSideLabel(
     item && item.doorHingeConfig ? item.doorHingeConfig : createDefaultDoorHingeConfig()
   );
-  return panelSideLabel ? baseName + "(" + panelSideLabel + ")" : baseName;
+  if (!panelSideLabel) return escapeHtml(baseName);
+  const chipText = panelSideLabel.startsWith("우") ? "우측" : "좌측";
+  return `<span class="estimate-name-chip" aria-label="${escapeHtml(panelSideLabel)}">${escapeHtml(chipText)}</span> ${escapeHtml(baseName)}`;
 }
 
 function formatDoorHingeConfig(doorHingeConfig, { includeNote = false } = {}) {
@@ -1833,7 +1835,7 @@ function renderTable() {
       const materialName = isAddon
         ? addonInfo?.name || "부자재"
         : MATERIALS[item.materialId].name;
-      return escapeHtml(formatDoorEstimateName(materialName, item));
+      return formatDoorEstimateNameHtml(materialName, item);
     },
     getTotalText: (item) => formatItemTotal(item),
     getDetailLines: (item) => {

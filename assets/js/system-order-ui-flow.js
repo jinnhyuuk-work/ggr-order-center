@@ -37,7 +37,12 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
     const displayItems = systemOrderHelpers.buildSystemGroupDisplayItems(state.items);
     renderEstimateTable({
       items: displayItems,
-      getName: () => "시스템 구성",
+      getName: (item) => {
+        const layoutLabel = String(item?.layoutSpec?.shapeLabel || "").trim();
+        const nameText = escapeHtml("시스템 구성");
+        if (!layoutLabel) return nameText;
+        return `<span class="estimate-name-chip">${escapeHtml(layoutLabel)}</span> ${nameText}`;
+      },
       getTotalText: (item) => (item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`),
       getDetailLines: (item) => systemOrderHelpers.buildSystemGroupDetailLines(item).map((line) => escapeHtml(line)),
       onQuantityChange: (id, value) => updateItemQuantity(id, value),

@@ -2152,15 +2152,35 @@ th, td {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 #estimateTable .estimate-name-text {
+  display: block;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+#estimateTable .estimate-name-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  margin-right: 4px;
+  border: 1px solid var(--color-border-faint);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-sub);
+  font-size: var(--font-size-micro);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .detail-toggle-btn {
@@ -2172,6 +2192,10 @@ th, td {
   line-height: var(--lh-tight);
   cursor: pointer;
   white-space: nowrap;
+}
+
+#estimateTable .detail-toggle-btn {
+  flex: 0 0 auto;
 }
 
 #estimateTable th:nth-child(3),
@@ -4118,35 +4142,47 @@ button.card-base:active {
   }
 
   #estimateTable tbody tr:not(.detail-row) .estimate-name-wrap {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
     width: 100%;
   }
 
   #estimateTable tbody tr:not(.detail-row) .estimate-name-text {
-    display: block;
-    width: 100%;
+    flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
-    text-overflow: clip;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   #estimateTable tbody tr:not(.detail-row) .detail-toggle-btn {
-    align-self: flex-start;
+    align-self: center;
+    flex: 0 0 auto;
     --btn-padding: 4px 8px;
     font-size: var(--font-size-micro);
+    line-height: var(--lh-tight);
   }
 
   #estimateTable tbody tr:not(.detail-row) .qty-input {
-    width: 44px;
-    padding: 3px 4px;
+    width: 32px;
+    height: 22px;
+    padding: 1px 3px;
+    border: 1px solid var(--color-border-faint);
+    border-radius: var(--radius-xs);
+    background: var(--color-surface);
+    box-shadow: none;
+    color: var(--color-brand-ink);
+    font-size: var(--font-size-micro);
+    font-weight: var(--fw-semibold);
+    line-height: 1;
   }
 
   #estimateTable tbody tr:not(.detail-row) .deleteBtn {
-    padding: 4px 8px;
+    --btn-padding: 4px 8px;
     font-size: var(--font-size-micro);
+    line-height: var(--lh-tight);
   }
 
   #estimateTable .detail-row td {

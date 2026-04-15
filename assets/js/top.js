@@ -707,6 +707,17 @@ function needsThirdLength(shape) {
   return shape === "u";
 }
 
+function getTopShapeLabel(shape) {
+  return (
+    {
+      i: "ㅡ자",
+      l: "ㄱ자",
+      rl: "역ㄱ자",
+      u: "ㄷ자",
+    }[shape] || ""
+  );
+}
+
 function getTopDimensionLimits(typeId) {
   const type = TOP_TYPES.find((item) => item.id === typeId);
   return {
@@ -1402,7 +1413,11 @@ function renderTable() {
     getName: (item) => {
       const isAddon = item.type === "addon";
       const addonInfo = isAddon ? TOP_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
-      return escapeHtml(isAddon ? addonInfo?.name || "부자재" : item.typeName);
+      if (isAddon) return escapeHtml(addonInfo?.name || "부자재");
+      const typeLabel = getTopShapeLabel(item.shape);
+      const nameText = escapeHtml(item.typeName || "상판");
+      if (!typeLabel) return nameText;
+      return `<span class="estimate-name-chip">${escapeHtml(typeLabel)}</span> ${nameText}`;
     },
     getTotalText: (item) => (item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`),
     getDetailLines: (item) => {
