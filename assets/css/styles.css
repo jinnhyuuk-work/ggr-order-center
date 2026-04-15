@@ -4041,6 +4041,50 @@ button.card-base:active {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .modal--compact-material-picker .grid-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .modal--compact-material-picker .material-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+  }
+
+  .modal--compact-material-picker .material-card .material-visual {
+    aspect-ratio: 1 / 1;
+    height: auto;
+    min-height: 0;
+    margin-bottom: 6px;
+    border-radius: var(--radius-sm);
+  }
+
+  .modal--compact-material-picker .material-card .name {
+    display: -webkit-box;
+    min-height: calc(var(--font-size-micro) * 2.4);
+    margin: 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--color-text);
+    font-size: var(--font-size-micro);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-snug);
+    text-align: center;
+    word-break: keep-all;
+  }
+
+  .modal--compact-material-picker .material-card .material-tier-heading,
+  .modal--compact-material-picker .material-card .material-tier-line,
+  .modal--compact-material-picker .material-card .size-heading,
+  .modal--compact-material-picker .material-card .size,
+  .modal--compact-material-picker .material-card .description {
+    display: none;
+  }
+
   .fulfillment-grid.grid-cards--keep-2 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
