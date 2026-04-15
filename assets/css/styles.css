@@ -4094,10 +4094,10 @@ button.card-base:active {
 
   #estimateTable tbody tr:not(.detail-row) {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "name name name"
-      "price qty delete";
+      "name qty"
+      "price delete";
     gap: 6px 8px;
     box-sizing: border-box;
     width: 100%;
@@ -4107,6 +4107,10 @@ button.card-base:active {
     border: 1px solid var(--color-border-faint);
     border-radius: var(--radius-md);
     background: var(--color-surface);
+  }
+
+  #estimateTable tbody tr:not(.detail-row).has-detail {
+    cursor: pointer;
   }
 
   #estimateTable tbody tr:not(.detail-row) td {
@@ -4125,7 +4129,7 @@ button.card-base:active {
   #estimateTable tbody tr:not(.detail-row) td:nth-child(2) {
     grid-area: qty;
     justify-self: end;
-    align-self: end;
+    align-self: center;
     text-align: right;
   }
 
@@ -4158,6 +4162,7 @@ button.card-base:active {
   }
 
   #estimateTable tbody tr:not(.detail-row) .detail-toggle-btn {
+    display: none;
     align-self: center;
     flex: 0 0 auto;
     --btn-padding: 4px 8px;

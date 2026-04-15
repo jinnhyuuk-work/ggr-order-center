@@ -1730,6 +1730,10 @@ export function renderEstimateTable({
     const tr = document.createElement("tr");
     const nameText = getName ? getName(item) : "";
     const totalText = getTotalText ? getTotalText(item) : "-";
+    if (hasDetail) {
+      tr.classList.add("has-detail");
+      tr.setAttribute("aria-expanded", String(detailOpen));
+    }
     tr.innerHTML = `
       <td>
         <div class="estimate-name-wrap">
@@ -1772,12 +1776,24 @@ export function renderEstimateTable({
       tbody.appendChild(detailRow);
 
       const toggleBtn = tr.querySelector(".detail-toggle-btn");
-      toggleBtn?.addEventListener("click", () => {
+      const toggleDetail = () => {
         const willOpen = detailRow.classList.contains("is-collapsed");
         detailRow.classList.toggle("is-collapsed", !willOpen);
-        toggleBtn.setAttribute("aria-expanded", String(willOpen));
-        toggleBtn.textContent = willOpen ? "상세닫기" : "상세보기";
+        tr.setAttribute("aria-expanded", String(willOpen));
+        if (toggleBtn) {
+          toggleBtn.setAttribute("aria-expanded", String(willOpen));
+          toggleBtn.textContent = willOpen ? "상세닫기" : "상세보기";
+        }
         ESTIMATE_DETAIL_OPEN_STATE.set(detailStateKey, willOpen);
+      };
+      toggleBtn?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleDetail();
+      });
+      tr.addEventListener("click", (event) => {
+        if (typeof window === "undefined" || !window.matchMedia("(max-width: 540px)").matches) return;
+        if (event.target.closest("button, input, select, textarea, a, label")) return;
+        toggleDetail();
       });
     }
   });
