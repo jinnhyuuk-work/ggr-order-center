@@ -2091,7 +2091,12 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .deleteBtn {
-  padding: 6px 10px;
+  --btn-bg: var(--color-brand-ink);
+  --btn-color: var(--color-on-brand-ink);
+  --btn-border: 1px solid var(--color-brand-ink);
+  --btn-padding: 6px 10px;
+  font-size: var(--font-size-micro);
+  line-height: var(--lh-tight);
 }
 
 table {
@@ -2159,20 +2164,14 @@ th, td {
 }
 
 .detail-toggle-btn {
-  border: 1px solid var(--color-border-faint);
-  background: var(--color-surface-muted);
-  color: var(--color-text-sub);
-  border-radius: var(--radius-btn);
+  --btn-bg: var(--color-surface);
+  --btn-color: var(--color-brand-ink);
+  --btn-border: 1px solid var(--color-brand-ink);
+  --btn-padding: 6px 10px;
   font-size: var(--font-size-micro);
   line-height: var(--lh-tight);
-  padding: 4px 8px;
   cursor: pointer;
   white-space: nowrap;
-}
-
-.detail-toggle-btn:hover {
-  border-color: var(--color-border);
-  color: var(--color-text);
 }
 
 #estimateTable th:nth-child(3),
@@ -4051,6 +4050,141 @@ button.card-base:active {
   .selected-material-card:not(.addon-card-display) .info,
   .selected-toptype-card .info {
     min-width: 0;
+  }
+
+  #estimateTable {
+    border-collapse: separate;
+    margin-top: 12px;
+    max-width: 100%;
+  }
+
+  #estimateTable thead {
+    display: none;
+  }
+
+  #estimateTable tbody {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #estimateTable tbody tr:not(.detail-row) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "name name name"
+      "price qty delete";
+    gap: 6px 8px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--color-border-faint);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+
+  #estimateTable tbody tr:not(.detail-row) td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border-bottom: 0;
+    vertical-align: top;
+  }
+
+  #estimateTable tbody tr:not(.detail-row) td:nth-child(1) {
+    grid-area: name;
+    width: 100%;
+  }
+
+  #estimateTable tbody tr:not(.detail-row) td:nth-child(2) {
+    grid-area: qty;
+    justify-self: end;
+    align-self: end;
+    text-align: right;
+  }
+
+  #estimateTable tbody tr:not(.detail-row) td:nth-child(3) {
+    grid-area: price;
+    align-self: end;
+  }
+
+  #estimateTable tbody tr:not(.detail-row) td:nth-child(4) {
+    grid-area: delete;
+    justify-self: end;
+    align-self: end;
+    text-align: right;
+  }
+
+  #estimateTable tbody tr:not(.detail-row) .estimate-name-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    width: 100%;
+  }
+
+  #estimateTable tbody tr:not(.detail-row) .estimate-name-text {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  #estimateTable tbody tr:not(.detail-row) .detail-toggle-btn {
+    align-self: flex-start;
+    --btn-padding: 4px 8px;
+    font-size: var(--font-size-micro);
+  }
+
+  #estimateTable tbody tr:not(.detail-row) .qty-input {
+    width: 44px;
+    padding: 3px 4px;
+  }
+
+  #estimateTable tbody tr:not(.detail-row) .deleteBtn {
+    padding: 4px 8px;
+    font-size: var(--font-size-micro);
+  }
+
+  #estimateTable .detail-row td {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0;
+    border: 0;
+  }
+
+  #estimateTable .detail-row {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    margin-top: -6px;
+    margin-bottom: 10px;
+  }
+
+  #estimateTable .detail-row.is-collapsed {
+    display: none;
+  }
+
+  #estimateTable .detail-row .sub-detail {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 12px 12px;
+    text-align: left;
+    border: 1px solid var(--color-border-faint);
+    border-top: 0;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    background: var(--color-surface-muted);
+  }
+
+  #estimateTable tbody tr:not(.detail-row):has(+ .detail-row:not(.is-collapsed)) {
+    margin-bottom: 0;
+    border-bottom-color: transparent;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
   }
 
   .door-hinge-grid {
