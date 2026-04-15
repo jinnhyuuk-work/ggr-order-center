@@ -2690,6 +2690,7 @@ th, td {
   display: flex;
   flex-direction: column;
   position: relative;
+  box-sizing: border-box;
   max-width: var(--modal-max-width);
   width: min(var(--modal-width), var(--modal-viewport-width));
   margin: var(--modal-margin);
