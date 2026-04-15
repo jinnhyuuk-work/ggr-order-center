@@ -2254,17 +2254,46 @@ export function initCollapsibleSections({
     window.addEventListener("orientationchange", syncEmbeddedViewportClass);
     embeddedViewportClassBound = true;
   }
-  document.querySelectorAll(toggleSelector).forEach((btn) => {
-    const targetId = btn.dataset.toggleTarget;
-    const section = targetId ? document.getElementById(targetId) : null;
-    if (!section) return;
-    const openLabel = btn.dataset.openText || openText;
-    const closedLabel = btn.dataset.closedText || closedText;
-    const titleText = String(
+
+  const getSectionTitle = (btn, section) =>
+    String(
       btn.dataset.a11yLabel ||
         section.querySelector(".step-card-header h2, .estimate-header h2, h2")?.textContent ||
         ""
     ).trim();
+
+  const applyToggleState = (btn, section, collapsed) => {
+    const openLabel = btn.dataset.openText || openText;
+    const closedLabel = btn.dataset.closedText || closedText;
+    const titleText = getSectionTitle(btn, section);
+    const actionText = collapsed ? closedLabel : openLabel;
+    btn.textContent = actionText;
+    btn.setAttribute("aria-expanded", String(!collapsed));
+    if (titleText) {
+      btn.setAttribute("aria-label", `${titleText} ${actionText}`);
+    }
+  };
+
+  const closeMobilePeerAccordions = (currentBtn, currentSection) => {
+    if (!isMobileViewport()) return;
+    if (!currentSection.classList.contains("is-accordion")) return;
+    const group = currentSection.closest(".steps-main") || currentSection.parentElement || document;
+    group.querySelectorAll(toggleSelector).forEach((btn) => {
+      if (btn === currentBtn) return;
+      const targetId = btn.dataset.toggleTarget;
+      const section = targetId ? document.getElementById(targetId) : null;
+      if (!section || section === currentSection) return;
+      if (!section.classList.contains("is-accordion")) return;
+      if (section.classList.contains(collapsedClass)) return;
+      section.classList.add(collapsedClass);
+      applyToggleState(btn, section, true);
+    });
+  };
+
+  document.querySelectorAll(toggleSelector).forEach((btn) => {
+    const targetId = btn.dataset.toggleTarget;
+    const section = targetId ? document.getElementById(targetId) : null;
+    if (!section) return;
     const controlTarget =
       section.querySelector(".accordion-body[id], .estimate-body[id]") ||
       section.querySelector(".accordion-body, .estimate-body");
@@ -2275,21 +2304,13 @@ export function initCollapsibleSections({
       btn.setAttribute("aria-controls", targetId);
     }
 
-    const applyState = (collapsed) => {
-      const actionText = collapsed ? closedLabel : openLabel;
-      btn.textContent = actionText;
-      btn.setAttribute("aria-expanded", String(!collapsed));
-      if (titleText) {
-        btn.setAttribute("aria-label", `${titleText} ${actionText}`);
-      }
-    };
-
     const isCollapsed = section.classList.contains(collapsedClass);
-    applyState(isCollapsed);
+    applyToggleState(btn, section, isCollapsed);
     btn.addEventListener("click", () => {
       const nowCollapsed = section.classList.toggle(collapsedClass);
-      applyState(nowCollapsed);
+      applyToggleState(btn, section, nowCollapsed);
       if (!nowCollapsed) {
+        closeMobilePeerAccordions(btn, section);
         requestAnimationFrame(() => keepAccordionSectionInViewport(section));
       }
     });
