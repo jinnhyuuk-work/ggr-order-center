@@ -27,10 +27,10 @@ export function bindSystemInitEvents({
   closePreviewAddTypePicker,
   handlePreviewAddModalTypeSelect,
   handlePreviewAddModalRootCornerDirectionSelect,
-  handlePreviewAddModalBack,
   closePreviewModuleActionModal,
   handlePreviewModuleActionEdit,
   handlePreviewModuleActionAddSide,
+  handlePreviewModuleActionDelete,
   closePreviewPresetModuleModal,
   handlePreviewPresetModuleCardClick,
   getPreviewPresetModuleCategoryFilterKey,
@@ -40,8 +40,6 @@ export function bindSystemInitEvents({
   handlePresetModuleOptionModalTabClick,
   handlePresetModuleOptionFilterChange,
   savePresetModuleOptionModal,
-  handlePresetModuleOptionModalRemove,
-  handlePresetModuleOptionModalBack,
   undoBuilderHistory,
   redoBuilderHistory,
   openCornerOptionModal,
@@ -146,7 +144,6 @@ export function bindSystemInitEvents({
   $("#previewAddModalRootCornerLeftBtn")?.addEventListener("click", () =>
     handlePreviewAddModalRootCornerDirectionSelect("left")
   );
-  $("#previewAddModalRootCornerBackBtn")?.addEventListener("click", handlePreviewAddModalBack);
   $("#closePreviewModuleActionModal")?.addEventListener("click", () =>
     closePreviewModuleActionModal({ returnFocus: true })
   );
@@ -154,6 +151,7 @@ export function bindSystemInitEvents({
   $("#previewModuleActionEditBtn")?.addEventListener("click", handlePreviewModuleActionEdit);
   $("#previewModuleActionAddLeftBtn")?.addEventListener("click", () => handlePreviewModuleActionAddSide("left"));
   $("#previewModuleActionAddRightBtn")?.addEventListener("click", () => handlePreviewModuleActionAddSide("right"));
+  $("#previewModuleActionDeleteBtn")?.addEventListener("click", handlePreviewModuleActionDelete);
   $("#closePreviewPresetModuleModal")?.addEventListener("click", () => closePreviewPresetModuleModal());
   $("#previewPresetModuleModalBackdrop")?.addEventListener("click", () => closePreviewPresetModuleModal());
   $("#previewPresetModuleCards")?.addEventListener("click", (e) => {
@@ -178,8 +176,6 @@ export function bindSystemInitEvents({
   );
   $("#presetModuleOptionFilterSelect")?.addEventListener("change", handlePresetModuleOptionFilterChange);
   $("#savePresetModuleOptionModal")?.addEventListener("click", savePresetModuleOptionModal);
-  $("#removePresetModuleOptionModal")?.addEventListener("click", handlePresetModuleOptionModalRemove);
-  $("#backPresetModuleOptionModal")?.addEventListener("click", handlePresetModuleOptionModalBack);
   $("#closePresetModuleOptionModal")?.addEventListener("click", () =>
     closePresetModuleOptionModal({ returnFocus: true, clearState: true })
   );

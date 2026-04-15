@@ -460,7 +460,6 @@
           <div class="step-card-actions preview-action-modal-actions">
             <button type="button" id="previewAddModalRootCornerRightBtn">우측 방향</button>
             <button type="button" id="previewAddModalRootCornerLeftBtn">좌측 방향</button>
-            <button type="button" id="previewAddModalRootCornerBackBtn" class="ghost-btn">이전</button>
           </div>
         </div>
         <div id="previewAddTypeModalError" class="error-msg"></div>
@@ -490,6 +489,7 @@
           <button type="button" id="previewModuleActionEditBtn">모듈수정</button>
           <button type="button" id="previewModuleActionAddLeftBtn">좌측에 추가</button>
           <button type="button" id="previewModuleActionAddRightBtn">우측에 추가</button>
+          <button type="button" id="previewModuleActionDeleteBtn" class="preview-action-danger">모듈 삭제</button>
         </div>
         <div id="previewModuleActionModalError" class="error-msg"></div>
       </div>
@@ -674,8 +674,6 @@
       </div>
       <div class="modal-footer module-option-modal-footer">
         <button type="button" id="savePresetModuleOptionModal" class="send-btn modal-primary-action">적용</button>
-        <button type="button" id="removePresetModuleOptionModal" class="ghost-btn">모듈 삭제</button>
-        <button type="button" id="backPresetModuleOptionModal" class="ghost-btn hidden">이전</button>
         <button type="button" id="closePresetModuleOptionModal" class="modal-close ghost-btn">닫기</button>
       </div>
     </div>

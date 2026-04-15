@@ -40,8 +40,8 @@ import {
   buildPreviewAddRootCornerDirectionBlockedMessages,
   buildPreviewAddRootCornerDirectionSelectionUiExecutionPlan,
   buildPreviewAddRootCornerDirectionSelectionUiDispatchPlan,
-  buildPreviewAddTypeBackUiExecutionPlan,
   setPreviewModuleActionFlowTarget,
+  buildPreviewModuleActionRemoveTransition,
   buildPreviewModuleActionCloseUiDispatchPlan,
   getClosedModalIdFromEvent,
   buildPendingDirectComposeCleanupPlan,
@@ -94,8 +94,6 @@ import {
   buildPreviewAddPresetModuleOptionOpenPlan,
   buildPresetModuleOptionOpenFromPreviewAddUiDispatchPlan,
   buildPresetModuleOptionOpenFromPreviewAddExceptionUiDispatchPlan,
-  buildPreviewAddOpenArgsFromBackContext,
-  buildPresetModuleOptionBackUiDispatchPlan,
   buildPresetModuleOptionOpenFromDirectComposeEdge,
   normalizePreviewModuleType,
   normalizePreviewEdgeType,
@@ -1433,7 +1431,6 @@ function getPreviewAddTypeModalElements() {
     cornerBtn: $("#previewAddModalCornerBtn"),
     rootCornerRightBtn: $("#previewAddModalRootCornerRightBtn"),
     rootCornerLeftBtn: $("#previewAddModalRootCornerLeftBtn"),
-    rootCornerBackBtn: $("#previewAddModalRootCornerBackBtn"),
     descEl: $("#previewAddTypeModalDesc"),
     typeStepEl: $("#previewAddTypeModalTypeStep"),
     rootCornerStepEl: $("#previewAddTypeModalRootCornerStep"),
@@ -1531,7 +1528,6 @@ function setPreviewAddTypeModalStep(step = "type", selectedModuleType = "") {
     rootCornerStepEl,
     rootCornerRightBtn,
     rootCornerLeftBtn,
-    rootCornerBackBtn,
   } = getPreviewAddTypeModalElements();
   if (!modal) return;
 
@@ -1575,7 +1571,6 @@ function setPreviewAddTypeModalStep(step = "type", selectedModuleType = "") {
       }
       else rootCornerLeftBtn.removeAttribute("title");
     }
-    if (rootCornerBackBtn) rootCornerBackBtn.disabled = Boolean(directionViewState?.backButton?.disabled);
     return;
   }
 }
@@ -1656,26 +1651,6 @@ function openPresetModuleOptionFromPreviewAdd(moduleType = "normal", prebuiltNex
     setPreviewAddTypeErrorMessage(exceptionUiPlan.errorMessage, { isError: true });
     return false;
   }
-}
-
-function handlePreviewAddModalBack() {
-  const { normalBtn, cornerBtn, titleEl } =
-    getPreviewAddTypeModalElements();
-  const backUiPlan = buildPreviewAddTypeBackUiExecutionPlan({
-    normalDisabled: Boolean(normalBtn?.disabled),
-    cornerDisabled: Boolean(cornerBtn?.disabled),
-  });
-  if (backUiPlan.shouldClearError) {
-    setPreviewAddTypeErrorMessage("", { isError: false });
-  }
-  setPreviewAddTypeModalStep(backUiPlan.nextStep, backUiPlan.selectedModuleType);
-  requestAnimationFrame(() => {
-    focusPreviewAddTypeModalStepTarget(backUiPlan.focusKey, {
-      normalBtn,
-      cornerBtn,
-      titleEl,
-    });
-  });
 }
 
 function setPreviewPresetModuleError(message = "") {
@@ -1949,21 +1924,6 @@ function closePresetModuleOptionModal({ returnFocus = true, clearState = true } 
   });
   closeModal("#presetModuleOptionModal");
   applyPresetModuleOptionCloseUiDispatchPlanToRuntime(closeUiPlan);
-}
-
-function handlePresetModuleOptionModalBack() {
-  const modalState = presetModuleOptionFlowState.modalState;
-  const dispatchPlan = buildPresetModuleOptionBackUiDispatchPlan(
-    modalState,
-    clonePreviewAddTargetSnapshot
-  );
-  if (!dispatchPlan) return;
-  closePresetModuleOptionModal({ returnFocus: false, clearState: true });
-  if (dispatchPlan.route === "preview-module-action") {
-    openPreviewModuleActionModal(...dispatchPlan.previewModuleActionArgs);
-    return;
-  }
-  openPreviewAddTypeModal(...dispatchPlan.previewAddArgs);
 }
 
 function reopenPresetModuleOptionModalAfterPresetPicker() {
@@ -2352,17 +2312,18 @@ function getPreviewModuleActionModalElements() {
     editBtn: $("#previewModuleActionEditBtn"),
     addRightBtn: $("#previewModuleActionAddRightBtn"),
     addLeftBtn: $("#previewModuleActionAddLeftBtn"),
+    deleteBtn: $("#previewModuleActionDeleteBtn"),
   };
 }
 
 function applyPreviewModuleActionModalOpenUiView(openDispatchPlan, elements = {}) {
   const viewState = openDispatchPlan?.modalViewState;
   if (!viewState) return;
-  const { titleEl, descEl, editBtn, addRightBtn, addLeftBtn } = elements || {};
+  const { titleEl, descEl, editBtn, addRightBtn, addLeftBtn, deleteBtn } = elements || {};
   if (titleEl) titleEl.textContent = viewState.title;
   if (descEl) descEl.textContent = viewState.description;
   const buttonResetState = viewState.buttonState || {};
-  [editBtn, addRightBtn, addLeftBtn].forEach((btn) => {
+  [editBtn, addRightBtn, addLeftBtn, deleteBtn].forEach((btn) => {
     if (!btn) return;
     if (btn === editBtn) btn.disabled = Boolean(buttonResetState.presetDisabled);
     else if (btn === addRightBtn) btn.disabled = Boolean(buttonResetState.customDisabled);
@@ -2562,12 +2523,13 @@ function openPreviewModuleActionModal(edgeId, edgeType = "bay", anchorEl = null)
   if (modalElements.descEl) {
     modalElements.descEl.textContent =
       normalizedEdgeType === "bay"
-        ? "선택한 모듈을 수정하거나 좌/우로 새 모듈을 추가하세요."
-        : "코너 모듈은 모듈수정만 가능합니다.";
+        ? "선택한 모듈을 수정하거나 좌/우 추가, 삭제를 실행하세요."
+        : "코너 모듈을 수정하거나 삭제할 수 있습니다.";
   }
   if (modalElements.editBtn) modalElements.editBtn.disabled = false;
   if (modalElements.addLeftBtn) modalElements.addLeftBtn.disabled = !canAddSide;
   if (modalElements.addRightBtn) modalElements.addRightBtn.disabled = !canAddSide;
+  if (modalElements.deleteBtn) modalElements.deleteBtn.disabled = false;
   setPreviewModuleActionModalError("");
   openModal("#previewModuleActionModal", { focusTarget: "#previewModuleActionModalTitle" });
 }
@@ -2611,21 +2573,14 @@ function handlePreviewModuleActionAddSide(direction = "right") {
   openBayOptionModal(result.shelfId, { initialTab: "preset" });
 }
 
-function handlePresetModuleOptionModalRemove() {
-  const modalState = presetModuleOptionFlowState.modalState;
-  if (!modalState) return;
-  const modalEdgeId = String(modalState?.edgeId || "");
-  const modalEdge = modalEdgeId ? findShelfById(modalEdgeId) : null;
-  const isAddMode = normalizePresetModuleOptionMode(modalState?.mode) === "add";
-  const isPendingComposeTarget = Boolean(modalEdge && isPendingEdge(modalEdge));
-  if (isAddMode || isPendingComposeTarget || !modalEdge?.id) {
-    closePresetModuleOptionModal({ returnFocus: false, clearState: true });
-    return;
-  }
-  const edgeType = modalEdge.type === "corner" ? "corner" : "bay";
-  closePresetModuleOptionModal({ returnFocus: false, clearState: true });
-  if (edgeType === "corner") removeCornerById(modalEdgeId);
-  else removeBayById(modalEdgeId);
+function handlePreviewModuleActionDelete() {
+  const transition = buildPreviewModuleActionRemoveTransition(previewModuleActionFlowState);
+  if (!transition?.edgeId) return;
+  const targetEdge = findShelfById(transition.edgeId);
+  if (!targetEdge?.id) return;
+  closePreviewModuleActionModal({ returnFocus: false, clearTarget: true });
+  if (targetEdge.type === "corner") removeCornerById(targetEdge.id);
+  else removeBayById(targetEdge.id);
 }
 
 function getPreviewOrderedEdges(edges = []) {
@@ -5745,10 +5700,10 @@ function init() {
     closePreviewAddTypePicker,
     handlePreviewAddModalTypeSelect,
     handlePreviewAddModalRootCornerDirectionSelect,
-    handlePreviewAddModalBack,
     closePreviewModuleActionModal,
     handlePreviewModuleActionEdit,
     handlePreviewModuleActionAddSide,
+    handlePreviewModuleActionDelete,
     closePreviewPresetModuleModal,
     handlePreviewPresetModuleCardClick,
     getPreviewPresetModuleCategoryFilterKey: () => previewPresetModuleCategoryFilterKey,
@@ -5760,8 +5715,6 @@ function init() {
     handlePresetModuleOptionModalTabClick,
     handlePresetModuleOptionFilterChange,
     savePresetModuleOptionModal,
-    handlePresetModuleOptionModalRemove,
-    handlePresetModuleOptionModalBack,
     undoBuilderHistory,
     redoBuilderHistory,
     openCornerOptionModal,

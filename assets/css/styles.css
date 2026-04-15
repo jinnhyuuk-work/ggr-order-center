@@ -1133,6 +1133,12 @@ input[type="number"]::-webkit-outer-spin-button {
   justify-content: flex-start;
 }
 
+.preview-action-modal-actions .preview-action-danger {
+  --btn-bg: var(--color-brand-ink);
+  --btn-color: var(--color-on-brand-ink);
+  --btn-border: 1px solid var(--color-brand-ink);
+}
+
 .preview-action-modal-step {
   display: block;
 }

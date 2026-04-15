@@ -51,9 +51,6 @@ export function createSystemPresetRuntimeDispatchHelpers(deps = {}) {
     buildPresetModuleOptionSyncDomUiViewModel,
     getBayOptionApplyValidationState,
     getCornerOptionApplyValidationState,
-    findShelfById,
-    isPendingEdge,
-    normalizePresetModuleOptionMode,
     renderPresetModuleOptionSelectionSummary,
     syncCornerOptionModal,
     syncBayOptionModal,
@@ -100,7 +97,6 @@ export function createSystemPresetRuntimeDispatchHelpers(deps = {}) {
       filterLabelEl,
       filterNoteEl,
       filterSelectEl,
-      backBtn,
       presetTabBtn,
       customTabBtn,
       presetPanelEl,
@@ -140,12 +136,6 @@ export function createSystemPresetRuntimeDispatchHelpers(deps = {}) {
       filterSelectEl.value = viewModel.filterSelectValue;
     }
     if (pickerBtn) pickerBtn.textContent = viewModel.pickerButtonText;
-    if (backBtn) {
-      const backBtnState = viewModel.backBtnState;
-      backBtn.classList.toggle("hidden", backBtnState.hidden);
-      backBtn.disabled = backBtnState.disabled;
-      backBtn.classList.toggle("btn-disabled", backBtnState.disabledClass);
-    }
     if (saveBtn) {
       const saveBtnState = viewModel.saveBtnState;
       saveBtn.disabled = saveBtnState.disabled;
@@ -211,7 +201,6 @@ export function createSystemPresetRuntimeDispatchHelpers(deps = {}) {
     const filterLabelEl = $("#presetModuleOptionFilterLabel");
     const filterNoteEl = $("#presetModuleOptionFilterNote");
     const filterSelectEl = $("#presetModuleOptionFilterSelect");
-    const backBtn = $("#backPresetModuleOptionModal");
     const presetTabBtn = $("#presetModuleOptionPresetTabBtn");
     const customTabBtn = $("#presetModuleOptionCustomTabBtn");
     const presetPanelEl = $("#presetModuleOptionPresetTabPanel");
@@ -219,7 +208,6 @@ export function createSystemPresetRuntimeDispatchHelpers(deps = {}) {
     const customBayPanelEl = $("#presetModuleOptionCustomBayPanel");
     const customCornerPanelEl = $("#presetModuleOptionCustomCornerPanel");
     const unifiedPreviewEl = $("#presetModuleOptionFrontPreview");
-    const removeBtn = $("#removePresetModuleOptionModal");
     const moduleLabel = modalState.moduleType === "corner" ? "코너 모듈" : "일반 모듈";
     const filterOptions = getPresetModuleOptionFilterOptions(modalState.moduleType);
     const selectedPreset = getPresetModuleOptionSelectedPreset();
@@ -290,7 +278,6 @@ export function createSystemPresetRuntimeDispatchHelpers(deps = {}) {
         filterLabelEl,
         filterNoteEl,
         filterSelectEl,
-        backBtn,
         presetTabBtn,
         customTabBtn,
         presetPanelEl,
@@ -301,17 +288,6 @@ export function createSystemPresetRuntimeDispatchHelpers(deps = {}) {
         saveBtn,
       },
     });
-    if (removeBtn) {
-      const modalEdgeId = String(modalState?.edgeId || "");
-      const modalEdge = modalEdgeId ? findShelfById(modalEdgeId) : null;
-      const isPendingComposeTarget = Boolean(modalEdge && isPendingEdge(modalEdge));
-      const isAddMode = normalizePresetModuleOptionMode(modalState?.mode) === "add";
-      removeBtn.classList.toggle("hidden", false);
-      removeBtn.disabled = false;
-      removeBtn.classList.toggle("btn-disabled", false);
-      removeBtn.setAttribute("aria-disabled", "false");
-      removeBtn.textContent = isAddMode || isPendingComposeTarget ? "추가 취소" : "모듈 삭제";
-    }
     renderPresetModuleOptionSelectionSummary();
     renderPresetModuleOptionFrontPreview();
     setPresetModuleOptionError("");
