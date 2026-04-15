@@ -4008,6 +4008,15 @@ button.card-base:active {
     padding-bottom: calc(var(--modal-padding) + env(safe-area-inset-bottom, 0px));
   }
 
+  input[type="text"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="email"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
   .modal .material-tab {
     padding: 6px 10px;
     min-height: 32px;
