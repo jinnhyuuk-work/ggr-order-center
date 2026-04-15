@@ -3987,6 +3987,24 @@ button.card-base:active {
     --modal-radius: var(--radius-md);
   }
 
+  .modal--mobile-sheet {
+    display: grid;
+    align-items: end;
+    --modal-width: 100%;
+    --modal-max-width: none;
+    --modal-viewport-width: 100%;
+    --modal-margin: 0;
+    --modal-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .modal--mobile-sheet .modal-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: var(--modal-radius);
+    padding-bottom: calc(var(--modal-padding) + env(safe-area-inset-bottom, 0px));
+  }
+
   .modal .material-tab {
     padding: 6px 10px;
     min-height: 32px;
