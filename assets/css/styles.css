@@ -2117,7 +2117,7 @@ th, td {
 
 #estimateTable th:first-child,
 #estimateTable td:first-child {
-  width: 40%;
+  width: 52%;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2132,7 +2132,7 @@ th, td {
 
 #estimateTable th:nth-child(3),
 #estimateTable td:nth-child(3) {
-  width: 33%;
+  width: 24%;
   text-align: right;
 }
 
