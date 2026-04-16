@@ -242,8 +242,9 @@ const LIMITS = {
   column: SYSTEM_DIMENSION_LIMITS.column,
 };
 
-const COLUMN_WIDTH_MM = 30;
-const COLUMN_ENDPOINT_WIDTH_MM = 25;
+const POST_BAR_WIDTH_MM = 20;
+const COLUMN_WIDTH_MM = POST_BAR_WIDTH_MM;
+const COLUMN_ENDPOINT_WIDTH_MM = POST_BAR_WIDTH_MM;
 const COLUMN_DEPTH_MM = 75;
 const COLUMN_EXTRA_LENGTH_THRESHOLD = 2400;
 const SHELF_LENGTH_MM = 400;
@@ -3742,7 +3743,7 @@ function insertBayBetweenModulesByTarget(target) {
 function pushUniquePoint(list, entry, threshold = 8) {
   return pushUniquePointShared(list, entry, {
     threshold,
-    innerColumnWidthMm: COLUMN_WIDTH_MM,
+    postBarWidthMm: COLUMN_WIDTH_MM,
   });
 }
 
@@ -4501,15 +4502,15 @@ function calcSectionUsedWidthWithPostBarsMm({
     shelfTotalMm,
     postBarCount,
     postBarTotalMm,
+    postBarWidthMm: COLUMN_WIDTH_MM,
     endpointWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
-    innerWidthMm: COLUMN_WIDTH_MM,
   });
 }
 
 function buildOuterSectionLabels(sectionRuns = [], columnMarksByHint = {}) {
   return buildOuterSectionLabelsShared(sectionRuns, columnMarksByHint, {
+    postBarWidthMm: COLUMN_WIDTH_MM,
     endpointWidthMm: COLUMN_ENDPOINT_WIDTH_MM,
-    innerWidthMm: COLUMN_WIDTH_MM,
   });
 }
 

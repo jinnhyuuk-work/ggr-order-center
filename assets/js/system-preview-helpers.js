@@ -161,7 +161,7 @@ export function pushPreviewAddButton(
 export function pushUniquePoint(
   list,
   entry,
-  { threshold = 8, innerColumnWidthMm = 30 } = {}
+  { threshold = 8, postBarWidthMm = 20 } = {}
 ) {
   const edgeHint = entry.edgeHint || "";
   const entryIsStructural = entry.isStructuralColumn !== false;
@@ -180,16 +180,15 @@ export function pushUniquePoint(
     exists.structuralCount = structuralCount;
     const existsWidthMm = Number(exists.columnWidthMm || 0);
     const entryWidthMm = Number(entry.columnWidthMm || 0);
-    const shouldPromoteInner = structuralCount > 1;
+    const isSharedStructuralColumn = structuralCount > 1;
     if (Number.isFinite(entryWidthMm) && entryWidthMm > 0) {
       const baseWidthMm =
         Number.isFinite(existsWidthMm) && existsWidthMm > 0 ? existsWidthMm : entryWidthMm;
-      // Shared structural columns are treated as inner columns.
-      exists.columnWidthMm = shouldPromoteInner
-        ? Math.max(innerColumnWidthMm, baseWidthMm, entryWidthMm)
+      exists.columnWidthMm = isSharedStructuralColumn
+        ? Math.max(postBarWidthMm, baseWidthMm, entryWidthMm)
         : baseWidthMm;
-    } else if (shouldPromoteInner) {
-      exists.columnWidthMm = Math.max(innerColumnWidthMm, Number(exists.columnWidthMm || 0));
+    } else if (isSharedStructuralColumn) {
+      exists.columnWidthMm = Math.max(postBarWidthMm, Number(exists.columnWidthMm || 0));
     }
     if (Number.isFinite(Number(entry.rotationDeg)) && !Number.isFinite(Number(exists.rotationDeg))) {
       exists.rotationDeg = Number(entry.rotationDeg);
@@ -228,7 +227,7 @@ export function hasValidPlacement(placement) {
 
 export function buildPlacementFromEndpoint(
   endpoint,
-  { defaultPostBarWidthMm = 30 } = {}
+  { defaultPostBarWidthMm = 20 } = {}
 ) {
   if (!endpoint) return null;
   const centerX = Number(endpoint.x);
@@ -300,7 +299,7 @@ export function isOppositeEndpointDirection(a, b) {
 
 export function collectOpenEndpointsFromCandidates(
   candidates = [],
-  { endpointWidthMm = 25 } = {}
+  { endpointWidthMm = 20 } = {}
 ) {
   const buckets = [];
   const threshold = 2;
@@ -374,8 +373,8 @@ export function buildBayEndpointFromPlacement(
   endpointSide = "end",
   {
     supportVisibleMm = 5,
-    endpointHalfMm = 12.5,
-    endpointWidthMm = 25,
+    endpointHalfMm = 10,
+    endpointWidthMm = 20,
   } = {}
 ) {
   if (!edge || edge.type !== "bay" || !hasValidPlacement(edge.placement)) return null;
@@ -430,7 +429,7 @@ export function buildBayEndpointFromPlacement(
   };
 }
 
-export function buildRootEndpoint({ endpointWidthMm = 25 } = {}) {
+export function buildRootEndpoint({ endpointWidthMm = 20 } = {}) {
   return {
     endpointId: "root-endpoint",
     x: 0,
@@ -558,8 +557,8 @@ export function calcSectionUsedWidthWithPostBarsMm({
   shelfTotalMm = 0,
   postBarCount = 0,
   postBarTotalMm = NaN,
-  endpointWidthMm = 25,
-  innerWidthMm = 30,
+  postBarWidthMm = 20,
+  endpointWidthMm = postBarWidthMm,
 } = {}) {
   // Section usage is measured with post bars included.
   const safeShelfMm = Math.max(0, Number(shelfTotalMm || 0));
@@ -569,16 +568,14 @@ export function calcSectionUsedWidthWithPostBarsMm({
   }
   const safePostBarCount = Math.max(0, Math.floor(Number(postBarCount || 0)));
   if (safePostBarCount <= 0) return safeShelfMm;
-  const endpointCount = Math.min(2, safePostBarCount);
-  const innerCount = Math.max(0, safePostBarCount - endpointCount);
-  const postBarsTotalMm = endpointCount * endpointWidthMm + innerCount * innerWidthMm;
-  return safeShelfMm + postBarsTotalMm;
+  const normalizedPostBarWidthMm = Math.max(1, Number(postBarWidthMm || endpointWidthMm || 20));
+  return safeShelfMm + safePostBarCount * normalizedPostBarWidthMm;
 }
 
 export function buildOuterSectionLabels(
   sectionRuns = [],
   columnMarksByHint = {},
-  { endpointWidthMm = 25, innerWidthMm = 30 } = {}
+  { postBarWidthMm = 20, endpointWidthMm = postBarWidthMm } = {}
 ) {
   if (!Array.isArray(sectionRuns) || !sectionRuns.length) return [];
   const buckets = {
@@ -617,8 +614,8 @@ export function buildOuterSectionLabels(
       shelfTotalMm,
       postBarCount: columnCount,
       postBarTotalMm,
+      postBarWidthMm,
       endpointWidthMm,
-      innerWidthMm,
     });
     const axisStart = Math.min(...runs.map((run) => Number(run.axisStart || 0)));
     const axisEnd = Math.max(...runs.map((run) => Number(run.axisEnd || 0)));

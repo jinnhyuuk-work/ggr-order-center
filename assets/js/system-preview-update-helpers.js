@@ -37,8 +37,8 @@ export function applyPreviewUiMetricsToShelvesElement(shelvesEl, uiMetrics = {})
 }
 
 export function createSectionUsageCollector({
-  columnEndpointWidthMm = 25,
-  columnWidthMm = 30,
+  columnEndpointWidthMm = 20,
+  columnWidthMm = 20,
   getEdgeHintFromInward,
 } = {}) {
   const sectionColumnMarks = {
@@ -70,7 +70,7 @@ export function createSectionUsageCollector({
       return;
     }
     const nextCount = Math.max(1, Number(prev.count || 0)) + 1;
-    // Shared posts in the same section line are treated as inner posts(30mm).
+    // Shared posts in the same section line use the same post width.
     const nextWidthMm =
       nextCount > 1
         ? Math.max(columnWidthMm, Number(prev.widthMm || 0), normalizedWidthMm)
@@ -582,8 +582,8 @@ export function renderPreviewColumns({
   tx = 0,
   ty = 0,
   columnDepthMm = 75,
-  columnWidthMm = 30,
-  columnEndpointWidthMm = 25,
+  columnWidthMm = 20,
+  columnEndpointWidthMm = 20,
   columnSwatch = "#d9d9d9",
 } = {}) {
   const columnDepthPx = Math.max(columnDepthMm * scale, 8);
@@ -607,10 +607,7 @@ export function renderPreviewColumns({
     const tangentY = normalizedInwardX;
     const pointColumnWidthMm = Math.max(
       1,
-      Number(
-        point.columnWidthMm ||
-          (isCornerPostBar || Number(point.count || 1) > 1 ? columnWidthMm : columnEndpointWidthMm)
-      )
+      Number(point.columnWidthMm || columnWidthMm || columnEndpointWidthMm)
     );
     const pointColumnWidthPx = Math.max(pointColumnWidthMm * scale, 4);
     const angleDeg = Number.isFinite(Number(point.rotationDeg))
@@ -659,7 +656,7 @@ export function renderPreviewOuterAndColumnDimensionLabels({
   frameH = 0,
   showSizeInfo = false,
   columnLabelCenters = [],
-  columnWidthMm = 30,
+  columnWidthMm = 20,
 } = {}) {
   const outerBoundsPx = shelves.length
     ? {
@@ -928,7 +925,7 @@ export function buildPreviewSectionsAndEndpoints({
   sectionColumnMarks = {},
   endpointCandidates = [],
   columnCenters = [],
-  columnEndpointWidthMm = 25,
+  columnEndpointWidthMm = 20,
   buildSectionRunsFromSegments,
   buildOuterSectionLabels,
   getLayoutConfigSnapshot,

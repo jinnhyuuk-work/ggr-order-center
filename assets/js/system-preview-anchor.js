@@ -9,7 +9,7 @@ export function createSystemPreviewAnchorHelpers({
   getOrderedCommittedGraphEdges,
   clearRootAnchorVector,
   supportVisibleMm = 5,
-  columnEndpointHalfMm = 12.5,
+  columnEndpointHalfMm = 10,
 } = {}) {
   function getEdgeEndpointAliasSets(edge) {
     const startAliases = new Set([`${String(edge?.id || "")}:start`]);
