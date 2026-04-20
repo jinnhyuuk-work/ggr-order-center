@@ -137,6 +137,7 @@ pricingRule: {
 ## 6. 시스템
 
 시스템 가격 정책은 `assets/js/data/system-data.js`의 선반/포스트바 티어에 둔다.
+시스템 가구(addon)는 `pricingRule.type = "tieredByWidth"`와 `tiers[].priceByCategory`(예: `LPM`, `PP`)를 사용한다.
 
 일반 선반:
 

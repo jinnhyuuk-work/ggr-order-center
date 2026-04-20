@@ -7,6 +7,7 @@ export function createSystemAddonModalFlowHelpers(deps = {}) {
     renderSystemAddonModalCategoryFilterTabs,
     getFilteredSystemAddonModalItems,
     resolveFurnitureAddonDisplayPriceInfo,
+    resolveFurniturePriceCategoryKeyForEdge,
     escapeHtml,
     getActiveShelfAddonId,
     setActiveShelfAddonId,
@@ -84,6 +85,10 @@ export function createSystemAddonModalFlowHelpers(deps = {}) {
     const widthPolicy = resolveFurnitureSelectionPolicyForEdge(activeShelfAddonId, {
       modalReturnTo: getShelfAddonModalReturnTo(),
     });
+    const furniturePriceCategoryKey =
+      typeof resolveFurniturePriceCategoryKeyForEdge === "function"
+        ? resolveFurniturePriceCategoryKeyForEdge(activeShelfAddonId)
+        : "default";
     renderSystemAddonModalCategoryFilterTabs(allSelectableItems);
     const selectableItems = getFilteredSystemAddonModalItems(allSelectableItems);
     if (!selectableItems.length) {
@@ -95,6 +100,7 @@ export function createSystemAddonModalFlowHelpers(deps = {}) {
       const priceInfo = resolveFurnitureAddonDisplayPriceInfo(item, {
         widthPolicy,
         widthMm: Number(widthPolicy?.widthMm || 0),
+        categoryKey: furniturePriceCategoryKey,
       });
       const label = document.createElement("label");
       label.className = "card-base option-card";
@@ -214,7 +220,12 @@ export function createSystemAddonModalFlowHelpers(deps = {}) {
         quantity: 1,
         isCorner: Boolean(bay.isCorner),
       });
-      if (shouldTreatBayFurniturePriceAsConsult(bay)) {
+      if (
+        shouldTreatBayFurniturePriceAsConsult({
+          ...bay,
+          shelfMaterialId: shelf?.materialId,
+        })
+      ) {
         detail = applyConsultPriceToDetail(detail);
       }
       if (isLayoutConsultStatus(layoutConsult)) {

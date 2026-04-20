@@ -580,8 +580,29 @@ export const SYSTEM_FURNITURE_WIDTH_POLICY = Object.freeze({
 });
 
 const buildSystemFurniturePricingRule = ({ priceByWidthMm } = {}) => {
-  const width600 = Number(priceByWidthMm?.[600] || 0);
-  const width800 = Number(priceByWidthMm?.[800] || 0);
+  const normalizePriceByCategory = (raw) => {
+    if (raw && typeof raw === "object") {
+      const lpm = Number(raw?.LPM || 0);
+      const pp = Number(raw?.PP || 0);
+      const defaultPrice = Number(raw?.default ?? lpm ?? 0);
+      return Object.freeze({
+        LPM: lpm > 0 ? lpm : 0,
+        PP: pp > 0 ? pp : 0,
+        default: defaultPrice > 0 ? defaultPrice : 0,
+      });
+    }
+    const basePrice = Number(raw || 0);
+    const normalized = basePrice > 0 ? basePrice : 0;
+    return Object.freeze({
+      LPM: normalized,
+      PP: normalized,
+      default: normalized,
+    });
+  };
+  const hasPositivePriceByCategory = (priceByCategory) =>
+    Object.values(priceByCategory || {}).some((price) => Number(price || 0) > 0);
+  const width600PriceByCategory = normalizePriceByCategory(priceByWidthMm?.[600]);
+  const width800PriceByCategory = normalizePriceByCategory(priceByWidthMm?.[800]);
   return Object.freeze({
     type: "tieredByWidth",
     unit: "item",
@@ -590,16 +611,22 @@ const buildSystemFurniturePricingRule = ({ priceByWidthMm } = {}) => {
         key: "w600",
         minWidthMm: 600,
         maxWidthMm: 600,
-        ...(width600 > 0
-          ? { price: width600, label: "600" }
+        ...(hasPositivePriceByCategory(width600PriceByCategory)
+          ? {
+              priceByCategory: width600PriceByCategory,
+              label: "600",
+            }
           : { isCustomPrice: true, label: "600 상담안내" }),
       }),
       Object.freeze({
         key: "w800",
         minWidthMm: 800,
         maxWidthMm: 800,
-        ...(width800 > 0
-          ? { price: width800, label: "800" }
+        ...(hasPositivePriceByCategory(width800PriceByCategory)
+          ? {
+              priceByCategory: width800PriceByCategory,
+              label: "800",
+            }
           : { isCustomPrice: true, label: "800 상담안내" }),
       }),
     ]),
@@ -613,8 +640,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: 0,
-        800: 22000,
+        600: { LPM: 0, PP: 0, default: 0 },
+        800: { LPM: 22000, PP: 21000, default: 22000 },
       },
     }),
     description: "공중형 서랍 1단 모듈 1세트",
@@ -628,8 +655,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: 0,
-        800: 30000,
+        600: { LPM: 0, PP: 0, default: 0 },
+        800: { LPM: 30000, PP: 29000, default: 30000 },
       },
     }),
     description: "공중형 서랍 2단 모듈 1세트",
@@ -643,8 +670,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: 0,
-        800: 30000,
+        600: { LPM: 0, PP: 0, default: 0 },
+        800: { LPM: 30000, PP: 29000, default: 30000 },
       },
     }),
     description: "바닥형 서랍 2단 모듈 1세트",
@@ -658,8 +685,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: 0,
-        800: 38000,
+        600: { LPM: 0, PP: 0, default: 0 },
+        800: { LPM: 38000, PP: 37000, default: 38000 },
       },
     }),
     description: "바닥형 서랍 3단 모듈 1세트",
@@ -673,8 +700,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: 0,
-        800: 46000,
+        600: { LPM: 0, PP: 0, default: 0 },
+        800: { LPM: 46000, PP: 45000, default: 46000 },
       },
     }),
     description: "바닥형 서랍 4단 모듈 1세트",

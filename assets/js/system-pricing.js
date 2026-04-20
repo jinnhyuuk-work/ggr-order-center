@@ -103,12 +103,22 @@ export function createSystemPricingHelpers({
     return safeShelfLengthMm > Number(shelfLimits.maxLength || 0);
   }
 
-  function resolveAddonUnitPrice(addon, { widthMm = 0 } = {}) {
+  function resolveAddonPriceCategoryKey({ shelfMaterialId = "", categoryKey = "" } = {}) {
+    const normalizedCategoryKey = String(categoryKey || "").trim();
+    if (normalizedCategoryKey) return normalizedCategoryKey;
+    const materialKey = String(shelfMaterialId || "").trim();
+    const shelfMaterial = materialKey ? SYSTEM_SHELF_MATERIALS[materialKey] : null;
+    const materialCategory = String(shelfMaterial?.category || "").trim();
+    return materialCategory || "default";
+  }
+
+  function resolveAddonUnitPrice(addon, { widthMm = 0, categoryKey = "" } = {}) {
     if (!addon || typeof addon !== "object") return 0;
     const pricingRule =
       addon?.pricingRule && typeof addon.pricingRule === "object" ? addon.pricingRule : null;
     const ruleType = String(pricingRule?.type || "").trim().toLowerCase();
     const normalizedWidthMm = normalizeMm(widthMm);
+    const normalizedCategoryKey = String(categoryKey || "").trim() || "default";
     if (ruleType === "tieredbywidth" && normalizedWidthMm > 0) {
       const tiers = Array.isArray(pricingRule?.tiers) ? pricingRule.tiers : [];
       const matchedTier =
@@ -121,8 +131,18 @@ export function createSystemPricingHelpers({
           return true;
         }) || null;
       if (!matchedTier || Boolean(matchedTier?.isCustomPrice)) return 0;
+      const priceByCategory =
+        matchedTier?.priceByCategory && typeof matchedTier.priceByCategory === "object"
+          ? matchedTier.priceByCategory
+          : null;
       const tierPrice = Number(
-        matchedTier?.price || matchedTier?.unitPrice || matchedTier?.value || 0
+        (priceByCategory
+          ? priceByCategory[normalizedCategoryKey] ?? priceByCategory.default
+          : undefined) ??
+          matchedTier?.price ??
+          matchedTier?.unitPrice ??
+          matchedTier?.value ??
+          0
       );
       return tierPrice > 0 ? roundWon(tierPrice) : 0;
     }
@@ -130,12 +150,21 @@ export function createSystemPricingHelpers({
     return ruleValue > 0 ? roundWon(ruleValue) : 0;
   }
 
-  function calcAddonCostBreakdown(addonIds = [], quantity = 1, { widthMm = 0 } = {}) {
+  function calcAddonCostBreakdown(
+    addonIds = [],
+    quantity = 1,
+    { widthMm = 0, shelfMaterialId = "", categoryKey = "" } = {}
+  ) {
+    const resolvedCategoryKey = resolveAddonPriceCategoryKey({ shelfMaterialId, categoryKey });
     const qtyMultiplier = normalizeQuantity(quantity, 1);
     return (Array.isArray(addonIds) ? addonIds : []).reduce(
       (acc, addonId) => {
         const addon = getAddonItemById(addonId);
-        const price = resolveAddonUnitPrice(addon, { widthMm }) * qtyMultiplier;
+        const price =
+          resolveAddonUnitPrice(addon, {
+            widthMm,
+            categoryKey: resolvedCategoryKey,
+          }) * qtyMultiplier;
         if (String(addonId || "") === safeAddonClothesRodId) {
           acc.componentCost += price;
         } else {
@@ -273,10 +302,22 @@ export function createSystemPricingHelpers({
     };
   }
 
-  function calcAddonsUnitTotal(addons = [], { widthMm = 0 } = {}) {
+  function calcAddonsUnitTotal(
+    addons = [],
+    { widthMm = 0, shelfMaterialId = "", categoryKey = "" } = {}
+  ) {
+    const resolvedCategoryKey = resolveAddonPriceCategoryKey({ shelfMaterialId, categoryKey });
     return (Array.isArray(addons) ? addons : []).reduce((sum, id) => {
       const addon = getAddonItemById(id);
-      return sum + Number(resolveAddonUnitPrice(addon, { widthMm }) || 0);
+      return (
+        sum +
+        Number(
+          resolveAddonUnitPrice(addon, {
+            widthMm,
+            categoryKey: resolvedCategoryKey,
+          }) || 0
+        )
+      );
     }, 0);
   }
 
@@ -309,7 +350,10 @@ export function createSystemPricingHelpers({
       quantity: unitQuantity,
       partMultiplier: shelfCount,
     });
-    const addonTotal = calcAddonsUnitTotal(addons, { widthMm: shelfWidthMm });
+    const addonTotal = calcAddonsUnitTotal(addons, {
+      widthMm: shelfWidthMm,
+      shelfMaterialId: shelf?.materialId,
+    });
 
     const processingCost = shelfIsCustom ? 0 : addonTotal * unitQuantity;
     const materialCost = shelfIsCustom ? 0 : roundWon(shelfTierUnitPrice * shelfCount * unitQuantity);

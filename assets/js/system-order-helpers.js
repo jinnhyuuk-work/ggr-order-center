@@ -331,6 +331,7 @@ export function createSystemOrderHelpers({
           const bayQty = Math.max(1, Number(bay.quantity || quantity || 1));
           const costs = calcAddonCostBreakdown(bay.addons, bayQty, {
             widthMm: Number(bay?.shelf?.width || 0),
+            shelfMaterialId: bay?.shelf?.materialId,
           });
           return {
             componentCost: acc.componentCost + Number(costs.componentCost || 0),

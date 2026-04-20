@@ -46,12 +46,20 @@ export function createSystemPriceAutocalcHelpers(deps = {}) {
           quantity: 1,
           isCorner: Boolean(bay.isCorner),
         });
-        if (shouldTreatBayFurniturePriceAsConsult(bay)) {
+        if (
+          shouldTreatBayFurniturePriceAsConsult({
+            ...bay,
+            shelfMaterialId: shelf?.materialId,
+          })
+        ) {
           detail = applyConsultPriceToDetail(detail);
         }
         const addonCost = detail.isCustomPrice
           ? { componentCost: 0, furnitureCost: 0 }
-          : calcAddonCostBreakdown(bay.addons, 1, { widthMm: Number(bay?.width || 0) });
+          : calcAddonCostBreakdown(bay.addons, 1, {
+              widthMm: Number(bay?.width || 0),
+              shelfMaterialId: shelf?.materialId,
+            });
         return {
           materialCost: acc.materialCost + detail.materialCost,
           processingCost: acc.processingCost + detail.processingCost,
