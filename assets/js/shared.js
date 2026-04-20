@@ -558,11 +558,7 @@ function buildAvailabilityResult(status = "ok") {
 function getConfiguredPriceText(config = {}) {
   if (!config || typeof config !== "object") return "";
   return String(
-    config.priceLabel ||
-      config.displayPriceText ||
-      config.displayPriceLabel ||
-      config?.priceRule?.label ||
-      ""
+    config.priceLabel || config.displayPriceText || config.displayPriceLabel || ""
   ).trim();
 }
 
@@ -573,19 +569,7 @@ function toFiniteNumber(value, fallback = 0) {
 
 export function normalizePricingRule(config = {}) {
   if (!config || typeof config !== "object") return null;
-  const rawRule =
-    (config.pricingRule && typeof config.pricingRule === "object" && config.pricingRule) ||
-    (config.priceRule && typeof config.priceRule === "object" && config.priceRule) ||
-    (Number.isFinite(Number(config.price)) ? { type: "fixed", value: Number(config.price), unit: "item" } : null) ||
-    (Number.isFinite(Number(config.pricePerHole))
-      ? { type: "perHole", value: Number(config.pricePerHole), unit: "hole" }
-      : null) ||
-    (Number.isFinite(Number(config.pricePerMeter))
-      ? { type: "perMeter", value: Number(config.pricePerMeter), unit: "meter" }
-      : null) ||
-    (Number.isFinite(Number(config.pricePerCorner))
-      ? { type: "perCorner", value: Number(config.pricePerCorner), unit: "corner" }
-      : null);
+  const rawRule = config.pricingRule && typeof config.pricingRule === "object" ? config.pricingRule : null;
   if (!rawRule) return null;
 
   const type = normalizeRuleToken(rawRule.type || rawRule.kind || "");
@@ -682,14 +666,7 @@ export function resolveAvailabilityStatus({
     }
   }
 
-  // Backward compatibility with legacy consult flags/labels.
-  const pricingMode = String(
-    config.pricingMode ||
-      config.pricingType ||
-      config.priceType ||
-      config?.priceRule?.type ||
-      ""
-  )
+  const pricingMode = String(config.pricingMode || config.pricingType || config.priceType || "")
     .trim()
     .toLowerCase();
   if (pricingMode === "consult") return buildAvailabilityResult("consult");

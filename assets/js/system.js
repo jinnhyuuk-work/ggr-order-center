@@ -2879,8 +2879,6 @@ function resolveFurnitureAddonUnitPriceByWidth(addonItem, _widthMm) {
   if (!addon) return 0;
   const ruleValue = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
   if (Number.isFinite(ruleValue) && ruleValue > 0) return Math.round(ruleValue);
-  const basePrice = Number(addon?.price || 0);
-  if (Number.isFinite(basePrice) && basePrice > 0) return Math.round(basePrice);
   return 0;
 }
 

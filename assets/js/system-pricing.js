@@ -102,7 +102,7 @@ export function createSystemPricingHelpers({
     return (Array.isArray(addonIds) ? addonIds : []).reduce(
       (acc, addonId) => {
         const addon = getAddonItemById(addonId);
-        const price = Number(addon?.price || 0) * qtyMultiplier;
+        const price = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0) * qtyMultiplier;
         if (String(addonId || "") === safeAddonClothesRodId) {
           acc.componentCost += price;
         } else {
@@ -244,7 +244,7 @@ export function createSystemPricingHelpers({
     return (Array.isArray(addons) ? addons : []).reduce((sum, id) => {
       const addon = getAddonItemById(id);
       const ruleValue = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
-      return sum + Number(ruleValue > 0 ? ruleValue : addon?.price || 0);
+      return sum + Number(ruleValue > 0 ? ruleValue : 0);
     }, 0);
   }
 

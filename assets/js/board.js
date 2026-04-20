@@ -70,12 +70,7 @@ const OPTION_CATALOG = BOARD_OPTIONS.reduce((acc, option) => {
   acc[option.id] = option;
   return acc;
 }, {});
-const {
-  getPricePerM2,
-  calcItemDetail,
-  calcAddonDetail,
-  calcOrderSummary,
-} = createBoardPricingHelpers({
+const { calcItemDetail, calcAddonDetail, calcOrderSummary } = createBoardPricingHelpers({
   materials: MATERIALS,
   processingServices: PROCESSING_SERVICES,
   optionCatalog: OPTION_CATALOG,
@@ -705,7 +700,7 @@ function renderMaterialCards() {
       <div class="material-visual" style="background: ${mat.swatch || SWATCH_FALLBACK}"></div>
       <div class="name">${mat.name}</div>
       <div class="material-tier-heading">가격 기준</div>
-      <div class="material-tier-line">㎡당 ${getPricePerM2(mat).toLocaleString()}원</div>
+      <div class="material-tier-line">${formatPricingRuleDisplayText(mat)}</div>
       <div class="size-heading">제작 가능 범위</div>
       <div class="size">두께 ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}</div>
       <div class="size">폭 ${mat.minWidth}~${mat.maxWidth}mm</div>
@@ -1659,7 +1654,7 @@ function updateSelectedMaterialLabel() {
     name: mat ? escapeHtml(mat.name) : "",
     metaLines: mat
       ? [
-          `㎡당 ${getPricePerM2(mat).toLocaleString()}원`,
+          formatPricingRuleDisplayText(mat),
           `두께 ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`,
           `폭 ${mat.minWidth}~${mat.maxWidth}mm`,
           `길이 ${mat.minLength}~${mat.maxLength}mm`,

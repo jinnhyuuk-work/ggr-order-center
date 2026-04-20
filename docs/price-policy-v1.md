@@ -12,7 +12,7 @@
 
 ## 2. pricingRule 스키마
 
-모든 금액은 `pricingRule`를 기준으로 정의한다. 새 품목은 아래 스키마를 우선 사용하고, 레거시 필드(`basePrice`, `pricePerM2`, `pricePerHole`, `pricePerMeter`, `pricePerCorner`, `priceRule`)는 과도기 호환용으로만 허용한다.
+모든 금액은 `pricingRule`를 기준으로 정의한다. 새 품목은 아래 스키마만 사용한다.
 
 ### 2.1 공통 필드
 
@@ -51,8 +51,8 @@ pricingRule: {
 
 1. 신규 품목은 `pricingRule`를 반드시 포함한다.
 2. `pricingRule`가 있으면 계산은 `pricingRule`를 우선 사용한다.
-3. 레거시 필드는 기존 화면/문서와의 호환이 끝나는 대로 제거한다.
-4. `priceRule`는 `pricingRule`로 점진적으로 치환한다.
+3. 레거시 가격 필드는 사용하지 않는다.
+4. 가격 표시는 계산 스키마와 동일한 원본에서 생성한다.
 
 ## 3. 합판
 

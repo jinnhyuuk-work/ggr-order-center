@@ -9,27 +9,6 @@ export function createBoardPricingHelpers({
   const customWidthMax = Number(dimensionLimits.maxWidth || 0);
   const customLengthMax = Number(dimensionLimits.maxLength || 0);
 
-  function getPricePerM2(material, thickness) {
-    if (material?.pricingRule && typeof material.pricingRule === "object") {
-      const ruleValue = Number(material.pricingRule.value || material.pricingRule.unitPrice || 0);
-      if (ruleValue > 0) return ruleValue;
-    }
-    if (material?.pricePerM2ByThickness) {
-      if (thickness && material.pricePerM2ByThickness[thickness]) {
-        return material.pricePerM2ByThickness[thickness];
-      }
-      const firstAvailable = material.availableThickness?.find(
-        (t) => material.pricePerM2ByThickness[t]
-      );
-      if (firstAvailable !== undefined) {
-        return material.pricePerM2ByThickness[firstAvailable];
-      }
-      const firstPrice = Object.values(material.pricePerM2ByThickness)[0];
-      if (firstPrice) return firstPrice;
-    }
-    return Number(material?.pricePerM2 || 0);
-  }
-
   function isBoardCustomSize(width, length) {
     return Number(width || 0) > customWidthMax || Number(length || 0) > customLengthMax;
   }
@@ -37,7 +16,6 @@ export function createBoardPricingHelpers({
   function calcMaterialCost({ materialId, width, length, quantity, thickness }) {
     const material = materials[materialId];
     const areaM2 = (Number(width || 0) / 1000) * (Number(length || 0) / 1000);
-    const pricePerM2 = getPricePerM2(material, thickness);
     if (isBoardCustomSize(width, length)) {
       return { areaM2, materialCost: 0, isCustom: true };
     }
@@ -46,7 +24,7 @@ export function createBoardPricingHelpers({
         config: material,
         quantity,
         metrics: { areaM2 },
-      }) || areaM2 * pricePerM2 * Number(quantity || 0)
+      })
     );
     return { areaM2, materialCost, isCustom: false };
   }
@@ -194,7 +172,6 @@ export function createBoardPricingHelpers({
   }
 
   return {
-    getPricePerM2,
     isBoardCustomSize,
     calcMaterialCost,
     calcProcessingCost,

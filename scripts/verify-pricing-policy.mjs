@@ -66,7 +66,10 @@ function run() {
     quantity: 1,
   });
   assert.equal(boardMaterialDetailPp.materialCost, 45000);
-  assert.equal(boardPricing.getPricePerM2(BOARD_MATERIALS.lpm_basic, 18), 47000);
+  assert.equal(
+    boardMaterialDetail.materialCost,
+    Number(BOARD_MATERIALS.lpm_basic.pricingRule.value || 0)
+  );
   const boardDetail = boardPricing.calcItemDetail({
     materialId: "lpm_basic",
     width: 1000,
