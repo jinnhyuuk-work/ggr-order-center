@@ -1,4 +1,4 @@
-import { buildAddonDetail, evaluateSelectionPricing } from "./shared.js";
+import { buildAddonDetail, buildConsultState, evaluateSelectionPricing } from "./shared.js";
 
 export function createTopPricingHelpers({
   topTypes = [],
@@ -156,7 +156,12 @@ export function createTopPricingHelpers({
     const subtotal = materialCost;
     const vat = 0;
     const total = isCustomPrice ? 0 : ceilToUnit(subtotal);
-    const hasConsultItems = Boolean(isCustomPrice || optionHasConsult || processingServiceHasConsult);
+    const consultState = buildConsultState({
+      isCustomPrice: isCustomPrice,
+      itemHasConsult: isCustomPrice,
+      optionHasConsult,
+      processingServiceHasConsult,
+    });
 
     const displaySize = (() => {
       if (shape === "u") {
@@ -186,16 +191,11 @@ export function createTopPricingHelpers({
       servicesLabel: formatProcessingServiceList(services, serviceDetails, { includeNote: true }),
       serviceDetails,
       services,
-      isCustomPrice,
-      hasConsultItems,
+      ...consultState,
       itemCost: isCustomPrice ? 0 : itemCost,
       optionCost: appliedOptionCost,
       processingServiceCost: appliedProcessingServiceCost,
       serviceCost: appliedProcessingServiceCost,
-      itemHasConsult: Boolean(isCustomPrice),
-      optionHasConsult,
-      processingServiceHasConsult,
-      serviceHasConsult: processingServiceHasConsult,
       useBackHeight,
       backHeight,
       processingCost: appliedProcessingCost,

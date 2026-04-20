@@ -5,7 +5,7 @@ import {
   SYSTEM_SHELF_TIER_PRICING,
   SYSTEM_ADDON_ITEMS,
 } from "./data/system-data.js";
-import { buildOrderSummary } from "./shared.js";
+import { buildConsultState, buildOrderSummary } from "./shared.js";
 
 const SYSTEM_ADDON_ITEMS_BY_ID = new Map(
   (Array.isArray(SYSTEM_ADDON_ITEMS) ? SYSTEM_ADDON_ITEMS : []).map((item) => [String(item.id || ""), item])
@@ -286,7 +286,10 @@ export function createSystemPricingHelpers({
     const vat = 0;
     const total = roundWon(subtotal);
     const weightKg = shelfDetail.weightKg;
-    const isCustomPrice = shelfIsCustom;
+    const consultState = buildConsultState({
+      isCustomPrice: shelfIsCustom,
+      itemHasConsult: shelfIsCustom,
+    });
 
     return {
       materialCost,
@@ -295,7 +298,7 @@ export function createSystemPricingHelpers({
       vat,
       total,
       weightKg,
-      isCustomPrice,
+      ...consultState,
       shelfPricing: {
         kind: isCorner ? "corner" : "normal",
         tierKey: String(shelfTier?.key || ""),
@@ -346,6 +349,10 @@ export function createSystemPricingHelpers({
     const baseIsCustom = basePostBars.some((row) => Boolean(row?.isCustomPrice));
     const cornerIsCustom = cornerPostBars.some((row) => Boolean(row?.isCustomPrice));
     const isCustomPrice = baseIsCustom || cornerIsCustom;
+    const consultState = buildConsultState({
+      isCustomPrice,
+      itemHasConsult: isCustomPrice,
+    });
 
     const pricedBasePostBars = basePostBars.map((row) => ({
       ...row,
@@ -392,7 +399,7 @@ export function createSystemPricingHelpers({
       vat,
       total,
       weightKg,
-      isCustomPrice,
+      ...consultState,
       basePostBar: summarizedBasePostBar,
       cornerPostBar: summarizedCornerPostBar,
       basePostBars: pricedBasePostBars,

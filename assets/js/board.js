@@ -1058,7 +1058,7 @@ function renderTable() {
         : MATERIALS[item.materialId].name;
       return escapeHtml(materialName);
     },
-    getTotalText: (item) => (item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`),
+    getTotalText: (item) => (item.consultStatus === "consult" ? "상담 안내" : `${item.total.toLocaleString()}원`),
     getDetailLines: (item) => {
       const isAddon = item.type === "addon";
       const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
@@ -1079,10 +1079,10 @@ function renderTable() {
         processingServicesText: escapeHtml(processingServicesText),
         processingServiceLabel: "가공서비스",
         materialLabel: "합판비",
-        materialCost: item.isCustomPrice ? null : item.materialCost,
-        materialConsult: item.isCustomPrice,
-        processingCost: item.isCustomPrice ? null : item.processingCost,
-        processingConsult: item.isCustomPrice,
+        materialCost: item.consultStatus === "consult" ? null : item.materialCost,
+        materialConsult: item.consultStatus === "consult",
+        processingCost: item.consultStatus === "consult" ? null : item.processingCost,
+        processingConsult: item.consultStatus === "consult",
       });
       return baseLines;
     },
@@ -1231,7 +1231,7 @@ function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
           materialCost: item.materialCost,
           processingCost: item.processingCost,
           total: item.total,
-          isCustomPrice: Boolean(item.isCustomPrice),
+          consultState: item,
         }),
       };
     }),
@@ -1520,7 +1520,7 @@ function autoCalculatePrice() {
     return;
   }
   const detail = calcItemDetail({ ...input, quantity: 1 });
-  if (detail.isCustomPrice) {
+  if (detail.consultStatus === "consult") {
     renderItemPriceDisplay({
       target: "#itemPriceDisplay",
       totalLabel: "예상금액",

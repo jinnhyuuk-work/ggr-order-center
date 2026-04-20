@@ -1,4 +1,10 @@
-import { buildAddonDetail, buildOrderSummary, getTieredPrice, evaluateSelectionPricing } from "./shared.js";
+import {
+  buildAddonDetail,
+  buildConsultState,
+  buildOrderSummary,
+  getTieredPrice,
+  evaluateSelectionPricing,
+} from "./shared.js";
 
 export function createDoorPricingHelpers({
   materials = {},
@@ -136,7 +142,12 @@ export function createDoorPricingHelpers({
     const subtotal = appliedMaterialCost + appliedProcessingCost;
     const vat = 0;
     const total = Math.round(subtotal);
-    const hasConsultItems = Boolean(isCustom || hasConsultOption || hasConsultProcessingService);
+    const consultState = buildConsultState({
+      isCustomPrice: isCustom,
+      itemHasConsult: isCustom,
+      optionHasConsult: hasConsultOption,
+      processingServiceHasConsult: hasConsultProcessingService,
+    });
 
     return {
       areaM2,
@@ -150,12 +161,7 @@ export function createDoorPricingHelpers({
       vat,
       total,
       weightKg,
-      isCustomPrice: isCustom,
-      hasConsultItems,
-      itemHasConsult: Boolean(isCustom),
-      optionHasConsult: Boolean(isCustom || hasConsultOption),
-      processingServiceHasConsult: Boolean(isCustom || hasConsultProcessingService),
-      serviceHasConsult: Boolean(isCustom || hasConsultProcessingService),
+      ...consultState,
       doorHingeConfig: cloneDoorHingeConfig(doorHingeConfig),
       optionsLabel: formatOptionsLabel(options),
       options,

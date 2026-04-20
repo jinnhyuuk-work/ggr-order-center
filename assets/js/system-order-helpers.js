@@ -18,7 +18,18 @@ export function createSystemOrderHelpers({
   const hasConsultItems = (items = []) =>
     typeof hasConsultLineItem === "function"
       ? hasConsultLineItem(items)
-      : Array.isArray(items) && items.some((item) => Boolean(item?.isCustomPrice || item?.hasConsultItems));
+      : Array.isArray(items) &&
+        items.some((item) =>
+          Boolean(
+            item?.consultStatus === "consult" ||
+              item?.isCustomPrice ||
+              item?.hasConsultItems ||
+              item?.itemHasConsult ||
+              item?.optionHasConsult ||
+              item?.processingServiceHasConsult ||
+              item?.serviceHasConsult
+          )
+        );
 
   const buildSystemPricingPayload = (item = {}) => {
     const isCustomPrice = Boolean(item?.isCustomPrice);
@@ -27,7 +38,7 @@ export function createSystemOrderHelpers({
         materialCost: item?.materialCost,
         processingCost: item?.processingCost,
         total: item?.total,
-        isCustomPrice,
+        consultState: item,
         extraCosts: {
           componentCost: item?.componentCost,
           furnitureCost: item?.furnitureCost,
@@ -42,6 +53,8 @@ export function createSystemOrderHelpers({
       furnitureCost: isCustomPrice ? null : Number(item?.furnitureCost || 0),
       total: isCustomPrice ? null : Number(item?.total || 0),
       isCustomPrice,
+      consultStatus: isCustomPrice ? "consult" : "ok",
+      consultDisplayLabel: isCustomPrice ? "상담안내" : null,
       displayPriceLabel: isCustomPrice ? "상담안내" : null,
     };
   };

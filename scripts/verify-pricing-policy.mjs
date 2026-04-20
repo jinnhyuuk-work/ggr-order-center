@@ -91,6 +91,9 @@ function run() {
     vat: 0,
     total: 47000,
     weightKg: 12.96,
+    consultStatus: "ok",
+    consultDisplayLabel: null,
+    displayPriceLabel: null,
     isCustomPrice: false,
     hasConsultItems: false,
     itemHasConsult: false,
@@ -329,8 +332,15 @@ function run() {
     materialCost: 1000,
     processingCost: 500,
     total: 1500,
-    isCustomPrice: false,
+    consultStatus: "ok",
+    consultDisplayLabel: null,
     displayPriceLabel: null,
+    isCustomPrice: false,
+    hasConsultItems: false,
+    itemHasConsult: false,
+    optionHasConsult: false,
+    processingServiceHasConsult: false,
+    serviceHasConsult: false,
   });
   assert.deepEqual(buildConsultAwarePricing({
     materialCost: 1000,
@@ -347,8 +357,15 @@ function run() {
     componentCost: 1500,
     furnitureCost: 2000,
     total: 5000,
-    isCustomPrice: false,
+    consultStatus: "ok",
+    consultDisplayLabel: null,
     displayPriceLabel: null,
+    isCustomPrice: false,
+    hasConsultItems: false,
+    itemHasConsult: false,
+    optionHasConsult: false,
+    processingServiceHasConsult: false,
+    serviceHasConsult: false,
   });
   assert.deepEqual(buildConsultAwarePricing({
     materialCost: 1000,
@@ -359,8 +376,15 @@ function run() {
     materialCost: null,
     processingCost: null,
     total: null,
-    isCustomPrice: true,
+    consultStatus: "consult",
+    consultDisplayLabel: CONSULT_DISPLAY_PRICE_LABEL,
     displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
+    isCustomPrice: true,
+    hasConsultItems: true,
+    itemHasConsult: true,
+    optionHasConsult: false,
+    processingServiceHasConsult: false,
+    serviceHasConsult: false,
   });
   assert.deepEqual(buildConsultAwarePricing({
     materialCost: 1000,
@@ -377,11 +401,19 @@ function run() {
     componentCost: null,
     furnitureCost: null,
     total: null,
-    isCustomPrice: true,
+    consultStatus: "consult",
+    consultDisplayLabel: CONSULT_DISPLAY_PRICE_LABEL,
     displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
+    isCustomPrice: true,
+    hasConsultItems: true,
+    itemHasConsult: true,
+    optionHasConsult: false,
+    processingServiceHasConsult: false,
+    serviceHasConsult: false,
   });
   assert.equal(isConsultLineItem({ isCustomPrice: true }), true);
   assert.equal(isConsultLineItem({ hasConsultItems: true }), true);
+  assert.equal(isConsultLineItem({ consultStatus: "consult" }), true);
   assert.equal(isConsultLineItem({ isCustomPrice: false, hasConsultItems: false }), false);
   assert.equal(hasConsultLineItem([{ isCustomPrice: false }, { hasConsultItems: true }]), true);
 
@@ -422,8 +454,15 @@ function run() {
     componentCost: null,
     furnitureCost: null,
     total: null,
-    isCustomPrice: true,
+    consultStatus: "consult",
+    consultDisplayLabel: CONSULT_DISPLAY_PRICE_LABEL,
     displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
+    isCustomPrice: true,
+    hasConsultItems: true,
+    itemHasConsult: true,
+    optionHasConsult: false,
+    processingServiceHasConsult: false,
+    serviceHasConsult: false,
   });
 
   const groupedSystemItems = systemOrderHelpers.buildSystemGroupDisplayItems([

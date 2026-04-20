@@ -1648,9 +1648,9 @@ function goToPrevStep() {
 
 function renderTable() {
   const formatItemTotal = (item) =>
-    item.isCustomPrice ? "상담 안내" : `${item.total.toLocaleString()}원`;
+    item.consultStatus === "consult" ? "상담 안내" : `${item.total.toLocaleString()}원`;
   const formatItemMaterial = (item) =>
-    item.isCustomPrice ? "상담 안내" : `${item.materialCost.toLocaleString()}원`;
+    item.consultStatus === "consult" ? "상담 안내" : `${item.materialCost.toLocaleString()}원`;
 
   renderEstimateTable({
     items: state.items,
@@ -1693,7 +1693,7 @@ function renderTable() {
         `옵션 ${escapeHtml(item.optionsLabel || "-")}`,
         `가공서비스 ${escapeHtml(processingServiceText)}`,
       ];
-      if (item.isCustomPrice) {
+      if (item.consultStatus === "consult") {
         baseLines.push("도어비 상담 안내");
         baseLines.push("경첩가공비 상담 안내");
         baseLines.push("가공서비스비 상담 안내");
@@ -1863,7 +1863,7 @@ function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
           materialCost: item.materialCost,
           processingCost: item.processingCost,
           total: item.total,
-          isCustomPrice: Boolean(item.isCustomPrice),
+          consultState: item,
         }),
       };
     }),
@@ -2192,7 +2192,7 @@ function autoCalculatePrice() {
     updateAddItemState();
     return;
   }
-  if (detail.isCustomPrice) {
+  if (detail.consultStatus === "consult") {
     renderItemPriceDisplay({
       target: "#itemPriceDisplay",
       totalLabel: "예상금액",

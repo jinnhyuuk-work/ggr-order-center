@@ -874,11 +874,46 @@ export function evaluateSelectionPricing({
 }
 
 export function isConsultLineItem(item = {}) {
-  return Boolean(item?.isCustomPrice || item?.hasConsultItems);
+  return Boolean(
+    item?.consultStatus === "consult" ||
+      item?.isCustomPrice ||
+      item?.hasConsultItems ||
+      item?.itemHasConsult ||
+      item?.optionHasConsult ||
+      item?.processingServiceHasConsult ||
+      item?.serviceHasConsult
+  );
 }
 
 export function hasConsultLineItem(items = []) {
   return Array.isArray(items) && items.some((item) => isConsultLineItem(item));
+}
+
+export function buildConsultState({
+  isCustomPrice = false,
+  itemHasConsult = false,
+  optionHasConsult = false,
+  processingServiceHasConsult,
+  serviceHasConsult,
+  consultDisplayLabel = CONSULT_DISPLAY_PRICE_LABEL,
+} = {}) {
+  const resolvedItemHasConsult = Boolean(isCustomPrice || itemHasConsult);
+  const resolvedOptionHasConsult = Boolean(optionHasConsult);
+  const resolvedProcessingServiceHasConsult = Boolean(processingServiceHasConsult ?? serviceHasConsult);
+  const hasConsultItems = Boolean(
+    resolvedItemHasConsult || resolvedOptionHasConsult || resolvedProcessingServiceHasConsult
+  );
+  return {
+    consultStatus: hasConsultItems ? "consult" : "ok",
+    consultDisplayLabel: hasConsultItems ? consultDisplayLabel : null,
+    displayPriceLabel: hasConsultItems ? consultDisplayLabel : null,
+    isCustomPrice: Boolean(isCustomPrice),
+    hasConsultItems,
+    itemHasConsult: resolvedItemHasConsult,
+    optionHasConsult: resolvedOptionHasConsult,
+    processingServiceHasConsult: resolvedProcessingServiceHasConsult,
+    serviceHasConsult: resolvedProcessingServiceHasConsult,
+  };
 }
 
 export function buildStandardPriceBreakdownRows({
@@ -905,26 +940,35 @@ export function buildConsultAwarePricing({
   processingCost = 0,
   total = 0,
   isCustomPrice = false,
+  consultState = null,
   extraCosts = {},
 } = {}) {
+  const resolvedIsCustomPrice = Boolean(isCustomPrice || consultState?.isCustomPrice);
+  const resolvedConsultState = buildConsultState({
+    isCustomPrice: resolvedIsCustomPrice,
+    itemHasConsult: consultState?.itemHasConsult,
+    optionHasConsult: consultState?.optionHasConsult,
+    processingServiceHasConsult: consultState?.processingServiceHasConsult,
+    serviceHasConsult: consultState?.serviceHasConsult,
+    consultDisplayLabel: consultState?.consultDisplayLabel,
+  });
   const normalizedExtraCosts = Object.entries(extraCosts && typeof extraCosts === "object" ? extraCosts : {}).reduce(
     (acc, [key, value]) => {
       const normalizedKey = String(key || "").trim();
       if (!normalizedKey) return acc;
-      acc[normalizedKey] = isCustomPrice ? null : Number(value || 0);
+      acc[normalizedKey] = resolvedConsultState.hasConsultItems ? null : Number(value || 0);
       return acc;
     },
     {}
   );
 
-  if (isCustomPrice) {
+  if (resolvedConsultState.hasConsultItems) {
     return {
       materialCost: null,
       processingCost: null,
       ...normalizedExtraCosts,
       total: null,
-      isCustomPrice: true,
-      displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
+      ...resolvedConsultState,
     };
   }
   return {
@@ -932,8 +976,7 @@ export function buildConsultAwarePricing({
     processingCost: Number(processingCost || 0),
     ...normalizedExtraCosts,
     total: Number(total || 0),
-    isCustomPrice: false,
-    displayPriceLabel: null,
+    ...resolvedConsultState,
   };
 }
 
