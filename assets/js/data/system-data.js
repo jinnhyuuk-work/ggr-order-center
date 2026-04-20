@@ -218,19 +218,19 @@ export const SYSTEM_POST_BAR_PRICING = Object.freeze({
         key: "lte_2100",
         label: "2100 이하",
         maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2100,
-        unitPrice: 28000,
+        unitPrice: 17400,
       }),
       Object.freeze({
         key: "lte_2300",
         label: "2300 이하",
         maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2300,
-        unitPrice: 28000,
+        unitPrice: 18000,
       }),
       Object.freeze({
         key: "lte_2500",
         label: "2500 이하",
         maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2500,
-        unitPrice: 31000,
+        unitPrice: 19300,
       }),
     ]),
   }),
@@ -241,19 +241,19 @@ export const SYSTEM_POST_BAR_PRICING = Object.freeze({
         key: "lte_2100",
         label: "2100 이하",
         maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2100,
-        unitPrice: 14000,
+        unitPrice: 8000,
       }),
       Object.freeze({
         key: "lte_2300",
         label: "2300 이하",
         maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2300,
-        unitPrice: 14000,
+        unitPrice: 8000,
       }),
       Object.freeze({
         key: "lte_2500",
         label: "2500 이하",
         maxHeightMm: SYSTEM_POST_BAR_HEIGHT_LIMITS.pricing.lte2500,
-        unitPrice: 14000,
+        unitPrice: 8000,
       }),
     ]),
   }),
@@ -575,15 +575,31 @@ export const SYSTEM_FURNITURE_WIDTH_POLICY = Object.freeze({
   }),
   standardWidths: Object.freeze([600, 800]),
   disabledAtOrBelow: 400,
+  consultPriceWidths: Object.freeze([]),
   consultPriceAbove: 800,
 });
+
+const buildSystemFurniturePricingRule = ({ priceByWidthMm } = {}) =>
+  Object.freeze({
+    type: "fixed",
+    unit: "item",
+    priceByWidthMm: Object.freeze({
+      600: Number(priceByWidthMm?.[600] || 0),
+      800: Number(priceByWidthMm?.[800] || 0),
+    }),
+  });
 
 const SYSTEM_FURNITURE_ITEMS = [
   {
     id: "drawer_hanging_1tier",
     name: "공중형 서랍 1단",
     categoryKey: "drawer",
-    pricingRule: Object.freeze({ type: "fixed", value: 22000, unit: "item" }),
+    pricingRule: buildSystemFurniturePricingRule({
+      priceByWidthMm: {
+        600: 22000,
+        800: 22000,
+      },
+    }),
     description: "공중형 서랍 1단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
@@ -593,7 +609,12 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: "drawer_hanging_2tier",
     name: "공중형 서랍 2단",
     categoryKey: "drawer",
-    pricingRule: Object.freeze({ type: "fixed", value: 30000, unit: "item" }),
+    pricingRule: buildSystemFurniturePricingRule({
+      priceByWidthMm: {
+        600: 0,
+        800: 30000,
+      },
+    }),
     description: "공중형 서랍 2단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
@@ -603,7 +624,12 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: "drawer_floor_2tier",
     name: "바닥형 서랍 2단",
     categoryKey: "drawer",
-    pricingRule: Object.freeze({ type: "fixed", value: 30000, unit: "item" }),
+    pricingRule: buildSystemFurniturePricingRule({
+      priceByWidthMm: {
+        600: 0,
+        800: 30000,
+      },
+    }),
     description: "바닥형 서랍 2단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
@@ -613,7 +639,12 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: "drawer_floor_3tier",
     name: "바닥형 서랍 3단",
     categoryKey: "drawer",
-    pricingRule: Object.freeze({ type: "fixed", value: 38000, unit: "item" }),
+    pricingRule: buildSystemFurniturePricingRule({
+      priceByWidthMm: {
+        600: 0,
+        800: 38000,
+      },
+    }),
     description: "바닥형 서랍 3단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
@@ -623,7 +654,12 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: "drawer_floor_4tier",
     name: "바닥형 서랍 4단",
     categoryKey: "drawer",
-    pricingRule: Object.freeze({ type: "fixed", value: 46000, unit: "item" }),
+    pricingRule: buildSystemFurniturePricingRule({
+      priceByWidthMm: {
+        600: 0,
+        800: 46000,
+      },
+    }),
     description: "바닥형 서랍 4단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
