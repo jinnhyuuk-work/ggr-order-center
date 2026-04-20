@@ -90,7 +90,7 @@ function run() {
     subtotal: 47000,
     vat: 0,
     total: 47000,
-    roundingUnit: 1,
+    roundingUnit: 10,
     weightKg: 12.96,
     consult: {
       status: "ok",

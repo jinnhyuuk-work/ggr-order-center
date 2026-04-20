@@ -290,7 +290,7 @@ export function createSystemPricingHelpers({
     const totals = calculatePricingTotals({
       materialCost,
       processingCost,
-      roundingUnit: 1,
+      roundingUnit: 10,
     });
     const weightKg = shelfDetail.weightKg;
     const consultState = buildConsultState({
@@ -378,7 +378,7 @@ export function createSystemPricingHelpers({
     const totals = calculatePricingTotals({
       materialCost,
       processingCost,
-      roundingUnit: 1,
+      roundingUnit: 10,
     });
 
     const calcPostBarWeightKg = (heightCountMap) =>

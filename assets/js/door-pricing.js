@@ -145,7 +145,7 @@ export function createDoorPricingHelpers({
     const totals = calculatePricingTotals({
       materialCost: appliedMaterialCost,
       processingCost: appliedProcessingCost,
-      roundingUnit: 1,
+      roundingUnit: 10,
     });
     const consultState = buildConsultState({
       isCustomPrice: isCustom,
