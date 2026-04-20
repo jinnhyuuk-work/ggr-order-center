@@ -1453,9 +1453,7 @@ function refreshTopEstimate() {
       totalLabel: "예상금액",
       totalText: "상담 안내",
       breakdownRows: buildStandardPriceBreakdownRows({
-        itemHasConsult: true,
-        optionHasConsult: true,
-        processingServiceHasConsult: true,
+        consultState: detail,
       }),
     });
     updateAddButtonState();
@@ -1466,14 +1464,12 @@ function refreshTopEstimate() {
     target: priceEl,
     totalLabel: "예상금액",
     totalAmount: detail.total,
-    showConsultSuffix: detail.hasConsultItems,
+    showConsultSuffix: Boolean(detail?.consult?.hasItems ?? detail.hasConsultItems),
     breakdownRows: buildStandardPriceBreakdownRows({
       itemCost: detail.itemCost,
       optionCost: detail.optionCost,
       processingServiceCost: detail.processingServiceCost,
-      itemHasConsult: detail.itemHasConsult,
-      optionHasConsult: detail.optionHasConsult,
-      processingServiceHasConsult: detail.processingServiceHasConsult,
+      consultState: detail,
     }),
   });
   updateAddButtonState();

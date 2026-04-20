@@ -1526,9 +1526,7 @@ function autoCalculatePrice() {
       totalLabel: "예상금액",
       totalText: "상담 안내",
       breakdownRows: buildStandardPriceBreakdownRows({
-        itemHasConsult: true,
-        optionHasConsult: true,
-        processingServiceHasConsult: true,
+        consultState: detail,
       }),
     });
     updateAddItemState();
@@ -1538,14 +1536,12 @@ function autoCalculatePrice() {
     target: "#itemPriceDisplay",
     totalLabel: "예상금액",
     totalAmount: detail.total,
-    showConsultSuffix: detail.hasConsultItems,
+    showConsultSuffix: Boolean(detail?.consult?.hasItems ?? detail.hasConsultItems),
     breakdownRows: buildStandardPriceBreakdownRows({
       itemCost: detail.materialCost,
       optionCost: detail.optionCost,
       processingServiceCost: detail.processingServiceCost,
-      itemHasConsult: detail.itemHasConsult,
-      optionHasConsult: detail.optionHasConsult,
-      processingServiceHasConsult: detail.processingServiceHasConsult,
+      consultState: detail,
     }),
   });
   updateAddItemState();

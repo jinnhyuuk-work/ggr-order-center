@@ -938,20 +938,28 @@ function buildDoorPriceBreakdownRows({
   processingServiceCost,
   serviceCost,
   hingeCost = 0,
+  consultState = null,
   itemHasConsult = false,
   optionHasConsult = false,
   processingServiceHasConsult,
   serviceHasConsult,
   hingeHasConsult = false,
 } = {}) {
+  const normalizedConsult = consultState?.consult && typeof consultState.consult === "object"
+    ? consultState.consult
+    : consultState;
+  const resolvedItemHasConsult = Boolean(normalizedConsult?.item ?? itemHasConsult);
+  const resolvedOptionHasConsult = Boolean(normalizedConsult?.option ?? optionHasConsult);
+  const resolvedProcessingServiceHasConsult = Boolean(
+    normalizedConsult?.processingService ?? processingServiceHasConsult ?? serviceHasConsult
+  );
   const normalizedHingeCost = Number(hingeCost || 0);
   const normalizedProcessingServiceCost = Number(processingServiceCost ?? serviceCost ?? 0);
   const processingServiceOnlyCost = Math.max(0, normalizedProcessingServiceCost - normalizedHingeCost);
-  const resolvedProcessingServiceHasConsult = Boolean(processingServiceHasConsult ?? serviceHasConsult);
   return [
-    { label: "품목", amount: itemCost, isConsult: itemHasConsult },
+    { label: "품목", amount: itemCost, isConsult: resolvedItemHasConsult },
     { label: "경첩가공", amount: normalizedHingeCost, isConsult: hingeHasConsult },
-    { label: "옵션", amount: optionCost, isConsult: optionHasConsult },
+    { label: "옵션", amount: optionCost, isConsult: resolvedOptionHasConsult },
     { label: "가공서비스", amount: processingServiceOnlyCost, isConsult: resolvedProcessingServiceHasConsult },
   ];
 }
@@ -2198,9 +2206,7 @@ function autoCalculatePrice() {
       totalLabel: "예상금액",
       totalText: "상담 안내",
       breakdownRows: buildDoorPriceBreakdownRows({
-        itemHasConsult: true,
-        optionHasConsult: true,
-        processingServiceHasConsult: true,
+        consultState: detail,
         hingeHasConsult: true,
       }),
     });
@@ -2211,15 +2217,13 @@ function autoCalculatePrice() {
     target: "#itemPriceDisplay",
     totalLabel: "예상금액",
     totalAmount: detail.total,
-    showConsultSuffix: detail.hasConsultItems,
+    showConsultSuffix: Boolean(detail?.consult?.hasItems ?? detail.hasConsultItems),
     breakdownRows: buildDoorPriceBreakdownRows({
       itemCost: detail.materialCost,
       optionCost: detail.optionCost,
       processingServiceCost: detail.processingServiceCost,
       hingeCost: detail.doorHingeCost,
-      itemHasConsult: detail.itemHasConsult,
-      optionHasConsult: detail.optionHasConsult,
-      processingServiceHasConsult: detail.processingServiceHasConsult,
+      consultState: detail,
     }),
   });
   updateAddItemState();

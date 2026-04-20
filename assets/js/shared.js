@@ -875,6 +875,7 @@ export function evaluateSelectionPricing({
 
 export function isConsultLineItem(item = {}) {
   return Boolean(
+    item?.consult?.status === "consult" ||
     item?.consultStatus === "consult" ||
       item?.isCustomPrice ||
       item?.hasConsultItems ||
@@ -904,6 +905,14 @@ export function buildConsultState({
     resolvedItemHasConsult || resolvedOptionHasConsult || resolvedProcessingServiceHasConsult
   );
   return {
+    consult: {
+      status: hasConsultItems ? "consult" : "ok",
+      hasItems: hasConsultItems,
+      displayLabel: hasConsultItems ? consultDisplayLabel : null,
+      item: resolvedItemHasConsult,
+      option: resolvedOptionHasConsult,
+      processingService: resolvedProcessingServiceHasConsult,
+    },
     consultStatus: hasConsultItems ? "consult" : "ok",
     consultDisplayLabel: hasConsultItems ? consultDisplayLabel : null,
     displayPriceLabel: hasConsultItems ? consultDisplayLabel : null,
@@ -921,16 +930,24 @@ export function buildStandardPriceBreakdownRows({
   optionCost = 0,
   processingServiceCost,
   serviceCost,
+  consultState = null,
   itemHasConsult = false,
   optionHasConsult = false,
   processingServiceHasConsult,
   serviceHasConsult,
 } = {}) {
+  const normalizedConsult = consultState?.consult && typeof consultState.consult === "object"
+    ? consultState.consult
+    : consultState;
+  const resolvedItemHasConsult = Boolean(normalizedConsult?.item ?? itemHasConsult);
+  const resolvedOptionHasConsult = Boolean(normalizedConsult?.option ?? optionHasConsult);
   const resolvedProcessingServiceCost = Number(processingServiceCost ?? serviceCost ?? 0);
-  const resolvedProcessingServiceHasConsult = Boolean(processingServiceHasConsult ?? serviceHasConsult);
+  const resolvedProcessingServiceHasConsult = Boolean(
+    normalizedConsult?.processingService ?? processingServiceHasConsult ?? serviceHasConsult
+  );
   return [
-    { label: "품목", amount: itemCost, isConsult: itemHasConsult },
-    { label: "옵션", amount: optionCost, isConsult: optionHasConsult },
+    { label: "품목", amount: itemCost, isConsult: resolvedItemHasConsult },
+    { label: "옵션", amount: optionCost, isConsult: resolvedOptionHasConsult },
     { label: "가공서비스", amount: resolvedProcessingServiceCost, isConsult: resolvedProcessingServiceHasConsult },
   ];
 }
@@ -943,14 +960,23 @@ export function buildConsultAwarePricing({
   consultState = null,
   extraCosts = {},
 } = {}) {
-  const resolvedIsCustomPrice = Boolean(isCustomPrice || consultState?.isCustomPrice);
+  const normalizedConsult = consultState?.consult && typeof consultState.consult === "object"
+    ? { ...consultState, ...consultState.consult }
+    : consultState;
+  const resolvedIsCustomPrice = Boolean(
+    isCustomPrice ||
+      consultState?.isCustomPrice ||
+      normalizedConsult?.isCustomPrice ||
+      normalizedConsult?.status === "consult"
+  );
   const resolvedConsultState = buildConsultState({
     isCustomPrice: resolvedIsCustomPrice,
-    itemHasConsult: consultState?.itemHasConsult,
-    optionHasConsult: consultState?.optionHasConsult,
-    processingServiceHasConsult: consultState?.processingServiceHasConsult,
-    serviceHasConsult: consultState?.serviceHasConsult,
-    consultDisplayLabel: consultState?.consultDisplayLabel,
+    itemHasConsult: normalizedConsult?.itemHasConsult ?? normalizedConsult?.item,
+    optionHasConsult: normalizedConsult?.optionHasConsult ?? normalizedConsult?.option,
+    processingServiceHasConsult:
+      normalizedConsult?.processingServiceHasConsult ?? normalizedConsult?.processingService,
+    serviceHasConsult: normalizedConsult?.serviceHasConsult,
+    consultDisplayLabel: normalizedConsult?.consultDisplayLabel ?? normalizedConsult?.displayLabel,
   });
   const normalizedExtraCosts = Object.entries(extraCosts && typeof extraCosts === "object" ? extraCosts : {}).reduce(
     (acc, [key, value]) => {
