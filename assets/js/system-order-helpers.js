@@ -17,30 +17,27 @@ export function createSystemOrderHelpers({
 
   const buildSystemPricingPayload = (item = {}) => {
     const isCustomPrice = Boolean(item?.isCustomPrice);
-    const basePricing =
-      typeof buildConsultAwarePricing === "function"
-        ? buildConsultAwarePricing({
-            materialCost: item?.materialCost,
-            processingCost: item?.processingCost,
-            total: item?.total,
-            isCustomPrice,
-          })
-        : {
-            materialCost: isCustomPrice ? null : Number(item?.materialCost || 0),
-            processingCost: isCustomPrice ? null : Number(item?.processingCost || 0),
-            total: isCustomPrice ? null : Number(item?.total || 0),
-            isCustomPrice,
-            displayPriceLabel: isCustomPrice ? "상담안내" : null,
-          };
+    if (typeof buildConsultAwarePricing === "function") {
+      return buildConsultAwarePricing({
+        materialCost: item?.materialCost,
+        processingCost: item?.processingCost,
+        total: item?.total,
+        isCustomPrice,
+        extraCosts: {
+          componentCost: item?.componentCost,
+          furnitureCost: item?.furnitureCost,
+        },
+      });
+    }
 
     return {
-      materialCost: basePricing.materialCost,
-      processingCost: basePricing.processingCost,
-      componentCost: basePricing.isCustomPrice ? null : Number(item?.componentCost || 0),
-      furnitureCost: basePricing.isCustomPrice ? null : Number(item?.furnitureCost || 0),
-      total: basePricing.total,
-      isCustomPrice: basePricing.isCustomPrice,
-      displayPriceLabel: basePricing.displayPriceLabel,
+      materialCost: isCustomPrice ? null : Number(item?.materialCost || 0),
+      processingCost: isCustomPrice ? null : Number(item?.processingCost || 0),
+      componentCost: isCustomPrice ? null : Number(item?.componentCost || 0),
+      furnitureCost: isCustomPrice ? null : Number(item?.furnitureCost || 0),
+      total: isCustomPrice ? null : Number(item?.total || 0),
+      isCustomPrice,
+      displayPriceLabel: isCustomPrice ? "상담안내" : null,
     };
   };
 

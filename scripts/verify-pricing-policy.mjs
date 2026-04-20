@@ -193,11 +193,47 @@ function run() {
   assert.deepEqual(buildConsultAwarePricing({
     materialCost: 1000,
     processingCost: 500,
+    total: 5000,
+    isCustomPrice: false,
+    extraCosts: {
+      componentCost: 1500,
+      furnitureCost: 2000,
+    },
+  }), {
+    materialCost: 1000,
+    processingCost: 500,
+    componentCost: 1500,
+    furnitureCost: 2000,
+    total: 5000,
+    isCustomPrice: false,
+    displayPriceLabel: null,
+  });
+  assert.deepEqual(buildConsultAwarePricing({
+    materialCost: 1000,
+    processingCost: 500,
     total: 1500,
     isCustomPrice: true,
   }), {
     materialCost: null,
     processingCost: null,
+    total: null,
+    isCustomPrice: true,
+    displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
+  });
+  assert.deepEqual(buildConsultAwarePricing({
+    materialCost: 1000,
+    processingCost: 500,
+    total: 5000,
+    isCustomPrice: true,
+    extraCosts: {
+      componentCost: 1500,
+      furnitureCost: 2000,
+    },
+  }), {
+    materialCost: null,
+    processingCost: null,
+    componentCost: null,
+    furnitureCost: null,
     total: null,
     isCustomPrice: true,
     displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,

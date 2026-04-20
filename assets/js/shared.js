@@ -817,11 +817,23 @@ export function buildConsultAwarePricing({
   processingCost = 0,
   total = 0,
   isCustomPrice = false,
+  extraCosts = {},
 } = {}) {
+  const normalizedExtraCosts = Object.entries(extraCosts && typeof extraCosts === "object" ? extraCosts : {}).reduce(
+    (acc, [key, value]) => {
+      const normalizedKey = String(key || "").trim();
+      if (!normalizedKey) return acc;
+      acc[normalizedKey] = isCustomPrice ? null : Number(value || 0);
+      return acc;
+    },
+    {}
+  );
+
   if (isCustomPrice) {
     return {
       materialCost: null,
       processingCost: null,
+      ...normalizedExtraCosts,
       total: null,
       isCustomPrice: true,
       displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
@@ -830,6 +842,7 @@ export function buildConsultAwarePricing({
   return {
     materialCost: Number(materialCost || 0),
     processingCost: Number(processingCost || 0),
+    ...normalizedExtraCosts,
     total: Number(total || 0),
     isCustomPrice: false,
     displayPriceLabel: null,
