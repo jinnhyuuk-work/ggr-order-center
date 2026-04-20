@@ -514,6 +514,38 @@ export function calcGroupedAmount(count = 0, groupSize = 1, groupPrice = 0) {
   return Math.ceil(normalizedCount / normalizedGroupSize) * normalizedGroupPrice;
 }
 
+export function buildAddonDetail(subtotal = 0, { weightKg = 0 } = {}) {
+  const safeSubtotal = Number(subtotal || 0);
+  const vat = 0;
+  return {
+    materialCost: safeSubtotal,
+    processingCost: 0,
+    subtotal: safeSubtotal,
+    vat,
+    total: safeSubtotal,
+    weightKg: Number(weightKg || 0),
+  };
+}
+
+export function buildOrderSummary(items = []) {
+  const list = Array.isArray(items) ? items : [];
+  const materialsTotal = list
+    .filter((item) => item?.type !== "addon")
+    .reduce((sum, item) => sum + Number(item?.materialCost || 0), 0);
+  const processingTotal = list.reduce((sum, item) => sum + Number(item?.processingCost || 0), 0);
+  const subtotal = list.reduce((sum, item) => sum + Number(item?.subtotal || 0), 0);
+  const vat = 0;
+  const totalWeight = list.reduce((sum, item) => sum + Number(item?.weightKg || 0), 0);
+  return {
+    materialsTotal,
+    processingTotal,
+    subtotal,
+    vat,
+    totalWeight,
+    grandTotal: subtotal,
+  };
+}
+
 export function ceilAmountByUnit(value = 0, unit = 1) {
   const normalizedValue = Math.max(0, Number(value) || 0);
   const normalizedUnit = Math.max(1, Number(unit) || 1);

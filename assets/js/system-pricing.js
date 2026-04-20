@@ -5,6 +5,7 @@ import {
   SYSTEM_SHELF_TIER_PRICING,
   SYSTEM_ADDON_ITEMS,
 } from "./data/system-data.js";
+import { buildOrderSummary } from "./shared.js";
 
 const SYSTEM_ADDON_ITEMS_BY_ID = new Map(
   (Array.isArray(SYSTEM_ADDON_ITEMS) ? SYSTEM_ADDON_ITEMS : []).map((item) => [String(item.id || ""), item])
@@ -399,23 +400,7 @@ export function createSystemPricingHelpers({
     };
   }
 
-  function calcOrderSummary(items) {
-    const materialsTotal = sumBy(items, "materialCost");
-    const processingTotal = sumBy(items, "processingCost");
-    const subtotal = sumBy(items, "subtotal");
-    const vat = 0;
-    const totalWeight = sumBy(items, "weightKg");
-    const grandTotal = subtotal;
-
-    return {
-      materialsTotal,
-      processingTotal,
-      subtotal,
-      vat,
-      totalWeight,
-      grandTotal,
-    };
-  }
+  const calcOrderSummary = (items) => buildOrderSummary(items);
 
   return {
     calcAddonCostBreakdown,

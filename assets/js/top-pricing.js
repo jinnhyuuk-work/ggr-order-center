@@ -1,4 +1,4 @@
-import { evaluateSelectionPricing } from "./shared.js";
+import { buildAddonDetail, evaluateSelectionPricing } from "./shared.js";
 
 export function createTopPricingHelpers({
   topTypes = [],
@@ -202,18 +202,7 @@ export function createTopPricingHelpers({
     };
   }
 
-  function calcAddonDetail(price) {
-    const subtotal = Number(price || 0);
-    const vat = 0;
-    const total = subtotal;
-    return {
-      materialCost: subtotal,
-      processingCost: 0,
-      subtotal,
-      vat,
-      total,
-    };
-  }
+  const calcAddonDetail = (price) => buildAddonDetail(price);
 
   return {
     getBackHeightLimit,

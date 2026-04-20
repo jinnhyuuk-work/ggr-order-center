@@ -1,4 +1,4 @@
-import { evaluateSelectionPricing, resolveAmountFromPriceRule } from "./shared.js";
+import { buildAddonDetail, buildOrderSummary, evaluateSelectionPricing, resolveAmountFromPriceRule } from "./shared.js";
 
 export function createBoardPricingHelpers({
   materials = {},
@@ -136,40 +136,8 @@ export function createBoardPricingHelpers({
     };
   }
 
-  function calcAddonDetail(price) {
-    const subtotal = Number(price || 0);
-    const vat = 0;
-    const total = subtotal;
-    return {
-      materialCost: subtotal,
-      processingCost: 0,
-      subtotal,
-      vat,
-      total,
-      weightKg: 0,
-    };
-  }
-
-  function calcOrderSummary(items) {
-    const list = Array.isArray(items) ? items : [];
-    const materialsTotal = list
-      .filter((i) => i.type !== "addon")
-      .reduce((s, i) => s + Number(i.materialCost || 0), 0);
-    const processingTotal = list.reduce((s, i) => s + Number(i.processingCost || 0), 0);
-    const subtotal = list.reduce((s, i) => s + Number(i.subtotal || 0), 0);
-    const vat = 0;
-    const totalWeight = list.reduce((s, i) => s + Number(i.weightKg || 0), 0);
-    const grandTotal = subtotal;
-
-    return {
-      materialsTotal,
-      processingTotal,
-      subtotal,
-      vat,
-      totalWeight,
-      grandTotal,
-    };
-  }
+  const calcAddonDetail = (price) => buildAddonDetail(price);
+  const calcOrderSummary = (items) => buildOrderSummary(items);
 
   return {
     isBoardCustomSize,
