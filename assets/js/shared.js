@@ -521,36 +521,28 @@ export function normalizeQuantity(value = 1, fallback = 1) {
   return normalizedValue;
 }
 
-export function roundAmountByPolicy(value = 0, {
-  method = "round",
-  unit = 1,
-} = {}) {
+export function roundAmountByPolicy(value = 0, { unit = 1 } = {}) {
   const normalizedValue = Number(value || 0);
   if (!Number.isFinite(normalizedValue) || normalizedValue <= 0) return 0;
   const normalizedUnit = Math.max(1, Number(unit) || 1);
-  const token = String(method || "round").trim().toLowerCase();
-  if (token === "ceil") return Math.ceil(normalizedValue / normalizedUnit) * normalizedUnit;
-  if (token === "floor") return Math.floor(normalizedValue / normalizedUnit) * normalizedUnit;
-  return Math.round(normalizedValue / normalizedUnit) * normalizedUnit;
+  // Price policy: always ceil by unit.
+  return Math.ceil(normalizedValue / normalizedUnit) * normalizedUnit;
 }
 
 export function calculatePricingTotals({
   materialCost = 0,
   processingCost = 0,
-  roundingMethod = "round",
   roundingUnit = 1,
-  vatRate = 0,
 } = {}) {
   const safeMaterialCost = Math.max(0, Number(materialCost || 0));
   const safeProcessingCost = Math.max(0, Number(processingCost || 0));
   const subtotal = roundAmountByPolicy(safeMaterialCost + safeProcessingCost, {
-    method: roundingMethod,
+    method: "ceil",
     unit: roundingUnit,
   });
-  const normalizedVatRate = Math.max(0, Number(vatRate || 0));
-  const vat = normalizedVatRate > 0
-    ? roundAmountByPolicy(subtotal * normalizedVatRate, { method: "round", unit: 1 })
-    : 0;
+  // Price policy: all prices are VAT-included; no additional VAT calculation.
+  const normalizedVatRate = 0;
+  const vat = 0;
   const total = subtotal + vat;
   return {
     materialCost: safeMaterialCost,
@@ -559,7 +551,7 @@ export function calculatePricingTotals({
     vat,
     total,
     vatRate: normalizedVatRate,
-    roundingMethod: String(roundingMethod || "round").trim().toLowerCase() || "round",
+    roundingMethod: "ceil",
     roundingUnit: Math.max(1, Number(roundingUnit) || 1),
   };
 }
@@ -567,9 +559,7 @@ export function calculatePricingTotals({
 export function buildAddonDetail(subtotalOrUnitPrice = 0, {
   weightKg = 0,
   quantity = null,
-  roundingMethod = "round",
   roundingUnit = 1,
-  vatRate = 0,
 } = {}) {
   const computedMaterialCost = quantity === null
     ? Number(subtotalOrUnitPrice || 0)
@@ -577,9 +567,9 @@ export function buildAddonDetail(subtotalOrUnitPrice = 0, {
   const totals = calculatePricingTotals({
     materialCost: computedMaterialCost,
     processingCost: 0,
-    roundingMethod,
+    roundingMethod: "ceil",
     roundingUnit,
-    vatRate,
+    vatRate: 0,
   });
   return {
     materialCost: totals.materialCost,

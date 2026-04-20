@@ -32,7 +32,7 @@ function normalizeMm(value) {
 }
 
 function roundWon(value) {
-  return roundAmountByPolicy(value, { method: "round", unit: 1 });
+  return roundAmountByPolicy(value, { method: "ceil", unit: 1 });
 }
 
 function sumBy(items, key) {
