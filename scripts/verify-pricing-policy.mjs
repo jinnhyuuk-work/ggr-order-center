@@ -8,9 +8,12 @@ import {
 import { createBoardPricingHelpers } from "../assets/js/board-pricing.js";
 import { TOP_PRICING_POLICY } from "../assets/js/data/top-data.js";
 import {
+  DOOR_MATERIALS,
+  DOOR_OPTIONS,
   DOOR_PRICE_TIERS_BY_CATEGORY,
   DOOR_PRICING_POLICY,
 } from "../assets/js/data/door-data.js";
+import { createDoorPricingHelpers } from "../assets/js/door-pricing.js";
 import {
   SYSTEM_ADDON_ITEM_IDS,
   SYSTEM_POST_BAR_HEIGHT_LIMITS,
@@ -163,6 +166,40 @@ function run() {
     isConsult: true,
   });
   assert.equal(DOOR_PRICING_POLICY.hingePricePerHole, 1500);
+  const lxPetMaterial = Object.values(DOOR_MATERIALS).find((material) => material.category === "LX PET");
+  const doorPricing = createDoorPricingHelpers({
+    materials: DOOR_MATERIALS,
+    priceTiersByCategory: DOOR_PRICE_TIERS_BY_CATEGORY,
+    optionCatalog: DOOR_OPTIONS.reduce((acc, option) => {
+      if (option?.id) acc[option.id] = option;
+      return acc;
+    }, {}),
+    hingePricePerHole: DOOR_PRICING_POLICY.hingePricePerHole,
+    cloneDoorHingeConfig: (config) => JSON.parse(JSON.stringify(config || { holes: [] })),
+  });
+  const doorDetail = doorPricing.calcItemDetail({
+    materialId: lxPetMaterial.id,
+    width: 300,
+    length: 800,
+    thickness: 18,
+    quantity: 1,
+    doorHingeConfig: {
+      holes: [
+        { verticalDistance: 100 },
+        { verticalDistance: 700 },
+      ],
+    },
+  });
+  assert.equal(doorDetail.materialCost, 35000);
+  assert.equal(doorDetail.doorHingeCost, 3000);
+  assert.equal(doorDetail.total, 38000);
+  assert.equal(doorPricing.calcItemDetail({
+    materialId: lxPetMaterial.id,
+    width: 601,
+    length: 800,
+    thickness: 18,
+    quantity: 1,
+  }).isCustomPrice, true);
 
   const systemPricing = createSystemPricingHelpers({
     limits: {

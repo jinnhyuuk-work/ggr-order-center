@@ -24,7 +24,6 @@ import {
   updateSendButtonEnabled as updateSendButtonEnabledShared,
   isConsentChecked,
   getEmailJSInstance,
-  getTieredPrice,
   updateSizeErrors,
   bindSizeInputHandlers,
   renderEstimateTable,
@@ -37,7 +36,6 @@ import {
   buildConsultAwarePricing,
   CONSULT_EXCLUDED_SUFFIX,
   getPricingDisplayMeta,
-  evaluateSelectionPricing,
   hasConsultLineItem,
   renderItemPriceDisplay,
   renderItemPriceNotice,
@@ -53,6 +51,7 @@ import {
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
 } from "./shared.js";
+import { createDoorPricingHelpers } from "./door-pricing.js";
 import {
   normalizeFulfillmentType,
   isFulfillmentAddressReady,
@@ -75,31 +74,6 @@ const OPTION_CATALOG = DOOR_OPTIONS.reduce((acc, option) => {
   acc[option.id] = option;
   return acc;
 }, {});
-
-function getDoorTierPrice(material, width, length) {
-  const tiers = DOOR_PRICE_TIERS_BY_CATEGORY[material.category] || [];
-  return getTieredPrice({ tiers, width, length, customLabel: "비규격 상담안내" });
-}
-
-function formatDoorPriceTierLines(category) {
-  const tiers = DOOR_PRICE_TIERS_BY_CATEGORY[category] || [];
-  const tierLines = tiers.map(
-    (tier) => `${tier.maxWidth}×${tier.maxLength} 이하 ${tier.price.toLocaleString()}원`
-  );
-  return [...tierLines, "비규격 상담안내"];
-}
-
-// 1) 도어 금액 계산
-function calcMaterialCost({ materialId, width, length, quantity, thickness }) {
-  const material = MATERIALS[materialId];
-  if (!material) {
-    return { areaM2: 0, materialCost: 0, error: "도어를 선택해주세요." };
-  }
-  const areaM2 = (width / 1000) * (length / 1000); // mm → m
-  const { price, isCustom } = getDoorTierPrice(material, width, length);
-  const materialCost = price * quantity;
-  return { areaM2, materialCost, price, isCustom };
-}
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
   if (!width || !length) return { w: 120, h: 120 };
@@ -301,146 +275,6 @@ function renderPreviewDimensionChips(colorEl, { widthMm = 0, lengthMm = 0 } = {}
   nudgePreviewDimensionChipIntoFrame(verticalChip, frameEl, marginPx);
 }
 
-// 2) 가공비 계산
-function calcProcessingCost({
-  quantity,
-  services = [],
-  serviceDetails = {},
-}) {
-  const { amount, hasConsult } = evaluateSelectionPricing({
-    selectedIds: services,
-    resolveById: (id) => PROCESSING_SERVICES[id],
-    quantity,
-    getAmount: ({ id, item, quantity: qty }) => {
-      const detail = serviceDetails?.[id];
-      return item.calcProcessingCost(qty, detail);
-    },
-  });
-  return { processingCost: amount, hasConsult };
-}
-
-// 3) 무게 계산
-function calcWeightKg({ materialId, width, length, thickness, quantity }) {
-  const material = MATERIALS[materialId];
-  const areaM2 = (width / 1000) * (length / 1000);
-  const thicknessM = thickness / 1000;
-
-  const volumeM3 = areaM2 * thicknessM * quantity;
-  const weightKg = volumeM3 * material.density;
-  return { weightKg };
-}
-
-// 6) 한 아이템 전체 계산 (도어비 + 가공비 + 무게 계산까지)
-function calcItemDetail(input) {
-  const {
-    materialId,
-    width,
-    length,
-    thickness,
-    quantity,
-    options = [],
-    services = [],
-    serviceDetails = {},
-    doorHingeConfig = createDefaultDoorHingeConfig(),
-  } = input;
-
-  const { areaM2, materialCost, isCustom } = calcMaterialCost({
-    materialId,
-    width,
-    length,
-    quantity,
-    thickness,
-  });
-  if (Number.isNaN(materialCost)) {
-    return { error: "금액 계산에 실패했습니다. 입력값을 확인해주세요." };
-  }
-
-  const { processingCost, hasConsult: hasConsultProcessingService } = calcProcessingCost({
-    quantity,
-    services,
-    serviceDetails,
-  });
-  const doorHingeCost = calcDoorHingeCost({ quantity, doorHingeConfig });
-  const { optionPrice, hasConsult: hasConsultOption } = calcOptionsPrice(options);
-
-  const { weightKg } = calcWeightKg({
-    materialId,
-    width,
-    length,
-    thickness,
-    quantity,
-  });
-
-  const appliedMaterialCost = isCustom ? 0 : materialCost;
-  const appliedOptionCost = isCustom || hasConsultOption ? 0 : optionPrice;
-  const appliedDoorHingeCost = isCustom ? 0 : doorHingeCost;
-  const appliedProcessingServiceCost =
-    (isCustom || hasConsultProcessingService ? 0 : processingCost) + appliedDoorHingeCost;
-  const appliedProcessingCost = appliedProcessingServiceCost + appliedOptionCost;
-  const subtotal = appliedMaterialCost + appliedProcessingCost;
-  const vat = 0;
-  const total = Math.round(subtotal);
-  const hasConsultItems = Boolean(isCustom || hasConsultOption || hasConsultProcessingService);
-
-  return {
-    areaM2,
-    materialCost: appliedMaterialCost,
-    processingCost: appliedProcessingCost,
-    optionCost: appliedOptionCost,
-    processingServiceCost: appliedProcessingServiceCost,
-    serviceCost: appliedProcessingServiceCost,
-    doorHingeCost: appliedDoorHingeCost,
-    subtotal,
-    vat,
-    total,
-    weightKg,
-    isCustomPrice: isCustom,
-    hasConsultItems,
-    itemHasConsult: Boolean(isCustom),
-    optionHasConsult: Boolean(isCustom || hasConsultOption),
-    processingServiceHasConsult: Boolean(isCustom || hasConsultProcessingService),
-    serviceHasConsult: Boolean(isCustom || hasConsultProcessingService),
-    doorHingeConfig: cloneDoorHingeConfig(doorHingeConfig),
-    optionsLabel: formatOptionsLabel(options),
-    options,
-  };
-}
-
-function calcAddonDetail(price) {
-  const subtotal = price;
-  const vat = 0;
-  const total = subtotal;
-  return {
-    materialCost: price,
-    processingCost: 0,
-    subtotal,
-    vat,
-    total,
-    weightKg: 0,
-  };
-}
-
-// 7) 주문 전체 합계 계산
-function calcOrderSummary(items) {
-  const materialsTotal = items
-    .filter((i) => i.type !== "addon")
-    .reduce((s, i) => s + i.materialCost, 0);
-  const processingTotal = items.reduce((s, i) => s + i.processingCost, 0);
-  const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
-  const vat = 0;
-  const totalWeight = items.reduce((s, i) => s + i.weightKg, 0);
-  const grandTotal = subtotal;
-
-  return {
-    materialsTotal,
-    processingTotal,
-    subtotal,
-    vat,
-    totalWeight,
-    grandTotal,
-  };
-}
-
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -470,6 +304,19 @@ const PROCESSING_SERVICES = Object.entries(ALL_PROCESSING_SERVICES).reduce((acc,
   acc[id] = service;
   return acc;
 }, {});
+const {
+  formatDoorPriceTierLines,
+  calcItemDetail,
+  calcAddonDetail,
+  calcOrderSummary,
+} = createDoorPricingHelpers({
+  materials: MATERIALS,
+  priceTiersByCategory: DOOR_PRICE_TIERS_BY_CATEGORY,
+  processingServices: PROCESSING_SERVICES,
+  optionCatalog: OPTION_CATALOG,
+  hingePricePerHole: DOOR_HINGE_PRICE_PER_HOLE,
+  cloneDoorHingeConfig,
+});
 
 const state = {
   items: [], // {id, materialId, thickness, width, length, quantity, services, ...계산 결과}
@@ -1005,11 +852,6 @@ function getDoorHingeValidHoleCount(doorHingeConfig) {
     .length;
 }
 
-function calcDoorHingeCost({ quantity, doorHingeConfig }) {
-  const holeCount = getDoorHingeValidHoleCount(doorHingeConfig);
-  return holeCount * DOOR_HINGE_PRICE_PER_HOLE * quantity;
-}
-
 function formatDoorPanelSideLabel(doorHingeConfig = {}) {
   const config = doorHingeConfig && typeof doorHingeConfig === "object" ? doorHingeConfig : {};
   return config.side === "left" ? "우측문" : "좌측문";
@@ -1216,21 +1058,6 @@ function formatProcessingServiceList(services, serviceDetails = {}, opts = {}) {
     .map((id) => formatProcessingServiceDetail(id, serviceDetails[id], opts))
     .filter(Boolean)
     .join(", ");
-}
-
-function formatOptionsLabel(options = []) {
-  if (!options || options.length === 0) return "-";
-  return options
-    .map((id) => OPTION_CATALOG[id]?.name || id)
-    .join(", ");
-}
-
-function calcOptionsPrice(options = []) {
-  const { amount, hasConsult } = evaluateSelectionPricing({
-    selectedIds: options,
-    resolveById: (id) => OPTION_CATALOG[id],
-  });
-  return { optionPrice: amount, hasConsult };
 }
 
 function formatProcessingServiceSummaryText(serviceId, detail) {
