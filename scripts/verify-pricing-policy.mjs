@@ -11,6 +11,7 @@ import {
   SYSTEM_POST_BAR_HEIGHT_LIMITS,
 } from "../assets/js/data/system-data.js";
 import { createSystemPricingHelpers } from "../assets/js/system-pricing.js";
+import { createSystemOrderHelpers } from "../assets/js/system-order-helpers.js";
 import {
   buildConsultAwarePricing,
   CONSULT_DISPLAY_PRICE_LABEL,
@@ -197,6 +198,45 @@ function run() {
   }), {
     materialCost: null,
     processingCost: null,
+    total: null,
+    isCustomPrice: true,
+    displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
+  });
+
+  const systemOrderHelpers = createSystemOrderHelpers({
+    buildConsultAwarePricing,
+    buildOrderPayloadBase: ({ pageKey, customer, summary }) => ({
+      pageKey,
+      customer,
+      totals: summary,
+    }),
+    buildLayoutSpecLinesFromSnapshot: () => [],
+    formatColumnSize: () => "-",
+    buildCustomerEmailSectionLines: () => [],
+    formatFulfillmentLine: () => "",
+  });
+  const systemPayload = systemOrderHelpers.buildOrderPayload({
+    customer: {},
+    summary: {},
+    displayItems: [
+      {
+        id: "system-consult-line",
+        groupId: "group-1",
+        quantity: 1,
+        isCustomPrice: true,
+        materialCost: 1000,
+        processingCost: 2000,
+        componentCost: 3000,
+        furnitureCost: 4000,
+        total: 10000,
+      },
+    ],
+  });
+  assert.deepEqual(systemPayload.items[0].pricing, {
+    materialCost: null,
+    processingCost: null,
+    componentCost: null,
+    furnitureCost: null,
     total: null,
     isCustomPrice: true,
     displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,

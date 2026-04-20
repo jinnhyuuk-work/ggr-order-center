@@ -9,10 +9,40 @@ export function createSystemOrderHelpers({
   formatColumnSize,
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
+  buildConsultAwarePricing,
   formatFulfillmentLine,
 } = {}) {
   const sumNumericField = (items = [], field = "") =>
     (Array.isArray(items) ? items : []).reduce((sum, item) => sum + Number(item?.[field] || 0), 0);
+
+  const buildSystemPricingPayload = (item = {}) => {
+    const isCustomPrice = Boolean(item?.isCustomPrice);
+    const basePricing =
+      typeof buildConsultAwarePricing === "function"
+        ? buildConsultAwarePricing({
+            materialCost: item?.materialCost,
+            processingCost: item?.processingCost,
+            total: item?.total,
+            isCustomPrice,
+          })
+        : {
+            materialCost: isCustomPrice ? null : Number(item?.materialCost || 0),
+            processingCost: isCustomPrice ? null : Number(item?.processingCost || 0),
+            total: isCustomPrice ? null : Number(item?.total || 0),
+            isCustomPrice,
+            displayPriceLabel: isCustomPrice ? "상담안내" : null,
+          };
+
+    return {
+      materialCost: basePricing.materialCost,
+      processingCost: basePricing.processingCost,
+      componentCost: basePricing.isCustomPrice ? null : Number(item?.componentCost || 0),
+      furnitureCost: basePricing.isCustomPrice ? null : Number(item?.furnitureCost || 0),
+      total: basePricing.total,
+      isCustomPrice: basePricing.isCustomPrice,
+      displayPriceLabel: basePricing.displayPriceLabel,
+    };
+  };
 
   const buildSystemGroupedShelfBreakdown = (entries = []) => {
     const normalShelfMap = new Map();
@@ -493,15 +523,7 @@ export function createSystemOrderHelpers({
       groupId: String(item.groupId || ""),
       quantity: Number(item.quantity || 1),
       detailLines: buildSystemGroupDetailLines(item),
-      pricing: {
-        materialCost: item.isCustomPrice ? null : Number(item.materialCost || 0),
-        processingCost: item.isCustomPrice ? null : Number(item.processingCost || 0),
-        componentCost: item.isCustomPrice ? null : Number(item.componentCost || 0),
-        furnitureCost: item.isCustomPrice ? null : Number(item.furnitureCost || 0),
-        total: item.isCustomPrice ? null : Number(item.total || 0),
-        isCustomPrice: Boolean(item.isCustomPrice),
-        displayPriceLabel: item.isCustomPrice ? "상담안내" : null,
-      },
+      pricing: buildSystemPricingPayload(item),
     })),
     builderRows: builderRows.map((row) => ({
       id: String(row.id || ""),

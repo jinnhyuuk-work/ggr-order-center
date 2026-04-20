@@ -127,6 +127,7 @@ import {
   validateFulfillmentStepSelection,
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
+  buildConsultAwarePricing,
   resolveThreePhaseNextTransition,
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
@@ -336,6 +337,7 @@ const systemOrderHelpers = createSystemOrderHelpers({
   formatColumnSize,
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
+  buildConsultAwarePricing,
   formatFulfillmentLine,
 });
 const moduleFrontPreviewRuntimeHelpers = createModuleFrontPreviewRuntimeHelpers({
