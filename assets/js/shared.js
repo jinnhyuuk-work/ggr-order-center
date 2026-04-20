@@ -1974,6 +1974,7 @@ export function renderEstimateTable({
           data-id="${item.id}"
           value="${item.quantity}"
           min="1"
+          step="1"
         />
       </td>
       <td>
@@ -2019,9 +2020,33 @@ export function renderEstimateTable({
   });
 
   tbody.querySelectorAll(".qty-input").forEach((input) => {
+    const applyNormalizedQuantityToInput = (target) => {
+      const rawValue = String(target?.value ?? "").trim();
+      if (!rawValue) return null;
+      const normalized = normalizeQuantity(rawValue, 1);
+      if (String(normalized) !== rawValue) {
+        target.value = String(normalized);
+      }
+      return normalized;
+    };
+
+    input.addEventListener("input", (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      const rawValue = String(target.value ?? "").trim();
+      if (!rawValue) return;
+      const numeric = Number(rawValue);
+      if (!Number.isFinite(numeric)) return;
+      if (!Number.isInteger(numeric) || numeric <= 0) {
+        applyNormalizedQuantityToInput(target);
+      }
+    });
+
     input.addEventListener("change", (e) => {
-      const id = e.target.dataset.id;
-      const value = Math.max(1, Number(e.target.value) || 1);
+      const target = e.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      const id = target.dataset.id;
+      const value = applyNormalizedQuantityToInput(target) ?? normalizeQuantity(target.value, 1);
       preserveWindowScroll(() => {
         onQuantityChange?.(id, value);
       });
