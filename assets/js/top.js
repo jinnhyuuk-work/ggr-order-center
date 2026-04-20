@@ -23,7 +23,6 @@ import {
   buildConsultAwarePricing,
   CONSULT_EXCLUDED_SUFFIX,
   getPricingDisplayMeta,
-  evaluateSelectionPricing,
   hasConsultLineItem,
   buildStandardPriceBreakdownRows,
   renderItemPriceDisplay,
@@ -39,6 +38,7 @@ import {
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
 } from "./shared.js";
+import { createTopPricingHelpers } from "./top-pricing.js";
 import {
   TOP_PROCESSING_SERVICES,
   TOP_TYPES,
@@ -80,43 +80,6 @@ function getDefaultProcessingServiceDetail(serviceId) {
   if (!srv) return { note: "" };
   if (srv.hasDetail()) return { holes: [], note: "" };
   return cloneProcessingServiceDetails(srv.defaultDetail ? srv.defaultDetail() : { note: "" });
-}
-
-function isBackShelfConsult({ serviceId, detail, width }) {
-  if (serviceId !== TOP_BACK_SHELF_SERVICE_ID) return false;
-  const height = getBackHeightFromServiceDetail(detail);
-  if (height <= 0) return false;
-  return height > getBackHeightLimit(width);
-}
-
-function calcProcessingServiceCost({ services = [], serviceDetails = {}, quantity = 1, width = 0 }) {
-  const { amount, hasConsult } = evaluateSelectionPricing({
-    selectedIds: services,
-    resolveById: (id) => PROCESSING_SERVICES[id],
-    quantity,
-    availabilityContext: ({ id }) => ({
-      serviceId: id,
-      detail: serviceDetails?.[id],
-      width,
-    }),
-    resolveAvailability: ({ rule, context }) => {
-      if (rule?.ruleKey === "top_back_height_limit") {
-        return isBackShelfConsult({
-          serviceId: context?.serviceId,
-          detail: context?.detail,
-          width: context?.width,
-        })
-          ? "consult"
-          : "ok";
-      }
-      return rule?.defaultStatus || "ok";
-    },
-    getAmount: ({ id, item, quantity: qty }) => {
-      const detail = serviceDetails?.[id];
-      return item.calcProcessingCost(qty, detail);
-    },
-  });
-  return { processingCost: amount, hasConsult };
 }
 
 function formatProcessingServiceDetail(serviceId, detail, { includeNote = false } = {}) {
@@ -327,12 +290,9 @@ let stickyOffsetTimer = null;
 let previewResizeTimer = null;
 const DEFAULT_TOP_THICKNESSES = [12, 24, 30, 40, 50];
 const TOP_CUSTOM_LENGTH_MAX = TOP_DIMENSION_LIMITS.maxLength;
-const TOP_STANDARD_THICKNESS = TOP_PRICING_POLICY.standardThicknessMm;
 const TOP_STANDARD_WIDTH_MAX = TOP_PRICING_POLICY.standardWidthMaxMm;
 const TOP_BACK_HEIGHT_MAX = TOP_PRICING_POLICY.backShelfHeightMaxMm;
 const TOP_BACK_SHELF_SERVICE_ID = "top_back_shelf";
-const TOP_ROUNDING_UNIT = TOP_PRICING_POLICY.roundingUnitWon;
-const TOP_UNIT_PRICE_BY_CATEGORY = TOP_PRICING_POLICY.unitPriceByCategory;
 const TOP_CATEGORY_DESC = TOP_PRICING_POLICY.categoryDescriptionByCategory;
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
@@ -688,12 +648,6 @@ function formatPrice(n) {
   return Number(n || 0).toLocaleString();
 }
 
-function ceilToUnit(value, unit = TOP_ROUNDING_UNIT) {
-  const safeValue = Number(value || 0);
-  if (safeValue <= 0) return 0;
-  return Math.ceil(safeValue / unit) * unit;
-}
-
 function needsSecondLength(shape) {
   return shape === "l" || shape === "rl" || shape === "u";
 }
@@ -747,37 +701,9 @@ function validateBackHeightValue(backHeight) {
   return { ok: true, height, message: "" };
 }
 
-function getBackHeightLimit(width) {
-  return Math.max(0, TOP_STANDARD_WIDTH_MAX - Number(width || 0));
-}
-
-function getTopUnitPrice(type) {
-  if (!type) return 0;
-  return TOP_UNIT_PRICE_BY_CATEGORY[type.category] || 0;
-}
-
-function getTopStandardPriceLine(type) {
-  const unitPrice = getTopUnitPrice(type);
-  return unitPrice ? `깊이 ${TOP_STANDARD_WIDTH_MAX}mm 이하 m당 ${formatPrice(unitPrice)}원` : "가격 정보 준비중";
-}
-
 function getTopAvailableThicknessText(type) {
   const thicknesses = type?.availableThickness?.length ? type.availableThickness : DEFAULT_TOP_THICKNESSES;
   return thicknesses.map((t) => `${t}T`).join("/");
-}
-
-function getChargeableLengthMm({ shape, width, length, length2 = 0, length3 = 0 }) {
-  const safeWidth = Number(width || 0);
-  const safeLength = Number(length || 0);
-  const safeLength2 = Number(length2 || 0);
-  const safeLength3 = Number(length3 || 0);
-  if (shape === "u") {
-    return Math.max(0, safeLength + safeLength2 + safeLength3 - safeWidth * 2);
-  }
-  if (shape === "l" || shape === "rl") {
-    return Math.max(0, safeLength + safeLength2 - safeWidth);
-  }
-  return Math.max(0, safeLength);
 }
 
 function descriptionHTML(desc) {
@@ -880,128 +806,22 @@ function validateTopInputs({
   return null;
 }
 
-function isTopCustomSize({ type, shape, thickness, width, length, length2 = 0, length3 = 0 }) {
-  if (Number(thickness) !== TOP_STANDARD_THICKNESS) return true;
-  if (Number(width) > TOP_STANDARD_WIDTH_MAX) return true;
-  if (length > TOP_CUSTOM_LENGTH_MAX) return true;
-  if (needsSecondLength(shape) && length2 > TOP_CUSTOM_LENGTH_MAX) return true;
-  if (needsThirdLength(shape) && length3 > TOP_CUSTOM_LENGTH_MAX) return true;
-  if (!getTopUnitPrice(type)) return true;
-  return false;
-}
-
-function calcTopDetail(input) {
-  const {
-    typeId,
-    shape,
-    width,
-    length,
-    length2,
-    length3,
-    thickness,
-    options,
-    backHeight = 0,
-    useBackHeight = false,
-    services = [],
-    serviceDetails = {},
-  } = input;
-  const type = TOP_TYPES.find((t) => t.id === typeId);
-  const err = validateTopInputs(input);
-  if (!type || err) return { error: err || "필수 정보를 입력해주세요." };
-
-  const isCustomPrice = isTopCustomSize({
-    type,
-    shape,
-    thickness,
-    width,
-    length,
-    length2,
-    length3,
-  });
-
-  const { amount: optionPrice, hasConsult: hasConsultOption } = evaluateSelectionPricing({
-    selectedIds: options,
-    resolveById: (id) => OPTION_CATALOG[id],
-  });
-  const {
-    processingCost: processingServiceCost,
-    hasConsult: hasConsultProcessingService,
-  } = calcProcessingServiceCost({
-    services,
-    serviceDetails,
-    quantity: 1,
-    width,
-  });
-  const itemCost = ceilToUnit((getChargeableLengthMm({ shape, width, length, length2, length3 }) / 1000) * getTopUnitPrice(type));
-  const shapeFee = Number(TOP_PRICING_POLICY.shapeAdditionalFeeByShape?.[shape] || 0);
-  const processingServiceCostRaw = shapeFee + processingServiceCost;
-  const optionHasConsult = Boolean(isCustomPrice || hasConsultOption);
-  const processingServiceHasConsult = Boolean(isCustomPrice || hasConsultProcessingService);
-  const appliedOptionCost = optionHasConsult ? 0 : optionPrice;
-  const appliedProcessingServiceCost = processingServiceHasConsult ? 0 : processingServiceCostRaw;
-  const appliedProcessingCost = appliedOptionCost + appliedProcessingServiceCost;
-  const materialCost = isCustomPrice ? 0 : itemCost + appliedProcessingCost;
-  const subtotal = materialCost;
-  const vat = 0;
-  const total = isCustomPrice ? 0 : ceilToUnit(subtotal);
-  const hasConsultItems = Boolean(isCustomPrice || optionHasConsult || processingServiceHasConsult);
-
-  const displaySize = (() => {
-    if (shape === "u") {
-      return `${width}×${length} / ${width}×${length2} / ${width}×${length3}×${thickness}mm${
-        useBackHeight ? ` · 뒷턱 ${backHeight}mm` : ""
-      }`;
-    }
-    if (shape === "l" || shape === "rl") {
-      return `${width}×${length} / ${width}×${length2}×${thickness}mm${
-        useBackHeight ? ` · 뒷턱 ${backHeight}mm` : ""
-      }`;
-    }
-    return `${width}×${length}×${thickness}mm${useBackHeight ? ` · 뒷턱 ${backHeight}mm` : ""}`;
-  })();
-
-  const optionLabels = options
-    .map((id) => OPTION_CATALOG[id]?.name || id)
-    .filter(Boolean);
-
-  return {
-    materialCost,
-    subtotal,
-    vat,
-    total,
-    displaySize,
-    optionsLabel: optionLabels.length === 0 ? "-" : optionLabels.join(", "),
-    servicesLabel: formatProcessingServiceList(services, serviceDetails, { includeNote: true }),
-    serviceDetails,
-    services,
-    isCustomPrice,
-    hasConsultItems,
-    itemCost: isCustomPrice ? 0 : itemCost,
-    optionCost: appliedOptionCost,
-    processingServiceCost: appliedProcessingServiceCost,
-    serviceCost: appliedProcessingServiceCost,
-    itemHasConsult: Boolean(isCustomPrice),
-    optionHasConsult,
-    processingServiceHasConsult,
-    serviceHasConsult: processingServiceHasConsult,
-    useBackHeight,
-    backHeight,
-    processingCost: appliedProcessingCost,
-  };
-}
-
-function calcAddonDetail(price) {
-  const subtotal = price;
-  const vat = 0;
-  const total = subtotal;
-  return {
-    materialCost: price,
-    processingCost: 0,
-    subtotal,
-    vat,
-    total,
-  };
-}
+const {
+  getBackHeightLimit,
+  getTopStandardPriceLine,
+  calcTopDetail,
+  calcAddonDetail,
+} = createTopPricingHelpers({
+  topTypes: TOP_TYPES,
+  pricingPolicy: TOP_PRICING_POLICY,
+  customLengthMax: TOP_CUSTOM_LENGTH_MAX,
+  processingServices: PROCESSING_SERVICES,
+  optionCatalog: OPTION_CATALOG,
+  backShelfServiceId: TOP_BACK_SHELF_SERVICE_ID,
+  validateTopInputs,
+  formatProcessingServiceList,
+  getBackHeightFromServiceDetail,
+});
 
 function updateSelectedTopTypeCard() {
   const type = TOP_TYPES.find((t) => t.id === selectedTopType);

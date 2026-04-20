@@ -6,7 +6,13 @@ import {
   MATERIALS as BOARD_MATERIALS,
 } from "../assets/js/data/board-data.js";
 import { createBoardPricingHelpers } from "../assets/js/board-pricing.js";
-import { TOP_PRICING_POLICY } from "../assets/js/data/top-data.js";
+import {
+  TOP_DIMENSION_LIMITS,
+  TOP_OPTIONS,
+  TOP_PRICING_POLICY,
+  TOP_TYPES,
+} from "../assets/js/data/top-data.js";
+import { createTopPricingHelpers } from "../assets/js/top-pricing.js";
 import {
   DOOR_MATERIALS,
   DOOR_OPTIONS,
@@ -152,6 +158,36 @@ function run() {
     TOP_PRICING_POLICY.categoryDescriptionByCategory["인조대리석"],
     `${TOP_PRICING_POLICY.standardThicknessMm}T 기준 · 깊이 ${TOP_PRICING_POLICY.standardWidthMaxMm}mm 이하 m당 147,000원`
   );
+  const artificialTopType = TOP_TYPES.find((type) => type.category === "인조대리석");
+  const topPricing = createTopPricingHelpers({
+    topTypes: TOP_TYPES,
+    pricingPolicy: TOP_PRICING_POLICY,
+    customLengthMax: TOP_DIMENSION_LIMITS.maxLength,
+    optionCatalog: TOP_OPTIONS.reduce((acc, option) => {
+      if (option?.id) acc[option.id] = option;
+      return acc;
+    }, {}),
+  });
+  const topDetail = topPricing.calcTopDetail({
+    typeId: artificialTopType.id,
+    shape: "l",
+    width: 600,
+    length: 1200,
+    length2: 1000,
+    thickness: 12,
+    options: [],
+  });
+  assert.equal(topDetail.itemCost, 235200);
+  assert.equal(topDetail.processingServiceCost, 30000);
+  assert.equal(topDetail.total, 265200);
+  assert.equal(topPricing.calcTopDetail({
+    typeId: artificialTopType.id,
+    shape: "i",
+    width: 600,
+    length: 1000,
+    thickness: 24,
+    options: [],
+  }).isCustomPrice, true);
 
   assert.deepEqual(getDoorTierPrice("LX PET", 300, 800), {
     price: 35000,
