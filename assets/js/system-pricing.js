@@ -32,7 +32,7 @@ function normalizeMm(value) {
 }
 
 function roundWon(value) {
-  return roundAmountByPolicy(value, { method: "ceil", unit: 1 });
+  return roundAmountByPolicy(value, { unit: 1 });
 }
 
 function sumBy(items, key) {
@@ -290,9 +290,7 @@ export function createSystemPricingHelpers({
     const totals = calculatePricingTotals({
       materialCost,
       processingCost,
-      roundingMethod: "ceil",
       roundingUnit: 1,
-      vatRate: 0,
     });
     const weightKg = shelfDetail.weightKg;
     const consultState = buildConsultState({
@@ -306,8 +304,6 @@ export function createSystemPricingHelpers({
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: totals.total,
-      vatRate: totals.vatRate,
-      roundingMethod: totals.roundingMethod,
       roundingUnit: totals.roundingUnit,
       weightKg,
       ...consultState,
@@ -382,9 +378,7 @@ export function createSystemPricingHelpers({
     const totals = calculatePricingTotals({
       materialCost,
       processingCost,
-      roundingMethod: "ceil",
       roundingUnit: 1,
-      vatRate: 0,
     });
 
     const calcPostBarWeightKg = (heightCountMap) =>
@@ -414,8 +408,6 @@ export function createSystemPricingHelpers({
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: totals.total,
-      vatRate: totals.vatRate,
-      roundingMethod: totals.roundingMethod,
       roundingUnit: totals.roundingUnit,
       weightKg,
       ...consultState,

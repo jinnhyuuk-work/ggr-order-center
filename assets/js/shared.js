@@ -537,7 +537,6 @@ export function calculatePricingTotals({
   const safeMaterialCost = Math.max(0, Number(materialCost || 0));
   const safeProcessingCost = Math.max(0, Number(processingCost || 0));
   const subtotal = roundAmountByPolicy(safeMaterialCost + safeProcessingCost, {
-    method: "ceil",
     unit: roundingUnit,
   });
   // Price policy: all prices are VAT-included; no additional VAT calculation.
@@ -550,8 +549,6 @@ export function calculatePricingTotals({
     subtotal,
     vat,
     total,
-    vatRate: normalizedVatRate,
-    roundingMethod: "ceil",
     roundingUnit: Math.max(1, Number(roundingUnit) || 1),
   };
 }
@@ -567,9 +564,7 @@ export function buildAddonDetail(subtotalOrUnitPrice = 0, {
   const totals = calculatePricingTotals({
     materialCost: computedMaterialCost,
     processingCost: 0,
-    roundingMethod: "ceil",
     roundingUnit,
-    vatRate: 0,
   });
   return {
     materialCost: totals.materialCost,
@@ -577,8 +572,6 @@ export function buildAddonDetail(subtotalOrUnitPrice = 0, {
     subtotal: totals.subtotal,
     vat: totals.vat,
     total: totals.total,
-    vatRate: totals.vatRate,
-    roundingMethod: totals.roundingMethod,
     roundingUnit: totals.roundingUnit,
     weightKg: Number(weightKg || 0),
   };

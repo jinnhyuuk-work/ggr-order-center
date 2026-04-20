@@ -121,9 +121,7 @@ export function createBoardPricingHelpers({
     const totals = calculatePricingTotals({
       materialCost: appliedMaterialCost,
       processingCost: appliedProcessingCost,
-      roundingMethod: "ceil",
       roundingUnit: 1,
-      vatRate: 0,
     });
     const consultState = buildConsultState({
       isCustomPrice: isCustom,
@@ -142,8 +140,6 @@ export function createBoardPricingHelpers({
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: totals.total,
-      vatRate: totals.vatRate,
-      roundingMethod: totals.roundingMethod,
       roundingUnit: totals.roundingUnit,
       weightKg,
       ...consultState,

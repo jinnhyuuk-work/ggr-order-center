@@ -92,7 +92,7 @@ export function createTopPricingHelpers({
   }
 
   function ceilToUnit(value, unit = roundingUnitWon) {
-    return roundAmountByPolicy(value, { method: "ceil", unit });
+    return roundAmountByPolicy(value, { unit });
   }
 
   function isTopCustomSize({ type, shape, thickness, width, length, length2 = 0, length3 = 0 }) {
@@ -165,9 +165,7 @@ export function createTopPricingHelpers({
     const totals = calculatePricingTotals({
       materialCost,
       processingCost: 0,
-      roundingMethod: "ceil",
       roundingUnit: roundingUnitWon,
-      vatRate: 0,
     });
     const consultState = buildConsultState({
       isCustomPrice: isCustomPrice,
@@ -212,8 +210,6 @@ export function createTopPricingHelpers({
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: isCustomPrice ? 0 : totals.total,
-      vatRate: totals.vatRate,
-      roundingMethod: totals.roundingMethod,
       roundingUnit: totals.roundingUnit,
     };
   }

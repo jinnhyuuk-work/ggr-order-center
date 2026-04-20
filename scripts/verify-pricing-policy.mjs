@@ -90,8 +90,6 @@ function run() {
     subtotal: 47000,
     vat: 0,
     total: 47000,
-    vatRate: 0,
-    roundingMethod: "ceil",
     roundingUnit: 1,
     weightKg: 12.96,
     consult: {
