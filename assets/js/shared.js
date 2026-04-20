@@ -571,27 +571,46 @@ function toFiniteNumber(value, fallback = 0) {
   return Number.isFinite(num) ? num : fallback;
 }
 
-export function getPriceRule(config = {}) {
+export function normalizePricingRule(config = {}) {
   if (!config || typeof config !== "object") return null;
-  if (typeof config.type === "string" && Object.prototype.hasOwnProperty.call(config, "value")) {
-    return config;
-  }
-  if (config.pricingRule && typeof config.pricingRule === "object") return config.pricingRule;
-  if (config.priceRule && typeof config.priceRule === "object") return config.priceRule;
+  const rawRule =
+    (config.pricingRule && typeof config.pricingRule === "object" && config.pricingRule) ||
+    (config.priceRule && typeof config.priceRule === "object" && config.priceRule) ||
+    (Number.isFinite(Number(config.price)) ? { type: "fixed", value: Number(config.price), unit: "item" } : null) ||
+    (Number.isFinite(Number(config.pricePerHole))
+      ? { type: "perHole", value: Number(config.pricePerHole), unit: "hole" }
+      : null) ||
+    (Number.isFinite(Number(config.pricePerMeter))
+      ? { type: "perMeter", value: Number(config.pricePerMeter), unit: "meter" }
+      : null) ||
+    (Number.isFinite(Number(config.pricePerCorner))
+      ? { type: "perCorner", value: Number(config.pricePerCorner), unit: "corner" }
+      : null);
+  if (!rawRule) return null;
 
-  if (Number.isFinite(Number(config.price))) {
-    return { type: "fixed", value: Number(config.price), unit: "item" };
+  const type = normalizeRuleToken(rawRule.type || rawRule.kind || "");
+  const unit = normalizeRuleToken(rawRule.unit || "");
+  const value = toFiniteNumber(rawRule.value ?? rawRule.unitPrice ?? rawRule.price ?? rawRule.amount, NaN);
+  const normalized = {
+    ...rawRule,
+    type: type || String(rawRule.type || "").trim() || "fixed",
+    unit: unit || String(rawRule.unit || "").trim() || "item",
+    value: Number.isFinite(value) ? value : 0,
+  };
+  if (rawRule.priceByTierKey && typeof rawRule.priceByTierKey === "object") {
+    normalized.priceByTierKey = Object.freeze({ ...rawRule.priceByTierKey });
   }
-  if (Number.isFinite(Number(config.pricePerHole))) {
-    return { type: "perHole", value: Number(config.pricePerHole), unit: "hole" };
+  if (rawRule.priceByCategory && typeof rawRule.priceByCategory === "object") {
+    normalized.priceByCategory = Object.freeze({ ...rawRule.priceByCategory });
   }
-  if (Number.isFinite(Number(config.pricePerMeter))) {
-    return { type: "perMeter", value: Number(config.pricePerMeter), unit: "meter" };
+  if (Array.isArray(rawRule.tiers)) {
+    normalized.tiers = Object.freeze(rawRule.tiers.map((tier) => Object.freeze({ ...tier })));
   }
-  if (Number.isFinite(Number(config.pricePerCorner))) {
-    return { type: "perCorner", value: Number(config.pricePerCorner), unit: "corner" };
-  }
-  return null;
+  return normalized;
+}
+
+export function getPriceRule(config = {}) {
+  return normalizePricingRule(config);
 }
 
 function getDefaultPriceRuleDisplayText(rule) {
@@ -607,9 +626,22 @@ function getDefaultPriceRuleDisplayText(rule) {
 
   if (typeToken === "fixed" || unitToken === "item") return `${formatPrice(value)}원`;
   if (typeToken === "perhole" || unitToken === "hole") return `개당 ${formatPrice(value)}원`;
+  if (typeToken === "area" || unitToken === "m2") return `㎡당 ${formatPrice(value)}원`;
   if (typeToken === "permeter" || unitToken === "meter") return `m당 ${formatPrice(value)}원`;
   if (typeToken === "percorner" || unitToken === "corner") return `모서리당 ${formatPrice(value)}원`;
+  if (typeToken === "tieredbywidth" || typeToken === "tieredbyheight" || typeToken === "tieredbysize") {
+    const tiers = Array.isArray(rule.tiers) ? rule.tiers : [];
+    const firstTier = tiers.find((tier) => Number(tier?.price || tier?.unitPrice || tier?.value || 0) > 0);
+    const firstPrice = Number(firstTier?.price || firstTier?.unitPrice || firstTier?.value || 0);
+    if (firstPrice > 0) return `티어별 ${formatPrice(firstPrice)}원부터`;
+  }
   return `${formatPrice(value)}원`;
+}
+
+export function formatPricingRuleDisplayText(config = {}) {
+  const rule = getPriceRule(config);
+  if (!rule) return "";
+  return getDefaultPriceRuleDisplayText(rule);
 }
 
 function normalizeAvailabilityResolverResult(result, fallbackStatus = "ok") {
@@ -708,6 +740,18 @@ export function resolveAmountFromPriceRule({
     0,
     Number(metrics?.areaM2 || detail?.areaM2 || detail?.area || 0)
   );
+  const widthMm = Math.max(
+    0,
+    Number(metrics?.widthMm || detail?.widthMm || detail?.width || config?.width || 0)
+  );
+  const lengthMm = Math.max(
+    0,
+    Number(metrics?.lengthMm || detail?.lengthMm || detail?.length || config?.length || 0)
+  );
+  const heightMm = Math.max(
+    0,
+    Number(metrics?.heightMm || detail?.heightMm || detail?.height || config?.height || 0)
+  );
   const cornerCount = Math.max(0, Number(metrics?.cornerCount || detail?.corners || 1));
 
   if (typeToken === "consult") return 0;
@@ -719,6 +763,26 @@ export function resolveAmountFromPriceRule({
   }
   if (typeToken === "permeter" || unitToken === "meter") return value * meterCount * qty;
   if (typeToken === "percorner" || unitToken === "corner") return value * cornerCount * qty;
+  if (typeToken === "tieredbywidth" || typeToken === "tieredbyheight" || typeToken === "tieredbysize") {
+    const tiers = Array.isArray(rule.tiers) ? rule.tiers : [];
+    if (!tiers.length) return 0;
+    const tier = tiers.find((candidate) => {
+      if (!candidate || typeof candidate !== "object") return false;
+      if (typeToken === "tieredbywidth") {
+        const maxWidth = Number(candidate.maxWidthMm || candidate.maxWidth || 0);
+        return widthMm > 0 && maxWidth > 0 && widthMm <= maxWidth;
+      }
+      if (typeToken === "tieredbyheight") {
+        const maxHeight = Number(candidate.maxHeightMm || candidate.maxHeight || 0);
+        return heightMm > 0 && maxHeight > 0 && heightMm <= maxHeight;
+      }
+      const maxWidth = Number(candidate.maxWidthMm || candidate.maxWidth || 0);
+      const maxLength = Number(candidate.maxLengthMm || candidate.maxLength || 0);
+      return widthMm > 0 && lengthMm > 0 && maxWidth > 0 && maxLength > 0 && widthMm <= maxWidth && lengthMm <= maxLength;
+    });
+    const tierValue = Number(tier?.price || tier?.unitPrice || tier?.value || 0);
+    return Number.isFinite(tierValue) && tierValue > 0 ? tierValue * qty : 0;
+  }
   return value * qty;
 }
 

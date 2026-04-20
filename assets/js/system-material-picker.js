@@ -42,6 +42,9 @@ export function createSystemMaterialPickerHelpers(deps = {}) {
     const tierKey = String(tier.key || "");
     const materialId = String(material.id || "");
     const category = String(material.category || "");
+    const pricingRule = material.pricingRule && typeof material.pricingRule === "object" ? material.pricingRule : null;
+    const byPricingRule = pricingRule?.priceByTierKey ? Number(pricingRule.priceByTierKey[tierKey] || 0) : 0;
+    if (Number.isFinite(byPricingRule) && byPricingRule > 0) return Math.round(byPricingRule);
     const materialPriceByTierKey =
       material.priceByTierKey && typeof material.priceByTierKey === "object" ? material.priceByTierKey : null;
     const priceByMaterialId =

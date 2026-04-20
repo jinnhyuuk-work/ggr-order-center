@@ -8,6 +8,7 @@ export class BaseServiceModel {
     this.pricePerHole = cfg.pricePerHole;
     this.pricePerMeter = cfg.pricePerMeter;
     this.pricePerCorner = cfg.pricePerCorner;
+    this.pricingRule = cfg.pricingRule || cfg.priceRule;
     this.priceRule = cfg.priceRule;
     this.availabilityRule = cfg.availabilityRule;
     this.pricingMode = cfg.pricingMode;

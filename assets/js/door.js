@@ -36,6 +36,7 @@ import {
   buildConsultAwarePricing,
   CONSULT_EXCLUDED_SUFFIX,
   getPricingDisplayMeta,
+  formatPricingRuleDisplayText,
   hasConsultLineItem,
   renderItemPriceDisplay,
   renderItemPriceNotice,
@@ -1086,13 +1087,7 @@ function renderProcessingServiceCards() {
   Object.values(PROCESSING_SERVICES).forEach((srv) => {
     const label = document.createElement("label");
     label.className = "card-base processing-service-card";
-    const fallbackPriceText = srv.pricePerMeter
-      ? `m당 ${srv.pricePerMeter.toLocaleString()}원`
-      : srv.pricePerCorner
-      ? `모서리당 ${srv.pricePerCorner.toLocaleString()}원`
-      : srv.pricePerHole
-      ? `개당 ${srv.pricePerHole.toLocaleString()}원`
-      : srv.displayPriceText || "";
+    const fallbackPriceText = formatPricingRuleDisplayText(srv) || srv.displayPriceText || "";
     const { text: priceText, isConsult: isConsultService } = getPricingDisplayMeta({
       config: srv,
       fallbackText: fallbackPriceText,
