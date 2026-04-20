@@ -39,38 +39,6 @@ import {
   SYSTEM_FULFILLMENT_POLICY,
 } from "../assets/js/data/fulfillment-policy-data.js";
 
-function ceilToUnit(value, unit = 1) {
-  if (!value) return 0;
-  return Math.ceil(value / unit) * unit;
-}
-
-function calcBoardMaterialCost({ materialId, width, length, quantity }) {
-  const material = BOARD_MATERIALS[materialId];
-  return (width / 1000) * (length / 1000) * Number(material.pricePerM2 || 0) * quantity;
-}
-
-function getDoorTierPrice(category, width, length) {
-  const tier = DOOR_PRICE_TIERS_BY_CATEGORY[category].find(
-    (candidate) => width <= candidate.maxWidth && length <= candidate.maxLength
-  );
-  return tier ? { price: tier.price, isConsult: false } : { price: 0, isConsult: true };
-}
-
-function getTopChargeableLengthMm({ shape, width, length, length2 = 0, length3 = 0 }) {
-  if (shape === "u") return Math.max(0, length + length2 + length3 - width * 2);
-  if (shape === "l" || shape === "rl") return Math.max(0, length + length2 - width);
-  return Math.max(0, length);
-}
-
-function calcTopBaseCost({ category, shape, width, length, length2 = 0, length3 = 0 }) {
-  const chargeableLengthMm = getTopChargeableLengthMm({ shape, width, length, length2, length3 });
-  const unitPrice = TOP_PRICING_POLICY.unitPriceByCategory[category] || 0;
-  return ceilToUnit(
-    (chargeableLengthMm / 1000) * unitPrice,
-    TOP_PRICING_POLICY.roundingUnitWon
-  );
-}
-
 function calcTopShapeAdditionalFee(shape) {
   return Number(TOP_PRICING_POLICY.shapeAdditionalFeeByShape?.[shape] || 0);
 }
@@ -84,18 +52,20 @@ function run() {
     }, {}),
     dimensionLimits: BOARD_DIMENSION_LIMITS,
   });
-  assert.equal(calcBoardMaterialCost({
+  const boardMaterialDetail = boardPricing.calcMaterialCost({
     materialId: "lpm_basic",
     width: 1000,
     length: 1000,
     quantity: 1,
-  }), 47000);
-  assert.equal(calcBoardMaterialCost({
+  });
+  assert.equal(boardMaterialDetail.materialCost, 47000);
+  const boardMaterialDetailPp = boardPricing.calcMaterialCost({
     materialId: "pp_twill",
     width: 1000,
     length: 1000,
     quantity: 1,
-  }), 45000);
+  });
+  assert.equal(boardMaterialDetailPp.materialCost, 45000);
   assert.equal(boardPricing.getPricePerM2(BOARD_MATERIALS.lpm_basic, 18), 47000);
   const boardDetail = boardPricing.calcItemDetail({
     materialId: "lpm_basic",
@@ -135,19 +105,6 @@ function run() {
     quantity: 1,
   }).isCustomPrice, true);
 
-  assert.equal(calcTopBaseCost({
-    category: "인조대리석",
-    shape: "i",
-    width: 600,
-    length: 1000,
-  }), 147000);
-  assert.equal(calcTopBaseCost({
-    category: "하이막스",
-    shape: "l",
-    width: 600,
-    length: 1200,
-    length2: 1000,
-  }), 336000);
   assert.equal(TOP_PRICING_POLICY.standardThicknessMm, 12);
   assert.equal(TOP_PRICING_POLICY.standardWidthMaxMm, 760);
   assert.equal(TOP_PRICING_POLICY.shapeAdditionalFeeByShape.l, 30000);
@@ -159,6 +116,7 @@ function run() {
     `${TOP_PRICING_POLICY.standardThicknessMm}T 기준 · 깊이 ${TOP_PRICING_POLICY.standardWidthMaxMm}mm 이하 m당 147,000원`
   );
   const artificialTopType = TOP_TYPES.find((type) => type.category === "인조대리석");
+  const himacsTopType = TOP_TYPES.find((type) => type.category === "하이막스");
   const topPricing = createTopPricingHelpers({
     topTypes: TOP_TYPES,
     pricingPolicy: TOP_PRICING_POLICY,
@@ -168,6 +126,51 @@ function run() {
       return acc;
     }, {}),
   });
+  assert.equal(topPricing.calcTopDetail({
+    typeId: artificialTopType.id,
+    shape: "i",
+    width: 600,
+    length: 1000,
+    thickness: 12,
+  }).itemCost, 147000);
+  assert.equal(topPricing.calcTopDetail({
+    typeId: himacsTopType.id,
+    shape: "l",
+    width: 600,
+    length: 1200,
+    length2: 1000,
+    thickness: 12,
+  }).itemCost, 336000);
+  assert.equal(topPricing.getChargeableLengthMm({
+    shape: "i",
+    width: 600,
+    length: 1000,
+  }), 1000);
+  assert.equal(topPricing.getChargeableLengthMm({
+    shape: "l",
+    width: 600,
+    length: 1200,
+    length2: 1000,
+  }), 1600);
+  assert.equal(topPricing.getChargeableLengthMm({
+    shape: "u",
+    width: 600,
+    length: 1200,
+    length2: 1000,
+    length3: 800,
+  }), 1800);
+  assert.equal(
+    topPricing.getTopStandardPriceLine({ category: "인조대리석" }, (value) => value.toLocaleString()),
+    "깊이 760mm 이하 m당 147,000원"
+  );
+  assert.equal(topPricing.isTopCustomSize({
+    type: artificialTopType,
+    shape: "i",
+    thickness: 24,
+    width: 600,
+    length: 1000,
+  }), true);
+
   const topDetail = topPricing.calcTopDetail({
     typeId: artificialTopType.id,
     shape: "l",
@@ -180,29 +183,16 @@ function run() {
   assert.equal(topDetail.itemCost, 235200);
   assert.equal(topDetail.processingServiceCost, 30000);
   assert.equal(topDetail.total, 265200);
-  assert.equal(topPricing.calcTopDetail({
+  const topConsultDetail = topPricing.calcTopDetail({
     typeId: artificialTopType.id,
     shape: "i",
     width: 600,
     length: 1000,
     thickness: 24,
     options: [],
-  }).isCustomPrice, true);
+  });
+  assert.equal(topConsultDetail.isCustomPrice, true);
 
-  assert.deepEqual(getDoorTierPrice("LX PET", 300, 800), {
-    price: 35000,
-    isConsult: false,
-  });
-  assert.deepEqual(getDoorTierPrice("LX PET", 601, 800), {
-    price: 0,
-    isConsult: true,
-  });
-  assert.deepEqual(getDoorTierPrice("LX PET", 600, 801), {
-    price: 0,
-    isConsult: true,
-  });
-  assert.equal(DOOR_PRICING_POLICY.hingePricePerHole, 1500);
-  const lxPetMaterial = Object.values(DOOR_MATERIALS).find((material) => material.category === "LX PET");
   const doorPricing = createDoorPricingHelpers({
     materials: DOOR_MATERIALS,
     priceTiersByCategory: DOOR_PRICE_TIERS_BY_CATEGORY,
@@ -213,6 +203,29 @@ function run() {
     hingePricePerHole: DOOR_PRICING_POLICY.hingePricePerHole,
     cloneDoorHingeConfig: (config) => JSON.parse(JSON.stringify(config || { holes: [] })),
   });
+  const lxPetMaterial = Object.values(DOOR_MATERIALS).find((material) => material.category === "LX PET");
+  assert.deepEqual(doorPricing.getDoorTierPrice(lxPetMaterial, 300, 800), {
+    price: 35000,
+    isCustom: false,
+    label: "",
+  });
+  assert.deepEqual(doorPricing.getDoorTierPrice(lxPetMaterial, 601, 800), {
+    price: 0,
+    isCustom: true,
+    label: "비규격 상담안내",
+  });
+  assert.deepEqual(doorPricing.getDoorTierPrice(lxPetMaterial, 600, 801), {
+    price: 0,
+    isCustom: true,
+    label: "비규격 상담안내",
+  });
+  assert.deepEqual(doorPricing.formatDoorPriceTierLines("LX PET"), [
+    "300×800 이하 35,000원",
+    "400×800 이하 40,000원",
+    "600×800 이하 45,000원",
+    "비규격 상담안내",
+  ]);
+  assert.equal(DOOR_PRICING_POLICY.hingePricePerHole, 1500);
   const doorDetail = doorPricing.calcItemDetail({
     materialId: lxPetMaterial.id,
     width: 300,
