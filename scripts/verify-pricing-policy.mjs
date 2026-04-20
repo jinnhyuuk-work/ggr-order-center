@@ -12,6 +12,10 @@ import {
 } from "../assets/js/data/system-data.js";
 import { createSystemPricingHelpers } from "../assets/js/system-pricing.js";
 import {
+  buildConsultAwarePricing,
+  CONSULT_DISPLAY_PRICE_LABEL,
+} from "../assets/js/shared.js";
+import {
   TOP_FULFILLMENT_POLICY,
   BOARD_FULFILLMENT_POLICY,
   DOOR_FULFILLMENT_POLICY,
@@ -50,6 +54,10 @@ function calcTopBaseCost({ category, shape, width, length, length2 = 0, length3 
   );
 }
 
+function calcTopShapeAdditionalFee(shape) {
+  return Number(TOP_PRICING_POLICY.shapeAdditionalFeeByShape?.[shape] || 0);
+}
+
 function run() {
   assert.equal(calcBoardMaterialCost({
     materialId: "lpm_basic",
@@ -70,15 +78,33 @@ function run() {
     width: 600,
     length: 1000,
   }), 147000);
+  assert.equal(calcTopBaseCost({
+    category: "하이막스",
+    shape: "l",
+    width: 600,
+    length: 1200,
+    length2: 1000,
+  }), 336000);
   assert.equal(TOP_PRICING_POLICY.standardThicknessMm, 12);
   assert.equal(TOP_PRICING_POLICY.standardWidthMaxMm, 760);
   assert.equal(TOP_PRICING_POLICY.shapeAdditionalFeeByShape.l, 30000);
+  assert.equal(calcTopShapeAdditionalFee("l"), 30000);
+  assert.equal(calcTopShapeAdditionalFee("rl"), 30000);
+  assert.equal(calcTopShapeAdditionalFee("u"), 0);
+  assert.equal(
+    TOP_PRICING_POLICY.categoryDescriptionByCategory["인조대리석"],
+    `${TOP_PRICING_POLICY.standardThicknessMm}T 기준 · 깊이 ${TOP_PRICING_POLICY.standardWidthMaxMm}mm 이하 m당 147,000원`
+  );
 
   assert.deepEqual(getDoorTierPrice("LX PET", 300, 800), {
     price: 35000,
     isConsult: false,
   });
   assert.deepEqual(getDoorTierPrice("LX PET", 601, 800), {
+    price: 0,
+    isConsult: true,
+  });
+  assert.deepEqual(getDoorTierPrice("LX PET", 600, 801), {
     price: 0,
     isConsult: true,
   });
@@ -107,6 +133,37 @@ function run() {
   assert.equal(shelfDetail.materialCost, 28000);
   assert.equal(shelfDetail.isCustomPrice, false);
 
+  const shelfWithAddonDetail = systemPricing.calcBayDetail({
+    shelf: {
+      materialId: "lpm_basic",
+      width: 600,
+      length: 400,
+      thickness: 18,
+      count: 1,
+    },
+    quantity: 1,
+    addons: [SYSTEM_ADDON_ITEM_IDS.CLOTHES_ROD],
+    isCorner: false,
+  });
+  assert.equal(shelfWithAddonDetail.materialCost, 28000);
+  assert.equal(shelfWithAddonDetail.processingCost, 5000);
+  assert.equal(shelfWithAddonDetail.total, 33000);
+
+  const wideShelfDetail = systemPricing.calcBayDetail({
+    shelf: {
+      materialId: "lpm_basic",
+      width: 801,
+      length: 400,
+      thickness: 18,
+      count: 1,
+    },
+    quantity: 1,
+    addons: [],
+    isCorner: false,
+  });
+  assert.equal(wideShelfDetail.materialCost, 0);
+  assert.equal(wideShelfDetail.isCustomPrice, true);
+
   const postBarDetail = systemPricing.calcColumnsDetail({
     column: {
       materialId: "post_bar_white",
@@ -119,6 +176,31 @@ function run() {
     bays: [],
   });
   assert.equal(postBarDetail.isCustomPrice, true);
+
+  assert.deepEqual(buildConsultAwarePricing({
+    materialCost: 1000,
+    processingCost: 500,
+    total: 1500,
+    isCustomPrice: false,
+  }), {
+    materialCost: 1000,
+    processingCost: 500,
+    total: 1500,
+    isCustomPrice: false,
+    displayPriceLabel: null,
+  });
+  assert.deepEqual(buildConsultAwarePricing({
+    materialCost: 1000,
+    processingCost: 500,
+    total: 1500,
+    isCustomPrice: true,
+  }), {
+    materialCost: null,
+    processingCost: null,
+    total: null,
+    isCustomPrice: true,
+    displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
+  });
 
   assert.equal(TOP_FULFILLMENT_POLICY.installationAmount, 50000);
   assert.equal(BOARD_FULFILLMENT_POLICY.consultReason, "합판 서비스는 상담 안내입니다.");

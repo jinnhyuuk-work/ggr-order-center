@@ -758,7 +758,7 @@ function getTopUnitPrice(type) {
 
 function getTopStandardPriceLine(type) {
   const unitPrice = getTopUnitPrice(type);
-  return unitPrice ? `깊이 760mm 이하 m당 ${formatPrice(unitPrice)}원` : "가격 정보 준비중";
+  return unitPrice ? `깊이 ${TOP_STANDARD_WIDTH_MAX}mm 이하 m당 ${formatPrice(unitPrice)}원` : "가격 정보 준비중";
 }
 
 function getTopAvailableThicknessText(type) {
