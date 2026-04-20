@@ -2890,19 +2890,29 @@ function resolveFurnitureAddonUnitPriceByWidth(addonItem, widthMm) {
   const addon = addonItem && typeof addonItem === "object" ? addonItem : null;
   if (!addon) return 0;
   const normalizedWidth = Math.max(0, Math.round(Number(widthMm || 0)));
-  const priceByWidthMm =
-    addon?.pricingRule?.priceByWidthMm && typeof addon.pricingRule.priceByWidthMm === "object"
-      ? addon.pricingRule.priceByWidthMm
-      : null;
-  if (priceByWidthMm && normalizedWidth > 0) {
-    const widthKey = String(normalizedWidth);
-    if (Object.prototype.hasOwnProperty.call(priceByWidthMm, widthKey)) {
-      const widthPrice = Number(priceByWidthMm[widthKey] || 0);
+  const pricingRule = addon?.pricingRule && typeof addon.pricingRule === "object" ? addon.pricingRule : null;
+  const ruleType = String(pricingRule?.type || "").trim().toLowerCase();
+  if (ruleType === "tieredbywidth" && normalizedWidth > 0) {
+    const tiers = Array.isArray(pricingRule?.tiers) ? pricingRule.tiers : [];
+    const matchedTier =
+      tiers.find((tier) => {
+        if (!tier || typeof tier !== "object") return false;
+        const minWidthMm = Number(tier?.minWidthMm);
+        const maxWidthMm = Number(tier?.maxWidthMm);
+        if (Number.isFinite(minWidthMm) && normalizedWidth < minWidthMm) return false;
+        if (Number.isFinite(maxWidthMm) && maxWidthMm > 0 && normalizedWidth > maxWidthMm) return false;
+        return true;
+      }) || null;
+    if (matchedTier) {
+      if (Boolean(matchedTier?.isCustomPrice)) return 0;
+      const widthPrice = Number(
+        matchedTier?.price || matchedTier?.unitPrice || matchedTier?.value || 0
+      );
       return Number.isFinite(widthPrice) && widthPrice > 0 ? Math.round(widthPrice) : 0;
     }
     return 0;
   }
-  const ruleValue = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
+  const ruleValue = Number(pricingRule?.value || pricingRule?.unitPrice || 0);
   if (Number.isFinite(ruleValue) && ruleValue > 0) return Math.round(ruleValue);
   return 0;
 }

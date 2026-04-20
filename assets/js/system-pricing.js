@@ -103,12 +103,39 @@ export function createSystemPricingHelpers({
     return safeShelfLengthMm > Number(shelfLimits.maxLength || 0);
   }
 
-  function calcAddonCostBreakdown(addonIds = [], quantity = 1) {
+  function resolveAddonUnitPrice(addon, { widthMm = 0 } = {}) {
+    if (!addon || typeof addon !== "object") return 0;
+    const pricingRule =
+      addon?.pricingRule && typeof addon.pricingRule === "object" ? addon.pricingRule : null;
+    const ruleType = String(pricingRule?.type || "").trim().toLowerCase();
+    const normalizedWidthMm = normalizeMm(widthMm);
+    if (ruleType === "tieredbywidth" && normalizedWidthMm > 0) {
+      const tiers = Array.isArray(pricingRule?.tiers) ? pricingRule.tiers : [];
+      const matchedTier =
+        tiers.find((tier) => {
+          if (!tier || typeof tier !== "object") return false;
+          const minWidthMm = Number(tier?.minWidthMm);
+          const maxWidthMm = Number(tier?.maxWidthMm);
+          if (Number.isFinite(minWidthMm) && normalizedWidthMm < minWidthMm) return false;
+          if (Number.isFinite(maxWidthMm) && maxWidthMm > 0 && normalizedWidthMm > maxWidthMm) return false;
+          return true;
+        }) || null;
+      if (!matchedTier || Boolean(matchedTier?.isCustomPrice)) return 0;
+      const tierPrice = Number(
+        matchedTier?.price || matchedTier?.unitPrice || matchedTier?.value || 0
+      );
+      return tierPrice > 0 ? roundWon(tierPrice) : 0;
+    }
+    const ruleValue = Number(pricingRule?.value || pricingRule?.unitPrice || 0);
+    return ruleValue > 0 ? roundWon(ruleValue) : 0;
+  }
+
+  function calcAddonCostBreakdown(addonIds = [], quantity = 1, { widthMm = 0 } = {}) {
     const qtyMultiplier = normalizeQuantity(quantity, 1);
     return (Array.isArray(addonIds) ? addonIds : []).reduce(
       (acc, addonId) => {
         const addon = getAddonItemById(addonId);
-        const price = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0) * qtyMultiplier;
+        const price = resolveAddonUnitPrice(addon, { widthMm }) * qtyMultiplier;
         if (String(addonId || "") === safeAddonClothesRodId) {
           acc.componentCost += price;
         } else {
@@ -246,11 +273,10 @@ export function createSystemPricingHelpers({
     };
   }
 
-  function calcAddonsUnitTotal(addons = []) {
+  function calcAddonsUnitTotal(addons = [], { widthMm = 0 } = {}) {
     return (Array.isArray(addons) ? addons : []).reduce((sum, id) => {
       const addon = getAddonItemById(id);
-      const ruleValue = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
-      return sum + Number(ruleValue > 0 ? ruleValue : 0);
+      return sum + Number(resolveAddonUnitPrice(addon, { widthMm }) || 0);
     }, 0);
   }
 
@@ -283,7 +309,7 @@ export function createSystemPricingHelpers({
       quantity: unitQuantity,
       partMultiplier: shelfCount,
     });
-    const addonTotal = calcAddonsUnitTotal(addons);
+    const addonTotal = calcAddonsUnitTotal(addons, { widthMm: shelfWidthMm });
 
     const processingCost = shelfIsCustom ? 0 : addonTotal * unitQuantity;
     const materialCost = shelfIsCustom ? 0 : roundWon(shelfTierUnitPrice * shelfCount * unitQuantity);

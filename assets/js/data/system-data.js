@@ -579,15 +579,32 @@ export const SYSTEM_FURNITURE_WIDTH_POLICY = Object.freeze({
   consultPriceAbove: 800,
 });
 
-const buildSystemFurniturePricingRule = ({ priceByWidthMm } = {}) =>
-  Object.freeze({
-    type: "fixed",
+const buildSystemFurniturePricingRule = ({ priceByWidthMm } = {}) => {
+  const width600 = Number(priceByWidthMm?.[600] || 0);
+  const width800 = Number(priceByWidthMm?.[800] || 0);
+  return Object.freeze({
+    type: "tieredByWidth",
     unit: "item",
-    priceByWidthMm: Object.freeze({
-      600: Number(priceByWidthMm?.[600] || 0),
-      800: Number(priceByWidthMm?.[800] || 0),
-    }),
+    tiers: Object.freeze([
+      Object.freeze({
+        key: "w600",
+        minWidthMm: 600,
+        maxWidthMm: 600,
+        ...(width600 > 0
+          ? { price: width600, label: "600" }
+          : { isCustomPrice: true, label: "600 상담안내" }),
+      }),
+      Object.freeze({
+        key: "w800",
+        minWidthMm: 800,
+        maxWidthMm: 800,
+        ...(width800 > 0
+          ? { price: width800, label: "800" }
+          : { isCustomPrice: true, label: "800 상담안내" }),
+      }),
+    ]),
   });
+};
 
 const SYSTEM_FURNITURE_ITEMS = [
   {
@@ -596,7 +613,7 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: 22000,
+        600: 0,
         800: 22000,
       },
     }),

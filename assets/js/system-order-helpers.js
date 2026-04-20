@@ -329,7 +329,9 @@ export function createSystemOrderHelpers({
         (acc, bay) => {
           if (!bay || bay.isCustomPrice) return acc;
           const bayQty = Math.max(1, Number(bay.quantity || quantity || 1));
-          const costs = calcAddonCostBreakdown(bay.addons, bayQty);
+          const costs = calcAddonCostBreakdown(bay.addons, bayQty, {
+            widthMm: Number(bay?.shelf?.width || 0),
+          });
           return {
             componentCost: acc.componentCost + Number(costs.componentCost || 0),
             furnitureCost: acc.furnitureCost + Number(costs.furnitureCost || 0),

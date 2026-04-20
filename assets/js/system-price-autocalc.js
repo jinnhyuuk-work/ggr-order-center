@@ -51,7 +51,7 @@ export function createSystemPriceAutocalcHelpers(deps = {}) {
         }
         const addonCost = detail.isCustomPrice
           ? { componentCost: 0, furnitureCost: 0 }
-          : calcAddonCostBreakdown(bay.addons, 1);
+          : calcAddonCostBreakdown(bay.addons, 1, { widthMm: Number(bay?.width || 0) });
         return {
           materialCost: acc.materialCost + detail.materialCost,
           processingCost: acc.processingCost + detail.processingCost,
