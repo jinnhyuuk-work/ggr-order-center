@@ -751,11 +751,12 @@ function renderAddonCards() {
     const label = document.createElement("label");
     const isSelected = selectedIds.includes(item.id);
     label.className = `card-base addon-card${isSelected ? " selected" : ""}`;
+    const priceText = formatPricingRuleDisplayText(item) || "0원";
     label.innerHTML = `
       <input type="checkbox" value="${item.id}" ${isSelected ? "checked" : ""} />
       <div class="material-visual"></div>
       <div class="name">${item.name}</div>
-      <div class="price">${item.price.toLocaleString()}원</div>
+      <div class="price">${priceText}</div>
       ${descriptionHTML(item.description)}
     `;
     container.appendChild(label);
@@ -787,7 +788,8 @@ function addAddonItem(addonId) {
   if (existing) return;
   const addon = BOARD_ADDON_ITEMS.find((a) => a.id === addonId);
   if (!addon) return;
-  const detail = calcAddonDetail(addon.price);
+  const price = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
+  const detail = calcAddonDetail(price);
   state.items.push({
     id: crypto.randomUUID(),
     type: "addon",
@@ -1105,7 +1107,8 @@ function updateItemQuantity(id, quantity) {
   if (item.type === "addon") {
     const addon = BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId);
     if (!addon) return;
-    const detail = calcAddonDetail(addon.price * quantity);
+    const price = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
+    const detail = calcAddonDetail(price * quantity);
     state.items[idx] = { ...item, quantity, ...detail };
   } else {
     const detail = calcItemDetail({

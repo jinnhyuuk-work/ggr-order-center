@@ -2200,17 +2200,20 @@ export function renderSelectedAddonChips({
   const chips = addons
     .map((id) => allItems.find((i) => i.id === id))
     .filter(Boolean)
-    .map(
-      (item) => `
+    .map((item) => {
+      const rule = getPriceRule(item);
+      const metaText =
+        rule && Number.isFinite(Number(rule.value)) ? `${formatPrice(rule.value)}원` : "0원";
+      return `
         <div class="addon-chip">
           <div class="material-visual" style="background:${swatch};"></div>
           <div class="info">
             <div class="name">${item.name}</div>
-            <div class="meta">${formatPrice ? formatPrice(item.price) : item.price.toLocaleString()}원</div>
+            <div class="meta">${metaText}</div>
           </div>
         </div>
-      `
-    )
+      `;
+    })
     .join("");
   target.innerHTML = chips;
 }
