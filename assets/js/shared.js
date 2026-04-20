@@ -573,6 +573,10 @@ function toFiniteNumber(value, fallback = 0) {
 
 export function getPriceRule(config = {}) {
   if (!config || typeof config !== "object") return null;
+  if (typeof config.type === "string" && Object.prototype.hasOwnProperty.call(config, "value")) {
+    return config;
+  }
+  if (config.pricingRule && typeof config.pricingRule === "object") return config.pricingRule;
   if (config.priceRule && typeof config.priceRule === "object") return config.priceRule;
 
   if (Number.isFinite(Number(config.price))) {
@@ -700,12 +704,19 @@ export function resolveAmountFromPriceRule({
         1
     )
   );
+  const areaM2 = Math.max(
+    0,
+    Number(metrics?.areaM2 || detail?.areaM2 || detail?.area || 0)
+  );
   const cornerCount = Math.max(0, Number(metrics?.cornerCount || detail?.corners || 1));
 
   if (typeToken === "consult") return 0;
   if (typeToken === "free") return 0;
   if (typeToken === "fixed" || unitToken === "item") return value * qty;
   if (typeToken === "perhole" || unitToken === "hole") return value * holeCount * qty;
+  if (typeToken === "persquaremeter" || typeToken === "area" || unitToken === "m2") {
+    return value * areaM2 * qty;
+  }
   if (typeToken === "permeter" || unitToken === "meter") return value * meterCount * qty;
   if (typeToken === "percorner" || unitToken === "corner") return value * cornerCount * qty;
   return value * qty;

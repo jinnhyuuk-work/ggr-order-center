@@ -1,4 +1,4 @@
-import { evaluateSelectionPricing } from "./shared.js";
+import { evaluateSelectionPricing, resolveAmountFromPriceRule } from "./shared.js";
 
 export function createBoardPricingHelpers({
   materials = {},
@@ -10,6 +10,10 @@ export function createBoardPricingHelpers({
   const customLengthMax = Number(dimensionLimits.maxLength || 0);
 
   function getPricePerM2(material, thickness) {
+    if (material?.pricingRule && typeof material.pricingRule === "object") {
+      const ruleValue = Number(material.pricingRule.value || material.pricingRule.unitPrice || 0);
+      if (ruleValue > 0) return ruleValue;
+    }
     if (material?.pricePerM2ByThickness) {
       if (thickness && material.pricePerM2ByThickness[thickness]) {
         return material.pricePerM2ByThickness[thickness];
@@ -37,7 +41,13 @@ export function createBoardPricingHelpers({
     if (isBoardCustomSize(width, length)) {
       return { areaM2, materialCost: 0, isCustom: true };
     }
-    const materialCost = areaM2 * pricePerM2 * Number(quantity || 0);
+    const materialCost = Number(
+      resolveAmountFromPriceRule({
+        config: material,
+        quantity,
+        metrics: { areaM2 },
+      }) || areaM2 * pricePerM2 * Number(quantity || 0)
+    );
     return { areaM2, materialCost, isCustom: false };
   }
 

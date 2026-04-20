@@ -8,6 +8,7 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     label: "경첩 홀 가공",
     pricePerHole: 1500,
     priceRule: { type: "perHole", value: 1500, unit: "hole" },
+    pricingRule: { type: "perHole", value: 1500, unit: "hole" },
     availabilityRule: { type: "ok" },
     type: "detail",
     requiresInput: true,
@@ -27,6 +28,7 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     label: "피스 홀 타공",
     pricePerHole: 1200,
     priceRule: { type: "perHole", value: 1200, unit: "hole" },
+    pricingRule: { type: "perHole", value: 1200, unit: "hole" },
     availabilityRule: { type: "ok" },
     type: "detail",
     requiresInput: true,
@@ -46,6 +48,7 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     label: "뒷턱/뒷선반 추가",
     pricePerMeter: 0,
     priceRule: { type: "free", value: 0, unit: "item", label: "가용높이 내 무료" },
+    pricingRule: { type: "free", value: 0, unit: "item", label: "가용높이 내 무료" },
     availabilityRule: {
       type: "conditional",
       ruleKey: "top_back_height_limit",

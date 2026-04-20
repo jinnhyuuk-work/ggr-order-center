@@ -1219,6 +1219,14 @@ export const DOOR_PRICING_POLICY = Object.freeze({
   hingePricePerHole: 1500,
 });
 
+Object.values(DOOR_MATERIALS).forEach((material) => {
+  const tiers = DOOR_PRICE_TIERS_BY_CATEGORY[material?.category] || [];
+  material.pricingRule = Object.freeze({
+    type: "tieredBySize",
+    tiers: Object.freeze(tiers.map((tier) => Object.freeze({ ...tier }))),
+  });
+});
+
 export const DOOR_PROCESSING_SERVICES = {
   ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.DOOR),
 };

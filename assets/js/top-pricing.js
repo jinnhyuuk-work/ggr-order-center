@@ -60,6 +60,8 @@ export function createTopPricingHelpers({
 
   function getTopUnitPrice(type) {
     if (!type) return 0;
+    const ruleValue = Number(type?.pricingRule?.value || type?.pricingRule?.unitPrice || 0);
+    if (ruleValue > 0) return ruleValue;
     return unitPriceByCategory[type.category] || 0;
   }
 

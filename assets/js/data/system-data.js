@@ -73,8 +73,24 @@ const PP_ITEMS = [
 ];
 
 export const SYSTEM_SHELF_MATERIALS = {
-  ...arrayToMap(LPM_ITEMS),
-  ...arrayToMap(PP_ITEMS),
+  ...arrayToMap(
+    LPM_ITEMS.map((item) => ({
+      ...item,
+      pricingRule: Object.freeze({
+        type: "tieredByWidth",
+        priceByTierKey: Object.freeze({ ...item.priceByTierKey }),
+      }),
+    }))
+  ),
+  ...arrayToMap(
+    PP_ITEMS.map((item) => ({
+      ...item,
+      pricingRule: Object.freeze({
+        type: "tieredByWidth",
+        priceByTierKey: Object.freeze({ ...item.priceByTierKey }),
+      }),
+    }))
+  ),
 };
 
 const COLUMN_ITEMS = [
@@ -107,7 +123,7 @@ const COLUMN_ITEMS = [
   },
 ];
 
-export const SYSTEM_COLUMN_MATERIALS = {
+const SYSTEM_COLUMN_MATERIALS_BASE = {
   ...arrayToMap(COLUMN_ITEMS),
 };
 
@@ -242,6 +258,22 @@ export const SYSTEM_POST_BAR_PRICING = Object.freeze({
     ]),
   }),
 });
+
+export const SYSTEM_COLUMN_MATERIALS = Object.freeze(
+  Object.entries(SYSTEM_COLUMN_MATERIALS_BASE).reduce((acc, [id, item]) => {
+    acc[id] = Object.freeze({
+      ...item,
+      pricingRule: Object.freeze({
+        type: "tieredByHeight",
+        tiers: Object.freeze({
+          basic: SYSTEM_POST_BAR_PRICING.basic.tiers.map((tier) => Object.freeze({ ...tier })),
+          corner: SYSTEM_POST_BAR_PRICING.corner.tiers.map((tier) => Object.freeze({ ...tier })),
+        }),
+      }),
+    });
+    return acc;
+  }, {})
+);
 
 export const SYSTEM_ADDON_ITEM_IDS = Object.freeze({
   CLOTHES_ROD: "clothes_rod",
@@ -552,6 +584,7 @@ const SYSTEM_FURNITURE_ITEMS = [
     name: "공중형 서랍 1단",
     categoryKey: "drawer",
     price: 22000,
+    pricingRule: Object.freeze({ type: "fixed", value: 22000, unit: "item" }),
     description: "공중형 서랍 1단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
@@ -562,6 +595,7 @@ const SYSTEM_FURNITURE_ITEMS = [
     name: "공중형 서랍 2단",
     categoryKey: "drawer",
     price: 30000,
+    pricingRule: Object.freeze({ type: "fixed", value: 30000, unit: "item" }),
     description: "공중형 서랍 2단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
@@ -572,6 +606,7 @@ const SYSTEM_FURNITURE_ITEMS = [
     name: "바닥형 서랍 2단",
     categoryKey: "drawer",
     price: 30000,
+    pricingRule: Object.freeze({ type: "fixed", value: 30000, unit: "item" }),
     description: "바닥형 서랍 2단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
@@ -582,6 +617,7 @@ const SYSTEM_FURNITURE_ITEMS = [
     name: "바닥형 서랍 3단",
     categoryKey: "drawer",
     price: 38000,
+    pricingRule: Object.freeze({ type: "fixed", value: 38000, unit: "item" }),
     description: "바닥형 서랍 3단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
@@ -592,6 +628,7 @@ const SYSTEM_FURNITURE_ITEMS = [
     name: "바닥형 서랍 4단",
     categoryKey: "drawer",
     price: 46000,
+    pricingRule: Object.freeze({ type: "fixed", value: 46000, unit: "item" }),
     description: "바닥형 서랍 4단 모듈 1세트",
     selectableInModuleAddonModal: true,
     applicableModuleTypes: ["normal"],
@@ -602,6 +639,7 @@ const SYSTEM_FURNITURE_ITEMS = [
     name: "행거",
     categoryKey: "hanger",
     price: 5000,
+    pricingRule: Object.freeze({ type: "fixed", value: 5000, unit: "item" }),
     description: "알루미늄 행거 1개",
     selectableInModuleAddonModal: false,
     applicableModuleTypes: ["normal", "corner"],

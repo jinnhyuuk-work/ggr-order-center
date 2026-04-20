@@ -71,6 +71,9 @@ export function createSystemPricingHelpers({
     const tierKey = String(tier?.key || "");
     const materialId = String(material?.id || "");
     const category = String(material?.category || "");
+    const pricingRule = material?.pricingRule && typeof material.pricingRule === "object" ? material.pricingRule : null;
+    const byPricingRule = pricingRule?.priceByTierKey ? Number(pricingRule.priceByTierKey[tierKey] || 0) : 0;
+    if (byPricingRule > 0) return roundWon(byPricingRule);
     const materialPriceByTierKey =
       material?.priceByTierKey && typeof material.priceByTierKey === "object"
         ? material.priceByTierKey
@@ -142,19 +145,24 @@ export function createSystemPricingHelpers({
     );
   }
 
-  function getPostBarPricingConfig(kind = "basic") {
+  function getPostBarPricingConfig(kind = "basic", pricingRule = null) {
+    if (pricingRule && typeof pricingRule === "object" && pricingRule.tiers) {
+      return kind === "corner"
+        ? { label: "코너 포스트바", tiers: pricingRule.tiers.corner || [] }
+        : { label: "기본 포스트바", tiers: pricingRule.tiers.basic || [] };
+    }
     return kind === "corner" ? SYSTEM_POST_BAR_PRICING.corner : SYSTEM_POST_BAR_PRICING.basic;
   }
 
-  function getPostBarTier(kind, heightMm) {
-    const config = getPostBarPricingConfig(kind);
+  function getPostBarTier(kind, heightMm, pricingRule = null) {
+    const config = getPostBarPricingConfig(kind, pricingRule);
     const height = normalizeMm(heightMm);
     const tiers = Array.isArray(config?.tiers) ? config.tiers : [];
     return tiers.find((tier) => height > 0 && height <= Number(tier?.maxHeightMm || 0)) || null;
   }
 
-  function getPostBarTierUnitPrice(kind, heightMm) {
-    const tier = getPostBarTier(kind, heightMm);
+  function getPostBarTierUnitPrice(kind, heightMm, pricingRule = null) {
+    const tier = getPostBarTier(kind, heightMm, pricingRule);
     const unitPrice = Number(tier?.unitPrice || 0);
     return {
       tier,
@@ -180,13 +188,13 @@ export function createSystemPricingHelpers({
     return collectPositiveHeightsMm(column?.spaceExtraHeights, []);
   }
 
-  function buildPostBarRows({ kind, heightCountMap, unitQuantity = 1 }) {
-    const label = getPostBarPricingConfig(kind)?.label || (kind === "corner" ? "코너 포스트바" : "기본 포스트바");
+  function buildPostBarRows({ kind, heightCountMap, unitQuantity = 1, pricingRule = null }) {
+    const label = getPostBarPricingConfig(kind, pricingRule)?.label || (kind === "corner" ? "코너 포스트바" : "기본 포스트바");
     return Array.from(heightCountMap.entries())
       .map(([heightMm, count]) => {
         const normalizedHeightMm = normalizeMm(heightMm);
         const normalizedCount = normalizeCount(count, 0);
-        const pricing = getPostBarTierUnitPrice(kind, normalizedHeightMm);
+        const pricing = getPostBarTierUnitPrice(kind, normalizedHeightMm, pricingRule);
         const tier = pricing.tier;
         const unitPrice = roundWon(pricing.unitPrice);
         const isCustomPrice =
@@ -235,7 +243,8 @@ export function createSystemPricingHelpers({
   function calcAddonsUnitTotal(addons = []) {
     return (Array.isArray(addons) ? addons : []).reduce((sum, id) => {
       const addon = getAddonItemById(id);
-      return sum + Number(addon?.price || 0);
+      const ruleValue = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
+      return sum + Number(ruleValue > 0 ? ruleValue : addon?.price || 0);
     }, 0);
   }
 
@@ -324,11 +333,13 @@ export function createSystemPricingHelpers({
       kind: "basic",
       heightCountMap: baseHeightCountMap,
       unitQuantity,
+      pricingRule: column?.pricingRule,
     });
     const cornerPostBars = buildPostBarRows({
       kind: "corner",
       heightCountMap: cornerHeightCountMap,
       unitQuantity,
+      pricingRule: column?.pricingRule,
     });
 
     const baseIsCustom = basePostBars.some((row) => Boolean(row?.isCustomPrice));

@@ -594,8 +594,23 @@ const TOP_TYPES_SOURCE = [
   },
 ];
 
+const TOP_PRICE_BY_CATEGORY = Object.freeze({
+  인조대리석: 147000,
+  하이막스: 210000,
+});
+
 export const TOP_TYPES = TOP_TYPES_SOURCE.map((item) =>
-  withDimensionLimits(item, TOP_DIMENSION_LIMITS)
+  withDimensionLimits(
+    {
+      ...item,
+      pricingRule: Object.freeze({
+        type: "meter",
+        value: TOP_PRICE_BY_CATEGORY[item.category] || 0,
+        unit: "meter",
+      }),
+    },
+    TOP_DIMENSION_LIMITS
+  )
 );
 
 export const TOP_PRICING_POLICY = Object.freeze({
@@ -604,8 +619,7 @@ export const TOP_PRICING_POLICY = Object.freeze({
   backShelfHeightMaxMm: 100,
   roundingUnitWon: 10,
   unitPriceByCategory: Object.freeze({
-    인조대리석: 147000,
-    하이막스: 210000,
+    ...TOP_PRICE_BY_CATEGORY,
   }),
   shapeAdditionalFeeByShape: Object.freeze({
     l: 30000,

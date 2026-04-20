@@ -9,7 +9,10 @@ export function createDoorPricingHelpers({
   cloneDoorHingeConfig = (config) => JSON.parse(JSON.stringify(config || {})),
 } = {}) {
   function getDoorTierPrice(material, width, length) {
-    const tiers = priceTiersByCategory[material?.category] || [];
+    const tiers =
+      material?.pricingRule && Array.isArray(material.pricingRule.tiers)
+        ? material.pricingRule.tiers
+        : priceTiersByCategory[material?.category] || [];
     return getTieredPrice({ tiers, width, length, customLabel: "비규격 상담안내" });
   }
 
