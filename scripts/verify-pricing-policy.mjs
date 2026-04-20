@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 
-import { MATERIALS as BOARD_MATERIALS } from "../assets/js/data/board-data.js";
+import {
+  BOARD_DIMENSION_LIMITS,
+  BOARD_OPTIONS,
+  MATERIALS as BOARD_MATERIALS,
+} from "../assets/js/data/board-data.js";
+import { createBoardPricingHelpers } from "../assets/js/board-pricing.js";
 import { TOP_PRICING_POLICY } from "../assets/js/data/top-data.js";
 import {
   DOOR_PRICE_TIERS_BY_CATEGORY,
@@ -62,6 +67,14 @@ function calcTopShapeAdditionalFee(shape) {
 }
 
 function run() {
+  const boardPricing = createBoardPricingHelpers({
+    materials: BOARD_MATERIALS,
+    optionCatalog: BOARD_OPTIONS.reduce((acc, option) => {
+      if (option?.id) acc[option.id] = option;
+      return acc;
+    }, {}),
+    dimensionLimits: BOARD_DIMENSION_LIMITS,
+  });
   assert.equal(calcBoardMaterialCost({
     materialId: "lpm_basic",
     width: 1000,
@@ -74,6 +87,44 @@ function run() {
     length: 1000,
     quantity: 1,
   }), 45000);
+  assert.equal(boardPricing.getPricePerM2(BOARD_MATERIALS.lpm_basic, 18), 47000);
+  const boardDetail = boardPricing.calcItemDetail({
+    materialId: "lpm_basic",
+    width: 1000,
+    length: 1000,
+    thickness: 18,
+    quantity: 1,
+  });
+  assert.deepEqual({
+    ...boardDetail,
+    weightKg: Math.round(Number(boardDetail.weightKg || 0) * 100) / 100,
+  }, {
+    areaM2: 1,
+    materialCost: 47000,
+    processingCost: 0,
+    optionCost: 0,
+    processingServiceCost: 0,
+    serviceCost: 0,
+    subtotal: 47000,
+    vat: 0,
+    total: 47000,
+    weightKg: 12.96,
+    isCustomPrice: false,
+    hasConsultItems: false,
+    itemHasConsult: false,
+    optionHasConsult: false,
+    processingServiceHasConsult: false,
+    serviceHasConsult: false,
+    optionsLabel: "-",
+    options: [],
+  });
+  assert.equal(boardPricing.calcItemDetail({
+    materialId: "lpm_basic",
+    width: BOARD_DIMENSION_LIMITS.maxWidth + 1,
+    length: 1000,
+    thickness: 18,
+    quantity: 1,
+  }).isCustomPrice, true);
 
   assert.equal(calcTopBaseCost({
     category: "인조대리석",

@@ -32,7 +32,6 @@ import {
   buildConsultAwarePricing,
   CONSULT_EXCLUDED_SUFFIX,
   getPricingDisplayMeta,
-  evaluateSelectionPricing,
   hasConsultLineItem,
   buildStandardPriceBreakdownRows,
   renderItemPriceDisplay,
@@ -48,6 +47,7 @@ import {
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
 } from "./shared.js";
+import { createBoardPricingHelpers } from "./board-pricing.js";
 import {
   normalizeFulfillmentType,
   isFulfillmentAddressReady,
@@ -69,39 +69,17 @@ const OPTION_CATALOG = BOARD_OPTIONS.reduce((acc, option) => {
   acc[option.id] = option;
   return acc;
 }, {});
-
-function getPricePerM2(material, thickness) {
-  if (material.pricePerM2ByThickness) {
-    if (thickness && material.pricePerM2ByThickness[thickness]) {
-      return material.pricePerM2ByThickness[thickness];
-    }
-    const firstAvailable = material.availableThickness?.find(
-      (t) => material.pricePerM2ByThickness[t]
-    );
-    if (firstAvailable !== undefined) {
-      return material.pricePerM2ByThickness[firstAvailable];
-    }
-    const firstPrice = Object.values(material.pricePerM2ByThickness)[0];
-    if (firstPrice) return firstPrice;
-  }
-  return material.pricePerM2;
-}
-
-function isBoardCustomSize(width, length) {
-  return width > BOARD_CUSTOM_WIDTH_MAX || length > BOARD_CUSTOM_LENGTH_MAX;
-}
-
-// 1) 합판 금액 계산
-function calcMaterialCost({ materialId, width, length, quantity, thickness }) {
-  const material = MATERIALS[materialId];
-  const areaM2 = (width / 1000) * (length / 1000); // mm → m
-  const pricePerM2 = getPricePerM2(material, thickness);
-  if (isBoardCustomSize(width, length)) {
-    return { areaM2, materialCost: 0, isCustom: true };
-  }
-  const materialCost = areaM2 * pricePerM2 * quantity;
-  return { areaM2, materialCost, isCustom: false };
-}
+const {
+  getPricePerM2,
+  calcItemDetail,
+  calcAddonDetail,
+  calcOrderSummary,
+} = createBoardPricingHelpers({
+  materials: MATERIALS,
+  processingServices: PROCESSING_SERVICES,
+  optionCatalog: OPTION_CATALOG,
+  dimensionLimits: BOARD_DIMENSION_LIMITS,
+});
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
   if (!width || !length) return { w: 120, h: 120 };
@@ -301,137 +279,6 @@ function renderPreviewDimensionChips(colorEl, { widthMm = 0, lengthMm = 0 } = {}
   setPreviewDimensionChipPosition(verticalChip, bestLayout.vertical);
   nudgePreviewDimensionChipIntoFrame(horizontalChip, frameEl, marginPx);
   nudgePreviewDimensionChipIntoFrame(verticalChip, frameEl, marginPx);
-}
-
-// 2) 가공비 계산
-function calcProcessingCost({
-  quantity,
-  services = [],
-  serviceDetails = {},
-}) {
-  const { amount, hasConsult } = evaluateSelectionPricing({
-    selectedIds: services,
-    resolveById: (id) => PROCESSING_SERVICES[id],
-    quantity,
-    getAmount: ({ id, item, quantity: qty }) => {
-      const detail = serviceDetails?.[id];
-      return item.calcProcessingCost(qty, detail);
-    },
-  });
-  return { processingCost: amount, hasConsult };
-}
-
-// 3) 무게 계산
-function calcWeightKg({ materialId, width, length, thickness, quantity }) {
-  const material = MATERIALS[materialId];
-  const areaM2 = (width / 1000) * (length / 1000);
-  const thicknessM = thickness / 1000;
-
-  const volumeM3 = areaM2 * thicknessM * quantity;
-  const weightKg = volumeM3 * material.density;
-  return { weightKg };
-}
-
-// 6) 한 아이템 전체 계산 (합판비 + 가공비 + 무게 계산까지)
-function calcItemDetail(input) {
-  const {
-    materialId,
-    width,
-    length,
-    thickness,
-    quantity,
-    options = [],
-    services = [],
-    serviceDetails = {},
-  } = input;
-
-  const { areaM2, materialCost, isCustom } = calcMaterialCost({
-    materialId,
-    width,
-    length,
-    quantity,
-    thickness,
-  });
-
-  const { processingCost, hasConsult: hasConsultProcessingService } = calcProcessingCost({
-    quantity,
-    services,
-    serviceDetails,
-  });
-  const { optionPrice, hasConsult: hasConsultOption } = calcOptionsPrice(options);
-
-  const { weightKg } = calcWeightKg({
-    materialId,
-    width,
-    length,
-    thickness,
-    quantity,
-  });
-
-  const appliedMaterialCost = isCustom ? 0 : materialCost;
-  const appliedOptionCost = isCustom || hasConsultOption ? 0 : optionPrice;
-  const appliedProcessingServiceCost = isCustom || hasConsultProcessingService ? 0 : processingCost;
-  const appliedProcessingCost = appliedProcessingServiceCost + appliedOptionCost;
-  const subtotal = appliedMaterialCost + appliedProcessingCost;
-  const vat = 0;
-  const total = Math.round(subtotal);
-  const hasConsultItems = Boolean(isCustom || hasConsultOption || hasConsultProcessingService);
-
-  return {
-    areaM2,
-    materialCost: appliedMaterialCost,
-    processingCost: appliedProcessingCost,
-    optionCost: appliedOptionCost,
-    processingServiceCost: appliedProcessingServiceCost,
-    serviceCost: appliedProcessingServiceCost,
-    subtotal,
-    vat,
-    total,
-    weightKg,
-    isCustomPrice: isCustom,
-    hasConsultItems,
-    itemHasConsult: Boolean(isCustom),
-    optionHasConsult: Boolean(isCustom || hasConsultOption),
-    processingServiceHasConsult: Boolean(isCustom || hasConsultProcessingService),
-    serviceHasConsult: Boolean(isCustom || hasConsultProcessingService),
-    optionsLabel: formatOptionsLabel(options),
-    options,
-  };
-}
-
-function calcAddonDetail(price) {
-  const subtotal = price;
-  const vat = 0;
-  const total = subtotal;
-  return {
-    materialCost: price,
-    processingCost: 0,
-    subtotal,
-    vat,
-    total,
-    weightKg: 0,
-  };
-}
-
-// 7) 주문 전체 합계 계산
-function calcOrderSummary(items) {
-  const materialsTotal = items
-    .filter((i) => i.type !== "addon")
-    .reduce((s, i) => s + i.materialCost, 0);
-  const processingTotal = items.reduce((s, i) => s + i.processingCost, 0);
-  const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
-  const vat = 0;
-  const totalWeight = items.reduce((s, i) => s + i.weightKg, 0);
-  const grandTotal = subtotal;
-
-  return {
-    materialsTotal,
-    processingTotal,
-    subtotal,
-    vat,
-    totalWeight,
-    grandTotal,
-  };
 }
 
 const $ = (sel) => document.querySelector(sel);
@@ -668,21 +515,6 @@ function formatProcessingServiceList(services, serviceDetails = {}, opts = {}) {
     .map((id) => formatProcessingServiceDetail(id, serviceDetails[id], opts))
     .filter(Boolean)
     .join(", ");
-}
-
-function formatOptionsLabel(options = []) {
-  if (!options || options.length === 0) return "-";
-  return options
-    .map((id) => OPTION_CATALOG[id]?.name || id)
-    .join(", ");
-}
-
-function calcOptionsPrice(options = []) {
-  const { amount, hasConsult } = evaluateSelectionPricing({
-    selectedIds: options,
-    resolveById: (id) => OPTION_CATALOG[id],
-  });
-  return { optionPrice: amount, hasConsult };
 }
 
 function formatProcessingServiceSummaryText(serviceId, detail) {
