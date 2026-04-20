@@ -45,6 +45,7 @@ import {
   TOP_OPTIONS,
   TOP_ADDON_ITEMS,
   TOP_DIMENSION_LIMITS,
+  TOP_PRICING_POLICY,
 } from "./data/top-data.js";
 import { TOP_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
@@ -326,19 +327,13 @@ let stickyOffsetTimer = null;
 let previewResizeTimer = null;
 const DEFAULT_TOP_THICKNESSES = [12, 24, 30, 40, 50];
 const TOP_CUSTOM_LENGTH_MAX = TOP_DIMENSION_LIMITS.maxLength;
-const TOP_STANDARD_THICKNESS = 12;
-const TOP_STANDARD_WIDTH_MAX = 760;
-const TOP_BACK_HEIGHT_MAX = 100;
+const TOP_STANDARD_THICKNESS = TOP_PRICING_POLICY.standardThicknessMm;
+const TOP_STANDARD_WIDTH_MAX = TOP_PRICING_POLICY.standardWidthMaxMm;
+const TOP_BACK_HEIGHT_MAX = TOP_PRICING_POLICY.backShelfHeightMaxMm;
 const TOP_BACK_SHELF_SERVICE_ID = "top_back_shelf";
-const TOP_ROUNDING_UNIT = 10;
-const TOP_UNIT_PRICE_BY_CATEGORY = {
-  인조대리석: 147000,
-  하이막스: 210000,
-};
-const TOP_CATEGORY_DESC = {
-  인조대리석: "12T 기준 · 깊이 760mm 이하 m당 147,000원",
-  하이막스: "12T 기준 · 깊이 760mm 이하 m당 210,000원",
-};
+const TOP_ROUNDING_UNIT = TOP_PRICING_POLICY.roundingUnitWon;
+const TOP_UNIT_PRICE_BY_CATEGORY = TOP_PRICING_POLICY.unitPriceByCategory;
+const TOP_CATEGORY_DESC = TOP_PRICING_POLICY.categoryDescriptionByCategory;
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
   if (!width || !length) return { w: 120, h: 120 };
@@ -938,7 +933,7 @@ function calcTopDetail(input) {
     width,
   });
   const itemCost = ceilToUnit((getChargeableLengthMm({ shape, width, length, length2, length3 }) / 1000) * getTopUnitPrice(type));
-  const shapeFee = shape === "l" || shape === "rl" ? 30000 : 0;
+  const shapeFee = Number(TOP_PRICING_POLICY.shapeAdditionalFeeByShape?.[shape] || 0);
   const processingServiceCostRaw = shapeFee + processingServiceCost;
   const optionHasConsult = Boolean(isCustomPrice || hasConsultOption);
   const processingServiceHasConsult = Boolean(isCustomPrice || hasConsultProcessingService);

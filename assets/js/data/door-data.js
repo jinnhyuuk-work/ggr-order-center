@@ -1215,6 +1215,10 @@ export const DOOR_PRICE_TIERS_BY_CATEGORY = {
   ],
 };
 
+export const DOOR_PRICING_POLICY = Object.freeze({
+  hingePricePerHole: 1500,
+});
+
 export const DOOR_PROCESSING_SERVICES = {
   ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.DOOR),
 };

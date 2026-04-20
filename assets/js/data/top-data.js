@@ -598,6 +598,25 @@ export const TOP_TYPES = TOP_TYPES_SOURCE.map((item) =>
   withDimensionLimits(item, TOP_DIMENSION_LIMITS)
 );
 
+export const TOP_PRICING_POLICY = Object.freeze({
+  standardThicknessMm: 12,
+  standardWidthMaxMm: 760,
+  backShelfHeightMaxMm: 100,
+  roundingUnitWon: 10,
+  unitPriceByCategory: Object.freeze({
+    인조대리석: 147000,
+    하이막스: 210000,
+  }),
+  shapeAdditionalFeeByShape: Object.freeze({
+    l: 30000,
+    rl: 30000,
+  }),
+  categoryDescriptionByCategory: Object.freeze({
+    인조대리석: "12T 기준 · 깊이 760mm 이하 m당 147,000원",
+    하이막스: "12T 기준 · 깊이 760mm 이하 m당 210,000원",
+  }),
+});
+
 export const TOP_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.TOP);
 
 export const TOP_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
