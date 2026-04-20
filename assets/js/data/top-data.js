@@ -19,7 +19,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_01",
     name: "스노우 스톤",
-    basePrice: 200000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -31,7 +30,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_02",
     name: "퓨어 화이트",
-    basePrice: 205000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -43,7 +41,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_03",
     name: "블랙 갤럭시",
-    basePrice: 210000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -55,7 +52,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_04",
     name: "스톤 그레인",
-    basePrice: 215000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -67,7 +63,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_05",
     name: "그레이 스플래시",
-    basePrice: 220000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -79,7 +74,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_06",
     name: "베이지 테라조",
-    basePrice: 225000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -91,7 +85,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_07",
     name: "크림 스톤",
-    basePrice: 230000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -103,7 +96,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_08",
     name: "그레이 테라조",
-    basePrice: 235000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -115,7 +107,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_09",
     name: "차콜 테라조",
-    basePrice: 240000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -127,7 +118,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_10",
     name: "웜 샌드",
-    basePrice: 245000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -139,7 +129,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_11",
     name: "미스트 화이트",
-    basePrice: 250000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -151,7 +140,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_12",
     name: "아이보리 테라조",
-    basePrice: 255000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -163,7 +151,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_13",
     name: "클라우드 화이트",
-    basePrice: 260000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -175,7 +162,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_14",
     name: "그레이 스톤",
-    basePrice: 265000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -187,7 +173,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_15",
     name: "어반 스톤",
-    basePrice: 270000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -199,7 +184,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "artificial_16",
     name: "모카 브라운",
-    basePrice: 275000,
     category: "인조대리석",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -211,7 +195,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_01",
     name: "소프트 화이트",
-    basePrice: 260000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -223,7 +206,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_02",
     name: "페르나 화이트",
-    basePrice: 265000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -235,7 +217,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_03",
     name: "캔디 화이트",
-    basePrice: 270000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -247,7 +228,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_04",
     name: "아틱 그라니트",
-    basePrice: 275000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -259,7 +239,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_05",
     name: "화이트 스텔라",
-    basePrice: 280000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -271,7 +250,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_06",
     name: "스와니",
-    basePrice: 285000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -283,7 +261,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_07",
     name: "소프트 그레이지",
-    basePrice: 290000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -295,7 +272,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_08",
     name: "스노우",
-    basePrice: 295000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -307,7 +283,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_09",
     name: "크리스탈 베이지",
-    basePrice: 300000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -319,7 +294,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_10",
     name: "베이지 아일랜드",
-    basePrice: 305000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -331,7 +305,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_11",
     name: "스톤 파우더",
-    basePrice: 310000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -343,7 +316,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_12",
     name: "스모그",
-    basePrice: 315000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -355,7 +327,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_13",
     name: "소프트 그레이",
-    basePrice: 320000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -367,7 +338,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_14",
     name: "윈터 스텔라",
-    basePrice: 325000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -379,7 +349,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_15",
     name: "밀키웨이",
-    basePrice: 330000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -391,7 +360,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_16",
     name: "쿨 그레이",
-    basePrice: 335000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -403,7 +371,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_17",
     name: "나이트 스텔라",
-    basePrice: 340000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -415,7 +382,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_18",
     name: "그레이 오닉스",
-    basePrice: 345000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -427,7 +393,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_19",
     name: "차밍 블랙",
-    basePrice: 350000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -439,7 +404,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_20",
     name: "블랙 버드",
-    basePrice: 355000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -451,7 +415,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_21",
     name: "페르나 블랙",
-    basePrice: 360000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -463,7 +426,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_22",
     name: "스노우 콘크리트",
-    basePrice: 365000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -475,7 +437,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_23",
     name: "어반 콘크리트",
-    basePrice: 370000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -487,7 +448,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_24",
     name: "스틸 콘크리트",
-    basePrice: 375000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -499,7 +459,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_25",
     name: "다이아몬드 화이트",
-    basePrice: 380000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -511,7 +470,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_26",
     name: "알파인 화이트",
-    basePrice: 385000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -523,7 +481,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_27",
     name: "아틱 화이트",
-    basePrice: 390000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -535,7 +492,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_28",
     name: "누가 크림",
-    basePrice: 395000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -547,7 +503,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_29",
     name: "그레이",
-    basePrice: 400000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -559,7 +514,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_30",
     name: "블랙",
-    basePrice: 405000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -571,7 +525,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_31",
     name: "그라빌라 스노우",
-    basePrice: 410000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,
@@ -583,7 +536,6 @@ const TOP_TYPES_SOURCE = [
   {
     id: "himacs_32",
     name: "그라빌라 크림",
-    basePrice: 415000,
     category: "하이막스",
     availableThickness: [12, 24, 30, 40, 50],
     minWidth: 300,

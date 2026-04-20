@@ -10,7 +10,51 @@
 4. 부가세(`vat`)는 현재 모든 페이지에서 `0`으로 계산한다.
 5. 최종 예상 결제금액은 `제품금액 + 숫자로 확정된 배송/시공비`이다.
 
-## 2. 합판
+## 2. pricingRule 스키마
+
+모든 금액은 `pricingRule`를 기준으로 정의한다. 새 품목은 아래 스키마를 우선 사용하고, 레거시 필드(`basePrice`, `pricePerM2`, `pricePerHole`, `pricePerMeter`, `pricePerCorner`, `priceRule`)는 과도기 호환용으로만 허용한다.
+
+### 2.1 공통 필드
+
+| 필드 | 설명 | 예시 |
+| --- | --- | --- |
+| `type` | 가격 계산 방식 | `fixed`, `area`, `meter`, `perHole`, `tieredBySize`, `tieredByWidth`, `tieredByHeight`, `free`, `consult` |
+| `value` | 고정 단가 또는 기본 단가 | `47000` |
+| `unit` | 단가 기준 단위 | `m2`, `meter`, `hole`, `item`, `piece` |
+| `label` | 표시용 문구 | `가용높이 내 무료` |
+| `tiers` | 크기/치수별 티어 목록 | `[ { maxWidth, maxLength, price } ]` |
+| `priceByTierKey` | 티어 키별 가격 맵 | `{ "400": 22000, "600": 28000 }` |
+| `priceByCategory` | 카테고리별 가격 맵 | `{ "LPM": 22000, "PP": 20000 }` |
+| `availabilityRule` | 상담 전환/가용성 조건 | `ok`, `consult`, `conditional` |
+
+### 2.2 권장 예시
+
+```js
+pricingRule: {
+  type: "area",
+  value: 47000,
+  unit: "m2",
+}
+```
+
+```js
+pricingRule: {
+  type: "tieredBySize",
+  tiers: [
+    { maxWidth: 300, maxLength: 800, price: 35000 },
+    { maxWidth: 400, maxLength: 800, price: 40000 },
+  ],
+}
+```
+
+### 2.3 운영 원칙
+
+1. 신규 품목은 `pricingRule`를 반드시 포함한다.
+2. `pricingRule`가 있으면 계산은 `pricingRule`를 우선 사용한다.
+3. 레거시 필드는 기존 화면/문서와의 호환이 끝나는 대로 제거한다.
+4. `priceRule`는 `pricingRule`로 점진적으로 치환한다.
+
+## 3. 합판
 
 합판 자재 단가는 `assets/js/data/board-data.js`에 둔다.
 
@@ -28,7 +72,7 @@
 
 규격 한계를 넘는 경우 상담 안내로 처리한다.
 
-## 3. 상판
+## 4. 상판
 
 상판 가격 정책은 `assets/js/data/top-data.js`의 `TOP_PRICING_POLICY`에 둔다.
 
@@ -65,7 +109,7 @@
 
 12T가 아니거나, 깊이 760mm 초과, 길이 한계 초과, 단가 없는 카테고리는 상담 안내로 처리한다.
 
-## 4. 도어
+## 5. 도어
 
 도어 가격 티어는 `assets/js/data/door-data.js`의 `DOOR_PRICE_TIERS_BY_CATEGORY`에 둔다.
 
@@ -88,7 +132,7 @@
 
 600×800mm를 넘는 규격은 상담 안내로 처리한다.
 
-## 5. 시스템
+## 6. 시스템
 
 시스템 가격 정책은 `assets/js/data/system-data.js`의 선반/포스트바 티어에 둔다.
 
@@ -123,7 +167,7 @@
 
 선반 폭 800mm 초과, 선반 길이 한계 초과, 커스텀 가공, 포스트바 높이 2500mm 초과는 상담 안내로 처리한다.
 
-## 6. 배송/시공
+## 7. 배송/시공
 
 배송/시공 정책은 `assets/js/data/fulfillment-policy-data.js`에 둔다.
 
@@ -134,7 +178,7 @@
 | 도어 | 600×800 이하 기준 3개당 7,000원, 초과 규격 상담 | 5개까지 50,000원, 추가 1개당 10,000원 |
 | 시스템 | 포스트바 5개당 8,000원 + 선반 3개당 7,000원, 예외 조건 상담 | 포스트바 2개 50,000원, 3개 70,000원, 4개 90,000원, 그 외 섹션 길이 기준 |
 
-## 7. 검증 기준
+## 8. 검증 기준
 
 대표 케이스는 `scripts/verify-pricing-policy.mjs`로 검증한다.
 

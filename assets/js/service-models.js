@@ -5,11 +5,7 @@ export class BaseServiceModel {
     this.id = cfg.id;
     this.label = cfg.label;
     this.type = cfg.type || "simple";
-    this.pricePerHole = cfg.pricePerHole;
-    this.pricePerMeter = cfg.pricePerMeter;
-    this.pricePerCorner = cfg.pricePerCorner;
     this.pricingRule = cfg.pricingRule || cfg.priceRule;
-    this.priceRule = cfg.priceRule;
     this.availabilityRule = cfg.availabilityRule;
     this.pricingMode = cfg.pricingMode;
     this.consultOnly = cfg.consultOnly;
@@ -132,7 +128,8 @@ export class HoleServiceModel extends BaseServiceModel {
 export function buildServiceModels(configs) {
   const models = {};
   Object.values(configs || {}).forEach((cfg) => {
-    if (cfg.type === "detail" || cfg.pricePerHole) {
+    const ruleType = String(cfg?.pricingRule?.type || cfg?.priceRule?.type || "").trim();
+    if (cfg.type === "detail" || ruleType === "perHole" || ruleType === "hole") {
       models[cfg.id] = new HoleServiceModel(cfg);
     } else {
       models[cfg.id] = new BaseServiceModel(cfg);
