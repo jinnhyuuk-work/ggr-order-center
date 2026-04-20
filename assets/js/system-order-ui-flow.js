@@ -18,6 +18,7 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
     applyConsultPriceToDetail,
     isLayoutConsultStatus,
     buildGrandSummary,
+    hasConsultLineItem,
     $,
     formatFulfillmentCostText,
     updateFulfillmentStepUI,
@@ -134,7 +135,10 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
   const renderSummary = () => {
     const summary = buildGrandSummary();
     const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
-    const productHasConsult = state.items.some((item) => Boolean(item?.isCustomPrice));
+    const productHasConsult =
+      typeof hasConsultLineItem === "function"
+        ? hasConsultLineItem(state.items)
+        : state.items.some((item) => Boolean(item?.isCustomPrice || item?.hasConsultItems));
     const productSuffix = productHasConsult ? "(상담 필요 품목 미포함)" : "";
     const productTotal = Number(summary.subtotal || 0);
 

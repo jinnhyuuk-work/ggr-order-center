@@ -15,6 +15,8 @@ import { createSystemOrderHelpers } from "../assets/js/system-order-helpers.js";
 import {
   buildConsultAwarePricing,
   CONSULT_DISPLAY_PRICE_LABEL,
+  hasConsultLineItem,
+  isConsultLineItem,
 } from "../assets/js/shared.js";
 import {
   TOP_FULFILLMENT_POLICY,
@@ -238,9 +240,15 @@ function run() {
     isCustomPrice: true,
     displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
   });
+  assert.equal(isConsultLineItem({ isCustomPrice: true }), true);
+  assert.equal(isConsultLineItem({ hasConsultItems: true }), true);
+  assert.equal(isConsultLineItem({ isCustomPrice: false, hasConsultItems: false }), false);
+  assert.equal(hasConsultLineItem([{ isCustomPrice: false }, { hasConsultItems: true }]), true);
 
   const systemOrderHelpers = createSystemOrderHelpers({
     buildConsultAwarePricing,
+    hasConsultLineItem,
+    calcAddonCostBreakdown: () => ({ componentCost: 0, furnitureCost: 0 }),
     buildOrderPayloadBase: ({ pageKey, customer, summary }) => ({
       pageKey,
       customer,
@@ -277,6 +285,27 @@ function run() {
     isCustomPrice: true,
     displayPriceLabel: CONSULT_DISPLAY_PRICE_LABEL,
   });
+
+  const groupedSystemItems = systemOrderHelpers.buildSystemGroupDisplayItems([
+    {
+      id: "system-consult-part",
+      type: "bay",
+      groupId: "group-2",
+      quantity: 1,
+      hasConsultItems: true,
+      isCustomPrice: false,
+      shelf: {
+        materialId: "lpm_basic",
+        width: 600,
+        length: 400,
+        thickness: 18,
+        count: 1,
+      },
+      addons: [],
+    },
+  ]);
+  assert.equal(groupedSystemItems[0].isCustomPrice, false);
+  assert.equal(groupedSystemItems[0].hasConsultItems, true);
 
   assert.equal(TOP_FULFILLMENT_POLICY.installationAmount, 50000);
   assert.equal(BOARD_FULFILLMENT_POLICY.consultReason, "합판 서비스는 상담 안내입니다.");

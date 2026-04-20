@@ -7,6 +7,7 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
     systemOrderHelpers,
     escapeHtml,
     formatFulfillmentLine,
+    hasConsultLineItem,
     validateCustomerInfo,
     getEmailJSInstance,
     updateSendButtonEnabled,
@@ -31,7 +32,10 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
     const displayItems = systemOrderHelpers.buildSystemGroupDisplayItems(getStateItems());
     const builderRows = buildBuilderEdgeRows();
     const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
-    const productHasConsult = displayItems.some((item) => Boolean(item?.isCustomPrice));
+    const productHasConsult =
+      typeof hasConsultLineItem === "function"
+        ? hasConsultLineItem(displayItems)
+        : displayItems.some((item) => Boolean(item?.isCustomPrice || item?.hasConsultItems));
     const productSuffix = productHasConsult ? "(상담 필요 품목 미포함)" : "";
     const productTotal = Number(summary.subtotal || 0);
 

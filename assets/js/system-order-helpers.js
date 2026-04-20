@@ -10,10 +10,15 @@ export function createSystemOrderHelpers({
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
   buildConsultAwarePricing,
+  hasConsultLineItem,
   formatFulfillmentLine,
 } = {}) {
   const sumNumericField = (items = [], field = "") =>
     (Array.isArray(items) ? items : []).reduce((sum, item) => sum + Number(item?.[field] || 0), 0);
+  const hasConsultItems = (items = []) =>
+    typeof hasConsultLineItem === "function"
+      ? hasConsultLineItem(items)
+      : Array.isArray(items) && items.some((item) => Boolean(item?.isCustomPrice || item?.hasConsultItems));
 
   const buildSystemPricingPayload = (item = {}) => {
     const isCustomPrice = Boolean(item?.isCustomPrice);
@@ -332,6 +337,7 @@ export function createSystemOrderHelpers({
         subtotal: sumNumericField(entries, "subtotal"),
         vat: sumNumericField(entries, "vat"),
         isCustomPrice: entries.some((item) => Boolean(item?.isCustomPrice)),
+        hasConsultItems: hasConsultItems(entries),
         column: columnsItem?.column || null,
         layoutSpec: columnsItem?.layoutSpec || bays[0]?.layoutSpec || null,
         layoutConsult: columnsItem?.layoutConsult || bays[0]?.layoutConsult || null,
@@ -475,7 +481,7 @@ export function createSystemOrderHelpers({
     lines.push("");
     lines.push("=== 합계 ===");
     const suffix = summary.hasConsult ? "(상담 필요 품목 미포함)" : "";
-    const productHasConsult = displayItems.some((item) => Boolean(item?.isCustomPrice));
+    const productHasConsult = hasConsultItems(displayItems);
     const productSuffix = productHasConsult ? "(상담 필요 품목 미포함)" : "";
     const productTotal = Number(summary.subtotal || 0);
     const naverUnits = Math.ceil(summary.grandTotal / 1000) || 0;

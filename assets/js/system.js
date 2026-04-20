@@ -128,6 +128,7 @@ import {
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
   buildConsultAwarePricing,
+  hasConsultLineItem,
   resolveThreePhaseNextTransition,
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
@@ -338,6 +339,7 @@ const systemOrderHelpers = createSystemOrderHelpers({
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
   buildConsultAwarePricing,
+  hasConsultLineItem,
   formatFulfillmentLine,
 });
 const moduleFrontPreviewRuntimeHelpers = createModuleFrontPreviewRuntimeHelpers({
@@ -396,6 +398,7 @@ const fulfillmentSummaryHelpers = createSystemFulfillmentSummaryHelpers({
   ADDON_CLOTHES_ROD_ID,
   calcGroupedAmount,
   calcOrderSummary,
+  hasConsultLineItem,
   $,
   formatFulfillmentCardPriceText,
 });
@@ -5529,6 +5532,7 @@ const systemOrderUiFlowHelpers = createSystemOrderUiFlowHelpers({
   applyConsultPriceToDetail,
   isLayoutConsultStatus,
   buildGrandSummary,
+  hasConsultLineItem,
   $,
   formatFulfillmentCostText,
   updateFulfillmentStepUI,
@@ -5588,6 +5592,7 @@ const systemQuoteFlowHelpers = createSystemQuoteFlowHelpers({
   systemOrderHelpers,
   escapeHtml,
   formatFulfillmentLine,
+  hasConsultLineItem,
   validateCustomerInfo,
   getEmailJSInstance,
   updateSendButtonEnabled,

@@ -789,8 +789,12 @@ export function evaluateSelectionPricing({
   return { amount, hasConsult };
 }
 
+export function isConsultLineItem(item = {}) {
+  return Boolean(item?.isCustomPrice || item?.hasConsultItems);
+}
+
 export function hasConsultLineItem(items = []) {
-  return Array.isArray(items) && items.some((item) => Boolean(item?.isCustomPrice || item?.hasConsultItems));
+  return Array.isArray(items) && items.some((item) => isConsultLineItem(item));
 }
 
 export function buildStandardPriceBreakdownRows({

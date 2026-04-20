@@ -9,6 +9,7 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
     ADDON_CLOTHES_ROD_ID = "clothes_rod",
     calcGroupedAmount,
     calcOrderSummary,
+    hasConsultLineItem,
     $,
     formatFulfillmentCardPriceText,
   } = deps;
@@ -192,7 +193,9 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
     const fulfillmentCost = fulfillment.isConsult ? 0 : Number(fulfillment.amount || 0);
     const grandTotal = Number(baseSummary.grandTotal || 0) + fulfillmentCost;
     const hasConsult =
-      getStateItems().some((item) => item.isCustomPrice) ||
+      (typeof hasConsultLineItem === "function"
+        ? hasConsultLineItem(getStateItems())
+        : getStateItems().some((item) => Boolean(item?.isCustomPrice || item?.hasConsultItems))) ||
       (Boolean(fulfillment.type) && fulfillment.isConsult);
     return {
       ...baseSummary,
