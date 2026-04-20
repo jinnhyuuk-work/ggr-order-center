@@ -1,4 +1,11 @@
-import { buildAddonDetail, buildConsultState, evaluateSelectionPricing } from "./shared.js";
+import {
+  buildAddonDetail,
+  calculatePricingTotals,
+  buildConsultState,
+  evaluateSelectionPricing,
+  normalizeQuantity,
+  roundAmountByPolicy,
+} from "./shared.js";
 
 export function createTopPricingHelpers({
   topTypes = [],
@@ -85,9 +92,7 @@ export function createTopPricingHelpers({
   }
 
   function ceilToUnit(value, unit = roundingUnitWon) {
-    const safeValue = Number(value || 0);
-    if (safeValue <= 0) return 0;
-    return Math.ceil(safeValue / unit) * unit;
+    return roundAmountByPolicy(value, { method: "ceil", unit });
   }
 
   function isTopCustomSize({ type, shape, thickness, width, length, length2 = 0, length3 = 0 }) {
@@ -114,10 +119,12 @@ export function createTopPricingHelpers({
       useBackHeight = false,
       services = [],
       serviceDetails = {},
+      quantity = 1,
     } = input;
     const type = topTypes.find((t) => t.id === typeId);
     const err = validateTopInputs(input);
     if (!type || err) return { error: err || "필수 정보를 입력해주세요." };
+    const unitQuantity = normalizeQuantity(quantity, 1);
 
     const isCustomPrice = isTopCustomSize({
       type,
@@ -132,6 +139,7 @@ export function createTopPricingHelpers({
     const { amount: optionPrice, hasConsult: hasConsultOption } = evaluateSelectionPricing({
       selectedIds: options,
       resolveById: (id) => optionCatalog[id],
+      quantity: unitQuantity,
     });
     const {
       processingCost: processingServiceCost,
@@ -139,23 +147,28 @@ export function createTopPricingHelpers({
     } = calcProcessingServiceCost({
       services,
       serviceDetails,
-      quantity: 1,
+      quantity: unitQuantity,
       width,
     });
     const itemCost = ceilToUnit(
       (getChargeableLengthMm({ shape, width, length, length2, length3 }) / 1000) * getTopUnitPrice(type)
     );
-    const shapeFee = Number(shapeAdditionalFeeByShape?.[shape] || 0);
-    const processingServiceCostRaw = shapeFee + processingServiceCost;
+    const shapeFeeTotal = Number(shapeAdditionalFeeByShape?.[shape] || 0) * unitQuantity;
+    const processingServiceCostRaw = shapeFeeTotal + processingServiceCost;
     const optionHasConsult = Boolean(isCustomPrice || hasConsultOption);
     const processingServiceHasConsult = Boolean(isCustomPrice || hasConsultProcessingService);
     const appliedOptionCost = optionHasConsult ? 0 : optionPrice;
     const appliedProcessingServiceCost = processingServiceHasConsult ? 0 : processingServiceCostRaw;
     const appliedProcessingCost = appliedOptionCost + appliedProcessingServiceCost;
-    const materialCost = isCustomPrice ? 0 : itemCost + appliedProcessingCost;
-    const subtotal = materialCost;
-    const vat = 0;
-    const total = isCustomPrice ? 0 : ceilToUnit(subtotal);
+    const itemCostTotal = itemCost * unitQuantity;
+    const materialCost = isCustomPrice ? 0 : itemCostTotal + appliedProcessingCost;
+    const totals = calculatePricingTotals({
+      materialCost,
+      processingCost: 0,
+      roundingMethod: "ceil",
+      roundingUnit: roundingUnitWon,
+      vatRate: 0,
+    });
     const consultState = buildConsultState({
       isCustomPrice: isCustomPrice,
       itemHasConsult: isCustomPrice,
@@ -183,26 +196,29 @@ export function createTopPricingHelpers({
 
     return {
       materialCost,
-      subtotal,
-      vat,
-      total,
       displaySize,
       optionsLabel: optionLabels.length === 0 ? "-" : optionLabels.join(", "),
       servicesLabel: formatProcessingServiceList(services, serviceDetails, { includeNote: true }),
       serviceDetails,
       services,
       ...consultState,
-      itemCost: isCustomPrice ? 0 : itemCost,
+      itemCost: isCustomPrice ? 0 : itemCostTotal,
       optionCost: appliedOptionCost,
       processingServiceCost: appliedProcessingServiceCost,
       serviceCost: appliedProcessingServiceCost,
       useBackHeight,
       backHeight,
       processingCost: appliedProcessingCost,
+      subtotal: totals.subtotal,
+      vat: totals.vat,
+      total: isCustomPrice ? 0 : totals.total,
+      vatRate: totals.vatRate,
+      roundingMethod: totals.roundingMethod,
+      roundingUnit: totals.roundingUnit,
     };
   }
 
-  const calcAddonDetail = (price) => buildAddonDetail(price);
+  const calcAddonDetail = (price, options = {}) => buildAddonDetail(price, options);
 
   return {
     getBackHeightLimit,

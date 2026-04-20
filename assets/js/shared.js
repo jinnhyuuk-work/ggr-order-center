@@ -514,15 +514,82 @@ export function calcGroupedAmount(count = 0, groupSize = 1, groupPrice = 0) {
   return Math.ceil(normalizedCount / normalizedGroupSize) * normalizedGroupPrice;
 }
 
-export function buildAddonDetail(subtotal = 0, { weightKg = 0 } = {}) {
-  const safeSubtotal = Number(subtotal || 0);
-  const vat = 0;
+export function normalizeQuantity(value = 1, fallback = 1) {
+  const normalizedFallback = Math.max(1, Math.floor(Number(fallback) || 1));
+  const normalizedValue = Math.floor(Number(value));
+  if (!Number.isFinite(normalizedValue) || normalizedValue <= 0) return normalizedFallback;
+  return normalizedValue;
+}
+
+export function roundAmountByPolicy(value = 0, {
+  method = "round",
+  unit = 1,
+} = {}) {
+  const normalizedValue = Number(value || 0);
+  if (!Number.isFinite(normalizedValue) || normalizedValue <= 0) return 0;
+  const normalizedUnit = Math.max(1, Number(unit) || 1);
+  const token = String(method || "round").trim().toLowerCase();
+  if (token === "ceil") return Math.ceil(normalizedValue / normalizedUnit) * normalizedUnit;
+  if (token === "floor") return Math.floor(normalizedValue / normalizedUnit) * normalizedUnit;
+  return Math.round(normalizedValue / normalizedUnit) * normalizedUnit;
+}
+
+export function calculatePricingTotals({
+  materialCost = 0,
+  processingCost = 0,
+  roundingMethod = "round",
+  roundingUnit = 1,
+  vatRate = 0,
+} = {}) {
+  const safeMaterialCost = Math.max(0, Number(materialCost || 0));
+  const safeProcessingCost = Math.max(0, Number(processingCost || 0));
+  const subtotal = roundAmountByPolicy(safeMaterialCost + safeProcessingCost, {
+    method: roundingMethod,
+    unit: roundingUnit,
+  });
+  const normalizedVatRate = Math.max(0, Number(vatRate || 0));
+  const vat = normalizedVatRate > 0
+    ? roundAmountByPolicy(subtotal * normalizedVatRate, { method: "round", unit: 1 })
+    : 0;
+  const total = subtotal + vat;
   return {
-    materialCost: safeSubtotal,
-    processingCost: 0,
-    subtotal: safeSubtotal,
+    materialCost: safeMaterialCost,
+    processingCost: safeProcessingCost,
+    subtotal,
     vat,
-    total: safeSubtotal,
+    total,
+    vatRate: normalizedVatRate,
+    roundingMethod: String(roundingMethod || "round").trim().toLowerCase() || "round",
+    roundingUnit: Math.max(1, Number(roundingUnit) || 1),
+  };
+}
+
+export function buildAddonDetail(subtotalOrUnitPrice = 0, {
+  weightKg = 0,
+  quantity = null,
+  roundingMethod = "round",
+  roundingUnit = 1,
+  vatRate = 0,
+} = {}) {
+  const computedMaterialCost = quantity === null
+    ? Number(subtotalOrUnitPrice || 0)
+    : Number(subtotalOrUnitPrice || 0) * normalizeQuantity(quantity, 1);
+  const totals = calculatePricingTotals({
+    materialCost: computedMaterialCost,
+    processingCost: 0,
+    roundingMethod,
+    roundingUnit,
+    vatRate,
+  });
+  return {
+    materialCost: totals.materialCost,
+    processingCost: totals.processingCost,
+    subtotal: totals.subtotal,
+    vat: totals.vat,
+    total: totals.total,
+    vatRate: totals.vatRate,
+    roundingMethod: totals.roundingMethod,
+    roundingUnit: totals.roundingUnit,
     weightKg: Number(weightKg || 0),
   };
 }
@@ -534,7 +601,7 @@ export function buildOrderSummary(items = []) {
     .reduce((sum, item) => sum + Number(item?.materialCost || 0), 0);
   const processingTotal = list.reduce((sum, item) => sum + Number(item?.processingCost || 0), 0);
   const subtotal = list.reduce((sum, item) => sum + Number(item?.subtotal || 0), 0);
-  const vat = 0;
+  const vat = list.reduce((sum, item) => sum + Number(item?.vat || 0), 0);
   const totalWeight = list.reduce((sum, item) => sum + Number(item?.weightKg || 0), 0);
   return {
     materialsTotal,
@@ -542,7 +609,7 @@ export function buildOrderSummary(items = []) {
     subtotal,
     vat,
     totalWeight,
-    grandTotal: subtotal,
+    grandTotal: subtotal + vat,
   };
 }
 

@@ -5,7 +5,13 @@ import {
   SYSTEM_SHELF_TIER_PRICING,
   SYSTEM_ADDON_ITEMS,
 } from "./data/system-data.js";
-import { buildConsultState, buildOrderSummary } from "./shared.js";
+import {
+  buildConsultState,
+  buildOrderSummary,
+  calculatePricingTotals,
+  normalizeQuantity,
+  roundAmountByPolicy,
+} from "./shared.js";
 
 const SYSTEM_ADDON_ITEMS_BY_ID = new Map(
   (Array.isArray(SYSTEM_ADDON_ITEMS) ? SYSTEM_ADDON_ITEMS : []).map((item) => [String(item.id || ""), item])
@@ -26,8 +32,7 @@ function normalizeMm(value) {
 }
 
 function roundWon(value) {
-  const n = Math.round(Number(value || 0));
-  return Number.isFinite(n) ? n : 0;
+  return roundAmountByPolicy(value, { method: "round", unit: 1 });
 }
 
 function sumBy(items, key) {
@@ -99,7 +104,7 @@ export function createSystemPricingHelpers({
   }
 
   function calcAddonCostBreakdown(addonIds = [], quantity = 1) {
-    const qtyMultiplier = Math.max(1, normalizeCount(quantity, 1));
+    const qtyMultiplier = normalizeQuantity(quantity, 1);
     return (Array.isArray(addonIds) ? addonIds : []).reduce(
       (acc, addonId) => {
         const addon = getAddonItemById(addonId);
@@ -250,7 +255,7 @@ export function createSystemPricingHelpers({
   }
 
   function calcBayDetail({ shelf, addons = [], quantity, isCorner = false }) {
-    const unitQuantity = Math.max(1, normalizeCount(quantity, 1));
+    const unitQuantity = normalizeQuantity(quantity, 1);
     const shelfMaterial = SYSTEM_SHELF_MATERIALS[shelf?.materialId];
     const shelfWidthMm = normalizeMm(shelf?.width);
     const shelfLengthMm = normalizeMm(safeShelfLengthMm || shelf?.length);
@@ -282,9 +287,13 @@ export function createSystemPricingHelpers({
 
     const processingCost = shelfIsCustom ? 0 : addonTotal * unitQuantity;
     const materialCost = shelfIsCustom ? 0 : roundWon(shelfTierUnitPrice * shelfCount * unitQuantity);
-    const subtotal = materialCost + processingCost;
-    const vat = 0;
-    const total = roundWon(subtotal);
+    const totals = calculatePricingTotals({
+      materialCost,
+      processingCost,
+      roundingMethod: "ceil",
+      roundingUnit: 1,
+      vatRate: 0,
+    });
     const weightKg = shelfDetail.weightKg;
     const consultState = buildConsultState({
       isCustomPrice: shelfIsCustom,
@@ -294,9 +303,12 @@ export function createSystemPricingHelpers({
     return {
       materialCost,
       processingCost,
-      subtotal,
-      vat,
-      total,
+      subtotal: totals.subtotal,
+      vat: totals.vat,
+      total: totals.total,
+      vatRate: totals.vatRate,
+      roundingMethod: totals.roundingMethod,
+      roundingUnit: totals.roundingUnit,
       weightKg,
       ...consultState,
       shelfPricing: {
@@ -309,7 +321,7 @@ export function createSystemPricingHelpers({
   }
 
   function calcColumnsDetail({ column, count, quantity, bays = [] }) {
-    const unitQuantity = Math.max(1, normalizeCount(quantity, 1));
+    const unitQuantity = normalizeQuantity(quantity, 1);
     const basePostCount = normalizeCount(count, 0);
     const cornerPostCount = countCornerPostBars(bays);
     const baseHeightMm = normalizeMm(column?.length || column?.maxLength);
@@ -367,9 +379,13 @@ export function createSystemPricingHelpers({
     const cornerTotalCost = roundWon(sumBy(pricedCornerPostBars, "totalCost"));
     const materialCost = roundWon(baseTotalCost + cornerTotalCost);
     const processingCost = 0;
-    const subtotal = materialCost + processingCost;
-    const vat = 0;
-    const total = roundWon(subtotal);
+    const totals = calculatePricingTotals({
+      materialCost,
+      processingCost,
+      roundingMethod: "ceil",
+      roundingUnit: 1,
+      vatRate: 0,
+    });
 
     const calcPostBarWeightKg = (heightCountMap) =>
       Array.from(heightCountMap.entries()).reduce((sum, [heightMm, rowCount]) => {
@@ -395,9 +411,12 @@ export function createSystemPricingHelpers({
     return {
       materialCost,
       processingCost,
-      subtotal,
-      vat,
-      total,
+      subtotal: totals.subtotal,
+      vat: totals.vat,
+      total: totals.total,
+      vatRate: totals.vatRate,
+      roundingMethod: totals.roundingMethod,
+      roundingUnit: totals.roundingUnit,
       weightKg,
       ...consultState,
       basePostBar: summarizedBasePostBar,

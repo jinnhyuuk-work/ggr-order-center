@@ -1,9 +1,11 @@
 import {
   buildAddonDetail,
+  calculatePricingTotals,
   buildConsultState,
   buildOrderSummary,
   getTieredPrice,
   evaluateSelectionPricing,
+  normalizeQuantity,
 } from "./shared.js";
 
 export function createDoorPricingHelpers({
@@ -105,12 +107,13 @@ export function createDoorPricingHelpers({
       serviceDetails = {},
       doorHingeConfig = null,
     } = input;
+    const unitQuantity = normalizeQuantity(quantity, 1);
 
     const { areaM2, materialCost, isCustom } = calcMaterialCost({
       materialId,
       width,
       length,
-      quantity,
+      quantity: unitQuantity,
       thickness,
     });
     if (Number.isNaN(materialCost)) {
@@ -118,11 +121,11 @@ export function createDoorPricingHelpers({
     }
 
     const { processingCost, hasConsult: hasConsultProcessingService } = calcProcessingCost({
-      quantity,
+      quantity: unitQuantity,
       services,
       serviceDetails,
     });
-    const doorHingeCost = calcDoorHingeCost({ quantity, doorHingeConfig });
+    const doorHingeCost = calcDoorHingeCost({ quantity: unitQuantity, doorHingeConfig });
     const { optionPrice, hasConsult: hasConsultOption } = calcOptionsPrice(options);
 
     const { weightKg } = calcWeightKg({
@@ -130,7 +133,7 @@ export function createDoorPricingHelpers({
       width,
       length,
       thickness,
-      quantity,
+      quantity: unitQuantity,
     });
 
     const appliedMaterialCost = isCustom ? 0 : materialCost;
@@ -139,9 +142,13 @@ export function createDoorPricingHelpers({
     const appliedProcessingServiceCost =
       (isCustom || hasConsultProcessingService ? 0 : processingCost) + appliedDoorHingeCost;
     const appliedProcessingCost = appliedProcessingServiceCost + appliedOptionCost;
-    const subtotal = appliedMaterialCost + appliedProcessingCost;
-    const vat = 0;
-    const total = Math.round(subtotal);
+    const totals = calculatePricingTotals({
+      materialCost: appliedMaterialCost,
+      processingCost: appliedProcessingCost,
+      roundingMethod: "ceil",
+      roundingUnit: 1,
+      vatRate: 0,
+    });
     const consultState = buildConsultState({
       isCustomPrice: isCustom,
       itemHasConsult: isCustom,
@@ -157,9 +164,12 @@ export function createDoorPricingHelpers({
       processingServiceCost: appliedProcessingServiceCost,
       serviceCost: appliedProcessingServiceCost,
       doorHingeCost: appliedDoorHingeCost,
-      subtotal,
-      vat,
-      total,
+      subtotal: totals.subtotal,
+      vat: totals.vat,
+      total: totals.total,
+      vatRate: totals.vatRate,
+      roundingMethod: totals.roundingMethod,
+      roundingUnit: totals.roundingUnit,
       weightKg,
       ...consultState,
       doorHingeConfig: cloneDoorHingeConfig(doorHingeConfig),
@@ -168,7 +178,7 @@ export function createDoorPricingHelpers({
     };
   }
 
-  const calcAddonDetail = (price) => buildAddonDetail(price);
+  const calcAddonDetail = (price, options = {}) => buildAddonDetail(price, options);
   const calcOrderSummary = (items) => buildOrderSummary(items);
 
   return {

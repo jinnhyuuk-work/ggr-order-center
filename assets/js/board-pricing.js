@@ -1,8 +1,10 @@
 import {
   buildAddonDetail,
+  calculatePricingTotals,
   buildConsultState,
   buildOrderSummary,
   evaluateSelectionPricing,
+  normalizeQuantity,
   resolveAmountFromPriceRule,
 } from "./shared.js";
 
@@ -87,17 +89,18 @@ export function createBoardPricingHelpers({
       services = [],
       serviceDetails = {},
     } = input;
+    const unitQuantity = normalizeQuantity(quantity, 1);
 
     const { areaM2, materialCost, isCustom } = calcMaterialCost({
       materialId,
       width,
       length,
-      quantity,
+      quantity: unitQuantity,
       thickness,
     });
 
     const { processingCost, hasConsult: hasConsultProcessingService } = calcProcessingCost({
-      quantity,
+      quantity: unitQuantity,
       services,
       serviceDetails,
     });
@@ -108,16 +111,20 @@ export function createBoardPricingHelpers({
       width,
       length,
       thickness,
-      quantity,
+      quantity: unitQuantity,
     });
 
     const appliedMaterialCost = isCustom ? 0 : materialCost;
     const appliedOptionCost = isCustom || hasConsultOption ? 0 : optionPrice;
     const appliedProcessingServiceCost = isCustom || hasConsultProcessingService ? 0 : processingCost;
     const appliedProcessingCost = appliedProcessingServiceCost + appliedOptionCost;
-    const subtotal = appliedMaterialCost + appliedProcessingCost;
-    const vat = 0;
-    const total = Math.round(subtotal);
+    const totals = calculatePricingTotals({
+      materialCost: appliedMaterialCost,
+      processingCost: appliedProcessingCost,
+      roundingMethod: "ceil",
+      roundingUnit: 1,
+      vatRate: 0,
+    });
     const consultState = buildConsultState({
       isCustomPrice: isCustom,
       itemHasConsult: isCustom,
@@ -132,9 +139,12 @@ export function createBoardPricingHelpers({
       optionCost: appliedOptionCost,
       processingServiceCost: appliedProcessingServiceCost,
       serviceCost: appliedProcessingServiceCost,
-      subtotal,
-      vat,
-      total,
+      subtotal: totals.subtotal,
+      vat: totals.vat,
+      total: totals.total,
+      vatRate: totals.vatRate,
+      roundingMethod: totals.roundingMethod,
+      roundingUnit: totals.roundingUnit,
       weightKg,
       ...consultState,
       optionsLabel: formatOptionsLabel(options),
@@ -142,7 +152,7 @@ export function createBoardPricingHelpers({
     };
   }
 
-  const calcAddonDetail = (price) => buildAddonDetail(price);
+  const calcAddonDetail = (price, options = {}) => buildAddonDetail(price, options);
   const calcOrderSummary = (items) => buildOrderSummary(items);
 
   return {

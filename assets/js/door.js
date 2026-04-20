@@ -1734,7 +1734,7 @@ function updateItemQuantity(id, quantity) {
     const addon = BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId);
     if (!addon) return;
     const price = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
-    const detail = calcAddonDetail(price * quantity);
+    const detail = calcAddonDetail(price, { quantity });
     state.items[idx] = { ...item, quantity, ...detail };
   } else {
     const detail = calcItemDetail({

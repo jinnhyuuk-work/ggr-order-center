@@ -1954,7 +1954,7 @@ function updateItemQuantity(id, quantity) {
     const addon = TOP_ADDON_ITEMS.find((a) => a.id === item.addonId);
     if (!addon) return;
     const price = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
-    const detail = calcAddonDetail(price * quantity);
+    const detail = calcAddonDetail(price, { quantity });
     state.items[idx] = { ...item, quantity, ...detail };
     renderTable();
     renderSummary();
@@ -1973,15 +1973,12 @@ function updateItemQuantity(id, quantity) {
     useBackHeight: item.useBackHeight,
     services: item.services,
     serviceDetails: item.serviceDetails,
+    quantity,
   });
   state.items[idx] = {
     ...item,
     quantity,
-    total: detail.total * quantity,
-    subtotal: detail.subtotal * quantity,
-    vat: detail.vat * quantity,
-    materialCost: detail.materialCost * quantity,
-    processingCost: detail.processingCost * quantity,
+    ...detail,
     servicesLabel: detail.servicesLabel,
   };
   renderTable();
