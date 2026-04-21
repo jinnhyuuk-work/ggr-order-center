@@ -1,22 +1,12 @@
 import { getAdditionalSelectionConfigForPage, resolveSelectionIds } from "./additional-page-map.js";
 import { createDataItemMetaMap, createDatasetMeta } from "./addon-data.js";
 
-const HOLE_INPUT_FIELDS = Object.freeze(["edge", "distance", "verticalRef", "verticalDistance"]);
-
-const createProcessingItem = (item) => Object.freeze({ ...item });
-
-const createPerHoleProcessingItem = ({
-  id,
-  label,
-  value,
-  description,
-  displayPriceText = null,
-}) =>
-  createProcessingItem({
-    id,
+export const ADDITIONAL_PROCESSING_ITEMS = [
+  {
+    id: "proc_hinge_hole",
     kind: "processing",
-    label,
-    pricingRule: { type: "perHole", value, unit: "hole" },
+    label: "경첩 홀 가공",
+    pricingRule: { type: "perHole", value: 2000, unit: "hole" },
     availabilityRule: { type: "ok" },
     type: "detail",
     requiresInput: true,
@@ -25,29 +15,39 @@ const createPerHoleProcessingItem = ({
     validation: {
       rule: "holes_required",
       minCount: 1,
-      fields: [...HOLE_INPUT_FIELDS],
+      fields: ["edge", "distance", "verticalRef", "verticalDistance"],
     },
     thumbnail: null,
     swatch: null,
-    description,
-    ...(displayPriceText ? { displayPriceText } : {}),
-  });
-
-const createConditionalProcessingItem = ({
-  id,
-  label,
-  description,
-  priceLabel,
-  ruleKey,
-}) =>
-  createProcessingItem({
-    id,
+    description: "경첩 홀 1개당",
+  },
+  {
+    id: "proc_handle_hole",
     kind: "processing",
-    label,
-    pricingRule: { type: "free", value: 0, unit: "item", label: priceLabel },
+    label: "피스 홀 타공",
+    pricingRule: { type: "perHole", value: 1200, unit: "hole" },
+    availabilityRule: { type: "ok" },
+    type: "detail",
+    requiresInput: true,
+    inputMode: "hole-list",
+    required: false,
+    validation: {
+      rule: "holes_required",
+      minCount: 1,
+      fields: ["edge", "distance", "verticalRef", "verticalDistance"],
+    },
+    thumbnail: null,
+    swatch: null,
+    description: "피스 홀 1개당",
+  },
+  {
+    id: "top_back_shelf",
+    kind: "processing",
+    label: "뒷턱/뒷선반 추가",
+    pricingRule: { type: "free", value: 0, unit: "item", label: "가용높이 내 무료" },
     availabilityRule: {
       type: "conditional",
-      ruleKey,
+      ruleKey: "top_back_height_limit",
       defaultStatus: "ok",
     },
     type: "simple",
@@ -56,31 +56,10 @@ const createConditionalProcessingItem = ({
     validation: null,
     thumbnail: null,
     swatch: null,
-    description,
-    displayPriceText: priceLabel,
-  });
-
-export const ADDITIONAL_PROCESSING_ITEMS = [
-  createPerHoleProcessingItem({
-    id: "proc_hinge_hole",
-    label: "경첩 홀 가공",
-    value: 1500,
-    description: "경첩 홀 1개당",
-  }),
-  createPerHoleProcessingItem({
-    id: "proc_handle_hole",
-    label: "피스 홀 타공",
-    value: 1200,
-    description: "피스 홀 1개당",
-  }),
-  createConditionalProcessingItem({
-    id: "top_back_shelf",
-    label: "뒷턱/뒷선반 추가",
     description:
       "뒷턱 높이를 입력할 수 있습니다. 가용높이(760 - 상판 깊이) 내 무료, 초과 시 상담안내로 처리됩니다.",
-    priceLabel: "가용높이 내 무료",
-    ruleKey: "top_back_height_limit",
-  }),
+    displayPriceText: "가용높이 내 무료",
+  },
 ];
 
 const PROCESSING_CATALOG_BY_ID = Object.freeze(

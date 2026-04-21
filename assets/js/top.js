@@ -1033,9 +1033,14 @@ function renderTopAddonCards() {
     const isSelected = selectedIds.includes(item.id);
     label.className = `card-base addon-card${isSelected ? " selected" : ""}`;
     const priceText = formatPricingRuleDisplayText(item) || "0원";
+    const visualMarkup = buildMaterialVisualMarkup({
+      swatch: item.swatch,
+      imageUrl: item.thumbnail,
+      fallbackSwatch: SWATCH_MUTED_FALLBACK,
+    });
     label.innerHTML = `
       <input type="checkbox" value="${item.id}" ${isSelected ? "checked" : ""} />
-      <div class="material-visual"></div>
+      ${visualMarkup}
       <div class="name">${item.name}</div>
       <div class="price">${priceText}</div>
       ${descriptionHTML(item.description)}
@@ -1144,9 +1149,14 @@ function renderProcessingServiceCards() {
       config: srv,
       fallbackText: fallbackPriceText,
     });
+    const visualMarkup = buildMaterialVisualMarkup({
+      swatch: srv.swatch,
+      imageUrl: srv.thumbnail,
+      fallbackSwatch: SWATCH_MUTED_FALLBACK,
+    });
     label.innerHTML = `
       <input type="checkbox" name="processingService" value="${srv.id}" />
-      <div class="material-visual" style="background: ${srv.swatch || SWATCH_MUTED_FALLBACK}"></div>
+      ${visualMarkup}
       <div class="name">${srv.label}</div>
       <div class="price${isConsultService ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(srv.description)}

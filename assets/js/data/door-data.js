@@ -1216,7 +1216,7 @@ export const DOOR_PRICE_TIERS_BY_CATEGORY = {
 };
 
 export const DOOR_PRICING_POLICY = Object.freeze({
-  hingePricePerHole: 1500,
+  hingePricePerHole: 2000,
 });
 
 Object.values(DOOR_MATERIALS).forEach((material) => {

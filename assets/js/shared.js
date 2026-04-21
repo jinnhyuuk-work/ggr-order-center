@@ -2792,9 +2792,13 @@ export function renderSelectedAddonChips({
       const rule = getPriceRule(item);
       const metaText =
         rule && Number.isFinite(Number(rule.value)) ? `${formatPrice(rule.value)}원` : "0원";
+      const visualMarkup = buildMaterialVisualMarkup({
+        swatch: item.thumbnail || item.swatch ? item.swatch : "",
+        imageUrl: item.thumbnail,
+      });
       return `
         <div class="addon-chip">
-          <div class="material-visual" style="background:${swatch};"></div>
+          ${visualMarkup}
           <div class="info">
             <div class="name">${item.name}</div>
             <div class="meta">${metaText}</div>

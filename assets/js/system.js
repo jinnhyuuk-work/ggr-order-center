@@ -3366,9 +3366,14 @@ function buildShelfAddonChipsHtml(id, emptyText = "선택된 가구 없음", { m
       const totalPriceLabel = priceInfo.isConsult
         ? "상담 안내"
         : formatWon(Math.max(0, Number(priceInfo.unitPrice || 0)) * count);
+      const visualMarkup = buildMaterialVisualMarkup({
+        swatch: addon.swatch,
+        imageUrl: addon.thumbnail,
+        fallbackSwatch: SWATCH_FALLBACK,
+      });
       return `
         <div class="addon-chip">
-          <div class="material-visual" style="background:${SWATCH_FALLBACK};"></div>
+          ${visualMarkup}
           <div class="info">
             <div class="name">${escapeHtml(name)}</div>
             <div class="meta">${escapeHtml(totalPriceLabel)}</div>
