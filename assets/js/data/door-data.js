@@ -1189,9 +1189,9 @@ export const DOOR_MATERIAL_CATEGORIES_DESC = {
 
 export const DOOR_PRICE_TIERS_BY_CATEGORY = {
   "LX SMR PET": [
-    { maxWidth: 300, maxLength: 800, price: 40000 },
-    { maxWidth: 400, maxLength: 800, price: 45000 },
-    { maxWidth: 600, maxLength: 800, price: 50000 },
+    { maxWidth: 300, maxLength: 800, price: 18000 },
+    { maxWidth: 400, maxLength: 800, price: 23000 },
+    { maxWidth: 600, maxLength: 800, price: 33000 },
   ],
   "LX Texture PET": [
     { maxWidth: 300, maxLength: 800, price: 40000 },
@@ -1199,9 +1199,9 @@ export const DOOR_PRICE_TIERS_BY_CATEGORY = {
     { maxWidth: 600, maxLength: 800, price: 50000 },
   ],
   "LX PET": [
-    { maxWidth: 300, maxLength: 800, price: 35000 },
-    { maxWidth: 400, maxLength: 800, price: 40000 },
-    { maxWidth: 600, maxLength: 800, price: 45000 },
+    { maxWidth: 300, maxLength: 800, price: 17000 },
+    { maxWidth: 400, maxLength: 800, price: 22000 },
+    { maxWidth: 600, maxLength: 800, price: 31000 },
   ],
   "Hansol PET": [
     { maxWidth: 300, maxLength: 800, price: 40000 },
