@@ -701,6 +701,34 @@ export function buildOrderSummary(items = []) {
   };
 }
 
+export function calculateSheetMetrics({
+  width = 0,
+  length = 0,
+  thickness = 0,
+  quantity = 1,
+  density = 0,
+} = {}) {
+  const areaM2 = (Number(width || 0) / 1000) * (Number(length || 0) / 1000);
+  const thicknessM = Number(thickness || 0) / 1000;
+  const volumeM3 = areaM2 * thicknessM * Number(quantity || 0);
+  const weightKg = volumeM3 * Number(density || 0);
+  return {
+    areaM2,
+    thicknessM,
+    volumeM3,
+    weightKg,
+  };
+}
+
+export function formatSelectedItemLabel(selectedIds = [], catalog = {}, { emptyLabel = "-" } = {}) {
+  const ids = Array.isArray(selectedIds) ? selectedIds : [];
+  if (ids.length === 0) return emptyLabel;
+  const labels = ids
+    .map((id) => String(catalog?.[id]?.name || id || "").trim())
+    .filter(Boolean);
+  return labels.length ? labels.join(", ") : emptyLabel;
+}
+
 export function ceilAmountByUnit(value = 0, unit = 1) {
   const normalizedValue = Math.max(0, Number(value) || 0);
   const normalizedUnit = Math.max(1, Number(unit) || 1);
@@ -1135,6 +1163,52 @@ export function evaluateSelectionPricing({
   return { amount, hasConsult };
 }
 
+export function evaluateProcessingServicePricing({
+  selectedIds = [],
+  servicesById,
+  serviceDetails = {},
+  quantity = 1,
+  buildAvailabilityContext,
+  resolveAvailability,
+  getAmount,
+} = {}) {
+  return evaluateSelectionPricing({
+    selectedIds,
+    resolveById: (id) =>
+      typeof servicesById === "function" ? servicesById(id) : servicesById?.[id],
+    quantity,
+    availabilityContext: ({ id, item }) => {
+      const detail = serviceDetails?.[id];
+      const baseContext = {
+        detail,
+        metrics: undefined,
+      };
+      if (typeof buildAvailabilityContext !== "function") return baseContext;
+      const extendedContext = buildAvailabilityContext({ id, item, detail }) || {};
+      return {
+        ...baseContext,
+        ...extendedContext,
+        detail: extendedContext?.detail ?? detail,
+      };
+    },
+    resolveAvailability,
+    getAmount: ({ id, item, quantity: qty, context, availability }) => {
+      if (typeof getAmount === "function") {
+        return getAmount({ id, item, quantity: qty, detail: context?.detail, context, availability });
+      }
+      if (typeof item?.calcProcessingCost === "function") {
+        return item.calcProcessingCost(qty, context?.detail);
+      }
+      return resolveAmountFromPriceRule({
+        config: item,
+        quantity: qty,
+        detail: context?.detail,
+        metrics: context?.metrics,
+      });
+    },
+  });
+}
+
 export function isConsultLineItem(item = {}) {
   return Boolean(
     item?.consult?.status === "consult" ||
@@ -1274,6 +1348,97 @@ export function buildConsultAwarePricing({
     ...normalizedExtraCosts,
     total: Number(total || 0),
     ...resolvedConsultState,
+  };
+}
+
+export function buildStandardProductPricingBreakdown({
+  materialBaseCost = 0,
+  optionBaseCost = 0,
+  processingComponents = [],
+  isCustomPrice = false,
+  hasConsultOption = false,
+  roundingUnit = 1,
+  promotionRules = [],
+  promotionContext = {},
+  includeDiscountMeta = false,
+} = {}) {
+  const materialPromotion = applyPromotionDiscount({
+    amount: isCustomPrice ? 0 : materialBaseCost,
+    rules: promotionRules,
+    context: promotionContext,
+  });
+  const materialCost = materialPromotion.appliedAmount;
+  const optionHasConsult = Boolean(isCustomPrice || hasConsultOption);
+  const optionCost = optionHasConsult ? 0 : Math.max(0, Number(optionBaseCost || 0));
+
+  const normalizedProcessingComponents = (Array.isArray(processingComponents) ? processingComponents : [])
+    .map((component) => {
+      const key = String(component?.key || "").trim();
+      if (!key) return null;
+      const amount = Math.max(0, Number(component?.amount || 0));
+      const consult = Boolean((component?.zeroWhenCustom !== false && isCustomPrice) || component?.hasConsult);
+      return {
+        key,
+        amount,
+        appliedAmount: consult ? 0 : amount,
+        hasConsult: consult,
+      };
+    })
+    .filter(Boolean);
+
+  const processingComponentBaseCosts = normalizedProcessingComponents.reduce((acc, component) => {
+    acc[component.key] = component.amount;
+    return acc;
+  }, {});
+  const processingComponentCosts = normalizedProcessingComponents.reduce((acc, component) => {
+    acc[component.key] = component.appliedAmount;
+    return acc;
+  }, {});
+  const processingServiceHasConsult = normalizedProcessingComponents.some((component) => component.hasConsult);
+  const processingServiceCost = normalizedProcessingComponents.reduce(
+    (sum, component) => sum + component.appliedAmount,
+    0
+  );
+  const processingBaseCost = isCustomPrice
+    ? 0
+    : Math.max(0, Number(optionBaseCost || 0)) +
+      normalizedProcessingComponents.reduce((sum, component) => sum + component.amount, 0);
+  const processingCost = optionCost + processingServiceCost;
+  const totals = calculatePricingTotals({
+    materialCost,
+    processingCost,
+    roundingUnit,
+  });
+  const consultState = buildConsultState({
+    isCustomPrice,
+    itemHasConsult: isCustomPrice,
+    optionHasConsult,
+    processingServiceHasConsult,
+  });
+
+  return {
+    materialCost,
+    optionCost,
+    processingCost,
+    processingServiceCost,
+    serviceCost: processingServiceCost,
+    processingComponentCosts,
+    processingComponentBaseCosts,
+    ...(includeDiscountMeta
+      ? {
+          materialBaseCost: materialPromotion.baseAmount,
+          materialDiscountCost: materialPromotion.discountAmount,
+          materialDiscountRate: materialPromotion.appliedRate,
+          materialDiscountRuleId: materialPromotion.appliedRuleId,
+          processingBaseCost,
+          processingDiscountCost: Math.max(0, processingBaseCost - processingCost),
+        }
+      : {}),
+    subtotal: totals.subtotal,
+    vat: totals.vat,
+    total: totals.total,
+    roundingUnit: totals.roundingUnit,
+    ...consultState,
   };
 }
 

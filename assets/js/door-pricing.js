@@ -1,12 +1,13 @@
 import {
   buildAddonDetail,
-  calculatePricingTotals,
-  buildConsultState,
   buildOrderSummary,
+  buildStandardProductPricingBreakdown,
+  calculateSheetMetrics,
+  evaluateProcessingServicePricing,
+  formatSelectedItemLabel,
   getTieredPrice,
   evaluateSelectionPricing,
   normalizeQuantity,
-  applyPromotionDiscount,
 } from "./shared.js";
 import { getEnabledPromotionRules } from "./data/promotion-data.js";
 
@@ -40,7 +41,7 @@ export function createDoorPricingHelpers({
     if (!material) {
       return { areaM2: 0, materialCost: 0, error: "도어를 선택해주세요." };
     }
-    const areaM2 = (Number(width || 0) / 1000) * (Number(length || 0) / 1000);
+    const { areaM2 } = calculateSheetMetrics({ width, length });
     const { price, isCustom } = getDoorTierPrice(material, width, length);
     const materialCost = Number(price || 0) * Number(quantity || 0);
     return { areaM2, materialCost, price, isCustom };
@@ -51,24 +52,24 @@ export function createDoorPricingHelpers({
     services = [],
     serviceDetails = {},
   }) {
-    const { amount, hasConsult } = evaluateSelectionPricing({
+    const { amount, hasConsult } = evaluateProcessingServicePricing({
       selectedIds: services,
-      resolveById: (id) => processingServices[id],
+      servicesById: processingServices,
+      serviceDetails,
       quantity,
-      getAmount: ({ id, item, quantity: qty }) => {
-        const detail = serviceDetails?.[id];
-        return item.calcProcessingCost(qty, detail);
-      },
     });
     return { processingCost: amount, hasConsult };
   }
 
   function calcWeightKg({ materialId, width, length, thickness, quantity }) {
     const material = materials[materialId];
-    const areaM2 = (Number(width || 0) / 1000) * (Number(length || 0) / 1000);
-    const thicknessM = Number(thickness || 0) / 1000;
-    const volumeM3 = areaM2 * thicknessM * Number(quantity || 0);
-    const weightKg = volumeM3 * Number(material?.density || 0);
+    const { weightKg } = calculateSheetMetrics({
+      width,
+      length,
+      thickness,
+      quantity,
+      density: material?.density || 0,
+    });
     return { weightKg };
   }
 
@@ -84,10 +85,7 @@ export function createDoorPricingHelpers({
   }
 
   function formatOptionsLabel(options = []) {
-    if (!options || options.length === 0) return "-";
-    return options
-      .map((id) => optionCatalog[id]?.name || id)
-      .join(", ");
+    return formatSelectedItemLabel(options, optionCatalog);
   }
 
   function calcOptionsPrice(options = []) {
@@ -140,56 +138,44 @@ export function createDoorPricingHelpers({
       quantity: unitQuantity,
     });
 
-    const materialPromotion = applyPromotionDiscount({
-      amount: isCustom ? 0 : materialCost,
-      rules: promotionRules,
-      context: {
+    const pricingBreakdown = buildStandardProductPricingBreakdown({
+      materialBaseCost: materialCost,
+      optionBaseCost: optionPrice,
+      processingComponents: [
+        {
+          key: "processingServiceCost",
+          amount: processingCost,
+          hasConsult: hasConsultProcessingService,
+        },
+        {
+          key: "doorHingeCost",
+          amount: doorHingeCost,
+        },
+      ],
+      isCustomPrice: isCustom,
+      hasConsultOption,
+      roundingUnit: 10,
+      promotionRules,
+      promotionContext: {
         page: "door",
         targetType: "material",
         materialId,
         materialCategory: String(materials?.[materialId]?.category || ""),
       },
+      includeDiscountMeta,
     });
-    const appliedMaterialCost = materialPromotion.appliedAmount;
-    const appliedOptionCost = isCustom || hasConsultOption ? 0 : optionPrice;
-    const appliedDoorHingeCost = isCustom ? 0 : doorHingeCost;
+    const { processingComponentCosts, processingComponentBaseCosts, ...publicPricingBreakdown } = pricingBreakdown;
+    const appliedDoorHingeCost = processingComponentCosts.doorHingeCost || 0;
     const appliedProcessingServiceCost =
-      (isCustom || hasConsultProcessingService ? 0 : processingCost) + appliedDoorHingeCost;
-    const appliedProcessingCost = appliedProcessingServiceCost + appliedOptionCost;
-    const totals = calculatePricingTotals({
-      materialCost: appliedMaterialCost,
-      processingCost: appliedProcessingCost,
-      roundingUnit: 10,
-    });
-    const consultState = buildConsultState({
-      isCustomPrice: isCustom,
-      itemHasConsult: isCustom,
-      optionHasConsult: hasConsultOption,
-      processingServiceHasConsult: hasConsultProcessingService,
-    });
+      (processingComponentCosts.processingServiceCost || 0) + appliedDoorHingeCost;
 
     return {
       areaM2,
-      materialCost: appliedMaterialCost,
-      processingCost: appliedProcessingCost,
-      optionCost: appliedOptionCost,
+      ...publicPricingBreakdown,
       processingServiceCost: appliedProcessingServiceCost,
       serviceCost: appliedProcessingServiceCost,
       doorHingeCost: appliedDoorHingeCost,
-      ...(includeDiscountMeta
-        ? {
-            materialBaseCost: materialPromotion.baseAmount,
-            materialDiscountCost: materialPromotion.discountAmount,
-            materialDiscountRate: materialPromotion.appliedRate,
-            materialDiscountRuleId: materialPromotion.appliedRuleId,
-          }
-        : {}),
-      subtotal: totals.subtotal,
-      vat: totals.vat,
-      total: totals.total,
-      roundingUnit: totals.roundingUnit,
       weightKg,
-      ...consultState,
       doorHingeConfig: cloneDoorHingeConfig(doorHingeConfig),
       optionsLabel: formatOptionsLabel(options),
       options,

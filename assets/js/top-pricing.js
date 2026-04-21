@@ -1,11 +1,11 @@
 import {
   buildAddonDetail,
-  calculatePricingTotals,
-  buildConsultState,
+  buildStandardProductPricingBreakdown,
+  evaluateProcessingServicePricing,
   evaluateSelectionPricing,
+  formatSelectedItemLabel,
   normalizeQuantity,
   roundAmountByPolicy,
-  applyPromotionDiscount,
 } from "./shared.js";
 import { getEnabledPromotionRules } from "./data/promotion-data.js";
 
@@ -39,13 +39,14 @@ export function createTopPricingHelpers({
   }
 
   function calcProcessingServiceCost({ services = [], serviceDetails = {}, quantity = 1, width = 0 }) {
-    const { amount, hasConsult } = evaluateSelectionPricing({
+    const { amount, hasConsult } = evaluateProcessingServicePricing({
       selectedIds: services,
-      resolveById: (id) => processingServices[id],
+      servicesById: processingServices,
+      serviceDetails,
       quantity,
-      availabilityContext: ({ id }) => ({
+      buildAvailabilityContext: ({ id, detail }) => ({
         serviceId: id,
-        detail: serviceDetails?.[id],
+        detail,
         width,
       }),
       resolveAvailability: ({ rule, context }) => {
@@ -59,10 +60,6 @@ export function createTopPricingHelpers({
             : "ok";
         }
         return rule?.defaultStatus || "ok";
-      },
-      getAmount: ({ id, item, quantity: qty }) => {
-        const detail = serviceDetails?.[id];
-        return item.calcProcessingCost(qty, detail);
       },
     });
     return { processingCost: amount, hasConsult };
@@ -159,38 +156,30 @@ export function createTopPricingHelpers({
     );
     const shapeFeeTotal = Number(shapeAdditionalFeeByShape?.[shape] || 0) * unitQuantity;
     const processingServiceCostRaw = shapeFeeTotal + processingServiceCost;
-    const optionHasConsult = Boolean(isCustomPrice || hasConsultOption);
-    const processingServiceHasConsult = Boolean(isCustomPrice || hasConsultProcessingService);
-    const appliedOptionCost = optionHasConsult ? 0 : optionPrice;
-    const appliedProcessingServiceCost = processingServiceHasConsult ? 0 : processingServiceCostRaw;
-    const appliedProcessingCost = appliedOptionCost + appliedProcessingServiceCost;
     const itemCostTotal = itemCost * unitQuantity;
-    const materialPromotion = applyPromotionDiscount({
-      amount: isCustomPrice ? 0 : itemCostTotal,
-      rules: promotionRules,
-      context: {
+    const pricingBreakdown = buildStandardProductPricingBreakdown({
+      materialBaseCost: itemCostTotal,
+      optionBaseCost: optionPrice,
+      processingComponents: [
+        {
+          key: "processingServiceCost",
+          amount: processingServiceCostRaw,
+          hasConsult: hasConsultProcessingService,
+        },
+      ],
+      isCustomPrice,
+      hasConsultOption,
+      roundingUnit: roundingUnitWon,
+      promotionRules,
+      promotionContext: {
         page: "top",
         targetType: "material",
         materialId: typeId,
         materialCategory: String(type?.category || ""),
       },
+      includeDiscountMeta,
     });
-    const discountedItemCostTotal = materialPromotion.appliedAmount;
-    const materialBaseCost = isCustomPrice ? 0 : itemCostTotal;
-    const materialCost = isCustomPrice ? 0 : discountedItemCostTotal;
-    const processingBaseCost = isCustomPrice ? 0 : optionPrice + processingServiceCostRaw;
-    const processingCost = isCustomPrice ? 0 : appliedProcessingCost;
-    const totals = calculatePricingTotals({
-      materialCost,
-      processingCost,
-      roundingUnit: roundingUnitWon,
-    });
-    const consultState = buildConsultState({
-      isCustomPrice: isCustomPrice,
-      itemHasConsult: isCustomPrice,
-      optionHasConsult,
-      processingServiceHasConsult,
-    });
+    const { processingComponentCosts, processingComponentBaseCosts, ...publicPricingBreakdown } = pricingBreakdown;
 
     const displaySize = (() => {
       if (shape === "u") {
@@ -206,39 +195,20 @@ export function createTopPricingHelpers({
       return `${width}×${length}×${thickness}mm${useBackHeight ? ` · 뒷턱 ${backHeight}mm` : ""}`;
     })();
 
-    const optionLabels = options
-      .map((id) => optionCatalog[id]?.name || id)
-      .filter(Boolean);
+    const optionsLabel = formatSelectedItemLabel(options, optionCatalog);
 
     return {
-      materialCost,
+      ...publicPricingBreakdown,
       displaySize,
-      optionsLabel: optionLabels.length === 0 ? "-" : optionLabels.join(", "),
+      optionsLabel,
       servicesLabel: formatProcessingServiceList(services, serviceDetails, { includeNote: true }),
       serviceDetails,
       services,
-      ...consultState,
-      itemCost: isCustomPrice ? 0 : discountedItemCostTotal,
-      optionCost: appliedOptionCost,
-      processingServiceCost: appliedProcessingServiceCost,
-      serviceCost: appliedProcessingServiceCost,
-      ...(includeDiscountMeta
-        ? {
-            materialBaseCost,
-            materialDiscountCost: materialPromotion.discountAmount,
-            materialDiscountRate: materialPromotion.appliedRate,
-            materialDiscountRuleId: materialPromotion.appliedRuleId,
-            processingBaseCost,
-            processingDiscountCost: Math.max(0, processingBaseCost - processingCost),
-          }
-        : {}),
+      itemCost: publicPricingBreakdown.materialCost,
+      processingServiceCost: processingComponentCosts.processingServiceCost || 0,
+      serviceCost: processingComponentCosts.processingServiceCost || 0,
       useBackHeight,
       backHeight,
-      processingCost,
-      subtotal: totals.subtotal,
-      vat: totals.vat,
-      total: isCustomPrice ? 0 : totals.total,
-      roundingUnit: totals.roundingUnit,
     };
   }
 

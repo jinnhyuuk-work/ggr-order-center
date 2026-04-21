@@ -1,12 +1,13 @@
 import {
   buildAddonDetail,
-  calculatePricingTotals,
-  buildConsultState,
   buildOrderSummary,
+  buildStandardProductPricingBreakdown,
+  calculateSheetMetrics,
+  evaluateProcessingServicePricing,
   evaluateSelectionPricing,
+  formatSelectedItemLabel,
   normalizeQuantity,
   resolveAmountFromPriceRule,
-  applyPromotionDiscount,
 } from "./shared.js";
 import { getEnabledPromotionRules } from "./data/promotion-data.js";
 
@@ -26,7 +27,7 @@ export function createBoardPricingHelpers({
 
   function calcMaterialCost({ materialId, width, length, quantity, thickness }) {
     const material = materials[materialId];
-    const areaM2 = (Number(width || 0) / 1000) * (Number(length || 0) / 1000);
+    const { areaM2 } = calculateSheetMetrics({ width, length });
     if (isBoardCustomSize(width, length)) {
       return { areaM2, materialCost: 0, isCustom: true };
     }
@@ -45,32 +46,29 @@ export function createBoardPricingHelpers({
     services = [],
     serviceDetails = {},
   }) {
-    const { amount, hasConsult } = evaluateSelectionPricing({
+    const { amount, hasConsult } = evaluateProcessingServicePricing({
       selectedIds: services,
-      resolveById: (id) => processingServices[id],
+      servicesById: processingServices,
+      serviceDetails,
       quantity,
-      getAmount: ({ id, item, quantity: qty }) => {
-        const detail = serviceDetails?.[id];
-        return item.calcProcessingCost(qty, detail);
-      },
     });
     return { processingCost: amount, hasConsult };
   }
 
   function calcWeightKg({ materialId, width, length, thickness, quantity }) {
     const material = materials[materialId];
-    const areaM2 = (Number(width || 0) / 1000) * (Number(length || 0) / 1000);
-    const thicknessM = Number(thickness || 0) / 1000;
-    const volumeM3 = areaM2 * thicknessM * Number(quantity || 0);
-    const weightKg = volumeM3 * Number(material?.density || 0);
+    const { weightKg } = calculateSheetMetrics({
+      width,
+      length,
+      thickness,
+      quantity,
+      density: material?.density || 0,
+    });
     return { weightKg };
   }
 
   function formatOptionsLabel(options = []) {
-    if (!options || options.length === 0) return "-";
-    return options
-      .map((id) => optionCatalog[id]?.name || id)
-      .join(", ");
+    return formatSelectedItemLabel(options, optionCatalog);
   }
 
   function calcOptionsPrice(options = []) {
@@ -118,53 +116,36 @@ export function createBoardPricingHelpers({
       quantity: unitQuantity,
     });
 
-    const materialPromotion = applyPromotionDiscount({
-      amount: isCustom ? 0 : materialCost,
-      rules: promotionRules,
-      context: {
+    const pricingBreakdown = buildStandardProductPricingBreakdown({
+      materialBaseCost: materialCost,
+      optionBaseCost: optionPrice,
+      processingComponents: [
+        {
+          key: "processingServiceCost",
+          amount: processingCost,
+          hasConsult: hasConsultProcessingService,
+        },
+      ],
+      isCustomPrice: isCustom,
+      hasConsultOption,
+      roundingUnit: 10,
+      promotionRules,
+      promotionContext: {
         page: "board",
         targetType: "material",
         materialId,
         materialCategory: String(materials?.[materialId]?.category || ""),
       },
+      includeDiscountMeta,
     });
-    const appliedMaterialCost = materialPromotion.appliedAmount;
-    const appliedOptionCost = isCustom || hasConsultOption ? 0 : optionPrice;
-    const appliedProcessingServiceCost = isCustom || hasConsultProcessingService ? 0 : processingCost;
-    const appliedProcessingCost = appliedProcessingServiceCost + appliedOptionCost;
-    const totals = calculatePricingTotals({
-      materialCost: appliedMaterialCost,
-      processingCost: appliedProcessingCost,
-      roundingUnit: 10,
-    });
-    const consultState = buildConsultState({
-      isCustomPrice: isCustom,
-      itemHasConsult: isCustom,
-      optionHasConsult: hasConsultOption,
-      processingServiceHasConsult: hasConsultProcessingService,
-    });
+    const { processingComponentCosts, processingComponentBaseCosts, ...publicPricingBreakdown } = pricingBreakdown;
 
     return {
       areaM2,
-      materialCost: appliedMaterialCost,
-      processingCost: appliedProcessingCost,
-      optionCost: appliedOptionCost,
-      processingServiceCost: appliedProcessingServiceCost,
-      serviceCost: appliedProcessingServiceCost,
-      ...(includeDiscountMeta
-        ? {
-            materialBaseCost: materialPromotion.baseAmount,
-            materialDiscountCost: materialPromotion.discountAmount,
-            materialDiscountRate: materialPromotion.appliedRate,
-            materialDiscountRuleId: materialPromotion.appliedRuleId,
-          }
-        : {}),
-      subtotal: totals.subtotal,
-      vat: totals.vat,
-      total: totals.total,
-      roundingUnit: totals.roundingUnit,
+      ...publicPricingBreakdown,
+      processingServiceCost: processingComponentCosts.processingServiceCost || 0,
+      serviceCost: processingComponentCosts.processingServiceCost || 0,
       weightKg,
-      ...consultState,
       optionsLabel: formatOptionsLabel(options),
       options,
     };
