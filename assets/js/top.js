@@ -1478,7 +1478,7 @@ function refreshTopEstimate() {
 
 function addTopItem() {
   const input = readTopInputs();
-  const detail = calcTopDetail(input);
+  const detail = calcTopDetail({ ...input, includeDiscountMeta: true });
   if (detail.error) {
     showInfoModal(detail.error);
     updateAddButtonState();
@@ -1974,6 +1974,7 @@ function updateItemQuantity(id, quantity) {
     services: item.services,
     serviceDetails: item.serviceDetails,
     quantity,
+    includeDiscountMeta: true,
   });
   state.items[idx] = {
     ...item,
@@ -2194,6 +2195,14 @@ function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
           processingCost: item.processingCost,
           total: item.total,
           consultState: item,
+          extraCosts: {
+            materialBaseCost: item.materialBaseCost ?? item.materialCost,
+            materialDiscountCost: item.materialDiscountCost || 0,
+            materialDiscountRate: item.materialDiscountRate || 0,
+            processingBaseCost: item.processingCost || 0,
+            processingDiscountCost: 0,
+            ...(item.materialDiscountRuleId ? { promotionRuleId: item.materialDiscountRuleId } : {}),
+          },
         }),
       };
     }),

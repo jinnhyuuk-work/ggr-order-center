@@ -5570,6 +5570,7 @@ function updateSystemGroupQuantity(groupId, quantity) {
         count: item.count,
         quantity: nextQty,
         bays: groupedBays,
+        includeDiscountMeta: true,
       });
       if (isLayoutConsultStatus(item.layoutConsult)) {
         detail = applyConsultPriceToDetail(detail);
@@ -5582,6 +5583,7 @@ function updateSystemGroupQuantity(groupId, quantity) {
         addons: item.addons,
         quantity: nextQty,
         isCorner: Boolean(item.isCorner),
+        includeDiscountMeta: true,
       });
       if (shouldTreatBayFurniturePriceAsConsult({
         width: Number(item?.shelf?.width || 0),

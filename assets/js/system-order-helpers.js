@@ -40,8 +40,18 @@ export function createSystemOrderHelpers({
         total: item?.total,
         consultState: item,
         extraCosts: {
+          materialBaseCost: item?.materialBaseCost,
+          materialDiscountCost: item?.materialDiscountCost,
+          materialDiscountRate: item?.materialDiscountRate,
+          ...(item?.materialDiscountRuleId ? { promotionRuleId: item.materialDiscountRuleId } : {}),
+          processingBaseCost: item?.processingBaseCost,
+          processingDiscountCost: item?.processingDiscountCost,
+          componentBaseCost: item?.componentBaseCost,
           componentCost: item?.componentCost,
+          componentDiscountCost: item?.componentDiscountCost,
+          furnitureBaseCost: item?.furnitureBaseCost,
           furnitureCost: item?.furnitureCost,
+          furnitureDiscountCost: item?.furnitureDiscountCost,
         },
       });
     }
@@ -49,8 +59,20 @@ export function createSystemOrderHelpers({
     return {
       materialCost: isCustomPrice ? null : Number(item?.materialCost || 0),
       processingCost: isCustomPrice ? null : Number(item?.processingCost || 0),
+      materialBaseCost: isCustomPrice ? null : Number(item?.materialBaseCost || 0),
+      materialDiscountCost: isCustomPrice ? null : Number(item?.materialDiscountCost || 0),
+      materialDiscountRate: isCustomPrice ? null : Number(item?.materialDiscountRate || 0),
+      promotionRuleId: isCustomPrice
+        ? null
+        : String(item?.materialDiscountRuleId || "").trim() || null,
+      processingBaseCost: isCustomPrice ? null : Number(item?.processingBaseCost || 0),
+      processingDiscountCost: isCustomPrice ? null : Number(item?.processingDiscountCost || 0),
+      componentBaseCost: isCustomPrice ? null : Number(item?.componentBaseCost || 0),
       componentCost: isCustomPrice ? null : Number(item?.componentCost || 0),
+      componentDiscountCost: isCustomPrice ? null : Number(item?.componentDiscountCost || 0),
+      furnitureBaseCost: isCustomPrice ? null : Number(item?.furnitureBaseCost || 0),
       furnitureCost: isCustomPrice ? null : Number(item?.furnitureCost || 0),
+      furnitureDiscountCost: isCustomPrice ? null : Number(item?.furnitureDiscountCost || 0),
       total: isCustomPrice ? null : Number(item?.total || 0),
       isCustomPrice,
       consultStatus: isCustomPrice ? "consult" : "ok",
@@ -334,11 +356,22 @@ export function createSystemOrderHelpers({
             shelfMaterialId: bay?.shelf?.materialId,
           });
           return {
+            componentBaseCost: acc.componentBaseCost + Number(costs.componentBaseCost || 0),
             componentCost: acc.componentCost + Number(costs.componentCost || 0),
+            componentDiscountCost: acc.componentDiscountCost + Number(costs.componentDiscountCost || 0),
+            furnitureBaseCost: acc.furnitureBaseCost + Number(costs.furnitureBaseCost || 0),
             furnitureCost: acc.furnitureCost + Number(costs.furnitureCost || 0),
+            furnitureDiscountCost: acc.furnitureDiscountCost + Number(costs.furnitureDiscountCost || 0),
           };
         },
-        { componentCost: 0, furnitureCost: 0 }
+        {
+          componentBaseCost: 0,
+          componentCost: 0,
+          componentDiscountCost: 0,
+          furnitureBaseCost: 0,
+          furnitureCost: 0,
+          furnitureDiscountCost: 0,
+        }
       );
       return {
         id: `group:${groupId}`,
@@ -346,10 +379,23 @@ export function createSystemOrderHelpers({
         quantity,
         type: "group",
         total: sumNumericField(entries, "total"),
+        materialBaseCost: sumNumericField(entries, "materialBaseCost"),
+        materialDiscountCost: sumNumericField(entries, "materialDiscountCost"),
+        materialDiscountRate: Math.max(
+          0,
+          ...entries.map((entry) => Number(entry?.materialDiscountRate || 0)).filter((value) => Number.isFinite(value))
+        ),
+        materialDiscountRuleId: (entries.find((entry) => String(entry?.materialDiscountRuleId || "").trim())?.materialDiscountRuleId || ""),
         materialCost: sumNumericField(entries, "materialCost"),
+        processingBaseCost: sumNumericField(entries, "processingBaseCost"),
+        processingDiscountCost: sumNumericField(entries, "processingDiscountCost"),
         processingCost: sumNumericField(entries, "processingCost"),
+        componentBaseCost: addonCost.componentBaseCost,
         componentCost: addonCost.componentCost,
+        componentDiscountCost: addonCost.componentDiscountCost,
+        furnitureBaseCost: addonCost.furnitureBaseCost,
         furnitureCost: addonCost.furnitureCost,
+        furnitureDiscountCost: addonCost.furnitureDiscountCost,
         subtotal: sumNumericField(entries, "subtotal"),
         vat: sumNumericField(entries, "vat"),
         isCustomPrice: entries.some((item) => Boolean(item?.isCustomPrice)),

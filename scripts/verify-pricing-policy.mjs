@@ -395,6 +395,39 @@ function run() {
   assert.deepEqual(buildConsultAwarePricing({
     materialCost: 1000,
     processingCost: 500,
+    total: 5000,
+    isCustomPrice: false,
+    extraCosts: {
+      materialDiscountRate: 0.1,
+      promotionRuleId: "sample_monthly_color_10",
+    },
+  }), {
+    materialCost: 1000,
+    processingCost: 500,
+    materialDiscountRate: 0.1,
+    promotionRuleId: "sample_monthly_color_10",
+    total: 5000,
+    consult: {
+      status: "ok",
+      hasItems: false,
+      displayLabel: null,
+      item: false,
+      option: false,
+      processingService: false,
+    },
+    consultStatus: "ok",
+    consultDisplayLabel: null,
+    displayPriceLabel: null,
+    isCustomPrice: false,
+    hasConsultItems: false,
+    itemHasConsult: false,
+    optionHasConsult: false,
+    processingServiceHasConsult: false,
+    serviceHasConsult: false,
+  });
+  assert.deepEqual(buildConsultAwarePricing({
+    materialCost: 1000,
+    processingCost: 500,
     total: 1500,
     isCustomPrice: true,
   }), {
@@ -461,7 +494,14 @@ function run() {
   const systemOrderHelpers = createSystemOrderHelpers({
     buildConsultAwarePricing,
     hasConsultLineItem,
-    calcAddonCostBreakdown: () => ({ componentCost: 0, furnitureCost: 0 }),
+    calcAddonCostBreakdown: () => ({
+      componentBaseCost: 0,
+      componentCost: 0,
+      componentDiscountCost: 0,
+      furnitureBaseCost: 0,
+      furnitureCost: 0,
+      furnitureDiscountCost: 0,
+    }),
     buildOrderPayloadBase: ({ pageKey, customer, summary }) => ({
       pageKey,
       customer,
@@ -492,8 +532,17 @@ function run() {
   assert.deepEqual(systemPayload.items[0].pricing, {
     materialCost: null,
     processingCost: null,
+    materialBaseCost: null,
+    materialDiscountCost: null,
+    materialDiscountRate: null,
+    processingBaseCost: null,
+    processingDiscountCost: null,
+    componentBaseCost: null,
     componentCost: null,
+    componentDiscountCost: null,
+    furnitureBaseCost: null,
     furnitureCost: null,
+    furnitureDiscountCost: null,
     total: null,
     consult: {
       status: "consult",

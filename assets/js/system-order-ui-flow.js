@@ -87,6 +87,7 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
         count: item.count,
         quantity,
         bays: groupedBays,
+        includeDiscountMeta: true,
       });
       if (isLayoutConsultStatus(item.layoutConsult)) {
         detail = applyConsultPriceToDetail(detail);
@@ -102,6 +103,7 @@ export function createSystemOrderUiFlowHelpers(deps = {}) {
         addons: item.addons,
         quantity,
         isCorner: Boolean(item.isCorner),
+        includeDiscountMeta: true,
       });
       if (
         shouldTreatBayFurniturePriceAsConsult({

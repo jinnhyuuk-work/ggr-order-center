@@ -5,7 +5,9 @@ import {
   evaluateSelectionPricing,
   normalizeQuantity,
   roundAmountByPolicy,
+  applyPromotionDiscount,
 } from "./shared.js";
+import { getEnabledPromotionRules } from "./data/promotion-data.js";
 
 export function createTopPricingHelpers({
   topTypes = [],
@@ -18,6 +20,7 @@ export function createTopPricingHelpers({
   formatProcessingServiceList = () => "-",
   getBackHeightFromServiceDetail = (detail) => Number(detail?.height || 0),
 } = {}) {
+  const promotionRules = getEnabledPromotionRules();
   const standardThicknessMm = Number(pricingPolicy.standardThicknessMm || 0);
   const standardWidthMaxMm = Number(pricingPolicy.standardWidthMaxMm || 0);
   const roundingUnitWon = Number(pricingPolicy.roundingUnitWon || 1);
@@ -120,6 +123,7 @@ export function createTopPricingHelpers({
       services = [],
       serviceDetails = {},
       quantity = 1,
+      includeDiscountMeta = false,
     } = input;
     const type = topTypes.find((t) => t.id === typeId);
     const err = validateTopInputs(input);
@@ -161,7 +165,19 @@ export function createTopPricingHelpers({
     const appliedProcessingServiceCost = processingServiceHasConsult ? 0 : processingServiceCostRaw;
     const appliedProcessingCost = appliedOptionCost + appliedProcessingServiceCost;
     const itemCostTotal = itemCost * unitQuantity;
-    const materialCost = isCustomPrice ? 0 : itemCostTotal + appliedProcessingCost;
+    const materialPromotion = applyPromotionDiscount({
+      amount: isCustomPrice ? 0 : itemCostTotal,
+      rules: promotionRules,
+      context: {
+        page: "top",
+        targetType: "material",
+        materialId: typeId,
+        materialCategory: String(type?.category || ""),
+      },
+    });
+    const discountedItemCostTotal = materialPromotion.appliedAmount;
+    const materialBaseCost = isCustomPrice ? 0 : itemCostTotal + appliedProcessingCost;
+    const materialCost = isCustomPrice ? 0 : discountedItemCostTotal + appliedProcessingCost;
     const totals = calculatePricingTotals({
       materialCost,
       processingCost: 0,
@@ -200,10 +216,18 @@ export function createTopPricingHelpers({
       serviceDetails,
       services,
       ...consultState,
-      itemCost: isCustomPrice ? 0 : itemCostTotal,
+      itemCost: isCustomPrice ? 0 : discountedItemCostTotal,
       optionCost: appliedOptionCost,
       processingServiceCost: appliedProcessingServiceCost,
       serviceCost: appliedProcessingServiceCost,
+      ...(includeDiscountMeta
+        ? {
+            materialBaseCost,
+            materialDiscountCost: materialPromotion.discountAmount,
+            materialDiscountRate: materialPromotion.appliedRate,
+            materialDiscountRuleId: materialPromotion.appliedRuleId,
+          }
+        : {}),
       useBackHeight,
       backHeight,
       processingCost: appliedProcessingCost,

@@ -1484,7 +1484,7 @@ if (addItemBtn) {
     }
 
     const quantity = 1;
-    const detail = calcItemDetail({ ...input, quantity });
+    const detail = calcItemDetail({ ...input, quantity, includeDiscountMeta: true });
     if (detail.error) {
       showInfoModal(detail.error);
       return;
@@ -1747,6 +1747,7 @@ function updateItemQuantity(id, quantity) {
       services: item.services,
       serviceDetails: item.serviceDetails,
       doorHingeConfig: item.doorHingeConfig,
+      includeDiscountMeta: true,
     });
     state.items[idx] = { ...item, quantity, ...detail };
   }
@@ -1872,6 +1873,14 @@ function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
           processingCost: item.processingCost,
           total: item.total,
           consultState: item,
+          extraCosts: {
+            materialBaseCost: item.materialBaseCost ?? item.materialCost,
+            materialDiscountCost: item.materialDiscountCost || 0,
+            materialDiscountRate: item.materialDiscountRate || 0,
+            processingBaseCost: item.processingCost || 0,
+            processingDiscountCost: 0,
+            ...(item.materialDiscountRuleId ? { promotionRuleId: item.materialDiscountRuleId } : {}),
+          },
         }),
       };
     }),

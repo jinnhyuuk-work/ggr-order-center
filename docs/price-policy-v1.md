@@ -55,6 +55,28 @@ pricingRule: {
 3. 레거시 가격 필드는 사용하지 않는다.
 4. 가격 표시는 계산 스키마와 동일한 원본에서 생성한다.
 
+### 2.4 프로모션 할인 스키마
+
+프로모션 설정은 `assets/js/data/promotion-data.js`의 `ORDER_PROMOTION_CONFIG`를 사용한다.
+
+| 필드 | 설명 | 예시 |
+| --- | --- | --- |
+| `enabled` | 전체 프로모션 활성화 | `true` |
+| `rules[].id` | 룰 식별자 | `monthly_lpm_walnut_10` |
+| `rules[].enabled` | 개별 룰 활성화 | `true` |
+| `rules[].pages` | 대상 페이지 | `["board", "door", "top", "system"]` |
+| `rules[].targetTypes` | 대상 타입 | `["material"]`, `["furniture"]` |
+| `rules[].materialIds` | 자재 ID 필터 | `["lpm_natural_walnut"]` |
+| `rules[].addonIds` | 가구 ID 필터 | `["GFD-2"]` |
+| `rules[].discountRate` | 할인율(0~1) | `0.1` |
+| `rules[].startsOn` | 시작일(KST, YYYY-MM-DD) | `"2026-04-01"` |
+| `rules[].endsOn` | 종료일(KST, YYYY-MM-DD) | `"2026-04-30"` |
+
+규칙:
+1. 날짜는 KST 00:00~23:59:59 기준으로 해석한다.
+2. 조건이 여러 개 매칭되면 가장 큰 `discountRate` 1개만 적용한다.
+3. 현재 할인은 자재(`material`)와 시스템 가구(`furniture`)에만 적용한다.
+
 ## 3. 합판
 
 합판 자재 단가는 `assets/js/data/board-data.js`에 둔다.

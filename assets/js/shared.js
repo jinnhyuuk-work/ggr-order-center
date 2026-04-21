@@ -114,7 +114,7 @@ export const CLOUDINARY_CONFIG = {
   folder: String(runtimeCloudinaryConfig.folder || DEFAULT_CLOUDINARY_CONFIG.folder).trim(),
 };
 
-export const ORDER_PAYLOAD_SCHEMA_VERSION = "v2";
+export const ORDER_PAYLOAD_SCHEMA_VERSION = "v3";
 export const CONSULT_DISPLAY_PRICE_LABEL = "상담안내";
 export const CONSULT_EXCLUDED_SUFFIX = "(상담 필요 항목 미포함)";
 export const FULFILLMENT_REGION_LABELS = Object.freeze({
@@ -550,6 +550,111 @@ export function calculatePricingTotals({
     vat,
     total,
     roundingUnit: Math.max(1, Number(roundingUnit) || 1),
+  };
+}
+
+function normalizePromotionRate(value = 0) {
+  const rate = Number(value);
+  if (!Number.isFinite(rate) || rate <= 0) return 0;
+  return Math.min(rate, 1);
+}
+
+function parsePromotionDateMs(value, { endOfDay = false } = {}) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  const parsed = Date.parse(`${text}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}+09:00`);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toTokenSet(values) {
+  if (!Array.isArray(values)) return null;
+  const tokens = values
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  if (!tokens.length) return null;
+  return new Set(tokens);
+}
+
+function isPromotionRuleActive(rule = {}, nowMs = Date.now()) {
+  if (rule?.enabled === false) return false;
+  const startMs = parsePromotionDateMs(rule?.startsOn || rule?.startDate || rule?.from);
+  const endMs = parsePromotionDateMs(rule?.endsOn || rule?.endDate || rule?.to, { endOfDay: true });
+  if (startMs !== null && nowMs < startMs) return false;
+  if (endMs !== null && nowMs > endMs) return false;
+  return true;
+}
+
+function matchesPromotionRule(rule = {}, context = {}) {
+  const page = String(context?.page || "").trim();
+  const targetType = String(context?.targetType || "").trim();
+  const materialId = String(context?.materialId || "").trim();
+  const materialCategory = String(context?.materialCategory || "").trim();
+  const addonId = String(context?.addonId || "").trim();
+  const addonCategoryKey = String(context?.addonCategoryKey || "").trim();
+  const shelfMaterialId = String(context?.shelfMaterialId || "").trim();
+
+  const pageSet = toTokenSet(rule?.pages || rule?.pageKeys);
+  if (pageSet && !pageSet.has(page)) return false;
+
+  const targetTypeSet = toTokenSet(rule?.targetTypes);
+  if (targetTypeSet && !targetTypeSet.has(targetType)) return false;
+
+  const materialIdSet = toTokenSet(rule?.materialIds);
+  if (materialIdSet && !materialIdSet.has(materialId)) return false;
+
+  const materialCategorySet = toTokenSet(rule?.materialCategories);
+  if (materialCategorySet && !materialCategorySet.has(materialCategory)) return false;
+
+  const addonIdSet = toTokenSet(rule?.addonIds);
+  if (addonIdSet && !addonIdSet.has(addonId)) return false;
+
+  const addonCategoryKeySet = toTokenSet(rule?.addonCategoryKeys || rule?.categoryKeys);
+  if (addonCategoryKeySet && !addonCategoryKeySet.has(addonCategoryKey)) return false;
+
+  const shelfMaterialIdSet = toTokenSet(rule?.shelfMaterialIds);
+  if (shelfMaterialIdSet && !shelfMaterialIdSet.has(shelfMaterialId)) return false;
+
+  return true;
+}
+
+export function applyPromotionDiscount({
+  amount = 0,
+  rules = [],
+  context = {},
+  nowMs = Date.now(),
+} = {}) {
+  const safeAmount = Math.max(0, Number(amount || 0));
+  if (!safeAmount) {
+    return {
+      baseAmount: 0,
+      discountAmount: 0,
+      appliedAmount: 0,
+      appliedRate: 0,
+      appliedRuleId: "",
+    };
+  }
+
+  const list = Array.isArray(rules) ? rules : [];
+  let bestRate = 0;
+  let bestRuleId = "";
+  list.forEach((rule) => {
+    if (!rule || typeof rule !== "object") return;
+    if (!isPromotionRuleActive(rule, nowMs)) return;
+    if (!matchesPromotionRule(rule, context)) return;
+    const rate = normalizePromotionRate(rule?.discountRate ?? rule?.rate);
+    if (rate <= 0 || rate <= bestRate) return;
+    bestRate = rate;
+    bestRuleId = String(rule?.id || "").trim();
+  });
+
+  const discountAmount = Math.min(safeAmount, Math.round(safeAmount * bestRate));
+  return {
+    baseAmount: safeAmount,
+    discountAmount,
+    appliedAmount: Math.max(0, safeAmount - discountAmount),
+    appliedRate: bestRate,
+    appliedRuleId: bestRuleId,
   };
 }
 
@@ -1028,11 +1133,20 @@ export function buildConsultAwarePricing({
     serviceHasConsult: normalizedConsult?.serviceHasConsult,
     consultDisplayLabel: normalizedConsult?.consultDisplayLabel ?? normalizedConsult?.displayLabel,
   });
+  const normalizeExtraCostValue = (value) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if (typeof value === "boolean") return value;
+    const text = String(value).trim();
+    if (!text) return 0;
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : text;
+  };
   const normalizedExtraCosts = Object.entries(extraCosts && typeof extraCosts === "object" ? extraCosts : {}).reduce(
     (acc, [key, value]) => {
       const normalizedKey = String(key || "").trim();
       if (!normalizedKey) return acc;
-      acc[normalizedKey] = resolvedConsultState.hasConsultItems ? null : Number(value || 0);
+      acc[normalizedKey] = resolvedConsultState.hasConsultItems ? null : normalizeExtraCostValue(value);
       return acc;
     },
     {}

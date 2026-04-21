@@ -6,7 +6,9 @@ import {
   getTieredPrice,
   evaluateSelectionPricing,
   normalizeQuantity,
+  applyPromotionDiscount,
 } from "./shared.js";
+import { getEnabledPromotionRules } from "./data/promotion-data.js";
 
 export function createDoorPricingHelpers({
   materials = {},
@@ -16,6 +18,7 @@ export function createDoorPricingHelpers({
   hingePricePerHole = 0,
   cloneDoorHingeConfig = (config) => JSON.parse(JSON.stringify(config || {})),
 } = {}) {
+  const promotionRules = getEnabledPromotionRules();
   function getDoorTierPrice(material, width, length) {
     const tiers =
       material?.pricingRule && Array.isArray(material.pricingRule.tiers)
@@ -106,6 +109,7 @@ export function createDoorPricingHelpers({
       services = [],
       serviceDetails = {},
       doorHingeConfig = null,
+      includeDiscountMeta = false,
     } = input;
     const unitQuantity = normalizeQuantity(quantity, 1);
 
@@ -136,7 +140,17 @@ export function createDoorPricingHelpers({
       quantity: unitQuantity,
     });
 
-    const appliedMaterialCost = isCustom ? 0 : materialCost;
+    const materialPromotion = applyPromotionDiscount({
+      amount: isCustom ? 0 : materialCost,
+      rules: promotionRules,
+      context: {
+        page: "door",
+        targetType: "material",
+        materialId,
+        materialCategory: String(materials?.[materialId]?.category || ""),
+      },
+    });
+    const appliedMaterialCost = materialPromotion.appliedAmount;
     const appliedOptionCost = isCustom || hasConsultOption ? 0 : optionPrice;
     const appliedDoorHingeCost = isCustom ? 0 : doorHingeCost;
     const appliedProcessingServiceCost =
@@ -162,6 +176,14 @@ export function createDoorPricingHelpers({
       processingServiceCost: appliedProcessingServiceCost,
       serviceCost: appliedProcessingServiceCost,
       doorHingeCost: appliedDoorHingeCost,
+      ...(includeDiscountMeta
+        ? {
+            materialBaseCost: materialPromotion.baseAmount,
+            materialDiscountCost: materialPromotion.discountAmount,
+            materialDiscountRate: materialPromotion.appliedRate,
+            materialDiscountRuleId: materialPromotion.appliedRuleId,
+          }
+        : {}),
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: totals.total,

@@ -11,7 +11,9 @@ import {
   calculatePricingTotals,
   normalizeQuantity,
   roundAmountByPolicy,
+  applyPromotionDiscount,
 } from "./shared.js";
+import { getEnabledPromotionRules } from "./data/promotion-data.js";
 
 const SYSTEM_ADDON_ITEMS_BY_ID = new Map(
   (Array.isArray(SYSTEM_ADDON_ITEMS) ? SYSTEM_ADDON_ITEMS : []).map((item) => [String(item.id || ""), item])
@@ -45,6 +47,7 @@ export function createSystemPricingHelpers({
   postBarPriceMaxHeightMm,
   addonClothesRodId,
 } = {}) {
+  const promotionRules = getEnabledPromotionRules();
   const shelfLimits = limits?.shelf || {};
   const safeShelfLengthMm = Math.max(0, Number(shelfLengthMm || 0));
   const safePostBarPriceMaxHeightMm = normalizeMm(postBarPriceMaxHeightMm);
@@ -112,8 +115,16 @@ export function createSystemPricingHelpers({
     return materialCategory || "default";
   }
 
-  function resolveAddonUnitPrice(addon, { widthMm = 0, categoryKey = "" } = {}) {
-    if (!addon || typeof addon !== "object") return 0;
+  function resolveAddonUnitPriceResult(addon, { widthMm = 0, categoryKey = "", shelfMaterialId = "" } = {}) {
+    if (!addon || typeof addon !== "object") {
+      return {
+        baseUnitPrice: 0,
+        unitPrice: 0,
+        discountCost: 0,
+        appliedRate: 0,
+        appliedRuleId: "",
+      };
+    }
     const pricingRule =
       addon?.pricingRule && typeof addon.pricingRule === "object" ? addon.pricingRule : null;
     const ruleType = String(pricingRule?.type || "").trim().toLowerCase();
@@ -130,7 +141,15 @@ export function createSystemPricingHelpers({
           if (Number.isFinite(maxWidthMm) && maxWidthMm > 0 && normalizedWidthMm > maxWidthMm) return false;
           return true;
         }) || null;
-      if (!matchedTier || Boolean(matchedTier?.isCustomPrice)) return 0;
+      if (!matchedTier || Boolean(matchedTier?.isCustomPrice)) {
+        return {
+          baseUnitPrice: 0,
+          unitPrice: 0,
+          discountCost: 0,
+          appliedRate: 0,
+          appliedRuleId: "",
+        };
+      }
       const priceByCategory =
         matchedTier?.priceByCategory && typeof matchedTier.priceByCategory === "object"
           ? matchedTier.priceByCategory
@@ -144,10 +163,46 @@ export function createSystemPricingHelpers({
           matchedTier?.value ??
           0
       );
-      return tierPrice > 0 ? roundWon(tierPrice) : 0;
+      const roundedTierPrice = tierPrice > 0 ? roundWon(tierPrice) : 0;
+      const promotion = applyPromotionDiscount({
+        amount: roundedTierPrice,
+        rules: promotionRules,
+        context: {
+          page: "system",
+          targetType: "furniture",
+          addonId: String(addon?.id || ""),
+          addonCategoryKey: normalizedCategoryKey,
+          shelfMaterialId: String(shelfMaterialId || ""),
+        },
+      });
+      return {
+        baseUnitPrice: roundedTierPrice,
+        unitPrice: promotion.appliedAmount,
+        discountCost: promotion.discountAmount,
+        appliedRate: promotion.appliedRate,
+        appliedRuleId: promotion.appliedRuleId,
+      };
     }
     const ruleValue = Number(pricingRule?.value || pricingRule?.unitPrice || 0);
-    return ruleValue > 0 ? roundWon(ruleValue) : 0;
+    const roundedRuleValue = ruleValue > 0 ? roundWon(ruleValue) : 0;
+    const promotion = applyPromotionDiscount({
+      amount: roundedRuleValue,
+      rules: promotionRules,
+      context: {
+        page: "system",
+        targetType: "furniture",
+        addonId: String(addon?.id || ""),
+        addonCategoryKey: normalizedCategoryKey,
+        shelfMaterialId: String(shelfMaterialId || ""),
+      },
+    });
+    return {
+      baseUnitPrice: roundedRuleValue,
+      unitPrice: promotion.appliedAmount,
+      discountCost: promotion.discountAmount,
+      appliedRate: promotion.appliedRate,
+      appliedRuleId: promotion.appliedRuleId,
+    };
   }
 
   function calcAddonCostBreakdown(
@@ -160,19 +215,33 @@ export function createSystemPricingHelpers({
     return (Array.isArray(addonIds) ? addonIds : []).reduce(
       (acc, addonId) => {
         const addon = getAddonItemById(addonId);
-        const price =
-          resolveAddonUnitPrice(addon, {
-            widthMm,
-            categoryKey: resolvedCategoryKey,
-          }) * qtyMultiplier;
+        const addonPrice = resolveAddonUnitPriceResult(addon, {
+          widthMm,
+          categoryKey: resolvedCategoryKey,
+          shelfMaterialId,
+        });
+        const basePrice = Number(addonPrice?.baseUnitPrice || 0) * qtyMultiplier;
+        const appliedPrice = Number(addonPrice?.unitPrice || 0) * qtyMultiplier;
+        const discountCost = Math.max(0, basePrice - appliedPrice);
         if (String(addonId || "") === safeAddonClothesRodId) {
-          acc.componentCost += price;
+          acc.componentBaseCost += basePrice;
+          acc.componentCost += appliedPrice;
+          acc.componentDiscountCost += discountCost;
         } else {
-          acc.furnitureCost += price;
+          acc.furnitureBaseCost += basePrice;
+          acc.furnitureCost += appliedPrice;
+          acc.furnitureDiscountCost += discountCost;
         }
         return acc;
       },
-      { componentCost: 0, furnitureCost: 0 }
+      {
+        componentBaseCost: 0,
+        componentCost: 0,
+        componentDiscountCost: 0,
+        furnitureBaseCost: 0,
+        furnitureCost: 0,
+        furnitureDiscountCost: 0,
+      }
     );
   }
 
@@ -302,26 +371,7 @@ export function createSystemPricingHelpers({
     };
   }
 
-  function calcAddonsUnitTotal(
-    addons = [],
-    { widthMm = 0, shelfMaterialId = "", categoryKey = "" } = {}
-  ) {
-    const resolvedCategoryKey = resolveAddonPriceCategoryKey({ shelfMaterialId, categoryKey });
-    return (Array.isArray(addons) ? addons : []).reduce((sum, id) => {
-      const addon = getAddonItemById(id);
-      return (
-        sum +
-        Number(
-          resolveAddonUnitPrice(addon, {
-            widthMm,
-            categoryKey: resolvedCategoryKey,
-          }) || 0
-        )
-      );
-    }, 0);
-  }
-
-  function calcBayDetail({ shelf, addons = [], quantity, isCorner = false }) {
+  function calcBayDetail({ shelf, addons = [], quantity, isCorner = false, includeDiscountMeta = false }) {
     const unitQuantity = normalizeQuantity(quantity, 1);
     const shelfMaterial = SYSTEM_SHELF_MATERIALS[shelf?.materialId];
     const shelfWidthMm = normalizeMm(shelf?.width);
@@ -350,13 +400,32 @@ export function createSystemPricingHelpers({
       quantity: unitQuantity,
       partMultiplier: shelfCount,
     });
-    const addonTotal = calcAddonsUnitTotal(addons, {
+    const addonBreakdown = calcAddonCostBreakdown(addons, unitQuantity, {
       widthMm: shelfWidthMm,
       shelfMaterialId: shelf?.materialId,
     });
 
-    const processingCost = shelfIsCustom ? 0 : addonTotal * unitQuantity;
-    const materialCost = shelfIsCustom ? 0 : roundWon(shelfTierUnitPrice * shelfCount * unitQuantity);
+    const processingBaseCost = shelfIsCustom
+      ? 0
+      : roundWon(
+          Number(addonBreakdown.componentBaseCost || 0) + Number(addonBreakdown.furnitureBaseCost || 0)
+        );
+    const processingCost = shelfIsCustom
+      ? 0
+      : roundWon(Number(addonBreakdown.componentCost || 0) + Number(addonBreakdown.furnitureCost || 0));
+    const processingDiscountCost = shelfIsCustom ? 0 : Math.max(0, processingBaseCost - processingCost);
+    const shelfMaterialCost = shelfIsCustom ? 0 : roundWon(shelfTierUnitPrice * shelfCount * unitQuantity);
+    const shelfPromotion = applyPromotionDiscount({
+      amount: shelfMaterialCost,
+      rules: promotionRules,
+      context: {
+        page: "system",
+        targetType: "material",
+        materialId: String(shelf?.materialId || ""),
+        materialCategory: String(shelfMaterial?.category || ""),
+      },
+    });
+    const materialCost = shelfPromotion.appliedAmount;
     const totals = calculatePricingTotals({
       materialCost,
       processingCost,
@@ -371,6 +440,22 @@ export function createSystemPricingHelpers({
     return {
       materialCost,
       processingCost,
+      ...(includeDiscountMeta
+        ? {
+            materialBaseCost: shelfPromotion.baseAmount,
+            materialDiscountCost: shelfPromotion.discountAmount,
+            materialDiscountRate: shelfPromotion.appliedRate,
+            materialDiscountRuleId: shelfPromotion.appliedRuleId,
+            processingBaseCost,
+            processingDiscountCost,
+            componentBaseCost: shelfIsCustom ? 0 : roundWon(addonBreakdown.componentBaseCost || 0),
+            componentCost: shelfIsCustom ? 0 : roundWon(addonBreakdown.componentCost || 0),
+            componentDiscountCost: shelfIsCustom ? 0 : roundWon(addonBreakdown.componentDiscountCost || 0),
+            furnitureBaseCost: shelfIsCustom ? 0 : roundWon(addonBreakdown.furnitureBaseCost || 0),
+            furnitureCost: shelfIsCustom ? 0 : roundWon(addonBreakdown.furnitureCost || 0),
+            furnitureDiscountCost: shelfIsCustom ? 0 : roundWon(addonBreakdown.furnitureDiscountCost || 0),
+          }
+        : {}),
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: totals.total,
@@ -386,7 +471,7 @@ export function createSystemPricingHelpers({
     };
   }
 
-  function calcColumnsDetail({ column, count, quantity, bays = [] }) {
+  function calcColumnsDetail({ column, count, quantity, bays = [], includeDiscountMeta = false }) {
     const unitQuantity = normalizeQuantity(quantity, 1);
     const basePostCount = normalizeCount(count, 0);
     const cornerPostCount = countCornerPostBars(bays);
@@ -443,7 +528,19 @@ export function createSystemPricingHelpers({
 
     const baseTotalCost = roundWon(sumBy(pricedBasePostBars, "totalCost"));
     const cornerTotalCost = roundWon(sumBy(pricedCornerPostBars, "totalCost"));
-    const materialCost = roundWon(baseTotalCost + cornerTotalCost);
+    const baseMaterialCost = roundWon(baseTotalCost + cornerTotalCost);
+    const columnMaterial = SYSTEM_COLUMN_MATERIALS[column?.materialId] || null;
+    const columnPromotion = applyPromotionDiscount({
+      amount: isCustomPrice ? 0 : baseMaterialCost,
+      rules: promotionRules,
+      context: {
+        page: "system",
+        targetType: "material",
+        materialId: String(column?.materialId || ""),
+        materialCategory: String(columnMaterial?.category || ""),
+      },
+    });
+    const materialCost = columnPromotion.appliedAmount;
     const processingCost = 0;
     const totals = calculatePricingTotals({
       materialCost,
@@ -475,6 +572,22 @@ export function createSystemPricingHelpers({
     return {
       materialCost,
       processingCost,
+      ...(includeDiscountMeta
+        ? {
+            materialBaseCost: columnPromotion.baseAmount,
+            materialDiscountCost: columnPromotion.discountAmount,
+            materialDiscountRate: columnPromotion.appliedRate,
+            materialDiscountRuleId: columnPromotion.appliedRuleId,
+            processingBaseCost: 0,
+            processingDiscountCost: 0,
+            componentBaseCost: 0,
+            componentCost: 0,
+            componentDiscountCost: 0,
+            furnitureBaseCost: 0,
+            furnitureCost: 0,
+            furnitureDiscountCost: 0,
+          }
+        : {}),
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: totals.total,

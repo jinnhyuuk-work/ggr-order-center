@@ -189,6 +189,7 @@ export function createSystemAddonModalFlowHelpers(deps = {}) {
       count: columnCount,
       quantity: 1,
       bays,
+      includeDiscountMeta: true,
     });
     if (isLayoutConsultStatus(layoutConsult)) {
       columnDetail = applyConsultPriceToDetail(columnDetail);
@@ -219,6 +220,7 @@ export function createSystemAddonModalFlowHelpers(deps = {}) {
         addons: bay.addons,
         quantity: 1,
         isCorner: Boolean(bay.isCorner),
+        includeDiscountMeta: true,
       });
       if (
         shouldTreatBayFurniturePriceAsConsult({
