@@ -222,26 +222,6 @@ export function createSystemPricingHelpers({
     );
   }
 
-  function calcPartDetail({
-    materials,
-    materialId,
-    thickness,
-    width,
-    length,
-    quantity,
-    partMultiplier = 1,
-  }) {
-    const material = materials[materialId];
-    const partQuantity = (quantity || 1) * partMultiplier;
-    const areaM2 = (Number(width || 0) / 1000) * (Number(length || 0) / 1000);
-    const thicknessM = Number(thickness || 0) / 1000;
-    const volumeM3 = areaM2 * thicknessM * partQuantity;
-    const weightKg = volumeM3 * Number(material?.density || 0);
-    return {
-      weightKg,
-    };
-  }
-
   function isColumnCustom(length) {
     return Number(length || 0) > safePostBarPriceMaxHeightMm;
   }
@@ -368,15 +348,6 @@ export function createSystemPricingHelpers({
       !shelfTier ||
       Boolean(shelfTier?.isCustomPrice) ||
       shelfTierUnitPrice <= 0;
-    const shelfDetail = calcPartDetail({
-      materials: SYSTEM_SHELF_MATERIALS,
-      materialId: shelf.materialId,
-      thickness: shelf.thickness,
-      width: shelf.width,
-      length: shelfLengthMm,
-      quantity: unitQuantity,
-      partMultiplier: shelfCount,
-    });
     const addonBreakdown = calcAddonCostBreakdown(addons, unitQuantity, {
       widthMm: shelfWidthMm,
       shelfMaterialId: shelf?.materialId,
@@ -408,7 +379,6 @@ export function createSystemPricingHelpers({
       processingCost,
       roundingUnit: 10,
     });
-    const weightKg = shelfDetail.weightKg;
     const consultState = buildConsultState({
       isCustomPrice: shelfIsCustom,
       itemHasConsult: shelfIsCustom,
@@ -437,7 +407,6 @@ export function createSystemPricingHelpers({
       vat: totals.vat,
       total: totals.total,
       roundingUnit: totals.roundingUnit,
-      weightKg,
       ...consultState,
       shelfPricing: {
         kind: isCorner ? "corner" : "normal",
@@ -525,24 +494,6 @@ export function createSystemPricingHelpers({
       roundingUnit: 10,
     });
 
-    const calcPostBarWeightKg = (heightCountMap) =>
-      Array.from(heightCountMap.entries()).reduce((sum, [heightMm, rowCount]) => {
-        const normalizedHeightMm = normalizeMm(heightMm);
-        const normalizedCount = normalizeCount(rowCount, 0);
-        if (!normalizedHeightMm || !normalizedCount) return sum;
-        const detail = calcPartDetail({
-          materials: SYSTEM_COLUMN_MATERIALS,
-          materialId: column.materialId,
-          thickness: column.thickness,
-          width: column.width,
-          length: normalizedHeightMm,
-          quantity: unitQuantity,
-          partMultiplier: normalizedCount,
-        });
-        return sum + Number(detail.weightKg || 0);
-      }, 0);
-    const weightKg = calcPostBarWeightKg(baseHeightCountMap) + calcPostBarWeightKg(cornerHeightCountMap);
-
     const summarizedBasePostBar = summarizePostBarRows(pricedBasePostBars, "basic");
     const summarizedCornerPostBar = summarizePostBarRows(pricedCornerPostBars, "corner");
 
@@ -569,7 +520,6 @@ export function createSystemPricingHelpers({
       vat: totals.vat,
       total: totals.total,
       roundingUnit: totals.roundingUnit,
-      weightKg,
       ...consultState,
       basePostBar: summarizedBasePostBar,
       cornerPostBar: summarizedCornerPostBar,

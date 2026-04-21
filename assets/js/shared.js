@@ -658,30 +658,6 @@ export function applyPromotionDiscount({
   };
 }
 
-export function buildAddonDetail(subtotalOrUnitPrice = 0, {
-  weightKg = 0,
-  quantity = null,
-  roundingUnit = 1,
-} = {}) {
-  const computedMaterialCost = quantity === null
-    ? Number(subtotalOrUnitPrice || 0)
-    : Number(subtotalOrUnitPrice || 0) * normalizeQuantity(quantity, 1);
-  const totals = calculatePricingTotals({
-    materialCost: computedMaterialCost,
-    processingCost: 0,
-    roundingUnit,
-  });
-  return {
-    materialCost: totals.materialCost,
-    processingCost: totals.processingCost,
-    subtotal: totals.subtotal,
-    vat: totals.vat,
-    total: totals.total,
-    roundingUnit: totals.roundingUnit,
-    weightKg: Number(weightKg || 0),
-  };
-}
-
 export function buildOrderSummary(items = []) {
   const list = Array.isArray(items) ? items : [];
   const materialsTotal = list
@@ -690,33 +666,22 @@ export function buildOrderSummary(items = []) {
   const processingTotal = list.reduce((sum, item) => sum + Number(item?.processingCost || 0), 0);
   const subtotal = list.reduce((sum, item) => sum + Number(item?.subtotal || 0), 0);
   const vat = list.reduce((sum, item) => sum + Number(item?.vat || 0), 0);
-  const totalWeight = list.reduce((sum, item) => sum + Number(item?.weightKg || 0), 0);
   return {
     materialsTotal,
     processingTotal,
     subtotal,
     vat,
-    totalWeight,
     grandTotal: subtotal + vat,
   };
 }
 
-export function calculateSheetMetrics({
+export function calculateSheetAreaMetrics({
   width = 0,
   length = 0,
-  thickness = 0,
-  quantity = 1,
-  density = 0,
 } = {}) {
   const areaM2 = (Number(width || 0) / 1000) * (Number(length || 0) / 1000);
-  const thicknessM = Number(thickness || 0) / 1000;
-  const volumeM3 = areaM2 * thicknessM * Number(quantity || 0);
-  const weightKg = volumeM3 * Number(density || 0);
   return {
     areaM2,
-    thicknessM,
-    volumeM3,
-    weightKg,
   };
 }
 
@@ -1458,7 +1423,6 @@ export function buildAddonLineItemDetail({
   addon = null,
   quantity = 1,
   roundingUnit = 1,
-  weightKg = 0,
 } = {}) {
   const availability = resolveAvailabilityStatus({ config: addon });
   const amount = availability.isConsult
@@ -1479,7 +1443,6 @@ export function buildAddonLineItemDetail({
     vat: totals.vat,
     total: totals.total,
     roundingUnit: totals.roundingUnit,
-    weightKg: Number(weightKg || 0),
     ...buildConsultState({
       itemHasConsult: availability.isConsult,
     }),

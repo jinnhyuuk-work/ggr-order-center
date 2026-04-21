@@ -1,5 +1,4 @@
 import {
-  buildAddonDetail,
   buildStandardProductPricingBreakdown,
   evaluateProcessingServicePricing,
   evaluateSelectionPricing,
@@ -212,8 +211,6 @@ export function createTopPricingHelpers({
     };
   }
 
-  const calcAddonDetail = (price, options = {}) => buildAddonDetail(price, options);
-
   return {
     getBackHeightLimit,
     isBackShelfConsult,
@@ -223,6 +220,5 @@ export function createTopPricingHelpers({
     getChargeableLengthMm,
     isTopCustomSize,
     calcTopDetail,
-    calcAddonDetail,
   };
 }

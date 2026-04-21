@@ -801,7 +801,6 @@ function addAddonItem(addonId) {
     subtotal: detail.subtotal,
     vat: detail.vat,
     total: detail.total,
-    weightKg: 0,
   });
   renderTable();
   renderSummary();

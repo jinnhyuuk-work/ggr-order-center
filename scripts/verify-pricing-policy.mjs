@@ -83,10 +83,7 @@ function run() {
     thickness: 18,
     quantity: 1,
   });
-  assert.deepEqual({
-    ...boardDetail,
-    weightKg: Math.round(Number(boardDetail.weightKg || 0) * 100) / 100,
-  }, {
+  assert.deepEqual(boardDetail, {
     areaM2: 1,
     materialCost: 47000,
     processingCost: 0,
@@ -97,7 +94,6 @@ function run() {
     vat: 0,
     total: 47000,
     roundingUnit: 10,
-    weightKg: 12.96,
     consult: {
       status: "ok",
       hasItems: false,

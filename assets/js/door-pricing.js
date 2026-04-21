@@ -1,8 +1,7 @@
 import {
-  buildAddonDetail,
   buildOrderSummary,
   buildStandardProductPricingBreakdown,
-  calculateSheetMetrics,
+  calculateSheetAreaMetrics,
   evaluateProcessingServicePricing,
   formatSelectedItemLabel,
   getTieredPrice,
@@ -41,7 +40,7 @@ export function createDoorPricingHelpers({
     if (!material) {
       return { areaM2: 0, materialCost: 0, error: "도어를 선택해주세요." };
     }
-    const { areaM2 } = calculateSheetMetrics({ width, length });
+    const { areaM2 } = calculateSheetAreaMetrics({ width, length });
     const { price, isCustom } = getDoorTierPrice(material, width, length);
     const materialCost = Number(price || 0) * Number(quantity || 0);
     return { areaM2, materialCost, price, isCustom };
@@ -59,18 +58,6 @@ export function createDoorPricingHelpers({
       quantity,
     });
     return { processingCost: amount, hasConsult };
-  }
-
-  function calcWeightKg({ materialId, width, length, thickness, quantity }) {
-    const material = materials[materialId];
-    const { weightKg } = calculateSheetMetrics({
-      width,
-      length,
-      thickness,
-      quantity,
-      density: material?.density || 0,
-    });
-    return { weightKg };
   }
 
   function getDoorHingeValidHoleCount(doorHingeConfig) {
@@ -130,14 +117,6 @@ export function createDoorPricingHelpers({
     const doorHingeCost = calcDoorHingeCost({ quantity: unitQuantity, doorHingeConfig });
     const { optionPrice, hasConsult: hasConsultOption } = calcOptionsPrice(options);
 
-    const { weightKg } = calcWeightKg({
-      materialId,
-      width,
-      length,
-      thickness,
-      quantity: unitQuantity,
-    });
-
     const pricingBreakdown = buildStandardProductPricingBreakdown({
       materialBaseCost: materialCost,
       optionBaseCost: optionPrice,
@@ -175,14 +154,12 @@ export function createDoorPricingHelpers({
       processingServiceCost: appliedProcessingServiceCost,
       serviceCost: appliedProcessingServiceCost,
       doorHingeCost: appliedDoorHingeCost,
-      weightKg,
       doorHingeConfig: cloneDoorHingeConfig(doorHingeConfig),
       optionsLabel: formatOptionsLabel(options),
       options,
     };
   }
 
-  const calcAddonDetail = (price, options = {}) => buildAddonDetail(price, options);
   const calcOrderSummary = (items) => buildOrderSummary(items);
 
   return {
@@ -190,12 +167,10 @@ export function createDoorPricingHelpers({
     formatDoorPriceTierLines,
     calcMaterialCost,
     calcProcessingCost,
-    calcWeightKg,
     getDoorHingeValidHoleCount,
     calcDoorHingeCost,
     calcOptionsPrice,
     calcItemDetail,
-    calcAddonDetail,
     calcOrderSummary,
   };
 }

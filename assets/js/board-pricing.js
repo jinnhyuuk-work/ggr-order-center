@@ -1,8 +1,7 @@
 import {
-  buildAddonDetail,
   buildOrderSummary,
   buildStandardProductPricingBreakdown,
-  calculateSheetMetrics,
+  calculateSheetAreaMetrics,
   evaluateProcessingServicePricing,
   evaluateSelectionPricing,
   formatSelectedItemLabel,
@@ -27,7 +26,7 @@ export function createBoardPricingHelpers({
 
   function calcMaterialCost({ materialId, width, length, quantity, thickness }) {
     const material = materials[materialId];
-    const { areaM2 } = calculateSheetMetrics({ width, length });
+    const { areaM2 } = calculateSheetAreaMetrics({ width, length });
     if (isBoardCustomSize(width, length)) {
       return { areaM2, materialCost: 0, isCustom: true };
     }
@@ -53,18 +52,6 @@ export function createBoardPricingHelpers({
       quantity,
     });
     return { processingCost: amount, hasConsult };
-  }
-
-  function calcWeightKg({ materialId, width, length, thickness, quantity }) {
-    const material = materials[materialId];
-    const { weightKg } = calculateSheetMetrics({
-      width,
-      length,
-      thickness,
-      quantity,
-      density: material?.density || 0,
-    });
-    return { weightKg };
   }
 
   function formatOptionsLabel(options = []) {
@@ -108,14 +95,6 @@ export function createBoardPricingHelpers({
     });
     const { optionPrice, hasConsult: hasConsultOption } = calcOptionsPrice(options);
 
-    const { weightKg } = calcWeightKg({
-      materialId,
-      width,
-      length,
-      thickness,
-      quantity: unitQuantity,
-    });
-
     const pricingBreakdown = buildStandardProductPricingBreakdown({
       materialBaseCost: materialCost,
       optionBaseCost: optionPrice,
@@ -145,23 +124,19 @@ export function createBoardPricingHelpers({
       ...publicPricingBreakdown,
       processingServiceCost: processingComponentCosts.processingServiceCost || 0,
       serviceCost: processingComponentCosts.processingServiceCost || 0,
-      weightKg,
       optionsLabel: formatOptionsLabel(options),
       options,
     };
   }
 
-  const calcAddonDetail = (price, options = {}) => buildAddonDetail(price, options);
   const calcOrderSummary = (items) => buildOrderSummary(items);
 
   return {
     isBoardCustomSize,
     calcMaterialCost,
     calcProcessingCost,
-    calcWeightKg,
     calcOptionsPrice,
     calcItemDetail,
-    calcAddonDetail,
     calcOrderSummary,
   };
 }
