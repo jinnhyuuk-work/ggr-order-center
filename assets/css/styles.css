@@ -3528,7 +3528,18 @@ button.card-base:active {
   overflow: hidden;
 }
 
-.measurement-service-media::before,
+.card-base .material-visual.measurement-service-media--door {
+  background: url(../img/page/index/door-service.jpg) center/cover no-repeat;
+}
+
+.card-base .material-visual.measurement-service-media--top {
+  background: url(../img/page/index/top-service.jpg) center/cover no-repeat;
+}
+
+.card-base .material-visual.measurement-service-media--system {
+  background: url(../img/page/index/system-product.jpg) center/cover no-repeat;
+}
+
 .landing-thumb.measurement::before {
   content: "";
   position: absolute;
@@ -3539,7 +3550,6 @@ button.card-base:active {
     repeating-linear-gradient(0deg, rgba(47,95,145,0.1) 0 1px, transparent 1px 18px);
 }
 
-.measurement-service-media::after,
 .landing-thumb.measurement::after {
   content: "";
   position: absolute;
@@ -3550,24 +3560,6 @@ button.card-base:active {
   border: 2px solid rgba(47,95,145,0.52);
   border-radius: var(--radius-sm);
   box-shadow: inset 0 0 0 8px rgba(255,255,255,0.38);
-}
-
-.measurement-service-media--top::after {
-  left: 12%;
-  right: 12%;
-  top: 46%;
-  height: 18%;
-}
-
-.measurement-service-media--system::after {
-  left: 22%;
-  right: 22%;
-  top: 22%;
-  height: 56%;
-  box-shadow:
-    inset 0 0 0 8px rgba(255,255,255,0.38),
-    inset 0 -28px 0 rgba(47,95,145,0.12),
-    inset 0 28px 0 rgba(47,95,145,0.1);
 }
 
 .processing-service-actions {
