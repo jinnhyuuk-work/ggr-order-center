@@ -6,16 +6,14 @@ import {
   createDatasetMeta,
 } from "./addon-data.js";
 import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constraints.js";
-import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
+import { ORDER_PAGE_KEYS } from "./additional-selection-policy.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
-import { createAvailabilityRule, filterAvailableMap } from "./product-availability.js";
+import { filterAvailableMap } from "./product-availability.js";
+import { PRODUCT_AVAILABILITY_POLICY } from "./product-availability-policy.js";
 
 export const BOARD_DIMENSION_LIMITS = ORDER_DIMENSION_LIMITS.board;
-export const BOARD_PRODUCT_AVAILABILITY = createAvailabilityRule({
-  excludedCategories: [],
-  excludedIds: [],
-});
+export const BOARD_PRODUCT_AVAILABILITY = PRODUCT_AVAILABILITY_POLICY.board;
 
 const applyBoardDimensionLimits = (items = []) =>
   items.map((item) => withDimensionLimits(item, BOARD_DIMENSION_LIMITS));

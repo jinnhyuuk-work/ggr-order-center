@@ -4,7 +4,8 @@ import {
   createDataItemMetaMap,
   createDatasetMeta,
 } from "./addon-data.js";
-import { createAvailabilityRule, filterAvailableMap } from "./product-availability.js";
+import { filterAvailableMap } from "./product-availability.js";
+import { PRODUCT_AVAILABILITY_POLICY } from "./product-availability-policy.js";
 
 // 선반 컬러별 단가를 티어 키 기준으로 개별 관리한다.
 const LPM_ITEMS = [
@@ -94,10 +95,7 @@ export const SYSTEM_SHELF_MATERIALS_BASE = {
   ),
 };
 
-export const SYSTEM_SHELF_PRODUCT_AVAILABILITY = createAvailabilityRule({
-  excludedCategories: [],
-  excludedIds: [],
-});
+export const SYSTEM_SHELF_PRODUCT_AVAILABILITY = PRODUCT_AVAILABILITY_POLICY.system.shelf;
 
 export const SYSTEM_SHELF_MATERIALS = Object.freeze(
   filterAvailableMap(SYSTEM_SHELF_MATERIALS_BASE, SYSTEM_SHELF_PRODUCT_AVAILABILITY)
@@ -137,10 +135,7 @@ const SYSTEM_COLUMN_MATERIALS_BASE = {
   ...arrayToMap(COLUMN_ITEMS),
 };
 
-export const SYSTEM_COLUMN_PRODUCT_AVAILABILITY = createAvailabilityRule({
-  excludedCategories: [],
-  excludedIds: [],
-});
+export const SYSTEM_COLUMN_PRODUCT_AVAILABILITY = PRODUCT_AVAILABILITY_POLICY.system.column;
 
 export const SYSTEM_MATERIAL_CATEGORIES_DESC = {
   LPM: "LPM 마감재 카테고리입니다.",

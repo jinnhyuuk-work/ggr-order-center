@@ -1,4 +1,4 @@
-import { getAdditionalSelectionConfigForPage, resolveSelectionIds } from "./additional-page-map.js";
+import { getAdditionalSelectionConfigForPage, resolveSelectionIds } from "./additional-selection-policy.js";
 import { createDataItemMetaMap, createDatasetMeta } from "./addon-data.js";
 
 export const ADDITIONAL_PROCESSING_ITEMS = [

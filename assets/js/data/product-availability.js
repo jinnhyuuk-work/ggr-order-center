@@ -1,4 +1,5 @@
 const EMPTY_AVAILABILITY_RULE = Object.freeze({
+  includeIds: Object.freeze([]),
   excludedCategories: Object.freeze([]),
   excludedIds: Object.freeze([]),
 });
@@ -13,8 +14,9 @@ function normalizeStringList(values = []) {
   );
 }
 
-export function createAvailabilityRule({ excludedCategories = [], excludedIds = [] } = {}) {
+export function createAvailabilityRule({ includeIds = [], excludedCategories = [], excludedIds = [] } = {}) {
   return Object.freeze({
+    includeIds: Object.freeze(normalizeStringList(includeIds)),
     excludedCategories: Object.freeze(normalizeStringList(excludedCategories)),
     excludedIds: Object.freeze(normalizeStringList(excludedIds)),
   });
@@ -29,6 +31,7 @@ export function isItemAvailable(item, rule = EMPTY_AVAILABILITY_RULE) {
   const availabilityRule = resolveAvailabilityRule(rule);
   const category = String(item.category || "기타").trim();
   const id = String(item.id || "").trim();
+  if (availabilityRule.includeIds?.length) return id ? availabilityRule.includeIds.includes(id) : false;
   if (category && availabilityRule.excludedCategories?.includes(category)) return false;
   if (id && availabilityRule.excludedIds?.includes(id)) return false;
   return true;

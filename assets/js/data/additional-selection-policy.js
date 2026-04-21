@@ -140,7 +140,7 @@ export const ADDITIONAL_SELECTION_PAGE_MAP_META = createDatasetMeta({
   id: "additional_selection_page_map",
   label: "페이지별 추가 선택 맵",
   description: "페이지 키 기준 옵션/가공 연결 관계를 정의한 매핑 데이터입니다.",
-  source: "assets/js/data/additional-page-map.js",
+  source: "assets/js/data/additional-selection-policy.js",
   owner: "order-center",
   updated_at: "2026-03-16",
   status: "active",
@@ -151,7 +151,7 @@ export const ADDITIONAL_SELECTION_PAGE_META_BY_ID = createDataItemMetaMap(
   ADDITIONAL_SELECTION_PAGE_ENTRIES,
   {
     dataset: "additional_selection_page_map",
-    source: "assets/js/data/additional-page-map.js",
+    source: "assets/js/data/additional-selection-policy.js",
     owner: "order-center",
     updated_at: "2026-03-16",
     status: "active",
