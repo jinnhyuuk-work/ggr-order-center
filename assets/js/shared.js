@@ -729,6 +729,10 @@ function normalizeRuleToken(value) {
     .replace(/[\s_-]+/g, "");
 }
 
+export function buildTierCategoryPriceKey(tierKey = "", categoryKey = "default") {
+  return `${String(tierKey || "").trim()}__${String(categoryKey || "default").trim() || "default"}`;
+}
+
 function buildAvailabilityResult(status = "ok") {
   const normalizedStatus = normalizeRuleToken(status) === "consult"
     ? "consult"
@@ -877,7 +881,9 @@ export function resolveAmountFromPriceRule({
   const typeToken = normalizeRuleToken(rule.type);
   const unitToken = normalizeRuleToken(rule.unit);
   const value = toFiniteNumber(rule.value, NaN);
-  if (!Number.isFinite(value) || value < 0) return 0;
+  const isTieredRule =
+    typeToken === "tieredbywidth" || typeToken === "tieredbyheight" || typeToken === "tieredbysize";
+  if (!isTieredRule && (!Number.isFinite(value) || value < 0)) return 0;
 
   const qty = (() => {
     const normalized = Number(quantity);
@@ -916,8 +922,30 @@ export function resolveAmountFromPriceRule({
     0,
     Number(metrics?.heightMm || detail?.heightMm || detail?.height || config?.height || 0)
   );
+  const categoryKey = String(
+    metrics?.categoryKey ||
+      detail?.categoryKey ||
+      detail?.materialId ||
+      detail?.materialKey ||
+      config?.materialId ||
+      config?.categoryKey ||
+      "default"
+  ).trim() || "default";
   const cornerCount = Math.max(0, Number(metrics?.cornerCount || detail?.corners || 1));
 
+  if (isTieredRule) {
+    const resolvedTierPrice = resolveTieredPriceRule(rule, {
+      typeToken,
+      widthMm,
+      lengthMm,
+      heightMm,
+      categoryKey,
+    });
+    if (!resolvedTierPrice.matchedTier || resolvedTierPrice.isCustomPrice) return 0;
+    return Number.isFinite(resolvedTierPrice.unitPrice) && resolvedTierPrice.unitPrice > 0
+      ? resolvedTierPrice.unitPrice * qty
+      : 0;
+  }
   if (typeToken === "consult") return 0;
   if (typeToken === "free") return 0;
   if (typeToken === "fixed" || unitToken === "item") return value * qty;
@@ -927,27 +955,106 @@ export function resolveAmountFromPriceRule({
   }
   if (typeToken === "permeter" || unitToken === "meter") return value * meterCount * qty;
   if (typeToken === "percorner" || unitToken === "corner") return value * cornerCount * qty;
-  if (typeToken === "tieredbywidth" || typeToken === "tieredbyheight" || typeToken === "tieredbysize") {
-    const tiers = Array.isArray(rule.tiers) ? rule.tiers : [];
-    if (!tiers.length) return 0;
-    const tier = tiers.find((candidate) => {
-      if (!candidate || typeof candidate !== "object") return false;
-      if (typeToken === "tieredbywidth") {
-        const maxWidth = Number(candidate.maxWidthMm || candidate.maxWidth || 0);
-        return widthMm > 0 && maxWidth > 0 && widthMm <= maxWidth;
-      }
-      if (typeToken === "tieredbyheight") {
-        const maxHeight = Number(candidate.maxHeightMm || candidate.maxHeight || 0);
-        return heightMm > 0 && maxHeight > 0 && heightMm <= maxHeight;
-      }
-      const maxWidth = Number(candidate.maxWidthMm || candidate.maxWidth || 0);
-      const maxLength = Number(candidate.maxLengthMm || candidate.maxLength || 0);
-      return widthMm > 0 && lengthMm > 0 && maxWidth > 0 && maxLength > 0 && widthMm <= maxWidth && lengthMm <= maxLength;
-    });
-    const tierValue = Number(tier?.price || tier?.unitPrice || tier?.value || 0);
-    return Number.isFinite(tierValue) && tierValue > 0 ? tierValue * qty : 0;
-  }
   return value * qty;
+}
+
+function resolveNumericBound(candidate, keys = []) {
+  for (const key of keys) {
+    const raw = Number(candidate?.[key]);
+    if (Number.isFinite(raw)) return raw;
+  }
+  return null;
+}
+
+function matchesTierBounds(value, candidate, { minKeys = [], minExclusiveKeys = [], maxKeys = [] } = {}) {
+  if (!Number.isFinite(value) || value <= 0) return false;
+  const minExclusive = resolveNumericBound(candidate, minExclusiveKeys);
+  if (Number.isFinite(minExclusive) && !(value > minExclusive)) return false;
+  const minInclusive = resolveNumericBound(candidate, minKeys);
+  if (Number.isFinite(minInclusive) && !(value >= minInclusive)) return false;
+  const maxInclusive = resolveNumericBound(candidate, maxKeys);
+  if (Number.isFinite(maxInclusive) && maxInclusive > 0 && !(value <= maxInclusive)) return false;
+  return true;
+}
+
+export function matchTieredPriceCandidate(candidate, {
+  typeToken = "",
+  widthMm = 0,
+  lengthMm = 0,
+  heightMm = 0,
+} = {}) {
+  if (!candidate || typeof candidate !== "object") return false;
+  if (typeToken === "tieredbywidth") {
+    return matchesTierBounds(widthMm, candidate, {
+      minKeys: ["minWidthMm", "minWidth"],
+      minExclusiveKeys: ["minWidthExclusiveMm", "minWidthExclusive"],
+      maxKeys: ["maxWidthMm", "maxWidth"],
+    });
+  }
+  if (typeToken === "tieredbyheight") {
+    return matchesTierBounds(heightMm, candidate, {
+      minKeys: ["minHeightMm", "minHeight"],
+      minExclusiveKeys: ["minHeightExclusiveMm", "minHeightExclusive"],
+      maxKeys: ["maxHeightMm", "maxHeight"],
+    });
+  }
+  return (
+    matchesTierBounds(widthMm, candidate, {
+      minKeys: ["minWidthMm", "minWidth"],
+      minExclusiveKeys: ["minWidthExclusiveMm", "minWidthExclusive"],
+      maxKeys: ["maxWidthMm", "maxWidth"],
+    }) &&
+    matchesTierBounds(lengthMm, candidate, {
+      minKeys: ["minLengthMm", "minLength"],
+      minExclusiveKeys: ["minLengthExclusiveMm", "minLengthExclusive"],
+      maxKeys: ["maxLengthMm", "maxLength"],
+    })
+  );
+}
+
+export function resolveTieredPriceRule(rule = {}, {
+  typeToken = "",
+  widthMm = 0,
+  lengthMm = 0,
+  heightMm = 0,
+  categoryKey = "default",
+} = {}) {
+  const tiers = Array.isArray(rule?.tiers) ? rule.tiers : [];
+  if (!tiers.length) {
+    return { matchedTier: null, tierKey: "", unitPrice: 0, isCustomPrice: false };
+  }
+  const matchedTier =
+    tiers.find((candidate) =>
+      matchTieredPriceCandidate(candidate, { typeToken, widthMm, lengthMm, heightMm })
+    ) || null;
+  if (!matchedTier) {
+    return { matchedTier: null, tierKey: "", unitPrice: 0, isCustomPrice: false };
+  }
+  const tierKey = String(matchedTier?.key || "").trim();
+  if (Boolean(matchedTier?.isCustomPrice)) {
+    return { matchedTier, tierKey, unitPrice: 0, isCustomPrice: true };
+  }
+  const normalizedCategoryKey = String(categoryKey || "").trim() || "default";
+  const priceByTierKey =
+    rule?.priceByTierKey && typeof rule.priceByTierKey === "object" ? rule.priceByTierKey : null;
+  const byTierCategory = priceByTierKey
+    ? Number(
+        priceByTierKey[buildTierCategoryPriceKey(tierKey, normalizedCategoryKey)] ??
+          priceByTierKey[buildTierCategoryPriceKey(tierKey, "default")] ??
+          (tierKey ? priceByTierKey[tierKey] : 0) ??
+          0
+      )
+    : 0;
+  const fallbackTierValue = Number(
+    matchedTier?.price ?? matchedTier?.unitPrice ?? matchedTier?.value ?? 0
+  );
+  const unitPrice = Number(byTierCategory > 0 ? byTierCategory : fallbackTierValue);
+  return {
+    matchedTier,
+    tierKey,
+    unitPrice: Number.isFinite(unitPrice) && unitPrice > 0 ? unitPrice : 0,
+    isCustomPrice: false,
+  };
 }
 
 export function isConsultPricingConfig(config = {}) {
@@ -1167,6 +1274,50 @@ export function buildConsultAwarePricing({
     ...normalizedExtraCosts,
     total: Number(total || 0),
     ...resolvedConsultState,
+  };
+}
+
+export function buildBaseProductPricingExtraCosts(item = {}) {
+  const product = item && typeof item === "object" ? item : {};
+  return {
+    materialBaseCost: product.materialBaseCost ?? product.materialCost ?? 0,
+    materialDiscountCost: product.materialDiscountCost || 0,
+    materialDiscountRate: product.materialDiscountRate || 0,
+    processingBaseCost: product.processingBaseCost ?? product.processingCost ?? 0,
+    processingDiscountCost: product.processingDiscountCost || 0,
+    ...(product.materialDiscountRuleId ? { promotionRuleId: product.materialDiscountRuleId } : {}),
+  };
+}
+
+export function buildAddonLineItemDetail({
+  addon = null,
+  quantity = 1,
+  roundingUnit = 1,
+  weightKg = 0,
+} = {}) {
+  const availability = resolveAvailabilityStatus({ config: addon });
+  const amount = availability.isConsult
+    ? 0
+    : resolveAmountFromPriceRule({
+        config: addon,
+        quantity,
+      });
+  const totals = calculatePricingTotals({
+    materialCost: amount,
+    processingCost: 0,
+    roundingUnit,
+  });
+  return {
+    materialCost: totals.materialCost,
+    processingCost: totals.processingCost,
+    subtotal: totals.subtotal,
+    vat: totals.vat,
+    total: totals.total,
+    roundingUnit: totals.roundingUnit,
+    weightKg: Number(weightKg || 0),
+    ...buildConsultState({
+      itemHasConsult: availability.isConsult,
+    }),
   };
 }
 

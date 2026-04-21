@@ -21,6 +21,8 @@ import {
   updatePreviewSummary,
   buildEstimateDetailLines,
   buildConsultAwarePricing,
+  buildBaseProductPricingExtraCosts,
+  buildAddonLineItemDetail,
   CONSULT_EXCLUDED_SUFFIX,
   getPricingDisplayMeta,
   formatPricingRuleDisplayText,
@@ -811,7 +813,6 @@ const {
   getBackHeightLimit,
   getTopStandardPriceLine,
   calcTopDetail,
-  calcAddonDetail,
 } = createTopPricingHelpers({
   topTypes: TOP_TYPES,
   pricingPolicy: TOP_PRICING_POLICY,
@@ -1056,8 +1057,7 @@ function addTopAddonItem(addonId) {
   if (existing) return;
   const addon = TOP_ADDON_ITEMS.find((a) => a.id === addonId);
   if (!addon) return;
-  const price = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
-  const detail = calcAddonDetail(price);
+  const detail = buildAddonLineItemDetail({ addon });
   state.items.push({
     id: crypto.randomUUID(),
     type: "addon",
@@ -1952,8 +1952,7 @@ function updateItemQuantity(id, quantity) {
   if (item.type === "addon") {
     const addon = TOP_ADDON_ITEMS.find((a) => a.id === item.addonId);
     if (!addon) return;
-    const price = Number(addon?.pricingRule?.value || addon?.pricingRule?.unitPrice || 0);
-    const detail = calcAddonDetail(price, { quantity });
+    const detail = buildAddonLineItemDetail({ addon, quantity });
     state.items[idx] = { ...item, quantity, ...detail };
     renderTable();
     renderSummary();
@@ -2194,14 +2193,7 @@ function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
           processingCost: item.processingCost,
           total: item.total,
           consultState: item,
-          extraCosts: {
-            materialBaseCost: item.materialBaseCost ?? item.materialCost,
-            materialDiscountCost: item.materialDiscountCost || 0,
-            materialDiscountRate: item.materialDiscountRate || 0,
-            processingBaseCost: item.processingBaseCost ?? item.processingCost,
-            processingDiscountCost: item.processingDiscountCost || 0,
-            ...(item.materialDiscountRuleId ? { promotionRuleId: item.materialDiscountRuleId } : {}),
-          },
+          extraCosts: buildBaseProductPricingExtraCosts(item),
         }),
       };
     }),

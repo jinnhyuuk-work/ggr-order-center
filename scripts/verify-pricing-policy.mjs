@@ -22,17 +22,21 @@ import {
 import { createDoorPricingHelpers } from "../assets/js/door-pricing.js";
 import {
   SYSTEM_ADDON_ITEM_IDS,
+  SYSTEM_ADDON_ITEMS,
   SYSTEM_POST_BAR_PRICING,
   SYSTEM_POST_BAR_HEIGHT_LIMITS,
   SYSTEM_SHELF_MATERIALS,
 } from "../assets/js/data/system-data.js";
+import { COMMON_ADDON_ITEMS } from "../assets/js/data/common-data.js";
 import { createSystemPricingHelpers } from "../assets/js/system-pricing.js";
 import { createSystemOrderHelpers } from "../assets/js/system-order-helpers.js";
 import {
+  buildAddonLineItemDetail,
   buildConsultAwarePricing,
   CONSULT_DISPLAY_PRICE_LABEL,
   hasConsultLineItem,
   isConsultLineItem,
+  resolveAmountFromPriceRule,
 } from "../assets/js/shared.js";
 import {
   TOP_FULFILLMENT_POLICY,
@@ -212,6 +216,14 @@ function run() {
   });
   assert.equal(topConsultDetail.isCustomPrice, true);
 
+  const fixedAddonDetail = buildAddonLineItemDetail({
+    addon: COMMON_ADDON_ITEMS.find((item) => item.id === "hinge_basic"),
+    quantity: 2,
+  });
+  assert.equal(fixedAddonDetail.materialCost, 4000);
+  assert.equal(fixedAddonDetail.total, 4000);
+  assert.equal(fixedAddonDetail.consultStatus, "ok");
+
   const doorPricing = createDoorPricingHelpers({
     materials: DOOR_MATERIALS,
     priceTiersByCategory: DOOR_PRICE_TIERS_BY_CATEGORY,
@@ -347,6 +359,29 @@ function run() {
   assert.equal(
     Number(SYSTEM_POST_BAR_PRICING.basic?.tiers?.[0]?.unitPrice || 0),
     17400
+  );
+  const systemFurnitureItem = SYSTEM_ADDON_ITEMS.find((item) => item.id === "drawer_hanging_1tier");
+  assert.equal(
+    resolveAmountFromPriceRule({
+      config: systemFurnitureItem,
+      quantity: 2,
+      metrics: {
+        widthMm: 600,
+        categoryKey: "lpm_basic",
+      },
+    }),
+    116000
+  );
+  assert.equal(
+    resolveAmountFromPriceRule({
+      config: systemFurnitureItem,
+      quantity: 1,
+      metrics: {
+        widthMm: 700,
+        categoryKey: "lpm_basic",
+      },
+    }),
+    0
   );
 
   assert.deepEqual(buildConsultAwarePricing({
