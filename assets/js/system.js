@@ -2887,11 +2887,13 @@ function resolveFurnitureSelectionPolicyForEdge(edgeOrId, { modalReturnTo = "" }
 }
 
 function resolveFurniturePriceCategoryKeyFromMaterialId(materialId = "") {
-  const key = String(materialId || "");
+  const key = String(materialId || "").trim();
   if (!key) return "default";
-  const material = SYSTEM_SHELF_MATERIALS[key];
-  const category = String(material?.category || "").trim();
-  return category || "default";
+  return key;
+}
+
+function buildTierCategoryPriceKey(tierKey = "", categoryKey = "default") {
+  return `${String(tierKey || "").trim()}__${String(categoryKey || "default").trim() || "default"}`;
 }
 
 function resolveFurniturePriceCategoryKeyForEdge(edgeOrId) {
@@ -2920,18 +2922,21 @@ function resolveFurnitureAddonUnitPriceByWidth(addonItem, widthMm, { categoryKey
       }) || null;
     if (matchedTier) {
       if (Boolean(matchedTier?.isCustomPrice)) return 0;
-      const priceByCategory =
-        matchedTier?.priceByCategory && typeof matchedTier.priceByCategory === "object"
-          ? matchedTier.priceByCategory
+      const tierKey = String(matchedTier?.key || "").trim();
+      const priceByTierKey =
+        pricingRule?.priceByTierKey && typeof pricingRule.priceByTierKey === "object"
+          ? pricingRule.priceByTierKey
           : null;
+      const byTierCategory = priceByTierKey
+        ? Number(
+            priceByTierKey[buildTierCategoryPriceKey(tierKey, normalizedCategoryKey)] ??
+              priceByTierKey[buildTierCategoryPriceKey(tierKey, "default")] ??
+              0
+          )
+        : 0;
+      const fallbackTierValue = Number(matchedTier?.price ?? matchedTier?.unitPrice ?? matchedTier?.value ?? 0);
       const widthPrice = Number(
-        (priceByCategory
-          ? priceByCategory[normalizedCategoryKey] ?? priceByCategory.default
-          : undefined) ??
-          matchedTier?.price ??
-          matchedTier?.unitPrice ??
-          matchedTier?.value ??
-          0
+        byTierCategory > 0 ? byTierCategory : fallbackTierValue
       );
       return Number.isFinite(widthPrice) && widthPrice > 0 ? Math.round(widthPrice) : 0;
     }

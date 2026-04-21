@@ -564,40 +564,75 @@ export const SYSTEM_FURNITURE_WIDTH_POLICY = Object.freeze({
 });
 
 const buildSystemFurniturePricingRule = ({ priceByWidthMm } = {}) => {
-  const normalizePriceByCategory = (raw) => {
-    if (raw && typeof raw === "object") {
-      const lpm = Number(raw?.LPM || 0);
-      const pp = Number(raw?.PP || 0);
-      const defaultPrice = Number(raw?.default ?? lpm ?? 0);
-      return Object.freeze({
-        LPM: lpm > 0 ? lpm : 0,
-        PP: pp > 0 ? pp : 0,
-        default: defaultPrice > 0 ? defaultPrice : 0,
-      });
-    }
-    const basePrice = Number(raw || 0);
-    const normalized = basePrice > 0 ? basePrice : 0;
+  const buildTierCategoryPriceKey = (tierKey = "", categoryKey = "default") =>
+    `${String(tierKey || "").trim()}__${String(categoryKey || "default").trim() || "default"}`;
+  const toPositivePrice = (value = 0) => {
+    const num = Number(value || 0);
+    return Number.isFinite(num) && num > 0 ? num : 0;
+  };
+  const normalizePriceByMaterialId = (raw) => {
+    const source = raw && typeof raw === "object" ? raw : null;
+    const explicitPriceByMaterialId =
+      source?.priceByMaterialId && typeof source.priceByMaterialId === "object"
+        ? source.priceByMaterialId
+        : null;
+    const fallbackByCategory = source && typeof source === "object" ? source : {};
+    const mapped = Object.entries(SYSTEM_SHELF_MATERIALS).reduce((acc, [materialId, material]) => {
+      const categoryKey = String(material?.category || "").trim();
+      const directPrice = toPositivePrice(explicitPriceByMaterialId?.[materialId] ?? source?.[materialId]);
+      const categoryPrice = categoryKey ? toPositivePrice(fallbackByCategory?.[categoryKey]) : 0;
+      const resolvedPrice = directPrice > 0 ? directPrice : categoryPrice;
+      if (resolvedPrice > 0) acc[materialId] = resolvedPrice;
+      return acc;
+    }, {});
+    const numericRawPrice = toPositivePrice(raw);
+    const explicitDefaultPrice = toPositivePrice(source?.default);
+    const firstMappedPrice = toPositivePrice(Object.values(mapped)[0]);
+    const defaultPrice =
+      explicitDefaultPrice > 0
+        ? explicitDefaultPrice
+        : numericRawPrice > 0
+        ? numericRawPrice
+        : firstMappedPrice > 0
+        ? firstMappedPrice
+        : 0;
     return Object.freeze({
-      LPM: normalized,
-      PP: normalized,
-      default: normalized,
+      ...mapped,
+      default: defaultPrice,
     });
   };
-  const hasPositivePriceByCategory = (priceByCategory) =>
-    Object.values(priceByCategory || {}).some((price) => Number(price || 0) > 0);
-  const width600PriceByCategory = normalizePriceByCategory(priceByWidthMm?.[600]);
-  const width800PriceByCategory = normalizePriceByCategory(priceByWidthMm?.[800]);
+  const hasPositivePriceByMaterialId = (priceByMaterialId) =>
+    Object.values(priceByMaterialId || {}).some((price) => Number(price || 0) > 0);
+  const width600PriceByMaterialId = normalizePriceByMaterialId(priceByWidthMm?.[600]);
+  const width800PriceByMaterialId = normalizePriceByMaterialId(priceByWidthMm?.[800]);
+  const buildTierCategoryPriceMap = (priceByMaterialIdByTierKey = {}) =>
+    Object.freeze(
+      Object.entries(priceByMaterialIdByTierKey).reduce((acc, [tierKey, priceByMaterialId]) => {
+        const normalizedTierKey = String(tierKey || "").trim();
+        if (!normalizedTierKey) return acc;
+        const normalizedByMaterialId = normalizePriceByMaterialId(priceByMaterialId);
+        Object.entries(normalizedByMaterialId).forEach(([materialKey, price]) => {
+          const normalizedMaterialKey = String(materialKey || "").trim();
+          if (!normalizedMaterialKey) return;
+          acc[buildTierCategoryPriceKey(normalizedTierKey, normalizedMaterialKey)] = Number(price || 0);
+        });
+        return acc;
+      }, {})
+    );
   return Object.freeze({
     type: "tieredByWidth",
     unit: "item",
+    priceByTierKey: buildTierCategoryPriceMap({
+      w600: width600PriceByMaterialId,
+      w800: width800PriceByMaterialId,
+    }),
     tiers: Object.freeze([
       Object.freeze({
         key: "w600",
         minWidthMm: 600,
         maxWidthMm: 600,
-        ...(hasPositivePriceByCategory(width600PriceByCategory)
+        ...(hasPositivePriceByMaterialId(width600PriceByMaterialId)
           ? {
-              priceByCategory: width600PriceByCategory,
               label: "600",
             }
           : { isCustomPrice: true, label: "600 상담안내" }),
@@ -606,9 +641,8 @@ const buildSystemFurniturePricingRule = ({ priceByWidthMm } = {}) => {
         key: "w800",
         minWidthMm: 800,
         maxWidthMm: 800,
-        ...(hasPositivePriceByCategory(width800PriceByCategory)
+        ...(hasPositivePriceByMaterialId(width800PriceByMaterialId)
           ? {
-              priceByCategory: width800PriceByCategory,
               label: "800",
             }
           : { isCustomPrice: true, label: "800 상담안내" }),
@@ -624,8 +658,24 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 58000, PP: 52000, default: 58000 },
-        800: { LPM: 61000, PP: 55000, default: 61000 },
+        600: {
+          priceByMaterialId: {
+            lpm_basic: 58000,
+            lpm_natural_walnut: 58000,
+            lpm_smoke_walnut: 58000,
+            pp_twill: 52000,
+          },
+          default: 58000,
+        },
+        800: {
+          priceByMaterialId: {
+            lpm_basic: 61000,
+            lpm_natural_walnut: 61000,
+            lpm_smoke_walnut: 61000,
+            pp_twill: 55000,
+          },
+          default: 61000,
+        },
       },
     }),
     description: "공중형 서랍 1단 모듈 1세트",
@@ -639,8 +689,24 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 102000, PP: 93000, default: 102000 },
-        800: { LPM: 105000, PP: 96000, default: 105000 },
+        600: {
+          priceByMaterialId: {
+            lpm_basic: 102000,
+            lpm_natural_walnut: 102000,
+            lpm_smoke_walnut: 102000,
+            pp_twill: 93000,
+          },
+          default: 102000,
+        },
+        800: {
+          priceByMaterialId: {
+            lpm_basic: 105000,
+            lpm_natural_walnut: 105000,
+            lpm_smoke_walnut: 105000,
+            pp_twill: 96000,
+          },
+          default: 105000,
+        },
       },
     }),
     description: "공중형 서랍 2단 모듈 1세트",
@@ -654,8 +720,24 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 99000, PP: 91000, default: 99000 },
-        800: { LPM: 102000, PP: 94000, default: 102000 },
+        600: {
+          priceByMaterialId: {
+            lpm_basic: 99000,
+            lpm_natural_walnut: 99000,
+            lpm_smoke_walnut: 99000,
+            pp_twill: 91000,
+          },
+          default: 99000,
+        },
+        800: {
+          priceByMaterialId: {
+            lpm_basic: 102000,
+            lpm_natural_walnut: 102000,
+            lpm_smoke_walnut: 102000,
+            pp_twill: 94000,
+          },
+          default: 102000,
+        },
       },
     }),
     description: "바닥형 서랍 2단 모듈 1세트",
@@ -669,8 +751,24 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 135000, PP: 125000, default: 135000 },
-        800: { LPM: 138000, PP: 128000, default: 138000 },
+        600: {
+          priceByMaterialId: {
+            lpm_basic: 135000,
+            lpm_natural_walnut: 135000,
+            lpm_smoke_walnut: 135000,
+            pp_twill: 125000,
+          },
+          default: 135000,
+        },
+        800: {
+          priceByMaterialId: {
+            lpm_basic: 138000,
+            lpm_natural_walnut: 138000,
+            lpm_smoke_walnut: 138000,
+            pp_twill: 128000,
+          },
+          default: 138000,
+        },
       },
     }),
     description: "바닥형 서랍 3단 모듈 1세트",
@@ -684,8 +782,24 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 176000, PP: 163000, default: 176000 },
-        800: { LPM: 179000, PP: 166000, default: 179000 },
+        600: {
+          priceByMaterialId: {
+            lpm_basic: 176000,
+            lpm_natural_walnut: 176000,
+            lpm_smoke_walnut: 176000,
+            pp_twill: 163000,
+          },
+          default: 176000,
+        },
+        800: {
+          priceByMaterialId: {
+            lpm_basic: 179000,
+            lpm_natural_walnut: 179000,
+            lpm_smoke_walnut: 179000,
+            pp_twill: 166000,
+          },
+          default: 179000,
+        },
       },
     }),
     description: "바닥형 서랍 4단 모듈 1세트",

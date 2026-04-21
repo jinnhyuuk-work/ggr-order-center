@@ -41,6 +41,10 @@ function sumBy(items, key) {
   return (Array.isArray(items) ? items : []).reduce((sum, item) => sum + Number(item?.[key] || 0), 0);
 }
 
+function buildTierCategoryPriceKey(tierKey = "", categoryKey = "default") {
+  return `${String(tierKey || "").trim()}__${String(categoryKey || "default").trim() || "default"}`;
+}
+
 export function createSystemPricingHelpers({
   limits,
   shelfLengthMm,
@@ -98,9 +102,7 @@ export function createSystemPricingHelpers({
     const normalizedCategoryKey = String(categoryKey || "").trim();
     if (normalizedCategoryKey) return normalizedCategoryKey;
     const materialKey = String(shelfMaterialId || "").trim();
-    const shelfMaterial = materialKey ? SYSTEM_SHELF_MATERIALS[materialKey] : null;
-    const materialCategory = String(shelfMaterial?.category || "").trim();
-    return materialCategory || "default";
+    return materialKey || "default";
   }
 
   function resolveAddonUnitPriceResult(addon, { widthMm = 0, categoryKey = "", shelfMaterialId = "" } = {}) {
@@ -118,6 +120,9 @@ export function createSystemPricingHelpers({
     const ruleType = String(pricingRule?.type || "").trim().toLowerCase();
     const normalizedWidthMm = normalizeMm(widthMm);
     const normalizedCategoryKey = String(categoryKey || "").trim() || "default";
+    const normalizedShelfMaterialId = String(shelfMaterialId || "").trim();
+    const shelfMaterial = normalizedShelfMaterialId ? SYSTEM_SHELF_MATERIALS[normalizedShelfMaterialId] : null;
+    const shelfMaterialCategory = String(shelfMaterial?.category || "").trim();
     if (ruleType === "tieredbywidth" && normalizedWidthMm > 0) {
       const tiers = Array.isArray(pricingRule?.tiers) ? pricingRule.tiers : [];
       const matchedTier =
@@ -138,18 +143,21 @@ export function createSystemPricingHelpers({
           appliedRuleId: "",
         };
       }
-      const priceByCategory =
-        matchedTier?.priceByCategory && typeof matchedTier.priceByCategory === "object"
-          ? matchedTier.priceByCategory
+      const tierKey = String(matchedTier?.key || "").trim();
+      const priceByTierKey =
+        pricingRule?.priceByTierKey && typeof pricingRule.priceByTierKey === "object"
+          ? pricingRule.priceByTierKey
           : null;
+      const byTierCategory = priceByTierKey
+        ? Number(
+            priceByTierKey[buildTierCategoryPriceKey(tierKey, normalizedCategoryKey)] ??
+              priceByTierKey[buildTierCategoryPriceKey(tierKey, "default")] ??
+              0
+          )
+        : 0;
+      const fallbackTierValue = Number(matchedTier?.price ?? matchedTier?.unitPrice ?? matchedTier?.value ?? 0);
       const tierPrice = Number(
-        (priceByCategory
-          ? priceByCategory[normalizedCategoryKey] ?? priceByCategory.default
-          : undefined) ??
-          matchedTier?.price ??
-          matchedTier?.unitPrice ??
-          matchedTier?.value ??
-          0
+        byTierCategory > 0 ? byTierCategory : fallbackTierValue
       );
       const roundedTierPrice = tierPrice > 0 ? roundWon(tierPrice) : 0;
       const promotion = applyPromotionDiscount({
@@ -160,7 +168,9 @@ export function createSystemPricingHelpers({
           targetType: "furniture",
           addonId: String(addon?.id || ""),
           addonCategoryKey: normalizedCategoryKey,
-          shelfMaterialId: String(shelfMaterialId || ""),
+          materialId: normalizedShelfMaterialId,
+          materialCategory: shelfMaterialCategory,
+          shelfMaterialId: normalizedShelfMaterialId,
         },
       });
       return {
@@ -181,7 +191,9 @@ export function createSystemPricingHelpers({
         targetType: "furniture",
         addonId: String(addon?.id || ""),
         addonCategoryKey: normalizedCategoryKey,
-        shelfMaterialId: String(shelfMaterialId || ""),
+        materialId: normalizedShelfMaterialId,
+        materialCategory: shelfMaterialCategory,
+        shelfMaterialId: normalizedShelfMaterialId,
       },
     });
     return {
