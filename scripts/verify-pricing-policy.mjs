@@ -22,7 +22,9 @@ import {
 import { createDoorPricingHelpers } from "../assets/js/door-pricing.js";
 import {
   SYSTEM_ADDON_ITEM_IDS,
+  SYSTEM_POST_BAR_PRICING,
   SYSTEM_POST_BAR_HEIGHT_LIMITS,
+  SYSTEM_SHELF_MATERIALS,
 } from "../assets/js/data/system-data.js";
 import { createSystemPricingHelpers } from "../assets/js/system-pricing.js";
 import { createSystemOrderHelpers } from "../assets/js/system-order-helpers.js";
@@ -196,7 +198,9 @@ function run() {
     options: [],
   });
   assert.equal(topDetail.itemCost, 235200);
+  assert.equal(topDetail.materialCost, 235200);
   assert.equal(topDetail.processingServiceCost, 30000);
+  assert.equal(topDetail.processingCost, 30000);
   assert.equal(topDetail.total, 265200);
   const topConsultDetail = topPricing.calcTopDetail({
     typeId: artificialTopType.id,
@@ -285,7 +289,10 @@ function run() {
     addons: [],
     isCorner: false,
   });
-  assert.equal(shelfDetail.materialCost, 28000);
+  assert.equal(
+    shelfDetail.materialCost,
+    Number(SYSTEM_SHELF_MATERIALS.lpm_basic?.priceByTierKey?.lte_600 || 0)
+  );
   assert.equal(shelfDetail.isCustomPrice, false);
 
   const shelfWithAddonDetail = systemPricing.calcBayDetail({
@@ -300,9 +307,15 @@ function run() {
     addons: [SYSTEM_ADDON_ITEM_IDS.CLOTHES_ROD],
     isCorner: false,
   });
-  assert.equal(shelfWithAddonDetail.materialCost, 28000);
+  assert.equal(
+    shelfWithAddonDetail.materialCost,
+    Number(SYSTEM_SHELF_MATERIALS.lpm_basic?.priceByTierKey?.lte_600 || 0)
+  );
   assert.equal(shelfWithAddonDetail.processingCost, 4000);
-  assert.equal(shelfWithAddonDetail.total, 32000);
+  assert.equal(
+    shelfWithAddonDetail.total,
+    Number(SYSTEM_SHELF_MATERIALS.lpm_basic?.priceByTierKey?.lte_600 || 0) + 4000
+  );
 
   const wideShelfDetail = systemPricing.calcBayDetail({
     shelf: {
@@ -331,6 +344,10 @@ function run() {
     bays: [],
   });
   assert.equal(postBarDetail.isCustomPrice, true);
+  assert.equal(
+    Number(SYSTEM_POST_BAR_PRICING.basic?.tiers?.[0]?.unitPrice || 0),
+    17400
+  );
 
   assert.deepEqual(buildConsultAwarePricing({
     materialCost: 1000,

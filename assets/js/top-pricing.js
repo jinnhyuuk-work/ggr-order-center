@@ -176,11 +176,13 @@ export function createTopPricingHelpers({
       },
     });
     const discountedItemCostTotal = materialPromotion.appliedAmount;
-    const materialBaseCost = isCustomPrice ? 0 : itemCostTotal + appliedProcessingCost;
-    const materialCost = isCustomPrice ? 0 : discountedItemCostTotal + appliedProcessingCost;
+    const materialBaseCost = isCustomPrice ? 0 : itemCostTotal;
+    const materialCost = isCustomPrice ? 0 : discountedItemCostTotal;
+    const processingBaseCost = isCustomPrice ? 0 : optionPrice + processingServiceCostRaw;
+    const processingCost = isCustomPrice ? 0 : appliedProcessingCost;
     const totals = calculatePricingTotals({
       materialCost,
-      processingCost: 0,
+      processingCost,
       roundingUnit: roundingUnitWon,
     });
     const consultState = buildConsultState({
@@ -226,11 +228,13 @@ export function createTopPricingHelpers({
             materialDiscountCost: materialPromotion.discountAmount,
             materialDiscountRate: materialPromotion.appliedRate,
             materialDiscountRuleId: materialPromotion.appliedRuleId,
+            processingBaseCost,
+            processingDiscountCost: Math.max(0, processingBaseCost - processingCost),
           }
         : {}),
       useBackHeight,
       backHeight,
-      processingCost: appliedProcessingCost,
+      processingCost,
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: isCustomPrice ? 0 : totals.total,

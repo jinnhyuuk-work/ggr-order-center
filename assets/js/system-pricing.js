@@ -14,6 +14,10 @@ import {
   applyPromotionDiscount,
 } from "./shared.js";
 import { getEnabledPromotionRules } from "./data/promotion-data.js";
+import {
+  resolveSystemTieredWidthPrice,
+  resolveSystemFurniturePriceCategoryKey,
+} from "./system-addon-pricing.js";
 
 const SYSTEM_ADDON_ITEMS_BY_ID = new Map(
   (Array.isArray(SYSTEM_ADDON_ITEMS) ? SYSTEM_ADDON_ITEMS : []).map((item) => [String(item.id || ""), item])
@@ -39,10 +43,6 @@ function roundWon(value) {
 
 function sumBy(items, key) {
   return (Array.isArray(items) ? items : []).reduce((sum, item) => sum + Number(item?.[key] || 0), 0);
-}
-
-function buildTierCategoryPriceKey(tierKey = "", categoryKey = "default") {
-  return `${String(tierKey || "").trim()}__${String(categoryKey || "default").trim() || "default"}`;
 }
 
 export function createSystemPricingHelpers({
@@ -101,8 +101,7 @@ export function createSystemPricingHelpers({
   function resolveAddonPriceCategoryKey({ shelfMaterialId = "", categoryKey = "" } = {}) {
     const normalizedCategoryKey = String(categoryKey || "").trim();
     if (normalizedCategoryKey) return normalizedCategoryKey;
-    const materialKey = String(shelfMaterialId || "").trim();
-    return materialKey || "default";
+    return resolveSystemFurniturePriceCategoryKey(shelfMaterialId);
   }
 
   function resolveAddonUnitPriceResult(addon, { widthMm = 0, categoryKey = "", shelfMaterialId = "" } = {}) {
@@ -124,17 +123,10 @@ export function createSystemPricingHelpers({
     const shelfMaterial = normalizedShelfMaterialId ? SYSTEM_SHELF_MATERIALS[normalizedShelfMaterialId] : null;
     const shelfMaterialCategory = String(shelfMaterial?.category || "").trim();
     if (ruleType === "tieredbywidth" && normalizedWidthMm > 0) {
-      const tiers = Array.isArray(pricingRule?.tiers) ? pricingRule.tiers : [];
-      const matchedTier =
-        tiers.find((tier) => {
-          if (!tier || typeof tier !== "object") return false;
-          const minWidthMm = Number(tier?.minWidthMm);
-          const maxWidthMm = Number(tier?.maxWidthMm);
-          if (Number.isFinite(minWidthMm) && normalizedWidthMm < minWidthMm) return false;
-          if (Number.isFinite(maxWidthMm) && maxWidthMm > 0 && normalizedWidthMm > maxWidthMm) return false;
-          return true;
-        }) || null;
-      if (!matchedTier || Boolean(matchedTier?.isCustomPrice)) {
+      const resolvedTierPrice = resolveSystemTieredWidthPrice(addon, normalizedWidthMm, {
+        categoryKey: normalizedCategoryKey,
+      });
+      if (!resolvedTierPrice.matchedTier || resolvedTierPrice.isCustomPrice) {
         return {
           baseUnitPrice: 0,
           unitPrice: 0,
@@ -143,23 +135,8 @@ export function createSystemPricingHelpers({
           appliedRuleId: "",
         };
       }
-      const tierKey = String(matchedTier?.key || "").trim();
-      const priceByTierKey =
-        pricingRule?.priceByTierKey && typeof pricingRule.priceByTierKey === "object"
-          ? pricingRule.priceByTierKey
-          : null;
-      const byTierCategory = priceByTierKey
-        ? Number(
-            priceByTierKey[buildTierCategoryPriceKey(tierKey, normalizedCategoryKey)] ??
-              priceByTierKey[buildTierCategoryPriceKey(tierKey, "default")] ??
-              0
-          )
-        : 0;
-      const fallbackTierValue = Number(matchedTier?.price ?? matchedTier?.unitPrice ?? matchedTier?.value ?? 0);
-      const tierPrice = Number(
-        byTierCategory > 0 ? byTierCategory : fallbackTierValue
-      );
-      const roundedTierPrice = tierPrice > 0 ? roundWon(tierPrice) : 0;
+      const roundedTierPrice =
+        resolvedTierPrice.unitPrice > 0 ? roundWon(resolvedTierPrice.unitPrice) : 0;
       const promotion = applyPromotionDiscount({
         amount: roundedTierPrice,
         rules: promotionRules,

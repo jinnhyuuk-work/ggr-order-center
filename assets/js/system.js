@@ -102,6 +102,10 @@ import {
 } from "./system-flow.js";
 import { createSystemPricingHelpers } from "./system-pricing.js";
 import {
+  resolveSystemFurniturePriceCategoryKey,
+  resolveSystemTieredWidthPrice,
+} from "./system-addon-pricing.js";
+import {
   initEmailJS,
   EMAILJS_CONFIG,
   CLOUDINARY_CONFIG,
@@ -2886,65 +2890,15 @@ function resolveFurnitureSelectionPolicyForEdge(edgeOrId, { modalReturnTo = "" }
   };
 }
 
-function resolveFurniturePriceCategoryKeyFromMaterialId(materialId = "") {
-  const key = String(materialId || "").trim();
-  if (!key) return "default";
-  return key;
-}
-
-function buildTierCategoryPriceKey(tierKey = "", categoryKey = "default") {
-  return `${String(tierKey || "").trim()}__${String(categoryKey || "default").trim() || "default"}`;
-}
-
 function resolveFurniturePriceCategoryKeyForEdge(edgeOrId) {
   const edge = getEdgeByIdOrInstance(edgeOrId);
-  if (!edge) return resolveFurniturePriceCategoryKeyFromMaterialId(materialPickers?.shelf?.selectedMaterialId);
-  return resolveFurniturePriceCategoryKeyFromMaterialId(edge?.materialId || materialPickers?.shelf?.selectedMaterialId);
+  if (!edge) return resolveSystemFurniturePriceCategoryKey(materialPickers?.shelf?.selectedMaterialId);
+  return resolveSystemFurniturePriceCategoryKey(edge?.materialId || materialPickers?.shelf?.selectedMaterialId);
 }
 
 function resolveFurnitureAddonUnitPriceByWidth(addonItem, widthMm, { categoryKey = "" } = {}) {
-  const addon = addonItem && typeof addonItem === "object" ? addonItem : null;
-  if (!addon) return 0;
-  const normalizedWidth = Math.max(0, Math.round(Number(widthMm || 0)));
-  const normalizedCategoryKey = String(categoryKey || "").trim() || "default";
-  const pricingRule = addon?.pricingRule && typeof addon.pricingRule === "object" ? addon.pricingRule : null;
-  const ruleType = String(pricingRule?.type || "").trim().toLowerCase();
-  if (ruleType === "tieredbywidth" && normalizedWidth > 0) {
-    const tiers = Array.isArray(pricingRule?.tiers) ? pricingRule.tiers : [];
-    const matchedTier =
-      tiers.find((tier) => {
-        if (!tier || typeof tier !== "object") return false;
-        const minWidthMm = Number(tier?.minWidthMm);
-        const maxWidthMm = Number(tier?.maxWidthMm);
-        if (Number.isFinite(minWidthMm) && normalizedWidth < minWidthMm) return false;
-        if (Number.isFinite(maxWidthMm) && maxWidthMm > 0 && normalizedWidth > maxWidthMm) return false;
-        return true;
-      }) || null;
-    if (matchedTier) {
-      if (Boolean(matchedTier?.isCustomPrice)) return 0;
-      const tierKey = String(matchedTier?.key || "").trim();
-      const priceByTierKey =
-        pricingRule?.priceByTierKey && typeof pricingRule.priceByTierKey === "object"
-          ? pricingRule.priceByTierKey
-          : null;
-      const byTierCategory = priceByTierKey
-        ? Number(
-            priceByTierKey[buildTierCategoryPriceKey(tierKey, normalizedCategoryKey)] ??
-              priceByTierKey[buildTierCategoryPriceKey(tierKey, "default")] ??
-              0
-          )
-        : 0;
-      const fallbackTierValue = Number(matchedTier?.price ?? matchedTier?.unitPrice ?? matchedTier?.value ?? 0);
-      const widthPrice = Number(
-        byTierCategory > 0 ? byTierCategory : fallbackTierValue
-      );
-      return Number.isFinite(widthPrice) && widthPrice > 0 ? Math.round(widthPrice) : 0;
-    }
-    return 0;
-  }
-  const ruleValue = Number(pricingRule?.value || pricingRule?.unitPrice || 0);
-  if (Number.isFinite(ruleValue) && ruleValue > 0) return Math.round(ruleValue);
-  return 0;
+  const resolvedPrice = resolveSystemTieredWidthPrice(addonItem, widthMm, { categoryKey });
+  return Number(resolvedPrice?.unitPrice || 0);
 }
 
 function resolveFurnitureAddonDisplayPriceInfo(
@@ -3008,7 +2962,7 @@ function resolvePresetModulePriceInfo(item, { moduleType = "normal", selectedFil
   const rodCount = Math.max(0, Math.floor(Number(item?.rodCount || 0)));
   const shelfWidthMm = resolvePresetModuleFilterWidthMm(item, normalizedType, selectedFilterKey);
   const selectedShelfMaterialId = String(materialPickers?.shelf?.selectedMaterialId || "");
-  const furniturePriceCategoryKey = resolveFurniturePriceCategoryKeyFromMaterialId(selectedShelfMaterialId);
+  const furniturePriceCategoryKey = resolveSystemFurniturePriceCategoryKey(selectedShelfMaterialId);
   const shelfPricing = resolveNormalModuleShelfUnitPriceByWidth(shelfWidthMm);
   if (normalizedType === "corner") {
     const cornerTier = Array.isArray(SYSTEM_SHELF_TIER_PRICING?.corner?.tiers)
@@ -3104,7 +3058,7 @@ function shouldTreatBayFurniturePriceAsConsult(bay = {}) {
   );
   if (!selectedFurnitureId) return false;
   const selectedAddon = getAddonItemById(selectedFurnitureId);
-  const furniturePriceCategoryKey = resolveFurniturePriceCategoryKeyFromMaterialId(bay?.shelfMaterialId);
+  const furniturePriceCategoryKey = resolveSystemFurniturePriceCategoryKey(bay?.shelfMaterialId);
   const unitPrice = resolveFurnitureAddonUnitPriceByWidth(selectedAddon, policy.widthMm, {
     categoryKey: furniturePriceCategoryKey,
   });

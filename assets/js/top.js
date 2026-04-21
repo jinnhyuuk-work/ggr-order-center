@@ -1241,7 +1241,6 @@ function renderTable() {
           `상품가 ${item.materialCost.toLocaleString()}원`,
         ];
       }
-      const baseCost = Math.max(0, item.materialCost - item.processingCost);
       const processingServicesText = formatProcessingServiceList(item.services, item.serviceDetails, { includeNote: true });
       const baseLines = buildEstimateDetailLines({
         sizeText: escapeHtml(item.displaySize),
@@ -1249,7 +1248,7 @@ function renderTable() {
         processingServicesText: escapeHtml(processingServicesText || "-"),
         processingServiceLabel: "가공서비스",
         materialLabel: "상판비",
-        materialCost: item.consultStatus === "consult" ? null : baseCost,
+        materialCost: item.consultStatus === "consult" ? null : item.materialCost,
         materialConsult: item.consultStatus === "consult",
         processingCost: item.consultStatus === "consult" ? null : item.processingCost,
         processingConsult: item.consultStatus === "consult",
@@ -2199,8 +2198,8 @@ function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
             materialBaseCost: item.materialBaseCost ?? item.materialCost,
             materialDiscountCost: item.materialDiscountCost || 0,
             materialDiscountRate: item.materialDiscountRate || 0,
-            processingBaseCost: item.processingCost || 0,
-            processingDiscountCost: 0,
+            processingBaseCost: item.processingBaseCost ?? item.processingCost,
+            processingDiscountCost: item.processingDiscountCost || 0,
             ...(item.materialDiscountRuleId ? { promotionRuleId: item.materialDiscountRuleId } : {}),
           },
         }),
