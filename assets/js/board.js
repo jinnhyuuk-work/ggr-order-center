@@ -547,9 +547,14 @@ function renderProcessingServiceCards() {
       config: srv,
       fallbackText: fallbackPriceText,
     });
+    const visualMarkup = buildMaterialVisualMarkup({
+      swatch: srv.swatch,
+      imageUrl: srv.thumbnail,
+      fallbackSwatch: SWATCH_MUTED_FALLBACK,
+    });
     label.innerHTML = `
       <input type="checkbox" name="processingService" value="${srv.id}" />
-      <div class="material-visual" style="background: ${srv.swatch || SWATCH_MUTED_FALLBACK}"></div>
+      ${visualMarkup}
       <div class="name">${srv.label}</div>
       <div class="price${isConsultService ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(srv.description)}
@@ -634,9 +639,14 @@ function renderOptionCards() {
     const { text: priceText, isConsult: isConsultOption } = getPricingDisplayMeta({
       config: opt,
     });
+    const visualMarkup = buildMaterialVisualMarkup({
+      swatch: opt.swatch,
+      imageUrl: opt.thumbnail,
+      fallbackSwatch: SWATCH_MUTED_FALLBACK,
+    });
     label.innerHTML = `
       <input type="checkbox" name="boardOption" value="${opt.id}" />
-      <div class="material-visual" style="background: ${SWATCH_MUTED_FALLBACK}"></div>
+      ${visualMarkup}
       <div class="name">${opt.name}</div>
       <div class="price${isConsultOption ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(opt.description)}

@@ -10,6 +10,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "ok" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description: "절단면에 엣지 마감을 추가합니다.",
   },
   {
@@ -20,6 +22,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "ok" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description: "표면 보호를 위한 코팅 옵션입니다.",
   },
   {
@@ -30,6 +34,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "ok" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description: "스크래치 보호 필름을 추가합니다.",
   },
   {
@@ -40,6 +46,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "ok" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description: "절단면에 엣지 마감을 추가합니다.",
   },
   {
@@ -50,6 +58,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "ok" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description: "표면 보호를 위한 코팅 옵션입니다.",
   },
   {
@@ -60,6 +70,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "ok" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description: "스크래치 보호 필름을 추가합니다.",
   },
   {
@@ -70,6 +82,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "ok" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description:
       "싱크볼의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다.",
   },
@@ -81,6 +95,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "ok" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description:
       "싱크볼에 수전 타공을 추가합니다.<br>정확한 사이즈를 위해 상담이 필요합니다.",
   },
@@ -92,6 +108,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "ok" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description:
       "쿡탑의 사이즈에 맞춰 타공을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다.",
   },
@@ -103,6 +121,8 @@ export const ADDITIONAL_OPTION_ITEMS = [
     availabilityRule: { type: "consult" },
     required: false,
     validation: null,
+    thumbnail: null,
+    swatch: null,
     description:
       "상판에 뒷턱과 뒷선반을 추가합니다.<br>정확한 사이즈와 위치를 위해 상담이 필요합니다.",
   },

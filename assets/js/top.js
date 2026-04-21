@@ -993,9 +993,14 @@ function renderOptions() {
     const { text: priceText, isConsult: isConsultOption } = getPricingDisplayMeta({
       config: opt,
     });
+    const visualMarkup = buildMaterialVisualMarkup({
+      swatch: opt.swatch,
+      imageUrl: opt.thumbnail,
+      fallbackSwatch: SWATCH_MUTED_FALLBACK,
+    });
     label.innerHTML = `
       <input type="checkbox" value="${opt.id}" />
-      <div class="material-visual"></div>
+      ${visualMarkup}
       <div class="name">${opt.name}</div>
       <div class="price${isConsultOption ? " is-consult" : ""}">${priceText}</div>
       ${descriptionHTML(opt.description)}

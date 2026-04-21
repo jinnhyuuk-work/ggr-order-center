@@ -17,7 +17,8 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
       minCount: 1,
       fields: ["edge", "distance", "verticalRef", "verticalDistance"],
     },
-    swatch: "linear-gradient(135deg, #f0f7ff 0%, #c1dbff 100%)",
+    thumbnail: null,
+    swatch: null,
     description: "경첩 홀 1개당",
   },
   {
@@ -35,7 +36,8 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
       minCount: 1,
       fields: ["edge", "distance", "verticalRef", "verticalDistance"],
     },
-    swatch: "linear-gradient(135deg, #fef4e6 0%, #ffd9a8 100%)",
+    thumbnail: null,
+    swatch: null,
     description: "피스 홀 1개당",
   },
   {
@@ -52,7 +54,8 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     requiresInput: false,
     required: false,
     validation: null,
-    swatch: "linear-gradient(135deg, #f4f7e9 0%, #dce9c3 100%)",
+    thumbnail: null,
+    swatch: null,
     description:
       "뒷턱 높이를 입력할 수 있습니다. 가용높이(760 - 상판 깊이) 내 무료, 초과 시 상담안내로 처리됩니다.",
     displayPriceText: "가용높이 내 무료",
