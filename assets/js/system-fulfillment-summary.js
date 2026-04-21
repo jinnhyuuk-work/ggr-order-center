@@ -98,14 +98,31 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
       evaluateSupportedPolicy: ({ type }) => {
         const postBar = getSystemPostBarSummary();
         const shelf = getSystemShelfSummary();
+        const deliveryPolicy = SYSTEM_FULFILLMENT_POLICY.delivery;
 
         if (type === "delivery") {
+          if (deliveryPolicy.mode === "consult") {
+            return {
+              amount: 0,
+              amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
+              isConsult: true,
+              reason: deliveryPolicy.consultReason,
+            };
+          }
+          if (deliveryPolicy.mode !== "compositeGroupedFee") {
+            return {
+              amount: 0,
+              amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
+              isConsult: true,
+              reason: FULFILLMENT_POLICY_MESSAGES.fallbackReason,
+            };
+          }
           if (hasSystemCornerOrFurniture()) {
             return {
               amount: 0,
               amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
               isConsult: true,
-              reason: SYSTEM_FULFILLMENT_POLICY.delivery.consultReasons.cornerOrFurniture,
+              reason: deliveryPolicy.consultReasons.cornerOrFurniture,
             };
           }
           if (postBar.hasOverHeight || postBar.hasUnknownHeight) {
@@ -113,7 +130,7 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
               amount: 0,
               amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
               isConsult: true,
-              reason: SYSTEM_FULFILLMENT_POLICY.delivery.consultReasons.overPostBarHeight,
+              reason: deliveryPolicy.consultReasons.overPostBarHeight,
             };
           }
           if (shelf.hasOverWidth || shelf.hasUnknownWidth) {
@@ -121,18 +138,18 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
               amount: 0,
               amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
               isConsult: true,
-              reason: SYSTEM_FULFILLMENT_POLICY.delivery.consultReasons.overShelfWidth,
+              reason: deliveryPolicy.consultReasons.overShelfWidth,
             };
           }
           const postBarCost = calcGroupedAmount(
             postBar.totalCount,
-            SYSTEM_FULFILLMENT_POLICY.delivery.postBarGroupedFee.groupSize,
-            SYSTEM_FULFILLMENT_POLICY.delivery.postBarGroupedFee.groupPrice
+            deliveryPolicy.postBarGroupedFee.groupSize,
+            deliveryPolicy.postBarGroupedFee.groupPrice
           );
           const shelfCost = calcGroupedAmount(
             shelf.totalCount,
-            SYSTEM_FULFILLMENT_POLICY.delivery.shelfGroupedFee.groupSize,
-            SYSTEM_FULFILLMENT_POLICY.delivery.shelfGroupedFee.groupPrice
+            deliveryPolicy.shelfGroupedFee.groupSize,
+            deliveryPolicy.shelfGroupedFee.groupPrice
           );
           const amount = postBarCost + shelfCost;
           return {

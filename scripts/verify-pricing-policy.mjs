@@ -232,7 +232,7 @@ function run() {
   });
   const lxPetMaterial = Object.values(DOOR_MATERIALS).find((material) => material.category === "LX PET");
   assert.deepEqual(doorPricing.getDoorTierPrice(lxPetMaterial, 300, 800), {
-    price: 35000,
+    price: 17000,
     isCustom: false,
     label: "",
   });
@@ -247,12 +247,12 @@ function run() {
     label: "비규격 상담안내",
   });
   assert.deepEqual(doorPricing.formatDoorPriceTierLines("LX PET"), [
-    "300×800 이하 35,000원",
-    "400×800 이하 40,000원",
-    "600×800 이하 45,000원",
+    "300×800 이하 17,000원",
+    "400×800 이하 22,000원",
+    "600×800 이하 31,000원",
     "비규격 상담안내",
   ]);
-  assert.equal(DOOR_PRICING_POLICY.hingePricePerHole, 1500);
+  assert.equal(DOOR_PRICING_POLICY.hingePricePerHole, 2000);
   const doorDetail = doorPricing.calcItemDetail({
     materialId: lxPetMaterial.id,
     width: 300,
@@ -266,9 +266,9 @@ function run() {
       ],
     },
   });
-  assert.equal(doorDetail.materialCost, 35000);
-  assert.equal(doorDetail.doorHingeCost, 3000);
-  assert.equal(doorDetail.total, 38000);
+  assert.equal(doorDetail.materialCost, 17000);
+  assert.equal(doorDetail.doorHingeCost, 4000);
+  assert.equal(doorDetail.total, 21000);
   assert.equal(doorPricing.calcItemDetail({
     materialId: lxPetMaterial.id,
     width: 601,
@@ -632,9 +632,13 @@ function run() {
   assert.equal(groupedSystemItems[0].isCustomPrice, false);
   assert.equal(groupedSystemItems[0].hasConsultItems, true);
 
-  assert.equal(TOP_FULFILLMENT_POLICY.installationAmount, 50000);
-  assert.equal(BOARD_FULFILLMENT_POLICY.consultReason, "합판 서비스는 상담 안내입니다.");
+  assert.equal(TOP_FULFILLMENT_POLICY.delivery.mode, "consult");
+  assert.equal(TOP_FULFILLMENT_POLICY.delivery.consultReason, "상판 배송 서비스는 상담 안내입니다.");
+  assert.equal(BOARD_FULFILLMENT_POLICY.delivery.mode, "consult");
+  assert.equal(BOARD_FULFILLMENT_POLICY.delivery.consultReason, "합판 서비스는 상담 안내입니다.");
+  assert.equal(DOOR_FULFILLMENT_POLICY.delivery.mode, "consult");
   assert.equal(DOOR_FULFILLMENT_POLICY.delivery.groupedFee.groupPrice, 7000);
+  assert.equal(SYSTEM_FULFILLMENT_POLICY.delivery.mode, "consult");
   assert.equal(SYSTEM_FULFILLMENT_POLICY.delivery.postBarGroupedFee.groupPrice, 8000);
 }
 

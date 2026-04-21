@@ -170,11 +170,12 @@ function evaluateFulfillment(nextType = getFulfillmentType()) {
     hasProducts,
     evaluateSupportedPolicy: ({ type }) => {
       if (type === "delivery") {
+        const deliveryPolicy = TOP_FULFILLMENT_POLICY.delivery;
         return {
           amount: 0,
           amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
-          isConsult: true,
-          reason: TOP_FULFILLMENT_POLICY.deliveryConsultReason,
+          isConsult: deliveryPolicy.mode === "consult",
+          reason: deliveryPolicy.consultReason,
         };
       }
       return {

@@ -429,24 +429,41 @@ function evaluateFulfillment(nextType = getFulfillmentType()) {
     hasProducts,
     evaluateSupportedPolicy: ({ type }) => {
       const quantity = getDoorProductQuantity();
+      const deliveryPolicy = DOOR_FULFILLMENT_POLICY.delivery;
       if (type === "delivery") {
+        if (deliveryPolicy.mode === "consult") {
+          return {
+            amount: 0,
+            amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
+            isConsult: true,
+            reason: deliveryPolicy.consultReason,
+          };
+        }
+        if (deliveryPolicy.mode !== "groupedFee") {
+          return {
+            amount: 0,
+            amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
+            isConsult: true,
+            reason: FULFILLMENT_POLICY_MESSAGES.fallbackReason,
+          };
+        }
         const hasOversize = getDoorProductItems().some(
           (item) =>
-            Number(item?.width || 0) > DOOR_FULFILLMENT_POLICY.delivery.maxWidthMm ||
-            Number(item?.length || 0) > DOOR_FULFILLMENT_POLICY.delivery.maxLengthMm
+            Number(item?.width || 0) > deliveryPolicy.maxWidthMm ||
+            Number(item?.length || 0) > deliveryPolicy.maxLengthMm
         );
         if (hasOversize) {
           return {
             amount: 0,
             amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
             isConsult: true,
-            reason: DOOR_FULFILLMENT_POLICY.delivery.oversizeConsultReason,
+            reason: deliveryPolicy.oversizeConsultReason,
           };
         }
         const amount = calcGroupedAmount(
           quantity,
-          DOOR_FULFILLMENT_POLICY.delivery.groupedFee.groupSize,
-          DOOR_FULFILLMENT_POLICY.delivery.groupedFee.groupPrice
+          deliveryPolicy.groupedFee.groupSize,
+          deliveryPolicy.groupedFee.groupPrice
         );
         return {
           amount,

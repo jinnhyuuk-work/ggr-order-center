@@ -344,12 +344,23 @@ function evaluateFulfillment(nextType = getFulfillmentType()) {
     nextType,
     customer,
     hasProducts,
-    evaluateSupportedPolicy: () => ({
-      amount: 0,
-      amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
-      isConsult: true,
-      reason: BOARD_FULFILLMENT_POLICY.consultReason,
-    }),
+    evaluateSupportedPolicy: ({ type }) => {
+      const deliveryPolicy = BOARD_FULFILLMENT_POLICY.delivery;
+      if (type === "delivery") {
+        return {
+          amount: 0,
+          amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
+          isConsult: deliveryPolicy.mode === "consult",
+          reason: deliveryPolicy.consultReason,
+        };
+      }
+      return {
+        amount: 0,
+        amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
+        isConsult: true,
+        reason: "합판 시공은 상담 안내입니다.",
+      };
+    },
   });
 }
 

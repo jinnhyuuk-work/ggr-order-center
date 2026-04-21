@@ -10,17 +10,25 @@ export const FULFILLMENT_POLICY_MESSAGES = Object.freeze({
 });
 
 export const TOP_FULFILLMENT_POLICY = Object.freeze({
+  delivery: Object.freeze({
+    mode: "consult",
+    consultReason: "상판 배송 서비스는 상담 안내입니다.",
+  }),
   installationAmount: 50000,
   installationAmountText: "50,000원",
-  deliveryConsultReason: "상판 배송 서비스는 상담 안내입니다.",
 });
 
 export const BOARD_FULFILLMENT_POLICY = Object.freeze({
-  consultReason: "합판 서비스는 상담 안내입니다.",
+  delivery: Object.freeze({
+    mode: "consult",
+    consultReason: "합판 서비스는 상담 안내입니다.",
+  }),
 });
 
 export const DOOR_FULFILLMENT_POLICY = Object.freeze({
   delivery: Object.freeze({
+    mode: "consult",
+    consultReason: "도어 배송 서비스는 상담 안내입니다.",
     maxWidthMm: 600,
     maxLengthMm: 800,
     groupedFee: Object.freeze({
@@ -38,6 +46,8 @@ export const DOOR_FULFILLMENT_POLICY = Object.freeze({
 
 export const SYSTEM_FULFILLMENT_POLICY = Object.freeze({
   delivery: Object.freeze({
+    mode: "consult",
+    consultReason: "시스템 배송 서비스는 상담 안내입니다.",
     consultReasons: Object.freeze({
       cornerOrFurniture: "코너/가구 포함 구성은 배송 상담 안내입니다.",
       overPostBarHeight: "포스트바 2400mm 초과 규격은 배송 상담 안내입니다.",
