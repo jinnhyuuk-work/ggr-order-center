@@ -8,12 +8,17 @@ import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constra
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
+import { createAvailabilityRule, filterAvailableMap } from "./product-availability.js";
 
 export const TOP_PROCESSING_SERVICES = {
   ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.TOP),
 };
 
 export const TOP_DIMENSION_LIMITS = ORDER_DIMENSION_LIMITS.top;
+export const TOP_PRODUCT_AVAILABILITY = createAvailabilityRule({
+  excludedCategories: [],
+  excludedIds: [],
+});
 
 const TOP_TYPES_SOURCE = [
   {
@@ -599,7 +604,7 @@ const TOP_PRICE_BY_CATEGORY = Object.freeze({
   하이막스: 210000,
 });
 
-export const TOP_TYPES = TOP_TYPES_SOURCE.map((item) =>
+const TOP_TYPES_BASE = TOP_TYPES_SOURCE.map((item) =>
   withDimensionLimits(
     {
       ...item,
@@ -612,6 +617,13 @@ export const TOP_TYPES = TOP_TYPES_SOURCE.map((item) =>
     TOP_DIMENSION_LIMITS
   )
 );
+
+export const TOP_MATERIALS = filterAvailableMap(
+  Object.fromEntries(TOP_TYPES_BASE.map((item) => [item.id, item])),
+  TOP_PRODUCT_AVAILABILITY
+);
+
+export const TOP_TYPES = Object.values(TOP_MATERIALS);
 
 export const TOP_PRICING_POLICY = Object.freeze({
   standardThicknessMm: 12,

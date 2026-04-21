@@ -44,6 +44,7 @@ import {
 } from "./shared.js";
 import { createTopPricingHelpers } from "./top-pricing.js";
 import {
+  TOP_MATERIALS,
   TOP_PROCESSING_SERVICES,
   TOP_TYPES,
   TOP_OPTIONS,
@@ -119,7 +120,7 @@ function formatProcessingServiceSummaryText(serviceId, detail) {
 }
 
 let selectedTopType = "";
-const TOP_CATEGORIES = Array.from(new Set(TOP_TYPES.map((t) => t.category || "기타")));
+const TOP_CATEGORIES = Array.from(new Set(Object.values(TOP_MATERIALS).map((t) => t.category || "기타")));
 let selectedTopCategory = TOP_CATEGORIES[0] || "기타";
 let currentPhase = 1; // 1: 상판/가공, 2: 서비스, 3: 고객정보
 const state = { items: [], processingServiceDetails: {}, addons: [] };
@@ -785,7 +786,8 @@ function validateTopInputs({
   backHeight,
   useBackHeight,
 }) {
-  if (!typeId) return "상판 타입을 선택해주세요.";
+  const type = TOP_TYPES.find((item) => item.id === typeId);
+  if (!type) return "상판 타입을 선택해주세요.";
   if (!shape) return "주방 형태를 선택해주세요.";
   if (!width) return "깊이를 입력해주세요.";
   if (!length) return "길이를 입력해주세요.";

@@ -3871,7 +3871,9 @@ function validateInputs(input, bays) {
   }
 
   if (!input.column.materialId) return "포스트바 컬러를 선택해주세요.";
+  if (!columnMat) return "포스트바 컬러를 선택해주세요.";
   if (!input.shelf.materialId) return "선반 컬러를 선택해주세요.";
+  if (!shelfMat) return "선반 컬러를 선택해주세요.";
 
   const shelfPanelLimits = LIMITS.shelf;
   for (let i = 0; i < bays.length; i += 1) {

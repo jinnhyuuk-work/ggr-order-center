@@ -4,6 +4,7 @@ import {
   createDataItemMetaMap,
   createDatasetMeta,
 } from "./addon-data.js";
+import { createAvailabilityRule, filterAvailableMap } from "./product-availability.js";
 
 // 선반 컬러별 단가를 티어 키 기준으로 개별 관리한다.
 const LPM_ITEMS = [
@@ -72,7 +73,7 @@ const PP_ITEMS = [
   },
 ];
 
-export const SYSTEM_SHELF_MATERIALS = {
+export const SYSTEM_SHELF_MATERIALS_BASE = {
   ...arrayToMap(
     LPM_ITEMS.map((item) => ({
       ...item,
@@ -92,6 +93,15 @@ export const SYSTEM_SHELF_MATERIALS = {
     }))
   ),
 };
+
+export const SYSTEM_SHELF_PRODUCT_AVAILABILITY = createAvailabilityRule({
+  excludedCategories: [],
+  excludedIds: [],
+});
+
+export const SYSTEM_SHELF_MATERIALS = Object.freeze(
+  filterAvailableMap(SYSTEM_SHELF_MATERIALS_BASE, SYSTEM_SHELF_PRODUCT_AVAILABILITY)
+);
 
 const COLUMN_ITEMS = [
   {
@@ -126,6 +136,11 @@ const COLUMN_ITEMS = [
 const SYSTEM_COLUMN_MATERIALS_BASE = {
   ...arrayToMap(COLUMN_ITEMS),
 };
+
+export const SYSTEM_COLUMN_PRODUCT_AVAILABILITY = createAvailabilityRule({
+  excludedCategories: [],
+  excludedIds: [],
+});
 
 export const SYSTEM_MATERIAL_CATEGORIES_DESC = {
   LPM: "LPM 마감재 카테고리입니다.",
@@ -244,19 +259,22 @@ export const SYSTEM_POST_BAR_PRICING = Object.freeze({
 });
 
 export const SYSTEM_COLUMN_MATERIALS = Object.freeze(
-  Object.entries(SYSTEM_COLUMN_MATERIALS_BASE).reduce((acc, [id, item]) => {
-    acc[id] = Object.freeze({
-      ...item,
-      pricingRule: Object.freeze({
-        type: "tieredByHeight",
-        tiers: Object.freeze({
-          basic: SYSTEM_POST_BAR_PRICING.basic.tiers.map((tier) => Object.freeze({ ...tier })),
-          corner: SYSTEM_POST_BAR_PRICING.corner.tiers.map((tier) => Object.freeze({ ...tier })),
+  filterAvailableMap(
+    Object.entries(SYSTEM_COLUMN_MATERIALS_BASE).reduce((acc, [id, item]) => {
+      acc[id] = Object.freeze({
+        ...item,
+        pricingRule: Object.freeze({
+          type: "tieredByHeight",
+          tiers: Object.freeze({
+            basic: SYSTEM_POST_BAR_PRICING.basic.tiers.map((tier) => Object.freeze({ ...tier })),
+            corner: SYSTEM_POST_BAR_PRICING.corner.tiers.map((tier) => Object.freeze({ ...tier })),
+          }),
         }),
-      }),
-    });
-    return acc;
-  }, {})
+      });
+      return acc;
+    }, {}),
+    SYSTEM_COLUMN_PRODUCT_AVAILABILITY
+  )
 );
 
 export const SYSTEM_ADDON_ITEM_IDS = Object.freeze({

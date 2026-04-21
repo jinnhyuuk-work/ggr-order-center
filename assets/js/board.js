@@ -457,12 +457,7 @@ let orderCompleted = false;
 let customerPhotoUploader = null;
 let stickyOffsetTimer = null;
 let previewResizeTimer = null;
-const EXTRA_CATEGORIES = ["LPM", "PP"];
-const categories = Array.from(
-  new Set(
-    [...Object.values(MATERIALS).map((m) => m.category || "기타"), ...EXTRA_CATEGORIES]
-  )
-);
+const categories = Array.from(new Set(Object.values(MATERIALS).map((m) => m.category || "기타")));
 let selectedCategory = categories[0];
 let selectedMaterialId = "";
 
@@ -882,6 +877,7 @@ function validateInputs(input) {
   const mat = MATERIALS[materialId];
 
   if (!materialId) return "합판을 선택해주세요.";
+  if (!mat) return "합판을 선택해주세요.";
   if (!thickness) return "두께를 선택해주세요.";
   if (!width) return "폭을 입력해주세요.";
   const { minWidth: widthMin, maxWidth: widthMax, minLength: lengthMin, maxLength: lengthMax } =

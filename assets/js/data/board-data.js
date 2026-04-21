@@ -9,8 +9,13 @@ import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constra
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
+import { createAvailabilityRule, filterAvailableMap } from "./product-availability.js";
 
 export const BOARD_DIMENSION_LIMITS = ORDER_DIMENSION_LIMITS.board;
+export const BOARD_PRODUCT_AVAILABILITY = createAvailabilityRule({
+  excludedCategories: [],
+  excludedIds: [],
+});
 
 const applyBoardDimensionLimits = (items = []) =>
   items.map((item) => withDimensionLimits(item, BOARD_DIMENSION_LIMITS));
@@ -91,10 +96,12 @@ const PP_ITEMS = [
   },
 ];
 
-export const MATERIALS = {
+const BOARD_MATERIALS_BASE = {
   ...arrayToMap(applyBoardDimensionLimits(LPM_ITEMS)),
   ...arrayToMap(applyBoardDimensionLimits(PP_ITEMS)),
 };
+
+export const MATERIALS = filterAvailableMap(BOARD_MATERIALS_BASE, BOARD_PRODUCT_AVAILABILITY);
 
 export const MATERIAL_CATEGORIES_DESC = {
   LPM: "LPM 마감재 카테고리입니다.",

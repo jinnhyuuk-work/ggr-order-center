@@ -993,12 +993,7 @@ let orderCompleted = false;
 let customerPhotoUploader = null;
 let stickyOffsetTimer = null;
 let previewResizeTimer = null;
-const EXTRA_CATEGORIES = ["LX SMR PET", "LX Texture PET", "LX PET", "Hansol PET", "Original PET", "LPM"];
-const categories = Array.from(
-  new Set(
-    [...Object.values(MATERIALS).map((m) => m.category || "기타"), ...EXTRA_CATEGORIES]
-  )
-);
+const categories = Array.from(new Set(Object.values(MATERIALS).map((m) => m.category || "기타")));
 let selectedCategory = categories[0];
 let selectedMaterialId = "";
 
@@ -1457,6 +1452,7 @@ function validateInputs(input) {
   setDoorHingeInputErrors([]);
 
   if (!materialId) return "도어를 선택해주세요.";
+  if (!mat) return "도어를 선택해주세요.";
   if (!doorType) return "도어 형태를 선택해주세요.";
   if (!thickness) return "두께를 선택해주세요.";
   if (!sideThickness) return "측면 두께를 선택해주세요.";

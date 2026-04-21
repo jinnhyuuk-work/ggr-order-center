@@ -9,8 +9,13 @@ import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constra
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
 import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
+import { createAvailabilityRule, filterAvailableMap } from "./product-availability.js";
 
 export const DOOR_DIMENSION_LIMITS = ORDER_DIMENSION_LIMITS.door;
+export const DOOR_PRODUCT_AVAILABILITY = createAvailabilityRule({
+  excludedCategories: [],
+  excludedIds: [],
+});
 
 const applyDoorDimensionLimits = (items = []) =>
   items.map((item) => withDimensionLimits(item, DOOR_DIMENSION_LIMITS));
@@ -1164,7 +1169,7 @@ const LPM_ITEMS = [
   },
 ];
 
-export const DOOR_MATERIALS = {
+const DOOR_MATERIALS_BASE = {
   ...arrayToMap(applyDoorDimensionLimits(LX_SMR_PET_ITEMS)),
   ...arrayToMap(applyDoorDimensionLimits(LX_TEXTURE_PET_ITEMS)),
   ...arrayToMap(applyDoorDimensionLimits(LX_PET_ITEMS)),
@@ -1172,6 +1177,8 @@ export const DOOR_MATERIALS = {
   ...arrayToMap(applyDoorDimensionLimits(ORIGINAL_PET_ITEMS)),
   ...arrayToMap(applyDoorDimensionLimits(LPM_ITEMS)),
 };
+
+export const DOOR_MATERIALS = filterAvailableMap(DOOR_MATERIALS_BASE, DOOR_PRODUCT_AVAILABILITY);
 
 export const DOOR_MATERIAL_CATEGORIES_DESC = {
   "LX SMR PET": "LX SMR PET 마감재 카테고리입니다.",
