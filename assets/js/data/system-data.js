@@ -3,7 +3,7 @@ import {
   createDataEntryMetaMap,
   createDataItemMetaMap,
   createDatasetMeta,
-} from "./common-data.js";
+} from "./addon-data.js";
 
 // 선반 컬러별 단가를 티어 키 기준으로 개별 관리한다.
 const LPM_ITEMS = [

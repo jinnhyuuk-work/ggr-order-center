@@ -1,5 +1,5 @@
 import { getAdditionalSelectionConfigForPage, resolveSelectionIds } from "./additional-page-map.js";
-import { createDataItemMetaMap, createDatasetMeta } from "./common-data.js";
+import { createDataItemMetaMap, createDatasetMeta } from "./addon-data.js";
 
 export const ADDITIONAL_OPTION_ITEMS = [
   {

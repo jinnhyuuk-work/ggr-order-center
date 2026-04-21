@@ -1,4 +1,4 @@
-import { createDatasetMeta } from "./common-data.js";
+import { createDatasetMeta } from "./addon-data.js";
 
 export const FULFILLMENT_POLICY_MESSAGES = Object.freeze({
   noSelectionAmountText: "미선택",

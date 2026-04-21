@@ -27,7 +27,7 @@ import {
   SYSTEM_POST_BAR_HEIGHT_LIMITS,
   SYSTEM_SHELF_MATERIALS,
 } from "../assets/js/data/system-data.js";
-import { COMMON_ADDON_ITEMS } from "../assets/js/data/common-data.js";
+import { COMMON_ADDON_ITEMS } from "../assets/js/data/addon-data.js";
 import { createSystemPricingHelpers } from "../assets/js/system-pricing.js";
 import { createSystemOrderHelpers } from "../assets/js/system-order-helpers.js";
 import {

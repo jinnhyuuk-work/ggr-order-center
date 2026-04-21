@@ -1,12 +1,22 @@
 import { getAdditionalSelectionConfigForPage, resolveSelectionIds } from "./additional-page-map.js";
-import { createDataItemMetaMap, createDatasetMeta } from "./common-data.js";
+import { createDataItemMetaMap, createDatasetMeta } from "./addon-data.js";
 
-export const ADDITIONAL_PROCESSING_ITEMS = [
-  {
-    id: "proc_hinge_hole",
+const HOLE_INPUT_FIELDS = Object.freeze(["edge", "distance", "verticalRef", "verticalDistance"]);
+
+const createProcessingItem = (item) => Object.freeze({ ...item });
+
+const createPerHoleProcessingItem = ({
+  id,
+  label,
+  value,
+  description,
+  displayPriceText = null,
+}) =>
+  createProcessingItem({
+    id,
     kind: "processing",
-    label: "경첩 홀 가공",
-    pricingRule: { type: "perHole", value: 1500, unit: "hole" },
+    label,
+    pricingRule: { type: "perHole", value, unit: "hole" },
     availabilityRule: { type: "ok" },
     type: "detail",
     requiresInput: true,
@@ -15,39 +25,29 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     validation: {
       rule: "holes_required",
       minCount: 1,
-      fields: ["edge", "distance", "verticalRef", "verticalDistance"],
+      fields: [...HOLE_INPUT_FIELDS],
     },
     thumbnail: null,
     swatch: null,
-    description: "경첩 홀 1개당",
-  },
-  {
-    id: "proc_handle_hole",
+    description,
+    ...(displayPriceText ? { displayPriceText } : {}),
+  });
+
+const createConditionalProcessingItem = ({
+  id,
+  label,
+  description,
+  priceLabel,
+  ruleKey,
+}) =>
+  createProcessingItem({
+    id,
     kind: "processing",
-    label: "피스 홀 타공",
-    pricingRule: { type: "perHole", value: 1200, unit: "hole" },
-    availabilityRule: { type: "ok" },
-    type: "detail",
-    requiresInput: true,
-    inputMode: "hole-list",
-    required: false,
-    validation: {
-      rule: "holes_required",
-      minCount: 1,
-      fields: ["edge", "distance", "verticalRef", "verticalDistance"],
-    },
-    thumbnail: null,
-    swatch: null,
-    description: "피스 홀 1개당",
-  },
-  {
-    id: "top_back_shelf",
-    kind: "processing",
-    label: "뒷턱/뒷선반 추가",
-    pricingRule: { type: "free", value: 0, unit: "item", label: "가용높이 내 무료" },
+    label,
+    pricingRule: { type: "free", value: 0, unit: "item", label: priceLabel },
     availabilityRule: {
       type: "conditional",
-      ruleKey: "top_back_height_limit",
+      ruleKey,
       defaultStatus: "ok",
     },
     type: "simple",
@@ -56,18 +56,37 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     validation: null,
     thumbnail: null,
     swatch: null,
+    description,
+    displayPriceText: priceLabel,
+  });
+
+export const ADDITIONAL_PROCESSING_ITEMS = [
+  createPerHoleProcessingItem({
+    id: "proc_hinge_hole",
+    label: "경첩 홀 가공",
+    value: 1500,
+    description: "경첩 홀 1개당",
+  }),
+  createPerHoleProcessingItem({
+    id: "proc_handle_hole",
+    label: "피스 홀 타공",
+    value: 1200,
+    description: "피스 홀 1개당",
+  }),
+  createConditionalProcessingItem({
+    id: "top_back_shelf",
+    label: "뒷턱/뒷선반 추가",
     description:
       "뒷턱 높이를 입력할 수 있습니다. 가용높이(760 - 상판 깊이) 내 무료, 초과 시 상담안내로 처리됩니다.",
-    displayPriceText: "가용높이 내 무료",
-  },
+    priceLabel: "가용높이 내 무료",
+    ruleKey: "top_back_height_limit",
+  }),
 ];
 
 const PROCESSING_CATALOG_BY_ID = Object.freeze(
-  ADDITIONAL_PROCESSING_ITEMS.reduce((acc, item) => {
-    if (!item?.id) return acc;
-    acc[item.id] = Object.freeze({ ...item });
-    return acc;
-  }, {})
+  Object.fromEntries(
+    ADDITIONAL_PROCESSING_ITEMS.filter((item) => item?.id).map((item) => [item.id, item])
+  )
 );
 
 export const ADDITIONAL_PROCESSING_DATASET_META = createDatasetMeta({
@@ -100,10 +119,10 @@ export function getAdditionalProcessingServicesForPage(pageKey) {
         catalogById: PROCESSING_CATALOG_BY_ID,
       })
     : [];
-  return processingIds.reduce((acc, id) => {
-    const item = PROCESSING_CATALOG_BY_ID[id];
-    if (!item) return acc;
-    acc[item.id] = { ...item };
-    return acc;
-  }, {});
+  return Object.fromEntries(
+    processingIds
+      .map((id) => PROCESSING_CATALOG_BY_ID[id])
+      .filter(Boolean)
+      .map((item) => [item.id, { ...item }])
+  );
 }

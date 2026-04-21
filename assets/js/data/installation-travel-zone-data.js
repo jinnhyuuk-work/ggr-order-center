@@ -1,4 +1,4 @@
-import { createDataItemMetaMap, createDatasetMeta } from "./common-data.js";
+import { createDataItemMetaMap, createDatasetMeta } from "./addon-data.js";
 
 function freezeRule({ sido = "", sigungu = "*", include = [], exclude = [] } = {}) {
   return Object.freeze({

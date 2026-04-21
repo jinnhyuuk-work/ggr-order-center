@@ -1,4 +1,4 @@
-import { createDataItemMetaMap, createDatasetMeta } from "./common-data.js";
+import { createDataItemMetaMap, createDatasetMeta } from "./addon-data.js";
 
 export const ORDER_PAGE_KEYS = Object.freeze({
   BOARD: "board",
@@ -65,11 +65,11 @@ export const ADDITIONAL_SELECTION_PAGE_CONFIG = Object.freeze({
   }),
   [ORDER_PAGE_KEYS.DOOR]: freezePageConfig({
     options: {
-      includeIds: ["board_edge_finish"],
+      includeIds: [],
       excludeIds: [],
     },
     processing: {
-      includeIds: ["proc_hinge_hole"],
+      includeIds: [],
       excludeIds: [],
     },
   }),

@@ -4,7 +4,7 @@ import {
   createDataEntryMetaMap,
   createDataItemMetaMap,
   createDatasetMeta,
-} from "./common-data.js";
+} from "./addon-data.js";
 import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constraints.js";
 import { ORDER_PAGE_KEYS } from "./additional-page-map.js";
 import { getAdditionalOptionsForPage } from "./additional-options-data.js";
