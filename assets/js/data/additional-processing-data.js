@@ -1,4 +1,4 @@
-import { getAdditionalSelectionConfigForPage } from "./additional-page-map.js";
+import { getAdditionalSelectionConfigForPage, resolveSelectionIds } from "./additional-page-map.js";
 import { createDataItemMetaMap, createDatasetMeta } from "./common-data.js";
 
 export const ADDITIONAL_PROCESSING_ITEMS = [
@@ -93,7 +93,13 @@ export const ADDITIONAL_PROCESSING_META_BY_ID = createDataItemMetaMap(ADDITIONAL
 
 export function getAdditionalProcessingServicesForPage(pageKey) {
   const pageConfig = getAdditionalSelectionConfigForPage(pageKey);
-  const processingIds = pageConfig?.sections?.processing ? pageConfig.processingIds : [];
+  const processingIds = pageConfig?.sections?.processing
+    ? resolveSelectionIds({
+        includeIds: pageConfig.processing?.includeIds,
+        excludeIds: pageConfig.processing?.excludeIds,
+        catalogById: PROCESSING_CATALOG_BY_ID,
+      })
+    : [];
   return processingIds.reduce((acc, id) => {
     const item = PROCESSING_CATALOG_BY_ID[id];
     if (!item) return acc;

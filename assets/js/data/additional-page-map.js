@@ -6,10 +6,27 @@ export const ORDER_PAGE_KEYS = Object.freeze({
   TOP: "top",
 });
 
-function freezePageConfig({ optionIds = [], processingIds = [], sections = {} } = {}) {
+function normalizeIdList(ids = []) {
+  return Object.freeze(
+    Array.isArray(ids)
+      ? ids
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      : []
+  );
+}
+
+function freezeSelectionBucket({ includeIds = [], excludeIds = [] } = {}) {
   return Object.freeze({
-    optionIds: Object.freeze([...optionIds]),
-    processingIds: Object.freeze([...processingIds]),
+    includeIds: normalizeIdList(includeIds),
+    excludeIds: normalizeIdList(excludeIds),
+  });
+}
+
+function freezePageConfig({ options = {}, processing = {}, sections = {} } = {}) {
+  return Object.freeze({
+    options: freezeSelectionBucket(options),
+    processing: freezeSelectionBucket(processing),
     sections: Object.freeze({
       options: sections.options !== false,
       processing: sections.processing !== false,
@@ -17,20 +34,54 @@ function freezePageConfig({ optionIds = [], processingIds = [], sections = {} } 
   });
 }
 
+export function resolveSelectionIds({ includeIds = [], excludeIds = [], catalogById = {} } = {}) {
+  const includeList = normalizeIdList(includeIds);
+  const excludeSet = new Set(normalizeIdList(excludeIds));
+  const resolved = [];
+  const seen = new Set();
+
+  includeList.forEach((id) => {
+    if (!id || excludeSet.has(id) || seen.has(id)) return;
+    if (!catalogById[id]) return;
+    seen.add(id);
+    resolved.push(id);
+  });
+
+  return resolved;
+}
+
 // Single source of truth for page-level additional selections.
-// To add/remove items per page, edit only this object.
+// Edit includeIds / excludeIds here to add or remove items per page.
 export const ADDITIONAL_SELECTION_PAGE_CONFIG = Object.freeze({
   [ORDER_PAGE_KEYS.BOARD]: freezePageConfig({
-    optionIds: ["board_edge_finish", "board_surface_coating", "board_anti_scratch"],
-    processingIds: ["proc_hinge_hole", "proc_handle_hole"],
+    options: {
+      includeIds: ["board_edge_finish", "board_surface_coating", "board_anti_scratch"],
+      excludeIds: [],
+    },
+    processing: {
+      includeIds: ["proc_hinge_hole", "proc_handle_hole"],
+      excludeIds: [],
+    },
   }),
   [ORDER_PAGE_KEYS.DOOR]: freezePageConfig({
-    optionIds: [],
-    processingIds: [],
+    options: {
+      includeIds: ["board_edge_finish"],
+      excludeIds: [],
+    },
+    processing: {
+      includeIds: ["proc_hinge_hole"],
+      excludeIds: [],
+    },
   }),
   [ORDER_PAGE_KEYS.TOP]: freezePageConfig({
-    optionIds: ["top_sink_cut", "top_faucet_hole", "top_cooktop_cut", "top_back_add"],
-    processingIds: [],
+    options: {
+      includeIds: ["top_sink_cut", "top_faucet_hole", "top_cooktop_cut", "top_back_add"],
+      excludeIds: [],
+    },
+    processing: {
+      includeIds: [],
+      excludeIds: [],
+    },
   }),
 });
 
@@ -38,14 +89,20 @@ export function getAdditionalSelectionConfigForPage(pageKey) {
   const cfg = ADDITIONAL_SELECTION_PAGE_CONFIG[pageKey];
   if (!cfg) {
     return {
-      optionIds: [],
-      processingIds: [],
+      options: { includeIds: [], excludeIds: [] },
+      processing: { includeIds: [], excludeIds: [] },
       sections: { options: false, processing: false },
     };
   }
   return {
-    optionIds: [...cfg.optionIds],
-    processingIds: [...cfg.processingIds],
+    options: {
+      includeIds: [...cfg.options.includeIds],
+      excludeIds: [...cfg.options.excludeIds],
+    },
+    processing: {
+      includeIds: [...cfg.processing.includeIds],
+      excludeIds: [...cfg.processing.excludeIds],
+    },
     sections: { ...cfg.sections },
   };
 }
@@ -54,8 +111,16 @@ export function getAdditionalSelectionConfigForPage(pageKey) {
 export const ADDITIONAL_SELECTION_PAGE_MAP = Object.freeze(
   Object.entries(ADDITIONAL_SELECTION_PAGE_CONFIG).reduce((acc, [pageKey, cfg]) => {
     acc[pageKey] = Object.freeze({
-      options: [...cfg.optionIds],
-      processing: [...cfg.processingIds],
+      options: resolveSelectionIds({
+        includeIds: cfg.options.includeIds,
+        excludeIds: cfg.options.excludeIds,
+        catalogById: Object.fromEntries(cfg.options.includeIds.map((id) => [id, true])),
+      }),
+      processing: resolveSelectionIds({
+        includeIds: cfg.processing.includeIds,
+        excludeIds: cfg.processing.excludeIds,
+        catalogById: Object.fromEntries(cfg.processing.includeIds.map((id) => [id, true])),
+      }),
     });
     return acc;
   }, {})
@@ -66,7 +131,7 @@ const ADDITIONAL_SELECTION_PAGE_ENTRIES = Object.freeze(
     Object.freeze({
       id: String(pageKey),
       label: `${String(pageKey).toUpperCase()} 페이지 추가 선택 구성`,
-      description: `options ${cfg.optionIds.length}개 / processing ${cfg.processingIds.length}개`,
+      description: `options ${cfg.options.includeIds.length}개 / processing ${cfg.processing.includeIds.length}개`,
     })
   )
 );

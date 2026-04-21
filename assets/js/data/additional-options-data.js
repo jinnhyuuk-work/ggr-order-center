@@ -1,4 +1,4 @@
-import { getAdditionalSelectionConfigForPage } from "./additional-page-map.js";
+import { getAdditionalSelectionConfigForPage, resolveSelectionIds } from "./additional-page-map.js";
 import { createDataItemMetaMap, createDatasetMeta } from "./common-data.js";
 
 export const ADDITIONAL_OPTION_ITEMS = [
@@ -158,7 +158,13 @@ export const ADDITIONAL_OPTIONS_META_BY_ID = createDataItemMetaMap(ADDITIONAL_OP
 
 export function getAdditionalOptionsForPage(pageKey) {
   const pageConfig = getAdditionalSelectionConfigForPage(pageKey);
-  const optionIds = pageConfig?.sections?.options ? pageConfig.optionIds : [];
+  const optionIds = pageConfig?.sections?.options
+    ? resolveSelectionIds({
+        includeIds: pageConfig.options?.includeIds,
+        excludeIds: pageConfig.options?.excludeIds,
+        catalogById: OPTION_CATALOG_BY_ID,
+      })
+    : [];
   return optionIds
     .map((id) => OPTION_CATALOG_BY_ID[id])
     .filter(Boolean)

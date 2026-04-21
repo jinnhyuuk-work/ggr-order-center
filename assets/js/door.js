@@ -303,11 +303,7 @@ function getDoorDimensionLimits(mat) {
   };
 }
 
-const PROCESSING_SERVICES = Object.entries(ALL_PROCESSING_SERVICES).reduce((acc, [id, service]) => {
-  if (id === "proc_hinge_hole") return acc;
-  acc[id] = service;
-  return acc;
-}, {});
+const PROCESSING_SERVICES = { ...ALL_PROCESSING_SERVICES };
 const {
   formatDoorPriceTierLines,
   calcItemDetail,
