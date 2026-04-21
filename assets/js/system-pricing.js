@@ -78,8 +78,6 @@ export function createSystemPricingHelpers({
   function getShelfTierUnitPrice({ tier = null, material = null } = {}) {
     if (!tier || Boolean(tier?.isCustomPrice)) return 0;
     const tierKey = String(tier?.key || "");
-    const materialId = String(material?.id || "");
-    const category = String(material?.category || "");
     const pricingRule = material?.pricingRule && typeof material.pricingRule === "object" ? material.pricingRule : null;
     const byPricingRule = pricingRule?.priceByTierKey ? Number(pricingRule.priceByTierKey[tierKey] || 0) : 0;
     if (byPricingRule > 0) return roundWon(byPricingRule);
@@ -87,18 +85,8 @@ export function createSystemPricingHelpers({
       material?.priceByTierKey && typeof material.priceByTierKey === "object"
         ? material.priceByTierKey
         : null;
-    const priceByMaterialId = tier?.priceByMaterialId && typeof tier.priceByMaterialId === "object"
-      ? tier.priceByMaterialId
-      : null;
-    const priceByCategory = tier?.priceByCategory && typeof tier.priceByCategory === "object"
-      ? tier.priceByCategory
-      : null;
     const byMaterialTierKey = materialPriceByTierKey ? Number(materialPriceByTierKey[tierKey] || 0) : 0;
     if (byMaterialTierKey > 0) return roundWon(byMaterialTierKey);
-    const byMaterialPrice = priceByMaterialId ? Number(priceByMaterialId[materialId] || 0) : 0;
-    if (byMaterialPrice > 0) return roundWon(byMaterialPrice);
-    const byCategoryPrice = priceByCategory ? Number(priceByCategory[category] || 0) : 0;
-    if (byCategoryPrice > 0) return roundWon(byCategoryPrice);
     return 0;
   }
 

@@ -301,8 +301,8 @@ function run() {
     isCorner: false,
   });
   assert.equal(shelfWithAddonDetail.materialCost, 28000);
-  assert.equal(shelfWithAddonDetail.processingCost, 5000);
-  assert.equal(shelfWithAddonDetail.total, 33000);
+  assert.equal(shelfWithAddonDetail.processingCost, 4000);
+  assert.equal(shelfWithAddonDetail.total, 32000);
 
   const wideShelfDetail = systemPricing.calcBayDetail({
     shelf: {

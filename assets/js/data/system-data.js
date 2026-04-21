@@ -153,30 +153,18 @@ export const SYSTEM_SHELF_TIER_PRICING = Object.freeze({
         label: "400 이하",
         matchMode: "range",
         maxWidthMm: 400,
-        priceByCategory: Object.freeze({
-          LPM: 22000,
-          PP: 20000,
-        }),
       }),
       Object.freeze({
         key: "lte_600",
         label: "600 이하",
         matchMode: "range",
         maxWidthMm: 600,
-        priceByCategory: Object.freeze({
-          LPM: 28000,
-          PP: 25500,
-        }),
       }),
       Object.freeze({
         key: "lte_800",
         label: "800 이하",
         matchMode: "range",
         maxWidthMm: 800,
-        priceByCategory: Object.freeze({
-          LPM: 34000,
-          PP: 31000,
-        }),
       }),
       Object.freeze({
         key: "gt_800_custom",
@@ -195,10 +183,6 @@ export const SYSTEM_SHELF_TIER_PRICING = Object.freeze({
         label: "코너 표준",
         matchMode: "range",
         maxWidthMm: 800,
-        priceByCategory: Object.freeze({
-          LPM: 42000,
-          PP: 39000,
-        }),
       }),
       Object.freeze({
         key: "corner_custom",
@@ -640,8 +624,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 0, PP: 0, default: 0 },
-        800: { LPM: 22000, PP: 21000, default: 22000 },
+        600: { LPM: 58000, PP: 52000, default: 58000 },
+        800: { LPM: 61000, PP: 55000, default: 61000 },
       },
     }),
     description: "공중형 서랍 1단 모듈 1세트",
@@ -655,8 +639,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 0, PP: 0, default: 0 },
-        800: { LPM: 30000, PP: 29000, default: 30000 },
+        600: { LPM: 102000, PP: 93000, default: 102000 },
+        800: { LPM: 105000, PP: 96000, default: 105000 },
       },
     }),
     description: "공중형 서랍 2단 모듈 1세트",
@@ -670,8 +654,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 0, PP: 0, default: 0 },
-        800: { LPM: 30000, PP: 29000, default: 30000 },
+        600: { LPM: 99000, PP: 91000, default: 99000 },
+        800: { LPM: 102000, PP: 94000, default: 102000 },
       },
     }),
     description: "바닥형 서랍 2단 모듈 1세트",
@@ -685,8 +669,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 0, PP: 0, default: 0 },
-        800: { LPM: 38000, PP: 37000, default: 38000 },
+        600: { LPM: 135000, PP: 125000, default: 135000 },
+        800: { LPM: 138000, PP: 128000, default: 138000 },
       },
     }),
     description: "바닥형 서랍 3단 모듈 1세트",
@@ -700,8 +684,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     categoryKey: "drawer",
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
-        600: { LPM: 0, PP: 0, default: 0 },
-        800: { LPM: 46000, PP: 45000, default: 46000 },
+        600: { LPM: 176000, PP: 163000, default: 176000 },
+        800: { LPM: 179000, PP: 166000, default: 179000 },
       },
     }),
     description: "바닥형 서랍 4단 모듈 1세트",
@@ -713,7 +697,7 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: SYSTEM_ADDON_ITEM_IDS.CLOTHES_ROD,
     name: "행거",
     categoryKey: "hanger",
-    pricingRule: Object.freeze({ type: "fixed", value: 5000, unit: "item" }),
+    pricingRule: Object.freeze({ type: "fixed", value: 4000, unit: "item" }),
     description: "알루미늄 행거 1개",
     selectableInModuleAddonModal: false,
     applicableModuleTypes: ["normal", "corner"],
