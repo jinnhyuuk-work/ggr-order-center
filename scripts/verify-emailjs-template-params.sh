@@ -8,7 +8,16 @@ PAGE_FILES=(
   "assets/js/top.js"
   "assets/js/board.js"
   "assets/js/door.js"
-  "assets/js/system.js"
+)
+
+SYSTEM_FLOW_FILE="assets/js/system-quote-flow.js"
+SYSTEM_ENTRY_FILE="assets/js/system.js"
+
+SYSTEM_ENTRY_REQUIRED_TOKENS=(
+  "createSystemQuoteFlowHelpers({"
+  "initCustomerPhotoUploader"
+  "buildSendQuoteTemplateParams,"
+  "uploadCustomerPhotoFilesToCloudinary,"
 )
 
 COMMON_TEMPLATE_KEYS=(
@@ -25,6 +34,13 @@ COMMON_TEMPLATE_KEYS=(
 PAGE_REQUIRED_TOKENS=(
   "buildSendQuoteTemplateParams("
   "initCustomerPhotoUploader"
+  "uploadCustomerPhotoFilesToCloudinary"
+  "templateParams"
+  "emailjsInstance.send"
+)
+
+SYSTEM_FLOW_REQUIRED_TOKENS=(
+  "buildSendQuoteTemplateParams("
   "uploadCustomerPhotoFilesToCloudinary"
   "templateParams"
   "emailjsInstance.send"
@@ -74,6 +90,32 @@ for rel_file in "${PAGE_FILES[@]}"; do
     fi
   done
 done
+
+system_flow_abs="${ROOT_DIR}/${SYSTEM_FLOW_FILE}"
+if [[ ! -f "${system_flow_abs}" ]]; then
+  echo "[FAIL] missing file: ${SYSTEM_FLOW_FILE}"
+  fail_count=$((fail_count + 1))
+else
+  for token in "${SYSTEM_FLOW_REQUIRED_TOKENS[@]}"; do
+    if ! rg -qF "${token}" "${system_flow_abs}"; then
+      echo "[FAIL] ${SYSTEM_FLOW_FILE}: missing logic token '${token}'"
+      fail_count=$((fail_count + 1))
+    fi
+  done
+fi
+
+system_entry_abs="${ROOT_DIR}/${SYSTEM_ENTRY_FILE}"
+if [[ ! -f "${system_entry_abs}" ]]; then
+  echo "[FAIL] missing file: ${SYSTEM_ENTRY_FILE}"
+  fail_count=$((fail_count + 1))
+else
+  for token in "${SYSTEM_ENTRY_REQUIRED_TOKENS[@]}"; do
+    if ! rg -qF "${token}" "${system_entry_abs}"; then
+      echo "[FAIL] ${SYSTEM_ENTRY_FILE}: missing integration token '${token}'"
+      fail_count=$((fail_count + 1))
+    fi
+  done
+fi
 
 if [[ "${fail_count}" -gt 0 ]]; then
   echo "Result: FAILED (${fail_count} issues)"
