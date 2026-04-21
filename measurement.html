@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>실측 요청 | 가구랑 주문 센터</title>
+  <link rel="icon" href="assets/img/brand/ggr_website_logo_rgb.svg" type="image/svg+xml" />
+  <script>
+    (function(d) {
+      var config = {
+        kitId: 'grz0yjc',
+        scriptTimeout: 3000,
+        async: true
+      },
+      h=d.documentElement,t=setTimeout(function(){h.className=h.className.replace(/\bwf-loading\b/g,"")+" wf-inactive";},config.scriptTimeout),tk=d.createElement("script"),f=false,s=d.getElementsByTagName("script")[0],a;h.className+=" wf-loading";tk.src='https://use.typekit.net/'+config.kitId+'.js';tk.async=true;tk.onload=tk.onreadystatechange=function(){a=this.readyState;if(f||a&&a!="complete"&&a!="loaded")return;f=true;clearTimeout(t);try{Typekit.load(config)}catch(e){}};s.parentNode.insertBefore(tk,s)
+    })(document);
+  </script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <div class="brand-strip">
+      <a class="header-logo-link" href="https://ggr.kr/" aria-label="가구랑 주문센터 메인으로 이동">
+        <img class="header-logo" src="assets/img/brand/ggr_website_logo_rgb.svg" alt="가구랑 로고" />
+      </a>
+      <a class="order-center-home-link btn" href="index.html" aria-label="주문센터 홈으로 이동">주문센터 홈</a>
+    </div>
+
+    <header class="page-header">
+      <div class="title-block">
+        <h1 class="title-main">실측 요청</h1>
+        <p lang="en" class="title-sub">Measurement Request</p>
+      </div>
+      <div class="header-divider"></div>
+    </header>
+
+    <div class="main-grid">
+      <div class="steps-main">
+        <section id="step1" class="step-card">
+          <h2>주소와 실측서비스를 선택해주세요.</h2>
+          <div class="form-row">
+            <label for="sample6_postcode">주소</label>
+            <div class="field-col">
+              <div class="nav-actions">
+                <input type="text" id="sample6_postcode" placeholder="우편번호" />
+                <button type="button" onclick="sample6_execDaumPostcode()">우편번호 찾기</button>
+              </div>
+              <input type="text" id="sample6_address" placeholder="주소" />
+              <input type="text" id="sample6_detailAddress" placeholder="상세주소" />
+            </div>
+          </div>
+
+          <div class="input-tip" aria-live="polite">
+            <ul class="input-tip-list">
+              <li id="measurementRegionHint">주소를 입력하면 실측 출장 권역을 안내합니다.</li>
+              <li id="measurementPriceHint">실측서비스를 선택하면 예상 서비스비가 표시됩니다.</li>
+              <li>출장비는 여러 실측서비스를 선택해도 1회만 반영됩니다.</li>
+              <li>안내된 금액은 예상 금액으로, 정확한 실측 가능 여부와 비용은 상담 후 확인 가능합니다.</li>
+            </ul>
+          </div>
+
+          <div class="selection-block selection-block--input">
+            <div class="selection-block-head">
+              <h3>실측서비스</h3>
+              <span class="selection-block-badge selection-block-badge--input">입력 필요</span>
+            </div>
+            <p class="selection-block-hint">필요한 실측서비스를 모두 선택해주세요. 출장비는 주소 기준 1회만 추가됩니다.</p>
+            <div class="measurement-service-grid grid-cards grid-cards--3" role="group" aria-label="실측서비스 선택">
+              <button type="button" class="card-base measurement-service-card" data-measurement-service="door" aria-pressed="false">
+                <div class="material-visual measurement-service-media measurement-service-media--door" aria-hidden="true"></div>
+                <div class="measurement-service-copy">
+                  <div class="name">도어 실측</div>
+                  <div class="price" data-measurement-card-price>50,000원</div>
+                  <div class="description">문짝 교체 및 도어 제작 전 현장 확인</div>
+                </div>
+              </button>
+              <button type="button" class="card-base measurement-service-card" data-measurement-service="top" aria-pressed="false">
+                <div class="material-visual measurement-service-media measurement-service-media--top" aria-hidden="true"></div>
+                <div class="measurement-service-copy">
+                  <div class="name">상판 실측</div>
+                  <div class="price" data-measurement-card-price>50,000원</div>
+                  <div class="description">싱크대 상판 교체 및 제작 전 현장 확인</div>
+                </div>
+              </button>
+              <button type="button" class="card-base measurement-service-card" data-measurement-service="system" aria-pressed="false">
+                <div class="material-visual measurement-service-media measurement-service-media--system" aria-hidden="true"></div>
+                <div class="measurement-service-copy">
+                  <div class="name">시스템 실측</div>
+                  <div class="price" data-measurement-card-price>50,000원</div>
+                  <div class="description">시스템 수납장 설치 공간 및 구성 확인</div>
+                </div>
+              </button>
+            </div>
+            <div class="error-msg" id="measurementStepError" role="alert" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section id="step2" class="step-card hidden-step">
+          <h2>고객 정보를 입력해주세요.</h2>
+          <div class="form-row">
+            <label for="customerName" class="required-field-label">이름</label>
+            <div class="field-col">
+              <input type="text" id="customerName" placeholder="홍길동" required aria-required="true" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="customerPhone" class="required-field-label">연락처</label>
+            <div class="field-col">
+              <input type="tel" id="customerPhone" placeholder="010-1234-5678" required aria-required="true" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="customerEmail" class="required-field-label">이메일</label>
+            <div class="field-col">
+              <input type="email" id="customerEmail" placeholder="you@example.com" required aria-required="true" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="customerMemo">요청사항</label>
+            <div class="field-col">
+              <textarea id="customerMemo" rows="3" placeholder="실측 희망 일정이나 현장 상황을 입력해주세요."></textarea>
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="customerPhotoInput">현장 사진</label>
+            <div class="field-col">
+              <input type="file" id="customerPhotoInput" class="customer-photo-input" accept="image/*" multiple />
+              <p class="field-note customer-photo-note">선택 업로드 · 최대 5장 · 각 10MB 이하</p>
+              <div id="customerPhotoList" class="customer-photo-list" aria-live="polite">
+                <div class="customer-photo-empty">선택된 사진이 없습니다.</div>
+              </div>
+            </div>
+          </div>
+          <div class="input-tip" role="note" aria-label="사진 첨부 안내">
+            <ul class="input-tip-list">
+              <li>실측 위치와 주변 공간을 확인할 수 있는 사진을 첨부해주세요.</li>
+              <li>사진에 개인정보가 노출되지 않도록 주의해주세요.</li>
+            </ul>
+          </div>
+          <div class="consent-box" data-privacy-consent></div>
+        </section>
+      </div>
+
+      <aside class="step-card estimate-panel is-collapsed" id="stepFinal">
+        <div class="estimate-header">
+          <h2>실측 요청 내용을 확인해주세요.</h2>
+          <button type="button" class="ghost-btn accordion-toggle estimate-toggle" data-toggle-target="stepFinal" aria-controls="stepFinal" data-open-text="닫기" data-closed-text="열기" aria-expanded="false">열기</button>
+        </div>
+        <div class="input-tip">
+          <ul class="input-tip-list">
+            <li>여러 실측서비스를 선택해도 출장비는 1회만 반영됩니다.</li>
+          </ul>
+        </div>
+        <div class="estimate-body">
+          <div class="table-wrapper">
+            <table id="estimateTable">
+              <thead>
+                <tr>
+                  <th>제품명</th>
+                  <th>수량</th>
+                  <th>금액</th>
+                  <th>삭제</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div id="estimateEmpty" class="empty-banner">선택된 실측서비스가 없습니다.</div>
+          </div>
+        </div>
+        <div class="summary">
+          <p>실측 기본비: <span id="productTotal">0</span> 원</p>
+          <p>출장비: <span id="fulfillmentCost">주소 입력 후 계산</span></p>
+          <p>예상 결제금액: <span id="grandTotal">0</span> 원</p>
+          <p>예상 네이버 결제수량: <span id="naverUnits">0</span> 개</p>
+        </div>
+        <div class="nav-actions">
+          <button type="button" class="prev-page-btn" id="backToCenterBtn">주문센터로</button>
+          <button type="button" class="prev-page-btn hidden-step" id="prevStepsBtn">이전</button>
+          <button type="button" class="next-page-btn" id="nextStepsBtn">다음</button>
+          <button type="button" class="send-btn hidden-step" id="sendQuoteBtn">실측 요청 전송</button>
+        </div>
+      </aside>
+
+      <div id="orderComplete" class="order-complete hidden-step">
+        <p class="complete-title">실측 요청이 접수되었습니다.</p>
+        <p class="complete-message">내용 확인 후 기재된 연락처로 일정 안내와 결제 연결을 도와드리겠습니다.</p>
+        <div id="orderCompleteDetails" class="complete-details"></div>
+        <button type="button" class="next-page-btn" id="resetFlowBtn">처음으로 돌아가기</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="infoModal" class="modal modal--sm hidden">
+    <div class="modal-backdrop" id="infoModalBackdrop" data-modal-close="#infoModal"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="infoModalTitle" tabindex="-1">안내</h3>
+      </div>
+      <div id="infoMessage" class="info-message">안내 메시지</div>
+      <div class="modal-footer">
+        <button type="button" id="closeInfoModal" class="modal-close" data-modal-close="#infoModal">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+  <script>
+    function sample6_execDaumPostcode() {
+      new daum.Postcode({
+        oncomplete: function(data) {
+          var addr = '';
+
+          if (data.userSelectedType === 'R') {
+            addr = data.roadAddress;
+          } else {
+            addr = data.jibunAddress;
+          }
+
+          document.getElementById('sample6_postcode').value = data.zonecode;
+          const addressEl = document.getElementById("sample6_address");
+          addressEl.value = addr;
+          addressEl.dataset.matchedAddress = addr;
+          addressEl.dataset.sido = data.sido || "";
+          addressEl.dataset.sigungu = data.sigungu || "";
+          addressEl.dataset.bname = data.bname || "";
+          addressEl.dataset.roadname = data.roadname || "";
+          document.getElementById("sample6_detailAddress").focus();
+          addressEl.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }).open();
+    }
+  </script>
+  <script src="assets/js/runtime-config-bootstrap.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script type="module" src="assets/js/privacy-consent-template.js"></script>
+  <script type="module" src="assets/js/measurement.js"></script>
+</body>
+</html>

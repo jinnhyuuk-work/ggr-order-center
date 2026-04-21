@@ -315,6 +315,8 @@ b[lang="en"],
 }
 
 .landing-thumb {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   height: auto;
   display: block; 
@@ -3508,6 +3510,64 @@ button.card-base.selected:hover {
 
 button.card-base:active {
   transform: none;
+}
+
+.measurement-service-card {
+  text-align: left;
+  min-height: 100%;
+}
+
+.measurement-service-card .description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--lh-relaxed);
+}
+
+.measurement-service-media {
+  position: relative;
+  overflow: hidden;
+}
+
+.measurement-service-media::before,
+.landing-thumb.measurement::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.86), rgba(255,255,255,0.12)),
+    repeating-linear-gradient(90deg, rgba(47,95,145,0.14) 0 1px, transparent 1px 18px),
+    repeating-linear-gradient(0deg, rgba(47,95,145,0.1) 0 1px, transparent 1px 18px);
+}
+
+.measurement-service-media::after,
+.landing-thumb.measurement::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 32%;
+  height: 36%;
+  border: 2px solid rgba(47,95,145,0.52);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 8px rgba(255,255,255,0.38);
+}
+
+.measurement-service-media--top::after {
+  left: 12%;
+  right: 12%;
+  top: 46%;
+  height: 18%;
+}
+
+.measurement-service-media--system::after {
+  left: 22%;
+  right: 22%;
+  top: 22%;
+  height: 56%;
+  box-shadow:
+    inset 0 0 0 8px rgba(255,255,255,0.38),
+    inset 0 -28px 0 rgba(47,95,145,0.12),
+    inset 0 28px 0 rgba(47,95,145,0.1);
 }
 
 .processing-service-actions {
