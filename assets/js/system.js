@@ -119,7 +119,7 @@ import {
   getEmailJSInstance,
   renderEstimateTable,
   renderSelectedCard,
-  buildMaterialVisualInlineStyle,
+  buildMaterialVisualMarkup,
   initCollapsibleSections,
   renderItemPriceDisplay,
   renderItemPriceNotice,
@@ -388,7 +388,7 @@ const systemMaterialPickerHelpers = createSystemMaterialPickerHelpers({
   autoCalculatePrice,
   updatePreview,
   renderSelectedCard,
-  buildMaterialVisualInlineStyle,
+  buildMaterialVisualMarkup,
   escapeHtml,
   SYSTEM_MATERIAL_CATEGORIES_DESC,
   SYSTEM_SHELF_TIER_PRICING,
@@ -1763,13 +1763,14 @@ function renderPresetModuleOptionSelectionSummary() {
   )}개 · 구성품 ${componentSummary === "-" ? "없음" : componentSummary} · 가구 ${
     furnitureSummary === "-" ? "없음" : furnitureSummary
   }`;
-  const visualStyle = buildMaterialVisualInlineStyle({
-    swatch: SWATCH_FALLBACK,
-    imageUrl: preset?.thumbnail || "",
+  const visualMarkup = buildMaterialVisualMarkup({
+    swatch: preset?.swatch,
+    imageUrl: preset?.thumbnail,
+    fallbackSwatch: SWATCH_FALLBACK,
   });
   target.innerHTML = `
     <div class="addon-chip">
-      <div class="material-visual" style="${visualStyle}"></div>
+      ${visualMarkup}
       <div class="info">
         <div class="name">${escapeHtml(String(preset.label || "모듈"))}</div>
         <div class="meta">${escapeHtml(meta)}</div>
@@ -2015,7 +2016,7 @@ const previewPresetPickerHelpers = createSystemPreviewPresetPickerHelpers({
   SWATCH_FALLBACK,
   $,
   escapeHtml,
-  buildMaterialVisualInlineStyle,
+  buildMaterialVisualMarkup,
   resolvePresetModulePriceInfo,
   buildPresetAddonBreakdownFromPreset,
   patchPreviewPresetPickerFlowState,

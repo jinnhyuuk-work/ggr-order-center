@@ -6,7 +6,7 @@ export function createSystemPreviewPresetPickerHelpers(deps = {}) {
     SWATCH_FALLBACK = "#d9d9d9",
     $,
     escapeHtml,
-    buildMaterialVisualInlineStyle,
+    buildMaterialVisualMarkup,
     resolvePresetModulePriceInfo,
     buildPresetAddonBreakdownFromPreset,
     patchPreviewPresetPickerFlowState,
@@ -189,9 +189,11 @@ export function createSystemPreviewPresetPickerHelpers(deps = {}) {
         const meta = `선반 ${Number(item.count || 1)}개 · 구성품 ${
           componentSummary === "-" ? "없음" : componentSummary
         } · 가구 ${furnitureSummary === "-" ? "없음" : furnitureSummary}`;
-        const visualStyle = buildMaterialVisualInlineStyle({
-          swatch: SWATCH_FALLBACK,
-          imageUrl: item?.thumbnail || "",
+        const visualMarkup = buildMaterialVisualMarkup({
+          swatch: item?.swatch,
+          imageUrl: item?.thumbnail,
+          className: "material-visual module_visual",
+          fallbackSwatch: SWATCH_FALLBACK,
         });
         return `
           <button
@@ -201,7 +203,7 @@ export function createSystemPreviewPresetPickerHelpers(deps = {}) {
             data-preview-preset-type="${escapeHtml(type)}"
             aria-pressed="${selected ? "true" : "false"}"
           >
-            <div class="material-visual module_visual" style="${visualStyle}"></div>
+            ${visualMarkup}
             <span class="preset-title">${escapeHtml(item.label)}</span>
             <span class="price${priceInfo.isConsult ? " is-consult" : ""}">${escapeHtml(priceInfo.label)}</span>
             <span class="preset-meta">${escapeHtml(meta)}</span>

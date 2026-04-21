@@ -5,7 +5,7 @@ export function createSystemMaterialPickerHelpers(deps = {}) {
     autoCalculatePrice,
     updatePreview,
     renderSelectedCard,
-    buildMaterialVisualInlineStyle,
+    buildMaterialVisualMarkup,
     escapeHtml,
     SYSTEM_MATERIAL_CATEGORIES_DESC = {},
     SYSTEM_SHELF_TIER_PRICING = {},
@@ -203,9 +203,11 @@ export function createSystemMaterialPickerHelpers(deps = {}) {
       label.className = `card-base material-card${
         picker.selectedMaterialId === mat.id ? " selected" : ""
       }`;
-      const visualStyle = buildMaterialVisualInlineStyle({
-        swatch: mat.swatch || SWATCH_FALLBACK,
-        imageUrl: mat.thumbnail || "",
+      const visualMarkup = buildMaterialVisualMarkup({
+        swatch: mat.swatch,
+        imageUrl: mat.thumbnail,
+        className: visualClassName,
+        fallbackSwatch: SWATCH_FALLBACK,
       });
       const limits = LIMITS[picker.key];
       const heightLine = `높이 ${limits.minLength}~${limits.maxLength}mm`;
@@ -231,7 +233,7 @@ export function createSystemMaterialPickerHelpers(deps = {}) {
         <input type="radio" name="${picker.inputName}" value="${mat.id}" ${
           picker.selectedMaterialId === mat.id ? "checked" : ""
         } />
-        <div class="${visualClassName}" style="${visualStyle}"></div>
+        ${visualMarkup}
         <div class="name">${mat.name}</div>
         ${tierPriceHtml}
         ${sizeInfoHtml}

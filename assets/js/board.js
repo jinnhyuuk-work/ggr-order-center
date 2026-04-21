@@ -24,6 +24,7 @@ import {
   renderEstimateTable,
   createProcessingServiceModalController,
   renderSelectedCard,
+  buildMaterialVisualMarkup,
   renderSelectedAddonChips,
   updateProcessingServiceSummaryChip,
   initCollapsibleSections,
@@ -692,6 +693,10 @@ function renderMaterialCards() {
 
   list.forEach((mat) => {
     const label = document.createElement("label");
+    const visualMarkup = buildMaterialVisualMarkup({
+      swatch: mat.swatch,
+      fallbackSwatch: SWATCH_FALLBACK,
+    });
     label.className = `card-base material-card${
       selectedMaterialId === mat.id ? " selected" : ""
     }`;
@@ -699,7 +704,7 @@ function renderMaterialCards() {
       <input type="radio" name="material" value="${mat.id}" ${
         selectedMaterialId === mat.id ? "checked" : ""
       } />
-      <div class="material-visual" style="background: ${mat.swatch || SWATCH_FALLBACK}"></div>
+      ${visualMarkup}
       <div class="name">${mat.name}</div>
       <div class="material-tier-heading">가격 기준</div>
       <div class="material-tier-line">${formatPricingRuleDisplayText(mat)}</div>

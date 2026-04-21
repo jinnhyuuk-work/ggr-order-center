@@ -2724,14 +2724,33 @@ export function renderSelectedCard({
     `;
     return;
   }
-  const visualStyle = buildMaterialVisualInlineStyle({ swatch, imageUrl });
+  const visualMarkup = buildMaterialVisualMarkup({ swatch, imageUrl });
   cardEl.innerHTML = `
-    <div class="material-visual" style="${visualStyle}"></div>
+    ${visualMarkup}
     <div class="info">
       <div class="name">${name}</div>
       ${metaLines.map((line) => `<div class="meta">${line}</div>`).join("")}
     </div>
   `;
+}
+
+export function hasMaterialVisualAsset({ swatch = "", imageUrl = "" } = {}) {
+  return Boolean(String(imageUrl || "").trim() || String(swatch || "").trim());
+}
+
+export function buildMaterialVisualMarkup({
+  swatch = "",
+  imageUrl = "",
+  className = "material-visual",
+  fallbackSwatch = UI_COLOR_FALLBACKS.swatch,
+} = {}) {
+  if (!hasMaterialVisualAsset({ swatch, imageUrl })) return "";
+  const visualStyle = buildMaterialVisualInlineStyle({
+    swatch: String(swatch || "").trim() || fallbackSwatch,
+    imageUrl,
+  });
+  const safeClassName = String(className || "material-visual").trim() || "material-visual";
+  return `<div class="${safeClassName}" style="${visualStyle}"></div>`;
 }
 
 export function buildMaterialVisualInlineStyle({

@@ -15,6 +15,7 @@ import {
   renderEstimateTable,
   createProcessingServiceModalController,
   renderSelectedCard,
+  buildMaterialVisualMarkup,
   renderSelectedAddonChips,
   updateProcessingServiceSummaryChip,
   initCollapsibleSections,
@@ -943,10 +944,14 @@ function renderTopTypeCards() {
     const standardPriceLine = getTopStandardPriceLine(t);
     const thicknessText = getTopAvailableThicknessText(t);
     const label = document.createElement("label");
+    const visualMarkup = buildMaterialVisualMarkup({
+      swatch: t.swatch,
+      fallbackSwatch: SWATCH_FALLBACK,
+    });
     label.className = `card-base material-card${selectedTopType === t.id ? " selected" : ""}`;
     label.innerHTML = `
       <input type="radio" name="topType" value="${t.id}" ${selectedTopType === t.id ? "checked" : ""} />
-      <div class="material-visual" style="background: ${t.swatch || SWATCH_FALLBACK}"></div>
+      ${visualMarkup}
       <div class="name">${t.name}</div>
       <div class="material-tier-heading">12T 기준</div>
       <div class="material-tier-line">${standardPriceLine}</div>
