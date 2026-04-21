@@ -2959,50 +2959,55 @@ function resolvePresetModuleFilterWidthMm(item, moduleType, selectedFilterKey = 
 function resolvePresetModulePriceInfo(item, { moduleType = "normal", selectedFilterKey = "" } = {}) {
   const normalizedType = moduleType === "corner" ? "corner" : "normal";
   const shelfCount = Math.max(1, Math.floor(Number(item?.count || 1)));
-  const rodCount = Math.max(0, Math.floor(Number(item?.rodCount || 0)));
   const shelfWidthMm = resolvePresetModuleFilterWidthMm(item, normalizedType, selectedFilterKey);
-  const selectedShelfMaterialId = String(materialPickers?.shelf?.selectedMaterialId || "");
-  const furniturePriceCategoryKey = resolveSystemFurniturePriceCategoryKey(selectedShelfMaterialId);
-  const shelfPricing = resolveNormalModuleShelfUnitPriceByWidth(shelfWidthMm);
-  if (normalizedType === "corner") {
-    const cornerTier = Array.isArray(SYSTEM_SHELF_TIER_PRICING?.corner?.tiers)
-      ? SYSTEM_SHELF_TIER_PRICING.corner.tiers.find((tier) => !Boolean(tier?.isCustomPrice))
-      : null;
-    const shelfMaterial = SYSTEM_SHELF_MATERIALS[materialPickers?.shelf?.selectedMaterialId];
-    const cornerUnitPrice = resolveTierUnitPrice(cornerTier, shelfMaterial);
-    const rodUnitPrice = resolveFurnitureAddonUnitPriceByWidth(getAddonItemById(ADDON_CLOTHES_ROD_ID), shelfWidthMm, {
-      categoryKey: furniturePriceCategoryKey,
-    });
-    if (!cornerTier || cornerUnitPrice <= 0) {
-      return { isConsult: true, total: 0, label: "상담 안내" };
-    }
-    const total = Math.round(cornerUnitPrice * shelfCount + rodUnitPrice * rodCount);
-    return total > 0
-      ? { isConsult: false, total, label: formatWon(total) }
-      : { isConsult: true, total: 0, label: "상담 안내" };
-  }
-
-  if (shelfPricing.isConsult || shelfPricing.unitPrice <= 0) {
+  const currentInput = readCurrentInputs();
+  const selectedShelfMaterialId = String(currentInput?.shelf?.materialId || "");
+  const selectedColumnMaterialId = String(currentInput?.column?.materialId || "");
+  if (!selectedShelfMaterialId || !selectedColumnMaterialId || shelfWidthMm <= 0) {
     return { isConsult: true, total: 0, label: "상담 안내" };
   }
-  const rodUnitPrice = resolveFurnitureAddonUnitPriceByWidth(getAddonItemById(ADDON_CLOTHES_ROD_ID), shelfWidthMm, {
-    categoryKey: furniturePriceCategoryKey,
-  });
+  const rodCount = Math.max(0, Math.floor(Number(item?.rodCount || 0)));
   const furnitureAddonIds = getPresetFurnitureAddonIds(item);
-  let furnitureTotal = 0;
-  for (const addonId of furnitureAddonIds) {
-    const addon = getAddonItemById(addonId);
-    const addonPriceInfo = resolveFurnitureAddonDisplayPriceInfo(addon, {
-      widthPolicy: resolveFurnitureSelectionPolicyForNormalWidth(shelfWidthMm),
-      widthMm: shelfWidthMm,
-      categoryKey: furniturePriceCategoryKey,
-    });
-    if (addonPriceInfo.isConsult) {
-      return { isConsult: true, total: 0, label: "상담 안내" };
-    }
-    furnitureTotal += Number(addonPriceInfo.unitPrice || 0);
+  const presetAddonIds = [
+    ...Array.from({ length: rodCount }, () => ADDON_CLOTHES_ROD_ID),
+    ...furnitureAddonIds,
+  ];
+  const bay = {
+    width: shelfWidthMm,
+    count: shelfCount,
+    addons: presetAddonIds,
+    isCorner: normalizedType === "corner",
+  };
+  const shelf = {
+    ...currentInput.shelf,
+    width: shelfWidthMm,
+    count: shelfCount,
+    customProcessing: false,
+  };
+  let bayDetail = calcBayDetail({
+    shelf,
+    addons: presetAddonIds,
+    quantity: 1,
+    isCorner: normalizedType === "corner",
+  });
+  if (
+    shouldTreatBayFurniturePriceAsConsult({
+      ...bay,
+      shelfMaterialId: shelf?.materialId,
+    })
+  ) {
+    bayDetail = applyConsultPriceToDetail(bayDetail);
   }
-  const total = Math.round(shelfPricing.unitPrice * shelfCount + rodUnitPrice * rodCount + furnitureTotal);
+  let columnDetail = calcColumnsDetail({
+    column: currentInput.column,
+    count: 2,
+    quantity: 1,
+    bays: [bay],
+  });
+  if (bayDetail.isCustomPrice || columnDetail.isCustomPrice) {
+    return { isConsult: true, total: 0, label: "상담 안내" };
+  }
+  const total = Math.round(Number(bayDetail.total || 0) + Number(columnDetail.total || 0));
   return total > 0
     ? { isConsult: false, total, label: formatWon(total) }
     : { isConsult: true, total: 0, label: "상담 안내" };

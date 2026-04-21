@@ -105,25 +105,15 @@ export function createSystemMaterialPickerHelpers(deps = {}) {
   };
 
   const buildPostBarTierPriceHtml = () => {
-    const basicTiers = (Array.isArray(SYSTEM_POST_BAR_PRICING?.basic?.tiers)
-      ? SYSTEM_POST_BAR_PRICING.basic.tiers
-      : []
-    ).filter(
-      (tier) => Number(tier?.maxHeightMm || 0) !== Number(MODULE_POST_BAR_HEIGHT_LIMITS.pricing?.lte2100 || 2100)
-    );
-    const cornerAllTiers = Array.isArray(SYSTEM_POST_BAR_PRICING?.corner?.tiers)
-      ? SYSTEM_POST_BAR_PRICING.corner.tiers
-      : [];
-    let cornerTiers = cornerAllTiers.filter(
-      (tier) => Number(tier?.maxHeightMm || 0) === SYSTEM_POST_BAR_PRICE_MAX_HEIGHT_MM
-    );
-    if (!cornerTiers.length && cornerAllTiers.length) {
-      const maxTierHeight = Math.max(...cornerAllTiers.map((tier) => Number(tier?.maxHeightMm || 0)));
-      cornerTiers = cornerAllTiers.filter((tier) => Number(tier?.maxHeightMm || 0) === maxTierHeight);
-    }
     const groups = [
-      { title: SYSTEM_POST_BAR_PRICING?.basic?.label || "기본 포스트바", tiers: basicTiers },
-      { title: SYSTEM_POST_BAR_PRICING?.corner?.label || "코너 포스트바", tiers: cornerTiers },
+      {
+        title: SYSTEM_POST_BAR_PRICING?.basic?.label || "기본 포스트바",
+        tiers: Array.isArray(SYSTEM_POST_BAR_PRICING?.basic?.tiers) ? SYSTEM_POST_BAR_PRICING.basic.tiers : [],
+      },
+      {
+        title: SYSTEM_POST_BAR_PRICING?.corner?.label || "코너 포스트바",
+        tiers: Array.isArray(SYSTEM_POST_BAR_PRICING?.corner?.tiers) ? SYSTEM_POST_BAR_PRICING.corner.tiers : [],
+      },
     ];
     const groupHtml = groups
       .map((group) => {

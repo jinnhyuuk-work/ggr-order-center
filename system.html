@@ -486,11 +486,15 @@
       </div>
       <div class="modal-body preview-action-modal-body">
         <p id="previewModuleActionModalDesc" class="field-note">실행할 작업을 선택하세요.</p>
-        <div class="step-card-actions preview-action-modal-actions">
-          <button type="button" id="previewModuleActionEditBtn">모듈수정</button>
-          <button type="button" id="previewModuleActionAddLeftBtn">좌측에 추가</button>
-          <button type="button" id="previewModuleActionAddRightBtn">우측에 추가</button>
-          <button type="button" id="previewModuleActionDeleteBtn" class="preview-action-danger">모듈 삭제</button>
+        <div class="step-card-actions preview-action-modal-actions preview-module-action-modal-actions">
+          <div class="preview-module-action-modal-row">
+            <button type="button" id="previewModuleActionEditBtn">모듈수정</button>
+            <button type="button" id="previewModuleActionDeleteBtn" class="preview-action-danger">모듈삭제</button>
+          </div>
+          <div class="preview-module-action-modal-row">
+            <button type="button" id="previewModuleActionAddLeftBtn">좌측에추가</button>
+            <button type="button" id="previewModuleActionAddRightBtn">우측에추가</button>
+          </div>
         </div>
         <div id="previewModuleActionModalError" class="error-msg"></div>
       </div>
