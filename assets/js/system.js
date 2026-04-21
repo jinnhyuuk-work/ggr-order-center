@@ -5439,6 +5439,7 @@ const systemAddonModalFlowHelpers = createSystemAddonModalFlowHelpers({
   resolveFurnitureAddonDisplayPriceInfo,
   resolveFurniturePriceCategoryKeyForEdge,
   escapeHtml,
+  buildMaterialVisualMarkup,
   getActiveShelfAddonId: () => activeShelfAddonId,
   setActiveShelfAddonId: (nextValue) => {
     activeShelfAddonId = String(nextValue || "");

@@ -695,6 +695,7 @@ function renderMaterialCards() {
     const label = document.createElement("label");
     const visualMarkup = buildMaterialVisualMarkup({
       swatch: mat.swatch,
+      imageUrl: mat.thumbnail,
       fallbackSwatch: SWATCH_FALLBACK,
     });
     label.className = `card-base material-card${
@@ -1656,6 +1657,7 @@ function updateSelectedMaterialLabel() {
     emptyTitle: "선택된 합판 없음",
     emptyMeta: "합판을 선택해주세요.",
     swatch: mat?.swatch,
+    imageUrl: mat?.thumbnail,
     name: mat ? escapeHtml(mat.name) : "",
     metaLines: mat
       ? [

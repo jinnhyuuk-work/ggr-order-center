@@ -656,6 +656,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: "drawer_hanging_1tier",
     name: "공중형 서랍 1단",
     categoryKey: "drawer",
+    thumbnail: null,
+    swatch: null,
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
         600: {
@@ -687,6 +689,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: "drawer_hanging_2tier",
     name: "공중형 서랍 2단",
     categoryKey: "drawer",
+    thumbnail: null,
+    swatch: null,
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
         600: {
@@ -718,6 +722,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: "drawer_floor_2tier",
     name: "바닥형 서랍 2단",
     categoryKey: "drawer",
+    thumbnail: null,
+    swatch: null,
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
         600: {
@@ -749,6 +755,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: "drawer_floor_3tier",
     name: "바닥형 서랍 3단",
     categoryKey: "drawer",
+    thumbnail: null,
+    swatch: null,
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
         600: {
@@ -780,6 +788,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: "drawer_floor_4tier",
     name: "바닥형 서랍 4단",
     categoryKey: "drawer",
+    thumbnail: null,
+    swatch: null,
     pricingRule: buildSystemFurniturePricingRule({
       priceByWidthMm: {
         600: {
@@ -811,6 +821,8 @@ const SYSTEM_FURNITURE_ITEMS = [
     id: SYSTEM_ADDON_ITEM_IDS.CLOTHES_ROD,
     name: "행거",
     categoryKey: "hanger",
+    thumbnail: null,
+    swatch: null,
     pricingRule: Object.freeze({ type: "fixed", value: 4000, unit: "item" }),
     description: "알루미늄 행거 1개",
     selectableInModuleAddonModal: false,

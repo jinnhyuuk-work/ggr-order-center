@@ -833,6 +833,7 @@ function updateSelectedTopTypeCard() {
     emptyTitle: "선택된 상판 없음",
     emptyMeta: "상판을 선택해주세요.",
     swatch: type?.swatch,
+    imageUrl: type?.thumbnail,
     name: type ? escapeHtml(type.name) : "",
     metaLines: type
       ? [
@@ -946,6 +947,7 @@ function renderTopTypeCards() {
     const label = document.createElement("label");
     const visualMarkup = buildMaterialVisualMarkup({
       swatch: t.swatch,
+      imageUrl: t.thumbnail,
       fallbackSwatch: SWATCH_FALLBACK,
     });
     label.className = `card-base material-card${selectedTopType === t.id ? " selected" : ""}`;
@@ -1634,7 +1636,9 @@ function updateTopPreview(input, detail) {
     engineered: "linear-gradient(135deg, #f2f7ff 0%, #d6e4ff 100%)",
     stainless: "linear-gradient(135deg, #f0f0f0 0%, #c7c7c7 100%)",
   };
-  const swatch = type.swatch || swatchMap[type.id] || SWATCH_FALLBACK;
+  const swatch = type.thumbnail
+    ? `url('${String(type.thumbnail).replace(/'/g, "%27")}') center/cover no-repeat`
+    : swatchMap[type.id] || SWATCH_FALLBACK;
   const { maxPx, minPx } = getPreviewScaleBounds(colorEl, { fallbackMax: 180, fallbackMin: 40 });
   let previewHorizontalMm = 0;
   let previewVerticalMm = 0;

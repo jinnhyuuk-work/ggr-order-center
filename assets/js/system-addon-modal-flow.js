@@ -9,6 +9,7 @@ export function createSystemAddonModalFlowHelpers(deps = {}) {
     resolveFurnitureAddonDisplayPriceInfo,
     resolveFurniturePriceCategoryKeyForEdge,
     escapeHtml,
+    buildMaterialVisualMarkup,
     getActiveShelfAddonId,
     setActiveShelfAddonId,
     getShelfAddonModalReturnTo,
@@ -102,11 +103,15 @@ export function createSystemAddonModalFlowHelpers(deps = {}) {
         widthMm: Number(widthPolicy?.widthMm || 0),
         categoryKey: furniturePriceCategoryKey,
       });
+      const visualMarkup = buildMaterialVisualMarkup({
+        swatch: item.swatch,
+        imageUrl: item.thumbnail,
+      });
       const label = document.createElement("label");
       label.className = "card-base option-card";
       label.innerHTML = `
         <input type="checkbox" value="${item.id}" />
-        <div class="material-visual"></div>
+        ${visualMarkup}
         <div class="name">${item.name}</div>
         <div class="price${priceInfo.isConsult ? " is-consult" : ""}">${escapeHtml(priceInfo.label)}</div>
         ${item.description ? `<div class="description">${item.description}</div>` : ""}

@@ -25,7 +25,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/01-artificial-snow-stone-s01.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/01-artificial-snow-stone-s01.jpg",
+    swatch: null,
   },
   {
     id: "artificial_02",
@@ -36,7 +37,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/02-artificial-pure-white-s02.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/02-artificial-pure-white-s02.jpg",
+    swatch: null,
   },
   {
     id: "artificial_03",
@@ -47,7 +49,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/03-artificial-black-galaxy-s03.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/03-artificial-black-galaxy-s03.jpg",
+    swatch: null,
   },
   {
     id: "artificial_04",
@@ -58,7 +61,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/04-artificial-stone-grain-s05.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/04-artificial-stone-grain-s05.jpg",
+    swatch: null,
   },
   {
     id: "artificial_05",
@@ -69,7 +73,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/05-artificial-gray-splash-s07.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/05-artificial-gray-splash-s07.jpg",
+    swatch: null,
   },
   {
     id: "artificial_06",
@@ -80,7 +85,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/06-artificial-beige-terazzo-s09.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/06-artificial-beige-terazzo-s09.jpg",
+    swatch: null,
   },
   {
     id: "artificial_07",
@@ -91,7 +97,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/07-artificial-cream-stone-s14.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/07-artificial-cream-stone-s14.jpg",
+    swatch: null,
   },
   {
     id: "artificial_08",
@@ -102,7 +109,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/08-artificial-gray-terazzo-s18.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/08-artificial-gray-terazzo-s18.jpg",
+    swatch: null,
   },
   {
     id: "artificial_09",
@@ -113,7 +121,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/09-artificial-charcoal-terazzo-s19.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/09-artificial-charcoal-terazzo-s19.jpg",
+    swatch: null,
   },
   {
     id: "artificial_10",
@@ -124,7 +133,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/10-artificial-warm-sand-s20.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/10-artificial-warm-sand-s20.jpg",
+    swatch: null,
   },
   {
     id: "artificial_11",
@@ -135,7 +145,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/11-artificial-mist-white-s30.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/11-artificial-mist-white-s30.jpg",
+    swatch: null,
   },
   {
     id: "artificial_12",
@@ -146,7 +157,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/12-artificial-ivory-terazzo-s31.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/12-artificial-ivory-terazzo-s31.jpg",
+    swatch: null,
   },
   {
     id: "artificial_13",
@@ -157,7 +169,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/13-artificial-cloud-white-s201.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/13-artificial-cloud-white-s201.jpg",
+    swatch: null,
   },
   {
     id: "artificial_14",
@@ -168,7 +181,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/14-artificial-gray-stone-s202.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/14-artificial-gray-stone-s202.jpg",
+    swatch: null,
   },
   {
     id: "artificial_15",
@@ -179,7 +193,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/15-artificial-arban-stone-s203.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/15-artificial-arban-stone-s203.jpg",
+    swatch: null,
   },
   {
     id: "artificial_16",
@@ -190,7 +205,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/01-artificial/16-artificial-mocha-brown-s205.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/01-artificial/16-artificial-mocha-brown-s205.jpg",
+    swatch: null,
   },
   {
     id: "himacs_01",
@@ -201,7 +217,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/01-himacs-soft-white-g185.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/01-himacs-soft-white-g185.jpg",
+    swatch: null,
   },
   {
     id: "himacs_02",
@@ -212,7 +229,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/02-himacs-perna-white-p001.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/02-himacs-perna-white-p001.jpg",
+    swatch: null,
   },
   {
     id: "himacs_03",
@@ -223,7 +241,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/03-himacs-candy-white-g235.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/03-himacs-candy-white-g235.jpg",
+    swatch: null,
   },
   {
     id: "himacs_04",
@@ -234,7 +253,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/04-himacs-arctic-granite-g034.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/04-himacs-arctic-granite-g034.jpg",
+    swatch: null,
   },
   {
     id: "himacs_05",
@@ -245,7 +265,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/05-himacs-white-stella-g501.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/05-himacs-white-stella-g501.jpg",
+    swatch: null,
   },
   {
     id: "himacs_06",
@@ -256,7 +277,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/06-himacs-swany-g193.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/06-himacs-swany-g193.jpg",
+    swatch: null,
   },
   {
     id: "himacs_07",
@@ -267,7 +289,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/07-himacs-soft-greige-g186.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/07-himacs-soft-greige-g186.jpg",
+    swatch: null,
   },
   {
     id: "himacs_08",
@@ -278,7 +301,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/08-himacs-snow-g004.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/08-himacs-snow-g004.jpg",
+    swatch: null,
   },
   {
     id: "himacs_09",
@@ -289,7 +313,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/09-himacs-crystal-beige-g101.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/09-himacs-crystal-beige-g101.jpg",
+    swatch: null,
   },
   {
     id: "himacs_10",
@@ -300,7 +325,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/10-himacs-beige-island-g109.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/10-himacs-beige-island-g109.jpg",
+    swatch: null,
   },
   {
     id: "himacs_11",
@@ -311,7 +337,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/11-himacs-stone-powder-g005.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/11-himacs-stone-powder-g005.jpg",
+    swatch: null,
   },
   {
     id: "himacs_12",
@@ -322,7 +349,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/12-himacs-smog-g002.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/12-himacs-smog-g002.jpg",
+    swatch: null,
   },
   {
     id: "himacs_13",
@@ -333,7 +361,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/13-himacs-soft-gray-g184.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/13-himacs-soft-gray-g184.jpg",
+    swatch: null,
   },
   {
     id: "himacs_14",
@@ -344,7 +373,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/14-himacs-winter-stella-g502.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/14-himacs-winter-stella-g502.jpg",
+    swatch: null,
   },
   {
     id: "himacs_15",
@@ -355,7 +385,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/15-himacs-milkyway-g007.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/15-himacs-milkyway-g007.jpg",
+    swatch: null,
   },
   {
     id: "himacs_16",
@@ -366,7 +397,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/16-himacs-cool-gray-g078.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/16-himacs-cool-gray-g078.jpg",
+    swatch: null,
   },
   {
     id: "himacs_17",
@@ -377,7 +409,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/17-himacs-night-stella-g503.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/17-himacs-night-stella-g503.jpg",
+    swatch: null,
   },
   {
     id: "himacs_18",
@@ -388,7 +421,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/18-himacs-gray-onyx-g103.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/18-himacs-gray-onyx-g103.jpg",
+    swatch: null,
   },
   {
     id: "himacs_19",
@@ -399,7 +433,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/19-himacs-charming-black-g053.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/19-himacs-charming-black-g053.jpg",
+    swatch: null,
   },
   {
     id: "himacs_20",
@@ -410,7 +445,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/20-himacs-black-bird-g047.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/20-himacs-black-bird-g047.jpg",
+    swatch: null,
   },
   {
     id: "himacs_21",
@@ -421,7 +457,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/21-himacs-perna-black-g004.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/21-himacs-perna-black-g004.jpg",
+    swatch: null,
   },
   {
     id: "himacs_22",
@@ -432,7 +469,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/22-himacs-snow-concrete-g556.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/22-himacs-snow-concrete-g556.jpg",
+    swatch: null,
   },
   {
     id: "himacs_23",
@@ -443,7 +481,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/23-himacs-arban-concrete-g554.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/23-himacs-arban-concrete-g554.jpg",
+    swatch: null,
   },
   {
     id: "himacs_24",
@@ -454,7 +493,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/24-himacs-steal-concrete-g555.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/24-himacs-steal-concrete-g555.jpg",
+    swatch: null,
   },
   {
     id: "himacs_25",
@@ -465,7 +505,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/25-himacs-diamond-white-s034.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/25-himacs-diamond-white-s034.jpg",
+    swatch: null,
   },
   {
     id: "himacs_26",
@@ -476,7 +517,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/26-himacs-alpine-white-s028.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/26-himacs-alpine-white-s028.jpg",
+    swatch: null,
   },
   {
     id: "himacs_27",
@@ -487,7 +529,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/27-himacs-arctic-white-s006.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/27-himacs-arctic-white-s006.jpg",
+    swatch: null,
   },
   {
     id: "himacs_28",
@@ -498,7 +541,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/28-himacs-nougat-cream-s201.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/28-himacs-nougat-cream-s201.jpg",
+    swatch: null,
   },
   {
     id: "himacs_29",
@@ -509,7 +553,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/29-himacs-gray-s005.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/29-himacs-gray-s005.jpg",
+    swatch: null,
   },
   {
     id: "himacs_30",
@@ -520,7 +565,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/30-himacs-black-s002.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/30-himacs-black-s002.jpg",
+    swatch: null,
   },
   {
     id: "himacs_31",
@@ -531,7 +577,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/31-himacs-gravilla-snow-gm01.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/31-himacs-gravilla-snow-gm01.jpg",
+    swatch: null,
   },
   {
     id: "himacs_32",
@@ -542,7 +589,8 @@ const TOP_TYPES_SOURCE = [
     maxWidth: 1200,
     minLength: 300,
     maxLength: 3000,
-    swatch: "url('assets/img/product/top/02-himacs/32-himacs-gravilla-cream-gm02.jpg') center/cover no-repeat",
+    thumbnail: "assets/img/product/top/02-himacs/32-himacs-gravilla-cream-gm02.jpg",
+    swatch: null,
   },
 ];
 

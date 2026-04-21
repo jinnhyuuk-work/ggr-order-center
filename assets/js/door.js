@@ -1251,6 +1251,7 @@ function renderMaterialCards() {
     const label = document.createElement("label");
     const visualMarkup = buildMaterialVisualMarkup({
       swatch: mat.swatch,
+      imageUrl: mat.thumbnail,
       fallbackSwatch: SWATCH_FALLBACK,
     });
     label.className = `card-base material-card${
@@ -2257,7 +2258,9 @@ function updatePreview() {
     clearPreviewHoles();
     return;
   }
-  colorEl.style.background = mat.swatch || SWATCH_FALLBACK;
+  colorEl.style.background = mat.thumbnail
+    ? `url('${String(mat.thumbnail).replace(/'/g, "%27")}') center/cover no-repeat`
+    : mat.swatch || SWATCH_FALLBACK;
   const { maxPx, minPx } = getPreviewScaleBounds(colorEl, { fallbackMax: 180, fallbackMin: 40 });
   const { w, h } = getPreviewDimensions(input.width, input.length, maxPx, minPx);
   colorEl.style.width = `${w}px`;
@@ -2348,6 +2351,7 @@ function updateSelectedMaterialLabel() {
     emptyTitle: "선택된 도어 없음",
     emptyMeta: "도어를 선택해주세요.",
     swatch: mat?.swatch,
+    imageUrl: mat?.thumbnail,
     name: mat ? escapeHtml(mat.name) : "",
     metaLines: mat
       ? [
