@@ -30,6 +30,7 @@ import {
   createProcessingServiceModalController,
   renderSelectedCard,
   buildMaterialVisualMarkup,
+  renderFulfillmentServiceMediaSlots,
   renderSelectedAddonChips,
   updateProcessingServiceSummaryChip,
   initCollapsibleSections,
@@ -65,6 +66,7 @@ import {
   formatFulfillmentCardPriceText,
 } from "./fulfillment-policy.js";
 import {
+  FULFILLMENT_SERVICE_MEDIA,
   FULFILLMENT_POLICY_MESSAGES,
   DOOR_FULFILLMENT_POLICY,
 } from "./data/fulfillment-policy-data.js";
@@ -2576,6 +2578,7 @@ function init() {
   renderMaterialCards();
   renderOptionCards();
   renderProcessingServiceCards();
+  renderFulfillmentServiceMediaSlots({ mediaByType: FULFILLMENT_SERVICE_MEDIA });
   syncProcessingSectionVisibility();
   initDoorHingeSection();
   initCollapsibleSections();

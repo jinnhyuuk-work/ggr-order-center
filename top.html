@@ -226,7 +226,7 @@
             <p class="selection-block-hint">배송 또는 시공을 선택하면 서비스비가 자동 반영됩니다.</p>
             <div class="fulfillment-grid grid-cards grid-cards--2 grid-cards--keep-2" role="group" aria-label="서비스 선택">
               <button type="button" class="card-base fulfillment-card fulfillment-card--delivery" data-fulfillment-type="delivery" aria-pressed="false">
-                <div class="material-visual fulfillment-media fulfillment-media--delivery" aria-hidden="true"></div>
+                <div data-fulfillment-media-slot="delivery" aria-hidden="true"></div>
                 <div class="fulfillment-copy">
                   <div class="name">배송</div>
                   <div class="price is-placeholder" id="fulfillmentCardPriceDelivery">상품 담기 후 계산</div>
@@ -234,7 +234,7 @@
                 </div>
               </button>
               <button type="button" class="card-base fulfillment-card fulfillment-card--installation" data-fulfillment-type="installation" aria-pressed="false">
-                <div class="material-visual fulfillment-media fulfillment-media--installation" aria-hidden="true"></div>
+                <div data-fulfillment-media-slot="installation" aria-hidden="true"></div>
                 <div class="fulfillment-copy">
                   <div class="name">시공</div>
                   <div class="price is-placeholder" id="fulfillmentCardPriceInstallation">상품 담기 후 계산</div>

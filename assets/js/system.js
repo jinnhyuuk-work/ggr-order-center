@@ -120,6 +120,7 @@ import {
   renderEstimateTable,
   renderSelectedCard,
   buildMaterialVisualMarkup,
+  renderFulfillmentServiceMediaSlots,
   initCollapsibleSections,
   renderItemPriceDisplay,
   renderItemPriceNotice,
@@ -147,6 +148,7 @@ import {
   formatFulfillmentCardPriceText,
 } from "./fulfillment-policy.js";
 import {
+  FULFILLMENT_SERVICE_MEDIA,
   FULFILLMENT_POLICY_MESSAGES,
   SYSTEM_FULFILLMENT_POLICY,
 } from "./data/fulfillment-policy-data.js";
@@ -5709,6 +5711,7 @@ function init() {
     return;
   }
   initialized = true;
+  renderFulfillmentServiceMediaSlots({ mediaByType: FULFILLMENT_SERVICE_MEDIA });
 
   runSystemInitSequence({
     initEmailJS,

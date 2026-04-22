@@ -16,6 +16,7 @@ import {
   createProcessingServiceModalController,
   renderSelectedCard,
   buildMaterialVisualMarkup,
+  renderFulfillmentServiceMediaSlots,
   renderSelectedAddonChips,
   updateProcessingServiceSummaryChip,
   initCollapsibleSections,
@@ -62,6 +63,7 @@ import {
   formatFulfillmentCardPriceText,
 } from "./fulfillment-policy.js";
 import {
+  FULFILLMENT_SERVICE_MEDIA,
   FULFILLMENT_POLICY_MESSAGES,
   TOP_FULFILLMENT_POLICY,
 } from "./data/fulfillment-policy-data.js";
@@ -2329,6 +2331,7 @@ function initTop() {
   renderOptions();
   renderTopAddonCards();
   renderProcessingServiceCards();
+  renderFulfillmentServiceMediaSlots({ mediaByType: FULFILLMENT_SERVICE_MEDIA });
   syncProcessingSectionVisibility();
   initCollapsibleSections();
   renderTable();

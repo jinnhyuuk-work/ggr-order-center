@@ -9,6 +9,17 @@ export const FULFILLMENT_POLICY_MESSAGES = Object.freeze({
   fallbackReason: "서비스 정책을 확인해주세요.",
 });
 
+export const FULFILLMENT_SERVICE_MEDIA = Object.freeze({
+  delivery: Object.freeze({
+    thumbnail: "",
+    swatch: "",
+  }),
+  installation: Object.freeze({
+    thumbnail: "",
+    swatch: "",
+  }),
+});
+
 export const TOP_FULFILLMENT_POLICY = Object.freeze({
   delivery: Object.freeze({
     mode: "consult",
@@ -101,6 +112,16 @@ export const FULFILLMENT_POLICY_DATASET_META = createDatasetMeta({
 });
 
 export const FULFILLMENT_POLICY_META_BY_KEY = Object.freeze({
+  FULFILLMENT_SERVICE_MEDIA: createDatasetMeta({
+    id: "fulfillment_service_media",
+    label: "배송/시공 서비스 이미지",
+    description: "배송/시공 카드에 표시할 이미지 또는 컬러 미디어 설정입니다.",
+    source: "assets/js/data/fulfillment-policy-data.js",
+    owner: "order-center",
+    updated_at: "2026-04-22",
+    status: "active",
+    tags: ["[internal]", "service:fulfillment", "media"],
+  }),
   FULFILLMENT_POLICY_MESSAGES: createDatasetMeta({
     id: "fulfillment_policy_messages",
     label: "서비스 정책 공통 메시지",

@@ -2950,6 +2950,26 @@ export function buildMaterialVisualMarkup({
   return `<div class="${safeClassName}" style="${visualStyle}"></div>`;
 }
 
+export function renderFulfillmentServiceMediaSlots({
+  mediaByType = {},
+  root = document,
+} = {}) {
+  const scope = root || document;
+  scope.querySelectorAll("[data-fulfillment-media-slot]").forEach((slot) => {
+    const type = String(slot.dataset.fulfillmentMediaSlot || "").trim();
+    const media = mediaByType?.[type] || {};
+    const thumbnail = String(media.thumbnail || media.imageUrl || "").trim();
+    const swatch = String(media.swatch || "").trim();
+    const visualMarkup = buildMaterialVisualMarkup({
+      imageUrl: thumbnail,
+      swatch,
+      className: `material-visual fulfillment-media fulfillment-media--${type}`,
+      fallbackSwatch: "",
+    });
+    slot.innerHTML = visualMarkup;
+  });
+}
+
 export function buildMaterialVisualInlineStyle({
   swatch = UI_COLOR_FALLBACKS.swatch,
   imageUrl = "",
