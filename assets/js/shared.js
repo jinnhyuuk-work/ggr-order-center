@@ -155,6 +155,10 @@ const PROCESSING_SERVICE_SIDE_THICKNESS_OPTIONS = Object.freeze([
   { value: 15, label: "15T" },
   { value: 18, label: "18T" },
 ]);
+const PROCESSING_SERVICE_DOOR_TYPE_OPTIONS = Object.freeze([
+  { value: "indoor", label: "인도어" },
+  { value: "outdoor", label: "아웃도어" },
+]);
 
 export function formatPrice(value) {
   return Number(value || 0).toLocaleString();
@@ -2521,10 +2525,10 @@ export function createProcessingServiceModalController({
     const holes = Array.isArray(normalized?.holes) ? normalized.holes : [];
     draft = { ...normalized, holes: holes.map((h) => ({ ...h })) };
     const isSideHingeList = srv.detailMode === "side-hinge-list";
-  const currentSide = draft.side === "right" ? "right" : "left";
-  const currentDoorType = draft.doorType === "outdoor" ? "outdoor" : "indoor";
-  const currentHingeIncluded = draft.hingeIncluded !== false;
-  const currentSideThickness = Number(draft.sideThickness) === 18 ? 18 : 15;
+    const currentSide = draft.side === "right" ? "right" : "left";
+    const currentDoorType = draft.doorType === "outdoor" ? "outdoor" : "indoor";
+    const currentHingeIncluded = draft.hingeIncluded !== false;
+    const currentSideThickness = Number(draft.sideThickness) === 18 ? 18 : 15;
 
     const hingeSettingsHtml = isSideHingeList
       ? `
@@ -2549,10 +2553,17 @@ export function createProcessingServiceModalController({
             <div class="form-row">
               <label id="processingServiceDoorTypeLabel">도어 형태</label>
               <div class="field-col">
-                <div class="door-hinge-side-toggle" role="group" aria-labelledby="processingServiceDoorTypeLabel">
-                  <button type="button" class="door-hinge-toggle-btn${currentDoorType === "indoor" ? " is-active" : ""}" data-processing-service-door-type="indoor" aria-pressed="${currentDoorType === "indoor" ? "true" : "false"}">인도어</button>
-                  <button type="button" class="door-hinge-toggle-btn${currentDoorType === "outdoor" ? " is-active" : ""}" data-processing-service-door-type="outdoor" aria-pressed="${currentDoorType === "outdoor" ? "true" : "false"}">아웃도어</button>
-                </div>
+                <select
+                  id="processingServiceDoorTypeSelect"
+                  class="select-caret"
+                  data-processing-service-door-type
+                  aria-labelledby="processingServiceDoorTypeLabel"
+                >
+                  ${PROCESSING_SERVICE_DOOR_TYPE_OPTIONS.map(
+                    (option) =>
+                      `<option value="${option.value}"${currentDoorType === option.value ? " selected" : ""}>${escapeHtml(option.label)}</option>`
+                  ).join("")}
+                </select>
               </div>
             </div>
             <div class="form-row">
@@ -2745,15 +2756,13 @@ export function createProcessingServiceModalController({
       });
     });
 
-    body.querySelectorAll("[data-processing-service-door-type]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        draft.doorType = e.currentTarget.dataset.processingServiceDoorType === "outdoor"
-          ? "outdoor"
-          : "indoor";
+    const doorTypeSelect = body.querySelector("[data-processing-service-door-type]");
+    if (doorTypeSelect) {
+      doorTypeSelect.addEventListener("change", (e) => {
+        draft.doorType = e.currentTarget.value === "outdoor" ? "outdoor" : "indoor";
         renderHoleModal(serviceId);
       });
-    });
+    }
 
     body.querySelectorAll("[data-processing-service-hinge-included]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
