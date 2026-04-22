@@ -55,7 +55,7 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
   {
     id: "plywood_hinge_hole",
     kind: "processing",
-    label: "경첩 홀 가공",
+    label: "도어 경첩 가공",
     pricingRule: { type: "perHole", value: 2000, unit: "hole" },
     availabilityRule: { type: "ok" },
     type: "detail",
