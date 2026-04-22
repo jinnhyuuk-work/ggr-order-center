@@ -1483,6 +1483,8 @@ function buildPlywoodOrderCompleteDetailRows(item = {}) {
   const addonInfo = isAddon ? PLYWOOD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
   const materialName = isAddon ? addonInfo?.name || "부자재" : MATERIALS[item.materialId]?.name || "-";
   const sizeText = isAddon ? "-" : `${item.thickness}T / ${item.width}×${item.length}mm`;
+  const hasHingeService =
+    !isAddon && Array.isArray(item.services) && item.services.includes(PLYWOOD_HINGE_SERVICE_ID);
   const hingeDetail = isAddon ? null : item.serviceDetails?.[PLYWOOD_HINGE_SERVICE_ID] || null;
   const hingeIncludedText =
     hingeDetail?.hingeIncluded === false ? "미포함" : hingeDetail?.hingeIncluded === true ? "포함" : "-";
@@ -1507,17 +1509,22 @@ function buildPlywoodOrderCompleteDetailRows(item = {}) {
   const processingServicesText = isAddon
     ? "-"
     : formatProcessingServiceList(item.services, item.serviceDetails, { includeNote: true }) || "-";
-  return [
+  const rows = [
     { label: "품목명", value: materialName },
     { label: "수량", value: `${Math.max(1, Number(item.quantity || 1))}개` },
     { label: "사이즈", value: sizeText },
-    { label: "경첩 포함", value: hingeIncludedText },
-    { label: "도어 형태", value: doorTypeText },
-    { label: "도어 위치", value: hingeSideText },
-    { label: "측면 두께", value: sideThicknessText },
     { label: "옵션", value: isAddon ? "-" : item.optionsLabel || "-" },
     { label: "가공서비스", value: processingServicesText },
   ];
+  if (hasHingeService || hingeDetail) {
+    rows.splice(3, 0,
+      { label: "경첩 포함", value: hingeIncludedText },
+      { label: "도어 형태", value: doorTypeText },
+      { label: "도어 위치", value: hingeSideText },
+      { label: "측면 두께", value: sideThicknessText }
+    );
+  }
+  return rows;
 }
 
 function renderOrderCompleteDetails() {
