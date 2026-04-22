@@ -15,9 +15,15 @@ export class BaseServiceModel {
     this.displayPriceText = cfg.displayPriceText;
     this.swatch = cfg.swatch;
     this.description = cfg.description;
-    this.detailDescription = cfg.detailDescription;
-    this.detailTips = Array.isArray(cfg.detailTips) ? [...cfg.detailTips] : cfg.detailTips;
-    this.helpGuideKey = cfg.helpGuideKey;
+    const detailUi = cfg?.detailUi && typeof cfg.detailUi === "object" ? cfg.detailUi : {};
+    this.detailDescription = detailUi.description ?? cfg.detailDescription;
+    this.detailTips = Array.isArray(detailUi.tips)
+      ? [...detailUi.tips]
+      : Array.isArray(cfg.detailTips)
+        ? [...cfg.detailTips]
+        : cfg.detailTips;
+    this.helpGuideKey = detailUi.helpGuideKey ?? cfg.helpGuideKey;
+    this.detailMode = cfg.detailMode;
   }
   hasDetail() {
     return this.type === "detail";
@@ -56,6 +62,22 @@ function formatHoleDetail(detail, { includeNote = false, short = false } = {}) {
     return short ? "세부 옵션을 설정해주세요." : "세부 옵션 미입력";
   }
   const count = holes.length || detail.count || 0;
+  const hingeIncludedText =
+    detail.hingeIncluded === false ? "경첩 미포함" : detail.hingeIncluded === true ? "경첩 포함" : "";
+  const doorTypeText =
+    detail.doorType === "indoor"
+      ? "인도어"
+      : detail.doorType === "outdoor"
+        ? "아웃도어"
+        : "";
+  const sideText =
+    detail.side === "right" ? "좌측문" : detail.side === "left" ? "우측문" : "";
+  const sideThicknessText =
+    Number(detail.sideThickness) === 18
+      ? "측면 18T"
+      : Number(detail.sideThickness) === 15
+        ? "측면 15T"
+        : "";
   const positions = holes
     .filter((h) => h && (h.distance || h.verticalDistance))
     .map((h) => {
@@ -68,7 +90,9 @@ function formatHoleDetail(detail, { includeNote = false, short = false } = {}) {
     .join(", ");
   const noteText = includeNote && detail.note ? ` · 메모: ${detail.note}` : "";
   const suffix = positions ? ` · ${positions}` : "";
-  return `${count}개${suffix}${noteText}`;
+  const prefixParts = [hingeIncludedText, doorTypeText, sideText, sideThicknessText].filter(Boolean);
+  const sidePrefix = prefixParts.length ? `${prefixParts.join(" · ")} · ` : "";
+  return `${sidePrefix}${count}개${suffix}${noteText}`;
 }
 
 export class HoleServiceModel extends BaseServiceModel {
@@ -76,9 +100,44 @@ export class HoleServiceModel extends BaseServiceModel {
     super({ ...cfg, type: "detail" });
   }
   defaultDetail() {
+    if (this.detailMode === "side-hinge-list") {
+      return {
+        side: "right",
+        doorType: "indoor",
+        hingeIncluded: true,
+        sideThickness: 15,
+        holes: [],
+        note: "",
+      };
+    }
     return { holes: [], note: "" };
   }
   normalizeDetail(detail) {
+    if (this.detailMode === "side-hinge-list") {
+      const holes = Array.isArray(detail?.holes) ? detail.holes : [];
+      const inferredSide =
+        detail?.side === "right" || detail?.side === "left"
+          ? detail.side
+          : holes[0]?.edge === "right"
+            ? "right"
+            : "right";
+      const doorType = detail?.doorType === "outdoor" ? "outdoor" : "indoor";
+      const hingeIncluded = detail?.hingeIncluded !== false;
+      const sideThickness = Number(detail?.sideThickness) === 18 ? 18 : 15;
+      return {
+        side: inferredSide,
+        doorType,
+        hingeIncluded,
+        sideThickness,
+        holes: holes.map((h) => ({
+          edge: inferredSide,
+          distance: Number(h?.distance ?? 22),
+          verticalRef: "top",
+          verticalDistance: Number(h?.verticalDistance),
+        })),
+        note: detail?.note || "",
+      };
+    }
     if (!detail || !Array.isArray(detail.holes)) return this.defaultDetail();
     const holes = detail.holes;
     return {
@@ -93,25 +152,43 @@ export class HoleServiceModel extends BaseServiceModel {
   }
   validateDetail(detail) {
     const normalized = this.normalizeDetail(detail);
-    const validHoles = (normalized.holes || []).filter(
-      (h) =>
-        h &&
-        Number.isFinite(Number(h.distance)) &&
-        Number(h.distance) > 0 &&
-        Number.isFinite(Number(h.verticalDistance)) &&
-        Number(h.verticalDistance) > 0
+    const isSideHingeList = this.detailMode === "side-hinge-list";
+    const validHoles = (normalized.holes || []).filter((h) =>
+      isSideHingeList
+        ? h && Number.isFinite(Number(h.verticalDistance)) && Number(h.verticalDistance) > 0
+        : h &&
+          Number.isFinite(Number(h.distance)) &&
+          Number(h.distance) > 0 &&
+          Number.isFinite(Number(h.verticalDistance)) &&
+          Number(h.verticalDistance) > 0
     );
     if (validHoles.length === 0) {
       return {
         ok: false,
-        message: `${this.label}의 가로·세로 위치를 1개 이상 입력해주세요.`,
+        message: isSideHingeList
+          ? `${this.label}의 세로 위치를 1개 이상 입력해주세요.`
+          : `${this.label}의 가로·세로 위치를 1개 이상 입력해주세요.`,
         detail: normalized,
       };
     }
+    const side = normalized.side === "right" ? "right" : "left";
     return {
       ok: true,
       detail: {
-        holes: validHoles,
+        side: isSideHingeList ? side : normalized.side,
+        ...(isSideHingeList ? { doorType: normalized.doorType } : {}),
+        ...(isSideHingeList ? { hingeIncluded: normalized.hingeIncluded !== false } : {}),
+        ...(isSideHingeList ? { sideThickness: Number(normalized.sideThickness) === 18 ? 18 : 15 } : {}),
+        holes: validHoles.map((hole) =>
+          isSideHingeList
+            ? {
+                edge: side,
+                distance: Number(hole.distance || 22),
+                verticalRef: "top",
+                verticalDistance: Number(hole.verticalDistance),
+              }
+            : hole
+        ),
         note: normalized.note?.trim() || "",
       },
       message: "",

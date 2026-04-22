@@ -369,12 +369,16 @@ function createDefaultPlywoodHingeDetail() {
   const length = getCurrentPlywoodLengthInputValue();
   const count = resolvePlywoodHingeCountByLength(length);
   if (!count) {
-    return { holes: [], note: "" };
+    return { side: "right", doorType: "indoor", hingeIncluded: true, sideThickness: 15, holes: [], note: "" };
   }
   const positions = buildPlywoodHingeAutoPositions(length, count);
   return {
+    side: "right",
+    doorType: "indoor",
+    hingeIncluded: true,
+    sideThickness: 15,
     holes: positions.map((verticalDistance) => ({
-      edge: "left",
+      edge: "right",
       distance: PLYWOOD_HINGE_DEFAULT_EDGE_DISTANCE,
       verticalRef: "top",
       verticalDistance,
@@ -1479,6 +1483,27 @@ function buildPlywoodOrderCompleteDetailRows(item = {}) {
   const addonInfo = isAddon ? PLYWOOD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
   const materialName = isAddon ? addonInfo?.name || "부자재" : MATERIALS[item.materialId]?.name || "-";
   const sizeText = isAddon ? "-" : `${item.thickness}T / ${item.width}×${item.length}mm`;
+  const hingeDetail = isAddon ? null : item.serviceDetails?.[PLYWOOD_HINGE_SERVICE_ID] || null;
+  const hingeIncludedText =
+    hingeDetail?.hingeIncluded === false ? "미포함" : hingeDetail?.hingeIncluded === true ? "포함" : "-";
+  const doorTypeText =
+    hingeDetail?.doorType === "outdoor"
+      ? "아웃도어"
+      : hingeDetail?.doorType === "indoor"
+        ? "인도어"
+        : "-";
+  const hingeSideText =
+    hingeDetail?.side === "right"
+      ? "좌측문"
+      : hingeDetail?.side === "left"
+        ? "우측문"
+        : "-";
+  const sideThicknessText =
+    Number(hingeDetail?.sideThickness) === 18
+      ? "18T"
+      : Number(hingeDetail?.sideThickness) === 15
+        ? "15T"
+        : "-";
   const processingServicesText = isAddon
     ? "-"
     : formatProcessingServiceList(item.services, item.serviceDetails, { includeNote: true }) || "-";
@@ -1486,6 +1511,10 @@ function buildPlywoodOrderCompleteDetailRows(item = {}) {
     { label: "품목명", value: materialName },
     { label: "수량", value: `${Math.max(1, Number(item.quantity || 1))}개` },
     { label: "사이즈", value: sizeText },
+    { label: "경첩 포함", value: hingeIncludedText },
+    { label: "도어 형태", value: doorTypeText },
+    { label: "도어 위치", value: hingeSideText },
+    { label: "측면 두께", value: sideThicknessText },
     { label: "옵션", value: isAddon ? "-" : item.optionsLabel || "-" },
     { label: "가공서비스", value: processingServicesText },
   ];
@@ -1976,7 +2005,6 @@ function init() {
     }],
   });
   $("#saveProcessingServiceModal")?.addEventListener("click", saveProcessingServiceModal);
-  $("#removeProcessingServiceModal")?.addEventListener("click", removeProcessingServiceModal);
   $("#cancelProcessingServiceModal")?.addEventListener("click", () => closeProcessingServiceModal(true));
   $("#processingServiceModalBackdrop")?.addEventListener("click", () => closeProcessingServiceModal(true));
   $("#stepFinal .estimate-toggle")?.addEventListener("click", requestStickyOffsetUpdate);

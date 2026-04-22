@@ -2359,7 +2359,6 @@ function initTop() {
   $("#sendQuoteBtn")?.addEventListener("click", sendQuote);
   $("#measurementGuideModalBody")?.addEventListener("click", handleMeasurementGuideCarouselClick);
   $("#saveTopProcessingServiceModal")?.addEventListener("click", saveProcessingServiceModal);
-  $("#removeTopProcessingServiceModal")?.addEventListener("click", removeProcessingServiceModal);
   $("#cancelTopProcessingServiceModal")?.addEventListener("click", () => closeProcessingServiceModal(true));
   $("#topProcessingServiceModalBackdrop")?.addEventListener("click", () => closeProcessingServiceModal(true));
 

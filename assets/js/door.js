@@ -2643,7 +2643,6 @@ function init() {
     });
   });
   $("#saveProcessingServiceModal")?.addEventListener("click", saveProcessingServiceModal);
-  $("#removeProcessingServiceModal")?.addEventListener("click", removeProcessingServiceModal);
   $("#cancelProcessingServiceModal")?.addEventListener("click", () => closeProcessingServiceModal(true));
   $("#processingServiceModalBackdrop")?.addEventListener("click", () => closeProcessingServiceModal(true));
   $("#stepFinal .estimate-toggle")?.addEventListener("click", requestStickyOffsetUpdate);

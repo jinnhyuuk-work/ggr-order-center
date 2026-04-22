@@ -3352,18 +3352,35 @@ th, td {
   text-align: center;
 }
 
-.modal--processing-service .modal-footer {
-  gap: 10px;
-  align-items: center;
+.modal--processing-service .module-option-modal-footer {
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-faint);
 }
 
-.modal--processing-service .modal-footer button {
+.modal--processing-service .module-option-modal-footer button {
   margin-bottom: 0;
 }
 
-.modal--processing-service .modal-primary-action {
-  padding: 12px 18px;
-  min-width: 110px;
+.modal--processing-service .module-option-modal-footer .modal-primary-action {
+  min-width: 76px;
+}
+
+.modal--processing-service .processing-service-sub-btn {
+  --btn-padding: 8px 12px;
+  --btn-border: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  min-height: 34px;
+  line-height: var(--lh-snug);
+}
+
+.modal--processing-service .processing-service-actions--compact {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+
+.modal--processing-service .processing-service-actions--compact .processing-service-sub-btn {
+  flex: 0 0 auto;
 }
 
 .modal--processing-service .modal-header {
@@ -3385,6 +3402,8 @@ th, td {
   margin: 0 0 10px;
   min-height: 18px;
   line-height: var(--lh-relaxed);
+  color: var(--color-primary);
+  font-weight: var(--fw-semibold);
 }
 
 .modal--processing-service .modal-body {
@@ -3395,15 +3414,77 @@ th, td {
   margin-top: 12px;
 }
 
+.modal--processing-service .processing-service-config-section {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--color-border-faint);
+  border-radius: var(--radius-md);
+  background: var(--color-row-bg);
+}
+
+.modal--processing-service .processing-service-config-section--tight {
+  margin-top: 8px;
+  padding: 12px;
+}
+
+.modal--processing-service .processing-service-config-section-title {
+  margin-bottom: 10px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-strong);
+}
+
+.modal--processing-service .processing-service-toggle-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .modal--processing-service .processing-service-row {
   padding: 14px;
   margin-bottom: 0;
 }
 
+.modal--processing-service .processing-service-row--compact {
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.modal--processing-service .processing-service-row--compact:last-of-type {
+  margin-bottom: 0;
+}
+
 .modal--processing-service .processing-service-row-header {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   font-size: var(--font-size-sm);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+}
+
+.modal--processing-service .processing-service-row-title {
+  letter-spacing: -0.01em;
+}
+
+.modal--processing-service .processing-service-row-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal--processing-service .processing-service-row-line label {
+  flex: 0 0 60px;
+  width: 60px;
+  margin-bottom: 0;
+  padding-top: 0;
   line-height: var(--lh-normal);
+  font-size: var(--font-size-xs);
+}
+
+.modal--processing-service .processing-service-row-line .processing-service-input {
+  flex: 1;
+  min-width: 0;
+  padding-block: 8px;
+  font-size: var(--font-size-xs);
 }
 
 .modal--processing-service .processing-service-field-grid {
@@ -3443,9 +3524,15 @@ th, td {
 }
 
 .modal--processing-service .form-row label {
-  width: 150px;
+  width: 120px;
+  min-width: 120px;
   line-height: var(--lh-relaxed);
   padding-top: 8px;
+}
+
+.modal--processing-service .form-row .form-row-label {
+  width: 120px;
+  min-width: 120px;
 }
 
 .modal--processing-service .form-row input[type="number"],
@@ -3456,17 +3543,6 @@ th, td {
   font-size: var(--font-size-sm);
   line-height: var(--lh-relaxed);
   padding: 10px 6px 8px 2px;
-}
-
-.modal--processing-service .modal-footer {
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border-faint);
-}
-
-.modal--processing-service .modal-footer button {
-  min-height: 40px;
-  padding: 10px 14px;
 }
 
 .modal-body {
@@ -3576,6 +3652,7 @@ button.card-base:active {
   justify-content: space-between;
   gap: 10px;
   margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 .processing-service-detail-chip {
@@ -3637,6 +3714,10 @@ button.card-base:active {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   align-items: flex-start;
+}
+
+.processing-service-field-grid--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .processing-service-field-grid > div {

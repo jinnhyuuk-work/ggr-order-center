@@ -3,10 +3,9 @@ import { createDataItemMetaMap, createDatasetMeta } from "./addon-data.js";
 
 const HINGE_DETAIL_DESCRIPTION = "길이를 입력하면 경첩 수량과 기본 위치가 자동으로 반영됩니다.";
 const HINGE_DETAIL_TIPS = [
-  "자동 계산된 경첩 위치가 선반에 걸릴 수 있으니 선반의 위치를 확인해주세요.",
-  "기존 경첩 자리가 있다면 기존 경첩 위치를 확인해 입력해주세요.",
+  "자동 계산된 경첩 위치가 선반에 걸릴 수 있으니 선반의 위치를 확인해 주세요.",
+  "기존 도어가 있다면 기존 도어 위치를 확인해 경첩 위치를 설정해 주세요.",
   "기존 경첩 자리가 약해진 상태라면 경첩의 위치를 조절해 주세요.",
-  "클립형 댐퍼 경첩과 경첩용 피스가 포함됩니다.",
 ];
 
 export const ADDITIONAL_PROCESSING_ITEMS = [
@@ -28,9 +27,11 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     thumbnail: null,
     swatch: null,
     description: "경첩 홀 1개당",
-    detailDescription: HINGE_DETAIL_DESCRIPTION,
-    detailTips: HINGE_DETAIL_TIPS,
-    helpGuideKey: "door-hinge",
+    detailUi: {
+      description: HINGE_DETAIL_DESCRIPTION,
+      tips: HINGE_DETAIL_TIPS,
+      helpGuideKey: "door-hinge",
+    },
   },
   {
     id: "proc_handle_hole",
@@ -69,9 +70,12 @@ export const ADDITIONAL_PROCESSING_ITEMS = [
     thumbnail: null,
     swatch: null,
     description: "경첩 홀 1개당",
-    detailDescription: HINGE_DETAIL_DESCRIPTION,
-    detailTips: HINGE_DETAIL_TIPS,
-    helpGuideKey: "door-hinge",
+    detailUi: {
+      description: HINGE_DETAIL_DESCRIPTION,
+      tips: HINGE_DETAIL_TIPS,
+      helpGuideKey: "door-hinge",
+    },
+    detailMode: "side-hinge-list",
   },
   {
     id: "plywood_handle_hole",

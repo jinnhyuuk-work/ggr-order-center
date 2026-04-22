@@ -151,6 +151,10 @@ const CUSTOMER_PHOTO_MAX_FILE_SIZE_MB = 10;
 const CUSTOMER_PHOTO_MAX_DIMENSION_PX = 2000;
 const CUSTOMER_PHOTO_JPEG_QUALITY = 0.86;
 const CUSTOMER_PHOTO_UPLOAD_TIMEOUT_MS = 20000;
+const PROCESSING_SERVICE_SIDE_THICKNESS_OPTIONS = Object.freeze([
+  { value: 15, label: "15T" },
+  { value: 18, label: "18T" },
+]);
 
 export function formatPrice(value) {
   return Number(value || 0).toLocaleString();
@@ -2478,12 +2482,19 @@ export function createProcessingServiceModalController({
   let context = { serviceId: null, triggerCheckbox: null, mode: null };
   const getProcessingServiceDetails = () => state?.processingServiceDetails || {};
   const getModalEl = () => (modalId ? document.querySelector(modalId) : null);
-  const createDefaultHole = () => ({
-    edge: "left",
-    distance: 100,
-    verticalRef: "top",
-    verticalDistance: 100,
-  });
+  const createDefaultHole = (srv) => {
+    if (srv?.detailMode === "side-hinge-list") {
+      return {
+        verticalDistance: 100,
+      };
+    }
+    return {
+      edge: "left",
+      distance: 100,
+      verticalRef: "top",
+      verticalDistance: 100,
+    };
+  };
 
   const resolveInitialDraft = (serviceId) => {
     const savedDetail = getProcessingServiceDetails()?.[serviceId];
@@ -2509,69 +2520,159 @@ export function createProcessingServiceModalController({
     const normalized = srv.normalizeDetail(draft);
     const holes = Array.isArray(normalized?.holes) ? normalized.holes : [];
     draft = { ...normalized, holes: holes.map((h) => ({ ...h })) };
+    const isSideHingeList = srv.detailMode === "side-hinge-list";
+  const currentSide = draft.side === "right" ? "right" : "left";
+  const currentDoorType = draft.doorType === "outdoor" ? "outdoor" : "indoor";
+  const currentHingeIncluded = draft.hingeIncluded !== false;
+  const currentSideThickness = Number(draft.sideThickness) === 18 ? 18 : 15;
+
+    const hingeSettingsHtml = isSideHingeList
+      ? `
+        <section class="processing-service-config-section">
+          <div class="processing-service-config-section-title">경첩 기본 설정</div>
+          <div class="processing-service-toggle-stack">
+            <div class="form-row">
+              <label for="processingServiceSideThicknessSelect">측면 두께</label>
+              <div class="field-col">
+                <select
+                  id="processingServiceSideThicknessSelect"
+                  class="select-caret"
+                  data-processing-service-side-thickness
+                >
+                  ${PROCESSING_SERVICE_SIDE_THICKNESS_OPTIONS.map(
+                    (option) =>
+                      `<option value="${option.value}"${currentSideThickness === option.value ? " selected" : ""}>${escapeHtml(option.label)}</option>`
+                  ).join("")}
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <label id="processingServiceDoorTypeLabel">도어 형태</label>
+              <div class="field-col">
+                <div class="door-hinge-side-toggle" role="group" aria-labelledby="processingServiceDoorTypeLabel">
+                  <button type="button" class="door-hinge-toggle-btn${currentDoorType === "indoor" ? " is-active" : ""}" data-processing-service-door-type="indoor" aria-pressed="${currentDoorType === "indoor" ? "true" : "false"}">인도어</button>
+                  <button type="button" class="door-hinge-toggle-btn${currentDoorType === "outdoor" ? " is-active" : ""}" data-processing-service-door-type="outdoor" aria-pressed="${currentDoorType === "outdoor" ? "true" : "false"}">아웃도어</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label id="processingServiceHingeIncludedLabel">경첩 포함</label>
+              <div class="field-col">
+                <div class="door-hinge-side-toggle" role="group" aria-labelledby="processingServiceHingeIncludedLabel">
+                  <button type="button" class="door-hinge-toggle-btn${currentHingeIncluded ? " is-active" : ""}" data-processing-service-hinge-included="true" aria-pressed="${currentHingeIncluded ? "true" : "false"}">포함</button>
+                  <button type="button" class="door-hinge-toggle-btn${!currentHingeIncluded ? " is-active" : ""}" data-processing-service-hinge-included="false" aria-pressed="${!currentHingeIncluded ? "true" : "false"}">미포함</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label id="processingServiceSideLabel">도어 위치</label>
+              <div class="field-col">
+                <div class="door-hinge-side-toggle" role="group" aria-labelledby="processingServiceSideLabel">
+                  <button type="button" class="door-hinge-toggle-btn${currentSide === "right" ? " is-active" : ""}" data-processing-service-side="right" aria-pressed="${currentSide === "right" ? "true" : "false"}">좌측문</button>
+                  <button type="button" class="door-hinge-toggle-btn${currentSide === "left" ? " is-active" : ""}" data-processing-service-side="left" aria-pressed="${currentSide === "left" ? "true" : "false"}">우측문</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      `
+      : "";
 
     const rowsHtml =
       holes.length > 0
         ? holes
-            .map(
-              (hole, idx) => {
-                const rowIdPrefix = `processing-service-hole-${String(serviceId).replace(/[^a-zA-Z0-9_-]/g, "_")}-${idx}`;
-                const edgeId = `${rowIdPrefix}-edge`;
-                const distanceId = `${rowIdPrefix}-distance`;
-                const verticalRefId = `${rowIdPrefix}-vertical-ref`;
-                const verticalDistanceId = `${rowIdPrefix}-vertical-distance`;
+            .map((hole, idx) => {
+              const rowIdPrefix = `processing-service-hole-${String(serviceId).replace(/[^a-zA-Z0-9_-]/g, "_")}-${idx}`;
+              const verticalDistanceId = `${rowIdPrefix}-vertical-distance`;
+              if (isSideHingeList) {
                 return `
-                  <div class="processing-service-row">
+            <div class="processing-service-row processing-service-row--compact">
                     <div class="processing-service-row-header">
-                      <span>${srv.label} ${idx + 1}</span>
-                      <button type="button" class="ghost-btn remove-hole" data-index="${idx}">삭제</button>
+                      <span class="processing-service-row-title">경첩 ${idx + 1}</span>
+                      <button type="button" class="ghost-btn processing-service-sub-btn remove-hole" data-index="${idx}">삭제</button>
                     </div>
-                    <div class="processing-service-field-grid">
-                      <div>
-                        <label for="${edgeId}">측면</label>
-                        <select id="${edgeId}" class="processing-service-input select-caret" data-field="edge" data-index="${idx}">
-                          <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
-                          <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label for="${distanceId}">가로(mm)</label>
-                        <input
-                          id="${distanceId}"
-                          type="number"
-                          class="processing-service-input"
-                          data-field="distance"
-                          data-index="${idx}"
-                          value="${hole.distance ?? ""}"
-                          min="1"
-                        />
-                      </div>
-                      <div>
-                        <label for="${verticalRefId}">세로 기준</label>
-                        <select id="${verticalRefId}" class="processing-service-input select-caret" data-field="verticalRef" data-index="${idx}">
-                          <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
-                          <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label for="${verticalDistanceId}">세로(mm)</label>
-                        <input
-                          id="${verticalDistanceId}"
-                          type="number"
-                          class="processing-service-input"
-                          data-field="verticalDistance"
-                          data-index="${idx}"
-                          value="${hole.verticalDistance ?? ""}"
-                          min="1"
-                        />
-                      </div>
+                    <div class="processing-service-row-line">
+                      <label for="${verticalDistanceId}">세로(mm)</label>
+                      <input
+                        id="${verticalDistanceId}"
+                        type="number"
+                        class="processing-service-input"
+                        data-field="verticalDistance"
+                        data-index="${idx}"
+                        value="${hole.verticalDistance ?? ""}"
+                        min="1"
+                      />
                     </div>
                   </div>
                 `;
               }
-            )
+              const edgeId = `${rowIdPrefix}-edge`;
+              const distanceId = `${rowIdPrefix}-distance`;
+              const verticalRefId = `${rowIdPrefix}-vertical-ref`;
+              return `
+                <div class="processing-service-row">
+                  <div class="processing-service-row-header">
+                    <span>${srv.label} ${idx + 1}</span>
+                    <button type="button" class="ghost-btn processing-service-sub-btn remove-hole" data-index="${idx}">삭제</button>
+                  </div>
+                  <div class="processing-service-field-grid">
+                    <div>
+                      <label for="${edgeId}">측면</label>
+                      <select id="${edgeId}" class="processing-service-input select-caret" data-field="edge" data-index="${idx}">
+                        <option value="left"${hole.edge === "left" ? " selected" : ""}>왼쪽</option>
+                        <option value="right"${hole.edge === "right" ? " selected" : ""}>오른쪽</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="${distanceId}">가로(mm)</label>
+                      <input
+                        id="${distanceId}"
+                        type="number"
+                        class="processing-service-input"
+                        data-field="distance"
+                        data-index="${idx}"
+                        value="${hole.distance ?? ""}"
+                        min="1"
+                      />
+                    </div>
+                    <div>
+                      <label for="${verticalRefId}">세로 기준</label>
+                      <select id="${verticalRefId}" class="processing-service-input select-caret" data-field="verticalRef" data-index="${idx}">
+                        <option value="top"${hole.verticalRef === "top" ? " selected" : ""}>상단 기준</option>
+                        <option value="bottom"${hole.verticalRef === "bottom" ? " selected" : ""}>하단 기준</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="${verticalDistanceId}">세로(mm)</label>
+                      <input
+                        id="${verticalDistanceId}"
+                        type="number"
+                        class="processing-service-input"
+                        data-field="verticalDistance"
+                        data-index="${idx}"
+                        value="${hole.verticalDistance ?? ""}"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              `;
+            })
             .join("")
         : `<div class="processing-service-empty">등록된 위치가 없습니다. 아래의 "위치 추가"를 눌러주세요.</div>`;
+
+    const hingeRowsHtml = isSideHingeList
+      ? `
+        <section class="processing-service-config-section processing-service-config-section--tight">
+          <div class="processing-service-config-section-title">경첩 위치</div>
+          ${rowsHtml}
+          <div class="processing-service-actions processing-service-actions--compact">
+            <button type="button" class="ghost-btn processing-service-sub-btn" data-reset-auto-holes>위치 초기화</button>
+            <button type="button" class="ghost-btn processing-service-sub-btn" data-add-hole>위치 추가</button>
+          </div>
+        </section>
+      `
+      : rowsHtml;
 
     const detailDescription = srv?.detailDescription
       ? `<p class="form-section-desc">${escapeHtml(srv.detailDescription)}</p>`
@@ -2601,10 +2702,8 @@ export function createProcessingServiceModalController({
 
     body.innerHTML = `
       ${detailIntro}
-      ${rowsHtml}
-      <div class="processing-service-actions">
-        <button type="button" data-add-hole>위치 추가</button>
-      </div>
+      ${hingeSettingsHtml}
+      ${hingeRowsHtml}
       <div>
         <label for="${noteId}">추가 메모 (선택)</label>
         <textarea class="processing-service-textarea" id="${noteId}">${draft?.note || ""}</textarea>
@@ -2617,7 +2716,13 @@ export function createProcessingServiceModalController({
         const field = e.target.dataset.field;
         if (Number.isNaN(idx) || !field) return;
         if (!draft.holes[idx]) {
-          draft.holes[idx] = { edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 };
+          draft.holes[idx] = isSideHingeList
+            ? { verticalDistance: 100 }
+            : { edge: "left", distance: 100, verticalRef: "top", verticalDistance: 100 };
+        }
+        if (isSideHingeList) {
+          if (field === "verticalDistance") draft.holes[idx].verticalDistance = Number(e.target.value);
+          return;
         }
         if (field === "edge") draft.holes[idx].edge = e.target.value === "right" ? "right" : "left";
         if (field === "distance") draft.holes[idx].distance = Number(e.target.value);
@@ -2626,6 +2731,45 @@ export function createProcessingServiceModalController({
         if (field === "verticalDistance") draft.holes[idx].verticalDistance = Number(e.target.value);
       });
     });
+
+    body.querySelectorAll("[data-processing-service-side]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const nextSide = e.currentTarget.dataset.processingServiceSide === "right" ? "right" : "left";
+        draft.side = nextSide;
+        draft.holes = (Array.isArray(draft.holes) ? draft.holes : []).map((hole) => ({
+          ...hole,
+          edge: nextSide,
+        }));
+        renderHoleModal(serviceId);
+      });
+    });
+
+    body.querySelectorAll("[data-processing-service-door-type]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        draft.doorType = e.currentTarget.dataset.processingServiceDoorType === "outdoor"
+          ? "outdoor"
+          : "indoor";
+        renderHoleModal(serviceId);
+      });
+    });
+
+    body.querySelectorAll("[data-processing-service-hinge-included]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        draft.hingeIncluded = e.currentTarget.dataset.processingServiceHingeIncluded !== "false";
+        renderHoleModal(serviceId);
+      });
+    });
+
+    const sideThicknessSelect = body.querySelector("[data-processing-service-side-thickness]");
+    if (sideThicknessSelect) {
+      sideThicknessSelect.addEventListener("change", (e) => {
+        draft.sideThickness = Number(e.currentTarget.value) === 18 ? 18 : 15;
+        renderHoleModal(serviceId);
+      });
+    }
 
     const noteEl = body.querySelector(`#${noteId}`);
     if (noteEl) {
@@ -2637,7 +2781,23 @@ export function createProcessingServiceModalController({
     const addBtn = body.querySelector("[data-add-hole]");
     if (addBtn) {
       addBtn.addEventListener("click", () => {
-        draft.holes.push(createDefaultHole());
+        draft.holes.push(createDefaultHole(srv));
+        renderHoleModal(serviceId);
+      });
+    }
+
+    const resetAutoBtn = body.querySelector("[data-reset-auto-holes]");
+    if (resetAutoBtn) {
+      resetAutoBtn.addEventListener("click", () => {
+        const autoDetail = cloneProcessingServiceDetails?.(getDefaultProcessingServiceDetail?.(serviceId) || {}) || {};
+        draft = {
+          ...autoDetail,
+          side: draft.side || autoDetail.side || "right",
+          doorType: draft.doorType || autoDetail.doorType || "indoor",
+          hingeIncluded: draft.hingeIncluded !== false,
+          sideThickness: draft.sideThickness || autoDetail.sideThickness || 15,
+          note: draft.note || autoDetail.note || "",
+        };
         renderHoleModal(serviceId);
       });
     }
