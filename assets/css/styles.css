@@ -4083,6 +4083,15 @@ button.card-base:active {
 }
 
 @media (max-width: 768px) {
+  #doorOptionCards,
+  #boardOptionCards,
+  #plywoodOptionCards,
+  #topOptionCards,
+  #processingServiceCards,
+  #topProcessingServiceCards {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
   .modal {
     --modal-width: 560px;
     --modal-viewport-width: calc(94vw - 24px);
