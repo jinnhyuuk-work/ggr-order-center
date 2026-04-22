@@ -103,9 +103,9 @@ export class HoleServiceModel extends BaseServiceModel {
     if (this.detailMode === "side-hinge-list") {
       return {
         side: "right",
-        doorType: "indoor",
+        doorType: "",
         hingeIncluded: true,
-        sideThickness: 15,
+        sideThickness: "",
         holes: [],
         note: "",
       };
@@ -121,9 +121,15 @@ export class HoleServiceModel extends BaseServiceModel {
           : holes[0]?.edge === "right"
             ? "right"
             : "right";
-      const doorType = detail?.doorType === "outdoor" ? "outdoor" : "indoor";
+      const doorType =
+        detail?.doorType === "outdoor" || detail?.doorType === "indoor" ? detail.doorType : "";
       const hingeIncluded = detail?.hingeIncluded !== false;
-      const sideThickness = Number(detail?.sideThickness) === 18 ? 18 : 15;
+      const sideThickness =
+        Number(detail?.sideThickness) === 18
+          ? 18
+          : Number(detail?.sideThickness) === 15
+            ? 15
+            : "";
       return {
         side: inferredSide,
         doorType,
@@ -153,6 +159,20 @@ export class HoleServiceModel extends BaseServiceModel {
   validateDetail(detail) {
     const normalized = this.normalizeDetail(detail);
     const isSideHingeList = this.detailMode === "side-hinge-list";
+    if (isSideHingeList) {
+      const hasDoorType = normalized.doorType === "indoor" || normalized.doorType === "outdoor";
+      const hasSideThickness = Number(normalized.sideThickness) === 15 || Number(normalized.sideThickness) === 18;
+      if (!hasDoorType || !hasSideThickness) {
+        const missingParts = [];
+        if (!hasDoorType) missingParts.push("도어 형태");
+        if (!hasSideThickness) missingParts.push("측면 두께");
+        return {
+          ok: false,
+          message: `${missingParts.join("와 ")}를 선택해주세요.`,
+          detail: normalized,
+        };
+      }
+    }
     const validHoles = (normalized.holes || []).filter((h) =>
       isSideHingeList
         ? h && Number.isFinite(Number(h.verticalDistance)) && Number(h.verticalDistance) > 0
@@ -178,7 +198,7 @@ export class HoleServiceModel extends BaseServiceModel {
         side: isSideHingeList ? side : normalized.side,
         ...(isSideHingeList ? { doorType: normalized.doorType } : {}),
         ...(isSideHingeList ? { hingeIncluded: normalized.hingeIncluded !== false } : {}),
-        ...(isSideHingeList ? { sideThickness: Number(normalized.sideThickness) === 18 ? 18 : 15 } : {}),
+        ...(isSideHingeList ? { sideThickness: normalized.sideThickness } : {}),
         holes: validHoles.map((hole) =>
           isSideHingeList
             ? {

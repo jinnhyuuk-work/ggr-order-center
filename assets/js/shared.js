@@ -152,10 +152,12 @@ const CUSTOMER_PHOTO_MAX_DIMENSION_PX = 2000;
 const CUSTOMER_PHOTO_JPEG_QUALITY = 0.86;
 const CUSTOMER_PHOTO_UPLOAD_TIMEOUT_MS = 20000;
 const PROCESSING_SERVICE_SIDE_THICKNESS_OPTIONS = Object.freeze([
+  { value: "", label: "측면 두께를 선택해주세요", placeholder: true },
   { value: 15, label: "15T" },
   { value: 18, label: "18T" },
 ]);
 const PROCESSING_SERVICE_DOOR_TYPE_OPTIONS = Object.freeze([
+  { value: "", label: "도어 형태를 선택해주세요", placeholder: true },
   { value: "indoor", label: "인도어" },
   { value: "outdoor", label: "아웃도어" },
 ]);
@@ -2526,9 +2528,10 @@ export function createProcessingServiceModalController({
     draft = { ...normalized, holes: holes.map((h) => ({ ...h })) };
     const isSideHingeList = srv.detailMode === "side-hinge-list";
     const currentSide = draft.side === "right" ? "right" : "left";
-    const currentDoorType = draft.doorType === "outdoor" ? "outdoor" : "indoor";
+    const currentDoorType =
+      draft.doorType === "indoor" || draft.doorType === "outdoor" ? draft.doorType : "";
     const currentHingeIncluded = draft.hingeIncluded !== false;
-    const currentSideThickness = Number(draft.sideThickness) === 18 ? 18 : 15;
+    const currentSideThickness = Number(draft.sideThickness) === 18 ? 18 : Number(draft.sideThickness) === 15 ? 15 : "";
 
     const hingeSettingsHtml = isSideHingeList
       ? `
@@ -2544,8 +2547,14 @@ export function createProcessingServiceModalController({
                   data-processing-service-side-thickness
                 >
                   ${PROCESSING_SERVICE_SIDE_THICKNESS_OPTIONS.map(
-                    (option) =>
-                      `<option value="${option.value}"${currentSideThickness === option.value ? " selected" : ""}>${escapeHtml(option.label)}</option>`
+                    (option) => {
+                      const optionValue = String(option.value ?? "");
+                      const isSelected = String(currentSideThickness ?? "") === optionValue;
+                      const isPlaceholder = Boolean(option.placeholder);
+                      return `<option value="${optionValue}"${
+                        isSelected ? " selected" : ""
+                      }${isPlaceholder ? " disabled hidden" : ""}>${escapeHtml(option.label)}</option>`;
+                    }
                   ).join("")}
                 </select>
               </div>
@@ -2560,8 +2569,14 @@ export function createProcessingServiceModalController({
                   aria-labelledby="processingServiceDoorTypeLabel"
                 >
                   ${PROCESSING_SERVICE_DOOR_TYPE_OPTIONS.map(
-                    (option) =>
-                      `<option value="${option.value}"${currentDoorType === option.value ? " selected" : ""}>${escapeHtml(option.label)}</option>`
+                    (option) => {
+                      const optionValue = String(option.value ?? "");
+                      const isSelected = String(currentDoorType ?? "") === optionValue;
+                      const isPlaceholder = Boolean(option.placeholder);
+                      return `<option value="${optionValue}"${
+                        isSelected ? " selected" : ""
+                      }${isPlaceholder ? " disabled hidden" : ""}>${escapeHtml(option.label)}</option>`;
+                    }
                   ).join("")}
                 </select>
               </div>
@@ -2802,9 +2817,9 @@ export function createProcessingServiceModalController({
         draft = {
           ...autoDetail,
           side: draft.side || autoDetail.side || "right",
-          doorType: draft.doorType || autoDetail.doorType || "indoor",
+          doorType: draft.doorType || autoDetail.doorType || "",
           hingeIncluded: draft.hingeIncluded !== false,
-          sideThickness: draft.sideThickness || autoDetail.sideThickness || 15,
+          sideThickness: draft.sideThickness || autoDetail.sideThickness || "",
           note: draft.note || autoDetail.note || "",
         };
         renderHoleModal(serviceId);
