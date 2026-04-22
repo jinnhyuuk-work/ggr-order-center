@@ -90,7 +90,7 @@ function formatHoleDetail(detail, { includeNote = false, short = false } = {}) {
     .join(", ");
   const noteText = includeNote && detail.note ? ` · 메모: ${detail.note}` : "";
   const suffix = positions ? ` · ${positions}` : "";
-  const prefixParts = [hingeIncludedText, doorTypeText, sideText, sideThicknessText].filter(Boolean);
+  const prefixParts = [sideThicknessText, doorTypeText, hingeIncludedText, sideText].filter(Boolean);
   const sidePrefix = prefixParts.length ? `${prefixParts.join(" · ")} · ` : "";
   return `${sidePrefix}${count}개${suffix}${noteText}`;
 }
