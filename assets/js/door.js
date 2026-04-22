@@ -1356,9 +1356,13 @@ function renderAddonCards() {
     const isSelected = selectedIds.includes(item.id);
     label.className = `card-base addon-card${isSelected ? " selected" : ""}`;
     const priceText = formatPricingRuleDisplayText(item) || "0원";
+    const visualMarkup = buildMaterialVisualMarkup({
+      swatch: item.swatch,
+      imageUrl: item.thumbnail,
+    });
     label.innerHTML = `
       <input type="checkbox" value="${item.id}" ${isSelected ? "checked" : ""} />
-      <div class="material-visual"></div>
+      ${visualMarkup}
       <div class="name">${item.name}</div>
       <div class="price">${priceText}</div>
       ${descriptionHTML(item.description)}
