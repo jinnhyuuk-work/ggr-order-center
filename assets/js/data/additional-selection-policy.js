@@ -66,11 +66,11 @@ export const ADDITIONAL_SELECTION_PAGE_CONFIG = Object.freeze({
   }),
   [ORDER_PAGE_KEYS.PLYWOOD]: freezePageConfig({
     options: {
-      includeIds: ["plywood_edge_finish", "plywood_surface_coating", "plywood_anti_scratch"],
+      includeIds: [],
       excludeIds: [],
     },
     processing: {
-      includeIds: ["plywood_hinge_hole", "plywood_handle_hole"],
+      includeIds: ["plywood_hinge_hole"],
       excludeIds: [],
     },
   }),
