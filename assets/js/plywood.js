@@ -6,7 +6,7 @@ import {
   MATERIAL_CATEGORIES_DESC,
   PLYWOOD_PRICE_TIERS_BY_CATEGORY,
   PLYWOOD_DIMENSION_LIMITS,
-} from "./data/plywood-data.js";
+} from "./data/plywood-data.js?v=20260422-html";
 import { DOOR_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
   initEmailJS,
@@ -76,7 +76,7 @@ const OPTION_CATALOG = PLYWOOD_OPTIONS.reduce((acc, option) => {
   acc[option.id] = option;
   return acc;
 }, {});
-const { calcItemDetail, calcOrderSummary } = createPlywoodPricingHelpers({
+const { calcItemDetail, calcOrderSummary, formatPlywoodPriceTierLines } = createPlywoodPricingHelpers({
   materials: MATERIALS,
   processingServices: PROCESSING_SERVICES,
   optionCatalog: OPTION_CATALOG,
@@ -825,6 +825,7 @@ function renderMaterialCards() {
   );
 
   list.forEach((mat) => {
+    const priceLines = formatPlywoodPriceTierLines(mat.category);
     const label = document.createElement("label");
     const visualMarkup = buildMaterialVisualMarkup({
       swatch: mat.swatch,
@@ -841,7 +842,14 @@ function renderMaterialCards() {
       ${visualMarkup}
       <div class="name">${mat.name}</div>
       <div class="material-tier-heading">가격 기준</div>
-      <div class="material-tier-line">${formatPricingRuleDisplayText(mat)}</div>
+      ${priceLines
+        .map(
+          (line) =>
+            `<div class="material-tier-line${
+              String(line).includes("상담안내") ? " is-consult" : ""
+            }">${line}</div>`
+        )
+        .join("")}
       <div class="size-heading">제작 가능 범위</div>
       <div class="size">두께 ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}</div>
       <div class="size">폭 ${mat.minWidth}~${mat.maxWidth}mm</div>
@@ -1818,6 +1826,7 @@ function updateSelectedMaterialLabel() {
     selectedMaterialId = matId;
   }
   const mat = MATERIALS[matId];
+  const priceLines = mat ? formatPlywoodPriceTierLines(mat.category) : [];
   renderSelectedCard({
     cardId: "#selectedMaterialCard",
     emptyTitle: "선택된 합판 없음",
@@ -1827,7 +1836,7 @@ function updateSelectedMaterialLabel() {
     name: mat ? escapeHtml(mat.name) : "",
     metaLines: mat
       ? [
-          formatPricingRuleDisplayText(mat),
+          ...priceLines,
           `두께 ${(mat.availableThickness || []).map((t) => `${t}T`).join(", ")}`,
           `폭 ${mat.minWidth}~${mat.maxWidth}mm`,
           `길이 ${mat.minLength}~${mat.maxLength}mm`,

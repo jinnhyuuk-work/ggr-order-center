@@ -8,7 +8,7 @@ export const PRODUCT_AVAILABILITY_POLICY = Object.freeze({
   }),
   plywood: createAvailabilityRule({
     includeIds: [],
-    excludedCategories: [],
+    excludedCategories: ["LX Texture PET","Hansol PET","Original PET","LPM"],
     excludedIds: [],
   }),
   door: createAvailabilityRule({
