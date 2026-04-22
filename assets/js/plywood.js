@@ -1,11 +1,12 @@
 import {
   MATERIALS,
-  BOARD_PROCESSING_SERVICES,
-  BOARD_OPTIONS,
-  BOARD_ADDON_ITEMS,
+  PLYWOOD_PROCESSING_SERVICES,
+  PLYWOOD_OPTIONS,
+  PLYWOOD_ADDON_ITEMS,
   MATERIAL_CATEGORIES_DESC,
-  BOARD_DIMENSION_LIMITS,
-} from "./data/board-data.js";
+  PLYWOOD_PRICE_TIERS_BY_CATEGORY,
+  PLYWOOD_DIMENSION_LIMITS,
+} from "./data/plywood-data.js";
 import { DOOR_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
   initEmailJS,
@@ -52,7 +53,7 @@ import {
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
 } from "./shared.js";
-import { createBoardPricingHelpers } from "./board-pricing.js";
+import { createPlywoodPricingHelpers } from "./plywood-pricing.js";
 import {
   normalizeFulfillmentType,
   isFulfillmentAddressReady,
@@ -63,23 +64,24 @@ import {
 } from "./fulfillment-policy.js";
 import {
   FULFILLMENT_POLICY_MESSAGES,
-  BOARD_FULFILLMENT_POLICY,
+  PLYWOOD_FULFILLMENT_POLICY,
 } from "./data/fulfillment-policy-data.js";
 import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
 import { createMeasurementGuideModalController } from "./measurement-guide-core.js";
 import { buildServiceModels } from "./service-models.js";
 
-const PROCESSING_SERVICES = buildServiceModels(BOARD_PROCESSING_SERVICES);
-const OPTION_CATALOG = BOARD_OPTIONS.reduce((acc, option) => {
+const PROCESSING_SERVICES = buildServiceModels(PLYWOOD_PROCESSING_SERVICES);
+const OPTION_CATALOG = PLYWOOD_OPTIONS.reduce((acc, option) => {
   if (!option?.id) return acc;
   acc[option.id] = option;
   return acc;
 }, {});
-const { calcItemDetail, calcOrderSummary } = createBoardPricingHelpers({
+const { calcItemDetail, calcOrderSummary } = createPlywoodPricingHelpers({
   materials: MATERIALS,
   processingServices: PROCESSING_SERVICES,
   optionCatalog: OPTION_CATALOG,
-  dimensionLimits: BOARD_DIMENSION_LIMITS,
+  priceTiersByCategory: PLYWOOD_PRICE_TIERS_BY_CATEGORY,
+  dimensionLimits: PLYWOOD_DIMENSION_LIMITS,
 });
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
@@ -285,19 +287,99 @@ function renderPreviewDimensionChips(colorEl, { widthMm = 0, lengthMm = 0 } = {}
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
-const WIDTH_MIN = BOARD_DIMENSION_LIMITS.minWidth;
-const WIDTH_MAX = BOARD_DIMENSION_LIMITS.maxWidth;
-const LENGTH_MIN = BOARD_DIMENSION_LIMITS.minLength;
-const LENGTH_MAX = BOARD_DIMENSION_LIMITS.maxLength;
-const BOARD_CUSTOM_WIDTH_MAX = BOARD_DIMENSION_LIMITS.maxWidth;
-const BOARD_CUSTOM_LENGTH_MAX = BOARD_DIMENSION_LIMITS.maxLength;
+const WIDTH_MIN = PLYWOOD_DIMENSION_LIMITS.minWidth;
+const WIDTH_MAX = PLYWOOD_DIMENSION_LIMITS.maxWidth;
+const LENGTH_MIN = PLYWOOD_DIMENSION_LIMITS.minLength;
+const LENGTH_MAX = PLYWOOD_DIMENSION_LIMITS.maxLength;
+const PLYWOOD_CUSTOM_WIDTH_MAX = PLYWOOD_DIMENSION_LIMITS.maxWidth;
+const PLYWOOD_CUSTOM_LENGTH_MAX = PLYWOOD_DIMENSION_LIMITS.maxLength;
+const PLYWOOD_HINGE_SERVICE_ID = "plywood_hinge_hole";
+const PLYWOOD_HANDLE_SERVICE_ID = "plywood_handle_hole";
+const PLYWOOD_HINGE_MIN_COUNT = 2;
+const PLYWOOD_HINGE_MAX_COUNT = 4;
+const PLYWOOD_HINGE_DEFAULT_EDGE_DISTANCE = 22;
+const PLYWOOD_HINGE_AUTO_TOP_OFFSET = 100;
+const PLYWOOD_HINGE_AUTO_BOTTOM_OFFSET = 100;
+const PLYWOOD_HINGE_AUTO_INTERIOR_RISE = 100;
 
-function getBoardDimensionLimits(mat) {
+function getPlywoodDimensionLimits(mat) {
   return {
     minWidth: Number(mat?.minWidth ?? WIDTH_MIN),
     maxWidth: Number(mat?.maxWidth ?? WIDTH_MAX),
     minLength: Number(mat?.minLength ?? LENGTH_MIN),
     maxLength: Number(mat?.maxLength ?? LENGTH_MAX),
+  };
+}
+
+function getCurrentPlywoodLengthInputValue() {
+  return Number($("#lengthInput")?.value || 0);
+}
+
+function resolvePlywoodHingeCountByLength(length) {
+  const numericLength = Number(length);
+  if (!Number.isFinite(numericLength) || numericLength <= 0) return 0;
+  if (numericLength <= 800) return 2;
+  if (numericLength <= 1500) return 3;
+  return 4;
+}
+
+function buildPlywoodHingeAutoPositions(length, count) {
+  const numericLength = Number(length);
+  const normalizedCount = Math.max(
+    PLYWOOD_HINGE_MIN_COUNT,
+    Math.min(PLYWOOD_HINGE_MAX_COUNT, Number(count) || PLYWOOD_HINGE_MIN_COUNT)
+  );
+
+  if (!Number.isFinite(numericLength) || numericLength <= 0) {
+    const fallbackByCount = {
+      2: [PLYWOOD_HINGE_AUTO_TOP_OFFSET, 700],
+      3: [PLYWOOD_HINGE_AUTO_TOP_OFFSET, 650, 1200],
+      4: [PLYWOOD_HINGE_AUTO_TOP_OFFSET, 500, 950, 1400],
+    };
+    return (fallbackByCount[normalizedCount] || fallbackByCount[PLYWOOD_HINGE_MIN_COUNT]).slice(
+      0,
+      normalizedCount
+    );
+  }
+
+  const maxPos = Math.max(1, Math.round(numericLength - 1));
+  const rawPositions = Array.from({ length: normalizedCount }, (_, idx) => {
+    if (idx === 0) return PLYWOOD_HINGE_AUTO_TOP_OFFSET;
+    if (idx === normalizedCount - 1) return numericLength - PLYWOOD_HINGE_AUTO_BOTTOM_OFFSET;
+    const equalPosition = (numericLength * idx) / (normalizedCount - 1);
+    return equalPosition - PLYWOOD_HINGE_AUTO_INTERIOR_RISE;
+  });
+  const positions = rawPositions.map((pos) => Math.max(1, Math.min(maxPos, Math.round(pos))));
+
+  for (let idx = 1; idx < positions.length; idx += 1) {
+    if (positions[idx] <= positions[idx - 1]) {
+      positions[idx] = Math.min(maxPos, positions[idx - 1] + 1);
+    }
+  }
+  for (let idx = positions.length - 2; idx >= 0; idx -= 1) {
+    if (positions[idx] >= positions[idx + 1]) {
+      positions[idx] = Math.max(1, positions[idx + 1] - 1);
+    }
+  }
+
+  return positions;
+}
+
+function createDefaultPlywoodHingeDetail() {
+  const length = getCurrentPlywoodLengthInputValue();
+  const count = resolvePlywoodHingeCountByLength(length);
+  if (!count) {
+    return { holes: [], note: "" };
+  }
+  const positions = buildPlywoodHingeAutoPositions(length, count);
+  return {
+    holes: positions.map((verticalDistance) => ({
+      edge: "left",
+      distance: PLYWOOD_HINGE_DEFAULT_EDGE_DISTANCE,
+      verticalRef: "top",
+      verticalDistance,
+    })),
+    note: "",
   };
 }
 
@@ -307,10 +389,10 @@ const state = {
   processingServiceDetails: {}, // 현재 선택된 가공서비스별 세부 옵션
 };
 const previewSummaryConfig = {
-  optionSelector: 'input[name="boardOption"]:checked',
+  optionSelector: 'input[name="plywoodOption"]:checked',
   processingServiceSelector: 'input[name="processingService"]:checked',
 };
-const HAS_OPTION_SELECTIONS = BOARD_OPTIONS.length > 0;
+const HAS_OPTION_SELECTIONS = PLYWOOD_OPTIONS.length > 0;
 const HAS_PROCESSING_SELECTIONS = Object.keys(PROCESSING_SERVICES).length > 0;
 const HAS_ADDITIONAL_SELECTIONS = HAS_OPTION_SELECTIONS || HAS_PROCESSING_SELECTIONS;
 const SWATCH_FALLBACK = UI_COLOR_FALLBACKS.swatch;
@@ -347,7 +429,7 @@ function evaluateFulfillment(nextType = getFulfillmentType()) {
     customer,
     hasProducts,
     evaluateSupportedPolicy: ({ type }) => {
-      const deliveryPolicy = BOARD_FULFILLMENT_POLICY.delivery;
+      const deliveryPolicy = PLYWOOD_FULFILLMENT_POLICY.delivery;
       if (type === "delivery") {
         return {
           amount: 0,
@@ -481,6 +563,7 @@ function cloneProcessingServiceDetails(details) {
 function getDefaultProcessingServiceDetail(serviceId) {
   const srv = PROCESSING_SERVICES[serviceId];
   if (!srv) return { note: "" };
+  if (serviceId === PLYWOOD_HINGE_SERVICE_ID) return createDefaultPlywoodHingeDetail();
   if (srv.hasDetail()) return { holes: [], note: "" };
   const detail = srv.defaultDetail ? srv.defaultDetail() : { note: "" };
   return cloneProcessingServiceDetails(detail);
@@ -660,7 +743,7 @@ function renderProcessingServiceCards() {
 }
 
 function renderOptionCards() {
-  const container = $("#boardOptionCards");
+  const container = $("#plywoodOptionCards");
   if (!container) return;
   const section = container.closest(".selection-block");
   if (section) section.classList.toggle("hidden-step", !HAS_OPTION_SELECTIONS);
@@ -669,7 +752,7 @@ function renderOptionCards() {
     updatePreviewSummary(previewSummaryConfig);
     return;
   }
-  BOARD_OPTIONS.forEach((opt) => {
+  PLYWOOD_OPTIONS.forEach((opt) => {
     const label = document.createElement("label");
     label.className = "card-base option-card";
     const { text: priceText, isConsult: isConsultOption } = getPricingDisplayMeta({
@@ -681,7 +764,7 @@ function renderOptionCards() {
       fallbackSwatch: SWATCH_MUTED_FALLBACK,
     });
     label.innerHTML = `
-      <input type="checkbox" name="boardOption" value="${opt.id}" />
+      <input type="checkbox" name="plywoodOption" value="${opt.id}" />
       ${visualMarkup}
       <div class="name">${opt.name}</div>
       <div class="price${isConsultOption ? " is-consult" : ""}">${priceText}</div>
@@ -691,7 +774,7 @@ function renderOptionCards() {
   });
   updatePreviewSummary(previewSummaryConfig);
   container.addEventListener("change", (e) => {
-    if (e.target.name !== "boardOption") return;
+    if (e.target.name !== "plywoodOption") return;
     const card = e.target.closest(".option-card");
     if (e.target.checked) {
       card?.classList.add("selected");
@@ -801,7 +884,7 @@ function renderAddonCards() {
   const selectedIds = state.items.filter((it) => it.type === "addon").map((it) => it.addonId);
   state.addons = [...selectedIds];
 
-  BOARD_ADDON_ITEMS.forEach((item) => {
+  PLYWOOD_ADDON_ITEMS.forEach((item) => {
     const label = document.createElement("label");
     const isSelected = selectedIds.includes(item.id);
     label.className = `card-base addon-card${isSelected ? " selected" : ""}`;
@@ -840,7 +923,7 @@ function renderAddonCards() {
 function addAddonItem(addonId) {
   const existing = state.items.some((it) => it.type === "addon" && it.addonId === addonId);
   if (existing) return;
-  const addon = BOARD_ADDON_ITEMS.find((a) => a.id === addonId);
+  const addon = PLYWOOD_ADDON_ITEMS.find((a) => a.id === addonId);
   if (!addon) return;
   const detail = buildAddonLineItemDetail({ addon });
   state.items.push({
@@ -868,7 +951,7 @@ function updateSelectedAddonsDisplay() {
   renderSelectedAddonChips({
     targetId: "selectedAddonCard",
     addons: state.addons,
-    allItems: BOARD_ADDON_ITEMS,
+    allItems: PLYWOOD_ADDON_ITEMS,
   });
 }
 
@@ -900,7 +983,7 @@ function readCurrentInputs() {
   const width = Number($("#widthInput").value);
   const length = Number($("#lengthInput").value);
   const options = Array.from(
-    document.querySelectorAll("#boardOptionCards input:checked")
+    document.querySelectorAll("#plywoodOptionCards input:checked")
   ).map((el) => el.value);
 
   const services = Array.from(document.querySelectorAll('input[name="processingService"]:checked')).map(
@@ -922,7 +1005,7 @@ function validateInputs(input) {
   if (!thickness) return "두께를 선택해주세요.";
   if (!width) return "폭을 입력해주세요.";
   const { minWidth: widthMin, maxWidth: widthMax, minLength: lengthMin, maxLength: lengthMax } =
-    getBoardDimensionLimits(mat);
+    getPlywoodDimensionLimits(mat);
   if (width < widthMin) return `폭은 ${widthMin}mm 이상 입력해주세요.`;
   if (width > widthMax) return `폭은 ${widthMax}mm 이하로 입력해주세요.`;
   if (!length) return "길이를 입력해주세요.";
@@ -996,7 +1079,7 @@ function resetStepsAfterAdd() {
   if (lengthEl) lengthEl.value = "";
 
   // 옵션 초기화
-  document.querySelectorAll('input[name="boardOption"]').forEach((input) => {
+  document.querySelectorAll('input[name="plywoodOption"]').forEach((input) => {
     input.checked = false;
     input.closest(".option-card")?.classList.remove("selected");
   });
@@ -1105,7 +1188,7 @@ function renderTable() {
     items: state.items,
     getName: (item) => {
       const isAddon = item.type === "addon";
-      const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
+      const addonInfo = isAddon ? PLYWOOD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
       const materialName = isAddon
         ? addonInfo?.name || "부자재"
         : MATERIALS[item.materialId].name;
@@ -1114,7 +1197,7 @@ function renderTable() {
     getTotalText: (item) => (item.consultStatus === "consult" ? "상담 안내" : `${item.total.toLocaleString()}원`),
     getDetailLines: (item) => {
       const isAddon = item.type === "addon";
-      const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
+      const addonInfo = isAddon ? PLYWOOD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
       const materialName = isAddon
         ? addonInfo?.name || "부자재"
         : MATERIALS[item.materialId].name;
@@ -1158,7 +1241,7 @@ function updateItemQuantity(id, quantity) {
   if (idx === -1) return;
   const item = state.items[idx];
   if (item.type === "addon") {
-    const addon = BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId);
+    const addon = PLYWOOD_ADDON_ITEMS.find((a) => a.id === item.addonId);
     if (!addon) return;
     const detail = buildAddonLineItemDetail({ addon, quantity });
     state.items[idx] = { ...item, quantity, ...detail };
@@ -1218,7 +1301,7 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
   } else {
     state.items.forEach((item, idx) => {
       lines.push(`${idx + 1}) 품목`);
-      buildBoardOrderCompleteDetailRows(item).forEach((row) => {
+      buildPlywoodOrderCompleteDetailRows(item).forEach((row) => {
         lines.push(`- ${row.label}: ${row.value}`);
       });
       if (idx < state.items.length - 1) {
@@ -1256,14 +1339,14 @@ function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
 
   return {
     ...buildOrderPayloadBase({
-      pageKey: "board",
+      pageKey: "plywood",
       customer,
       summary,
       customerPhotoUploads,
     }),
     items: state.items.map((item) => {
       const isAddon = item.type === "addon";
-      const addon = isAddon ? BOARD_ADDON_ITEMS.find((candidate) => candidate.id === item.addonId) : null;
+      const addon = isAddon ? PLYWOOD_ADDON_ITEMS.find((candidate) => candidate.id === item.addonId) : null;
       return {
         lineId: item.id,
         itemType: isAddon ? "addon" : "product",
@@ -1391,9 +1474,9 @@ function buildCompleteDetailRowsHtml(rows = []) {
     .join("");
 }
 
-function buildBoardOrderCompleteDetailRows(item = {}) {
+function buildPlywoodOrderCompleteDetailRows(item = {}) {
   const isAddon = item.type === "addon";
-  const addonInfo = isAddon ? BOARD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
+  const addonInfo = isAddon ? PLYWOOD_ADDON_ITEMS.find((a) => a.id === item.addonId) : null;
   const materialName = isAddon ? addonInfo?.name || "부자재" : MATERIALS[item.materialId]?.name || "-";
   const sizeText = isAddon ? "-" : `${item.thickness}T / ${item.width}×${item.length}mm`;
   const processingServicesText = isAddon
@@ -1422,7 +1505,7 @@ function renderOrderCompleteDetails() {
       ? "<p class=\"item-line\">담긴 항목이 없습니다.</p>"
       : state.items
           .map((item, idx) => {
-            const detailRowsHtml = buildCompleteDetailRowsHtml(buildBoardOrderCompleteDetailRows(item));
+            const detailRowsHtml = buildCompleteDetailRowsHtml(buildPlywoodOrderCompleteDetailRows(item));
             return `
               <div class="complete-order-item">
                 <p class="complete-item-title">품목 ${idx + 1}</p>
@@ -1478,7 +1561,7 @@ async function sendQuote() {
   const selectedCustomerPhotos = customerPhotoUploader?.getSelectedFiles?.() || [];
   const customerPhotoUploadResult = await uploadCustomerPhotoFilesToCloudinary({
     files: selectedCustomerPhotos,
-    pageKey: "board",
+    pageKey: "plywood",
   });
   const customerPhotoUploads = Array.isArray(customerPhotoUploadResult?.uploaded)
     ? customerPhotoUploadResult.uploaded
@@ -1548,7 +1631,7 @@ function validateSizeFields() {
   const calcBtn = $("#calcItemBtn");
   const mat = MATERIALS[selectedMaterialId];
   const { minWidth: widthMin, maxWidth: widthMax, minLength: lengthMin, maxLength: lengthMax } =
-    getBoardDimensionLimits(mat);
+    getPlywoodDimensionLimits(mat);
 
   const { valid } = updateSizeErrors({
     widthId: "widthInput",
@@ -1648,17 +1731,17 @@ function renderPreviewHoles(input) {
   const colorEl = $("#previewColor");
   if (!colorEl) return;
   clearPreviewHoles();
-  const hasHinge = input?.services?.includes("proc_hinge_hole");
-  const hasHandle = input?.services?.includes("proc_handle_hole");
+  const hasHinge = input?.services?.includes(PLYWOOD_HINGE_SERVICE_ID);
+  const hasHandle = input?.services?.includes(PLYWOOD_HANDLE_SERVICE_ID);
   if (!hasHinge && !hasHandle) return;
   if (!input.width || !input.length) return;
   const hingeHoles =
-    hasHinge && Array.isArray(input.serviceDetails?.proc_hinge_hole?.holes)
-      ? input.serviceDetails.proc_hinge_hole.holes
+    hasHinge && Array.isArray(input.serviceDetails?.[PLYWOOD_HINGE_SERVICE_ID]?.holes)
+      ? input.serviceDetails[PLYWOOD_HINGE_SERVICE_ID].holes
       : [];
   const handleHoles =
-    hasHandle && Array.isArray(input.serviceDetails?.proc_handle_hole?.holes)
-      ? input.serviceDetails.proc_handle_hole.holes
+    hasHandle && Array.isArray(input.serviceDetails?.[PLYWOOD_HANDLE_SERVICE_ID]?.holes)
+      ? input.serviceDetails[PLYWOOD_HANDLE_SERVICE_ID].holes
       : [];
   const holes = [
     ...hingeHoles.map((h) => ({ ...h, _type: "hinge" })),
@@ -1806,7 +1889,7 @@ function updateSizePlaceholders(mat) {
   const widthEl = $("#widthInput");
   const lengthEl = $("#lengthInput");
   if (!widthEl || !lengthEl) return;
-  const limits = getBoardDimensionLimits(mat);
+  const limits = getPlywoodDimensionLimits(mat);
   widthEl.min = String(limits.minWidth);
   widthEl.max = String(limits.maxWidth);
   lengthEl.min = String(limits.minLength);

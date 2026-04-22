@@ -331,6 +331,10 @@ b[lang="en"],
   background: url(../img/page/index/board-service.jpg) center/cover no-repeat;
 }
 
+.landing-thumb.plywood {
+  background: url(../img/page/index/board-service.jpg) center/cover no-repeat;
+}
+
 .landing-thumb.door {
   background: url(../img/page/index/door-service.jpg) center/cover no-repeat;
 }
@@ -1532,9 +1536,9 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .section-help-btn {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1559,7 +1563,7 @@ input[type="number"]::-webkit-outer-spin-button {
   border-color: var(--color-primary);
   color: var(--color-brand-ink);
   box-shadow: none;
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .section-help-btn:focus-visible {
@@ -2691,7 +2695,18 @@ th, td {
 }
 
 .processing-service-card {
-  /* 전용 훅: 가공 카드 커스텀 여지 */
+  position: relative;
+}
+
+.processing-service-card-body {
+  display: block;
+}
+
+.processing-service-card-help {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
 }
 
 /* 모달 */
@@ -3352,7 +3367,7 @@ th, td {
 }
 
 .modal--processing-service .modal-header {
-  align-items: flex-end;
+  align-items: center;
   margin-bottom: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--color-border-faint);
@@ -3378,13 +3393,6 @@ th, td {
 
 .modal--processing-service .modal-body > * + * {
   margin-top: 12px;
-}
-
-.modal--processing-service .input-tip {
-  margin: 0;
-  padding: 12px 14px;
-  font-size: var(--font-size-sm);
-  line-height: var(--lh-spacious);
 }
 
 .modal--processing-service .processing-service-row {

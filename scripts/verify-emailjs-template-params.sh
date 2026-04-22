@@ -7,6 +7,7 @@ SHARED_FILE="assets/js/shared.js"
 PAGE_FILES=(
   "assets/js/top.js"
   "assets/js/board.js"
+  "assets/js/plywood.js"
   "assets/js/door.js"
 )
 

@@ -25,6 +25,12 @@ export const ORDER_DIMENSION_LIMITS = Object.freeze({
     minLength: 100,
     maxLength: 2400,
   }),
+  plywood: freezeDimensionLimits({
+    minWidth: 50,
+    maxWidth: 1200,
+    minLength: 100,
+    maxLength: 2400,
+  }),
 });
 
 export const withDimensionLimits = (item, limits) => ({

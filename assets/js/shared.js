@@ -2466,6 +2466,7 @@ export function createProcessingServiceModalController({
   getDefaultProcessingServiceDetail,
   cloneProcessingServiceDetails,
   updateProcessingServiceSummary,
+  buildDetailIntroHtml,
   openModal,
   closeModal,
   onRevertSelection,
@@ -2476,12 +2477,25 @@ export function createProcessingServiceModalController({
   let draft = null;
   let context = { serviceId: null, triggerCheckbox: null, mode: null };
   const getProcessingServiceDetails = () => state?.processingServiceDetails || {};
+  const getModalEl = () => (modalId ? document.querySelector(modalId) : null);
   const createDefaultHole = () => ({
     edge: "left",
     distance: 100,
     verticalRef: "top",
     verticalDistance: 100,
   });
+
+  const resolveInitialDraft = (serviceId) => {
+    const savedDetail = getProcessingServiceDetails()?.[serviceId];
+    if (savedDetail && Object.keys(savedDetail).length > 0) {
+      return cloneProcessingServiceDetails?.(savedDetail) || savedDetail;
+    }
+    return (
+      cloneProcessingServiceDetails?.(getDefaultProcessingServiceDetail?.(serviceId)) ||
+      getDefaultProcessingServiceDetail?.(serviceId) ||
+      { note: "" }
+    );
+  };
 
   const setError = (message = "") => {
     const errEl = errorId ? document.querySelector(errorId) : null;
@@ -2559,8 +2573,34 @@ export function createProcessingServiceModalController({
             .join("")
         : `<div class="processing-service-empty">등록된 위치가 없습니다. 아래의 "위치 추가"를 눌러주세요.</div>`;
 
+    const detailDescription = srv?.detailDescription
+      ? `<p class="form-section-desc">${escapeHtml(srv.detailDescription)}</p>`
+      : "";
+    const detailTips = Array.isArray(srv?.detailTips) && srv.detailTips.length > 0
+      ? `
+        <div class="input-tip">
+          <ul class="input-tip-list">
+            ${srv.detailTips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}
+          </ul>
+        </div>
+      `
+      : "";
+    const detailIntroParts = [];
+    if (detailDescription) detailIntroParts.push(detailDescription);
+    if (detailTips) detailIntroParts.push(detailTips);
+    if (!detailIntroParts.length && buildDetailIntroHtml) {
+      const customIntro = buildDetailIntroHtml(serviceId, srv, draft);
+      if (customIntro) detailIntroParts.push(customIntro);
+    }
+    if (!detailIntroParts.length) {
+      detailIntroParts.push(
+        `<p class="input-tip">${escapeHtml(srv.label)} 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>`
+      );
+    }
+    const detailIntro = detailIntroParts.join("");
+
     body.innerHTML = `
-      <p class="input-tip">${srv.label} 위치를 원의 중심 기준으로 입력해주세요. 여러 개를 추가할 수 있습니다.</p>
+      ${detailIntro}
       ${rowsHtml}
       <div class="processing-service-actions">
         <button type="button" data-add-hole>위치 추가</button>
@@ -2634,10 +2674,7 @@ export function createProcessingServiceModalController({
     const srv = processingServices?.[serviceId];
     if (!srv?.hasDetail()) return;
     context = { serviceId, triggerCheckbox, mode };
-    draft =
-      cloneProcessingServiceDetails?.(getProcessingServiceDetails()?.[serviceId]) ||
-      getDefaultProcessingServiceDetail?.(serviceId) ||
-      { note: "", holes: [] };
+    draft = resolveInitialDraft(serviceId);
     renderContent(serviceId);
     openModal?.(modalId, { focusTarget });
   };

@@ -25,6 +25,13 @@ export const BOARD_FULFILLMENT_POLICY = Object.freeze({
   }),
 });
 
+export const PLYWOOD_FULFILLMENT_POLICY = Object.freeze({
+  delivery: Object.freeze({
+    mode: "consult",
+    consultReason: "합판 서비스는 상담 안내입니다.",
+  }),
+});
+
 export const DOOR_FULFILLMENT_POLICY = Object.freeze({
   delivery: Object.freeze({
     mode: "consult",
@@ -123,6 +130,16 @@ export const FULFILLMENT_POLICY_META_BY_KEY = Object.freeze({
     updated_at: "2026-03-16",
     status: "active",
     tags: ["[internal]", "page:board", "policy:fulfillment"],
+  }),
+  PLYWOOD_FULFILLMENT_POLICY: createDatasetMeta({
+    id: "plywood_fulfillment_policy",
+    label: "합판 서비스 정책",
+    description: "합판 페이지 배송/시공 정책 데이터입니다.",
+    source: "assets/js/data/fulfillment-policy-data.js",
+    owner: "order-center",
+    updated_at: "2026-03-16",
+    status: "active",
+    tags: ["[internal]", "page:plywood", "policy:fulfillment"],
   }),
   DOOR_FULFILLMENT_POLICY: createDatasetMeta({
     id: "door_fulfillment_policy",

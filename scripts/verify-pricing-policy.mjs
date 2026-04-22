@@ -7,6 +7,13 @@ import {
 } from "../assets/js/data/board-data.js";
 import { createBoardPricingHelpers } from "../assets/js/board-pricing.js";
 import {
+  PLYWOOD_DIMENSION_LIMITS,
+  PLYWOOD_PRICE_TIERS_BY_CATEGORY,
+  PLYWOOD_OPTIONS,
+  MATERIALS as PLYWOOD_MATERIALS,
+} from "../assets/js/data/plywood-data.js";
+import { createPlywoodPricingHelpers } from "../assets/js/plywood-pricing.js";
+import {
   TOP_DIMENSION_LIMITS,
   TOP_OPTIONS,
   TOP_PRICING_POLICY,
@@ -41,6 +48,7 @@ import {
 import {
   TOP_FULFILLMENT_POLICY,
   BOARD_FULFILLMENT_POLICY,
+  PLYWOOD_FULFILLMENT_POLICY,
   DOOR_FULFILLMENT_POLICY,
   SYSTEM_FULFILLMENT_POLICY,
 } from "../assets/js/data/fulfillment-policy-data.js";
@@ -121,6 +129,36 @@ function run() {
     thickness: 18,
     quantity: 1,
   }).isCustomPrice, true);
+
+  const plywoodPricing = createPlywoodPricingHelpers({
+    materials: PLYWOOD_MATERIALS,
+    optionCatalog: PLYWOOD_OPTIONS.reduce((acc, option) => {
+      if (option?.id) acc[option.id] = option;
+      return acc;
+    }, {}),
+    priceTiersByCategory: PLYWOOD_PRICE_TIERS_BY_CATEGORY,
+    dimensionLimits: PLYWOOD_DIMENSION_LIMITS,
+  });
+  assert.equal(
+    plywoodPricing.calcItemDetail({
+      materialId: "lpm_01",
+      width: 300,
+      length: 800,
+      thickness: 18,
+      quantity: 1,
+    }).materialCost,
+    35000
+  );
+  assert.equal(
+    plywoodPricing.calcItemDetail({
+      materialId: "lpm_01",
+      width: 400,
+      length: 800,
+      thickness: 18,
+      quantity: 1,
+    }).materialCost,
+    40000
+  );
 
   assert.equal(TOP_PRICING_POLICY.standardThicknessMm, 12);
   assert.equal(TOP_PRICING_POLICY.standardWidthMaxMm, 760);
@@ -636,6 +674,8 @@ function run() {
   assert.equal(TOP_FULFILLMENT_POLICY.delivery.consultReason, "상판 배송 서비스는 상담 안내입니다.");
   assert.equal(BOARD_FULFILLMENT_POLICY.delivery.mode, "consult");
   assert.equal(BOARD_FULFILLMENT_POLICY.delivery.consultReason, "합판 서비스는 상담 안내입니다.");
+  assert.equal(PLYWOOD_FULFILLMENT_POLICY.delivery.mode, "consult");
+  assert.equal(PLYWOOD_FULFILLMENT_POLICY.delivery.consultReason, "합판 서비스는 상담 안내입니다.");
   assert.equal(DOOR_FULFILLMENT_POLICY.delivery.mode, "consult");
   assert.equal(DOOR_FULFILLMENT_POLICY.delivery.groupedFee.groupPrice, 7000);
   assert.equal(SYSTEM_FULFILLMENT_POLICY.delivery.mode, "consult");

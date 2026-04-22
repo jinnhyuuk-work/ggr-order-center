@@ -6,6 +6,11 @@ export const PRODUCT_AVAILABILITY_POLICY = Object.freeze({
     excludedCategories: [],
     excludedIds: [],
   }),
+  plywood: createAvailabilityRule({
+    includeIds: [],
+    excludedCategories: [],
+    excludedIds: [],
+  }),
   door: createAvailabilityRule({
     includeIds: [],
     excludedCategories: ["LX Texture PET","Hansol PET","Original PET","LPM"],

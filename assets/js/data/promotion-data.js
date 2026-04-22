@@ -4,7 +4,7 @@ export const ORDER_PROMOTION_CONFIG = Object.freeze({
     Object.freeze({
       id: "sample_monthly_color_10",
       enabled: false,
-      pages: Object.freeze(["board"]),
+      pages: Object.freeze(["board", "plywood"]),
       targetTypes: Object.freeze(["material"]),
       materialIds: Object.freeze(["lpm_natural_walnut"]),
       discountRate: 0.1,

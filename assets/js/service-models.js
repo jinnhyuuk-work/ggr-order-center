@@ -15,6 +15,9 @@ export class BaseServiceModel {
     this.displayPriceText = cfg.displayPriceText;
     this.swatch = cfg.swatch;
     this.description = cfg.description;
+    this.detailDescription = cfg.detailDescription;
+    this.detailTips = Array.isArray(cfg.detailTips) ? [...cfg.detailTips] : cfg.detailTips;
+    this.helpGuideKey = cfg.helpGuideKey;
   }
   hasDetail() {
     return this.type === "detail";

@@ -2,6 +2,7 @@ import { createDataItemMetaMap, createDatasetMeta } from "./addon-data.js";
 
 export const ORDER_PAGE_KEYS = Object.freeze({
   BOARD: "board",
+  PLYWOOD: "plywood",
   DOOR: "door",
   TOP: "top",
 });
@@ -60,6 +61,16 @@ export const ADDITIONAL_SELECTION_PAGE_CONFIG = Object.freeze({
     },
     processing: {
       includeIds: ["proc_hinge_hole", "proc_handle_hole"],
+      excludeIds: [],
+    },
+  }),
+  [ORDER_PAGE_KEYS.PLYWOOD]: freezePageConfig({
+    options: {
+      includeIds: ["plywood_edge_finish", "plywood_surface_coating", "plywood_anti_scratch"],
+      excludeIds: [],
+    },
+    processing: {
+      includeIds: ["plywood_hinge_hole", "plywood_handle_hole"],
       excludeIds: [],
     },
   }),

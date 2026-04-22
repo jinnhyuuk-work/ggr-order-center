@@ -1103,8 +1103,11 @@ function renderProcessingServiceCards() {
   container.innerHTML = "";
 
   Object.values(PROCESSING_SERVICES).forEach((srv) => {
-    const label = document.createElement("label");
-    label.className = "card-base processing-service-card";
+    const card = document.createElement("div");
+    card.className = "card-base processing-service-card";
+    const helpBtnHtml = srv.helpGuideKey
+      ? `<button type="button" class="section-help-btn processing-service-card-help" data-measurement-guide="${srv.helpGuideKey}" aria-label="${srv.label} 안내 보기">?</button>`
+      : "";
     const fallbackPriceText = formatPricingRuleDisplayText(srv) || srv.displayPriceText || "";
     const { text: priceText, isConsult: isConsultService } = getPricingDisplayMeta({
       config: srv,
@@ -1115,19 +1118,22 @@ function renderProcessingServiceCards() {
       imageUrl: srv.thumbnail,
       fallbackSwatch: SWATCH_MUTED_FALLBACK,
     });
-    label.innerHTML = `
-      <input type="checkbox" name="processingService" value="${srv.id}" />
-      ${visualMarkup}
-      <div class="name">${srv.label}</div>
-      <div class="price${isConsultService ? " is-consult" : ""}">${priceText}</div>
-      ${descriptionHTML(srv.description)}
-      <div class="processing-service-actions">
-        <div class="processing-service-detail-chip" data-processing-service-summary="${srv.id}">
-          ${srv.hasDetail() ? "세부 옵션을 설정해주세요." : "추가 설정 없음"}
+    card.innerHTML = `
+      ${helpBtnHtml}
+      <label class="processing-service-card-body">
+        <input type="checkbox" name="processingService" value="${srv.id}" />
+        ${visualMarkup}
+        <div class="name">${srv.label}</div>
+        <div class="price${isConsultService ? " is-consult" : ""}">${priceText}</div>
+        ${descriptionHTML(srv.description)}
+        <div class="processing-service-actions">
+          <div class="processing-service-detail-chip" data-processing-service-summary="${srv.id}">
+            ${srv.hasDetail() ? "세부 옵션을 설정해주세요." : "추가 설정 없음"}
+          </div>
         </div>
-      </div>
+      </label>
     `;
-    container.appendChild(label);
+    container.appendChild(card);
   });
 
   Object.keys(PROCESSING_SERVICES).forEach((id) => updateProcessingServiceSummary(id));
@@ -1165,6 +1171,13 @@ function renderProcessingServiceCards() {
   });
 
   container.addEventListener("click", (e) => {
+    const guideBtn = e.target.closest("[data-measurement-guide]");
+    if (guideBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      openMeasurementGuideModal(guideBtn.dataset.measurementGuide || "");
+      return;
+    }
     const card = e.target.closest(".processing-service-card");
     if (!card) return;
     const checkbox = card.querySelector('input[name="processingService"]');
