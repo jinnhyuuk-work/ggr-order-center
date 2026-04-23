@@ -73,6 +73,8 @@ export function createSystemPreviewUploadHelpers({
   const captureSystemPreviewImageDataUrl = async () => {
     const previewEl = $("#systemPreviewFrame") || $("#systemPreviewBox");
     if (!previewEl) return "";
+    const previewBoxEl =
+      $("#systemPreviewBox") || (previewEl instanceof Element ? previewEl.closest(".system-preview") : null);
     const stepPreviewEl = $("#stepPreview");
     const shouldRevealHiddenStep = Boolean(stepPreviewEl?.classList.contains("hidden-step"));
     const originalStepStyle = stepPreviewEl?.getAttribute("style") || "";
@@ -80,6 +82,7 @@ export function createSystemPreviewUploadHelpers({
     const previousCaptureIndexOnlyMode = getPreviewCaptureIndexOnlyMode();
 
     try {
+      previewBoxEl?.classList.add("system-preview-capture-mode");
       setPreviewCaptureIndexOnlyMode(true);
       setPreviewInfoMode("module", { rerender: false });
       if (shouldRevealHiddenStep && stepPreviewEl) {
@@ -89,10 +92,10 @@ export function createSystemPreviewUploadHelpers({
         stepPreviewEl.style.top = "-10000px";
         stepPreviewEl.style.width = `${Math.min(Math.max((Number(window.innerWidth || 0) || 1200) - 48, 360), 980)}px`;
         stepPreviewEl.style.pointerEvents = "none";
-        await waitForNextFrame();
-        updatePreview();
-        await waitForNextFrame();
       }
+      await waitForNextFrame();
+      updatePreview();
+      await waitForNextFrame();
 
       const html2canvas = await ensureHtml2Canvas();
       const rect = previewEl.getBoundingClientRect();
@@ -130,6 +133,7 @@ export function createSystemPreviewUploadHelpers({
     } finally {
       setPreviewCaptureIndexOnlyMode(previousCaptureIndexOnlyMode);
       setPreviewInfoMode(previousInfoMode, { rerender: false });
+      previewBoxEl?.classList.remove("system-preview-capture-mode");
       if (shouldRevealHiddenStep && stepPreviewEl) {
         if (originalStepStyle) {
           stepPreviewEl.setAttribute("style", originalStepStyle);
