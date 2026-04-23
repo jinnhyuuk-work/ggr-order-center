@@ -2,7 +2,7 @@ import {
   buildTierCategoryPriceKey,
   matchTieredPriceCandidate,
   resolveTieredPriceRule,
-} from "./shared.js?v=20260423f-html";
+} from "./shared.js?v=20260423g-html";
 
 export function resolveSystemFurniturePriceCategoryKey(materialId = "") {
   const key = String(materialId || "").trim();

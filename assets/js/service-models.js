@@ -1,4 +1,4 @@
-import { resolveAmountFromPriceRule } from "./shared.js?v=20260423f-html";
+import { resolveAmountFromPriceRule } from "./shared.js?v=20260423g-html";
 
 export class BaseServiceModel {
   constructor(cfg) {

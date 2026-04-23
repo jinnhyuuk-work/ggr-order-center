@@ -12,7 +12,7 @@ import {
   normalizeQuantity,
   roundAmountByPolicy,
   applyPromotionDiscount,
-} from "./shared.js?v=20260423f-html";
+} from "./shared.js?v=20260423g-html";
 import { getEnabledPromotionRules } from "./data/promotion-data.js";
 import {
   resolveSystemTieredWidthPrice,

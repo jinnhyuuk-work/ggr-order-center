@@ -7,13 +7,15 @@ import {
   updateSendButtonEnabled as updateSendButtonEnabledShared,
   isConsentChecked,
   getEmailJSInstance,
+  getRuntimeHostBlockedReason,
+  shouldUseOrderApiTransport,
   initCollapsibleSections,
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   buildCustomerEmailSectionLines,
   submitOrderNotification,
   renderEstimateTable,
-} from "./shared.js?v=20260423f-html";
+} from "./shared.js?v=20260423g-html";
 import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
 
 const MEASUREMENT_BASE_AMOUNT = 50000;
@@ -357,6 +359,14 @@ async function sendQuote() {
     showInfoModal(customerError);
     return;
   }
+  const blockedReason = getRuntimeHostBlockedReason();
+  if (blockedReason) {
+    showInfoModal(blockedReason);
+    return;
+  }
+  const useOrderApiTransport = shouldUseOrderApiTransport();
+  const emailjsInstance = useOrderApiTransport ? null : getEmailJSInstance(showInfoModal);
+  if (!useOrderApiTransport && !emailjsInstance) return;
   sendingEmail = true;
   updateSendButtonEnabled();
 
@@ -390,7 +400,7 @@ async function sendQuote() {
       payload,
       customerPhotoUploads,
       customerPhotoErrors,
-      emailjsInstance: getEmailJSInstance(showInfoModal),
+      emailjsInstance,
       showInfoModal,
     });
     renderOrderCompleteDetails();

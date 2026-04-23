@@ -10,6 +10,7 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
     hasConsultLineItem,
     validateCustomerInfo,
     getEmailJSInstance,
+    shouldUseOrderApiTransport,
     updateSendButtonEnabled,
     setSendingEmail,
     previewUploadHelpers,
@@ -108,6 +109,12 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
       showInfoModal(customerError);
       return;
     }
+    const blockedReason =
+      typeof getRuntimeHostBlockedReason === "function" ? getRuntimeHostBlockedReason() : "";
+    if (blockedReason) {
+      showInfoModal(blockedReason);
+      return;
+    }
     setSendingEmail(true);
     updateSendButtonEnabled();
 
@@ -186,7 +193,7 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
         previewImageUrl,
         previewImagePublicId,
         previewImageError,
-        emailjsInstance: getEmailJSInstance(showInfoModal),
+        emailjsInstance: shouldUseOrderApiTransport() ? null : getEmailJSInstance(showInfoModal),
         showInfoModal,
       });
       showOrderComplete();

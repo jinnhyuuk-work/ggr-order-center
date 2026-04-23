@@ -117,6 +117,10 @@ export const ORDER_API_CONFIG = {
   ),
 };
 
+export function shouldUseOrderApiTransport() {
+  return Boolean(ORDER_API_CONFIG.endpoint);
+}
+
 export const CLOUDINARY_CONFIG = {
   enabled:
     typeof runtimeCloudinaryConfig.enabled === "boolean"
@@ -1515,6 +1519,7 @@ export function buildAddonLineItemDetail({
 
 export function initEmailJS() {
   if (typeof window === "undefined") return;
+  if (shouldUseOrderApiTransport()) return;
   if (window.emailjs && EMAILJS_CONFIG.publicKey) {
     window.emailjs.init({
       publicKey: EMAILJS_CONFIG.publicKey,
@@ -2299,6 +2304,9 @@ export function getEmailJSInstance(showInfoModal) {
   const blockedReason = getRuntimeHostBlockedReason();
   if (blockedReason) {
     showInfoModal?.(blockedReason);
+    return null;
+  }
+  if (shouldUseOrderApiTransport()) {
     return null;
   }
   if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.templateId || !EMAILJS_CONFIG.publicKey) {

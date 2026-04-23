@@ -10,6 +10,8 @@ import {
   updateSendButtonEnabled as updateSendButtonEnabledShared,
   isConsentChecked,
   getEmailJSInstance,
+  getRuntimeHostBlockedReason,
+  shouldUseOrderApiTransport,
   updateSizeErrors,
   renderEstimateTable,
   createProcessingServiceModalController,
@@ -73,7 +75,7 @@ import {
 } from "./data/fulfillment-policy-data.js";
 import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
 import { createMeasurementGuideModalController } from "./measurement-guide-core.js";
-import { buildServiceModels } from "./service-models.js?v=20260423f-html";
+import { buildServiceModels } from "./service-models.js?v=20260423g-html";
 
 const PROCESSING_SERVICES = buildServiceModels(TOP_PROCESSING_SERVICES);
 const OPTION_CATALOG = TOP_OPTIONS.reduce((acc, option) => {
@@ -2301,6 +2303,14 @@ async function sendQuote() {
     showInfoModal(customerError);
     return;
   }
+  const blockedReason = getRuntimeHostBlockedReason();
+  if (blockedReason) {
+    showInfoModal(blockedReason);
+    return;
+  }
+  const useOrderApiTransport = shouldUseOrderApiTransport();
+  const emailjsInstance = useOrderApiTransport ? null : getEmailJSInstance(showInfoModal);
+  if (!useOrderApiTransport && !emailjsInstance) return;
   sendingEmail = true;
   updateSendButtonEnabled();
 
@@ -2336,7 +2346,7 @@ async function sendQuote() {
       payload,
       customerPhotoUploads,
       customerPhotoErrors,
-      emailjsInstance: getEmailJSInstance(showInfoModal),
+      emailjsInstance,
       showInfoModal,
     });
     showOrderComplete();

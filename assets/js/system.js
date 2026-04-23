@@ -116,6 +116,7 @@ import {
   updateSendButtonEnabled as updateSendButtonEnabledShared,
   isConsentChecked,
   getEmailJSInstance,
+  shouldUseOrderApiTransport,
   renderEstimateTable,
   renderSelectedCard,
   buildMaterialVisualMarkup,
@@ -137,7 +138,7 @@ import {
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
   submitOrderNotification,
-} from "./shared.js?v=20260423f-html";
+} from "./shared.js?v=20260423g-html";
 import {
   normalizeFulfillmentType,
   isFulfillmentAddressReady,
@@ -5664,6 +5665,7 @@ const systemQuoteFlowHelpers = createSystemQuoteFlowHelpers({
   hasConsultLineItem,
   validateCustomerInfo,
   getEmailJSInstance,
+  shouldUseOrderApiTransport,
   updateSendButtonEnabled,
   setSendingEmail: (nextValue) => {
     sendingEmail = Boolean(nextValue);

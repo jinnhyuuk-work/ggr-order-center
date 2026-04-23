@@ -5,7 +5,7 @@ import {
   formatSelectedItemLabel,
   normalizeQuantity,
   roundAmountByPolicy,
-} from "./shared.js?v=20260423f-html";
+} from "./shared.js?v=20260423g-html";
 import { getEnabledPromotionRules } from "./data/promotion-data.js";
 
 export function createTopPricingHelpers({
