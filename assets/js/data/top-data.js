@@ -654,11 +654,6 @@ export const TOP_PRICING_POLICY = Object.freeze({
     l: 30000,
     rl: 30000,
   }),
-  categoryDescriptionByCategory: Object.freeze(
-    Object.fromEntries(
-      Object.entries(TOP_CATEGORY_META_BY_CATEGORY).map(([category, meta]) => [category, meta.description])
-    )
-  ),
 });
 
 export const TOP_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.TOP, {

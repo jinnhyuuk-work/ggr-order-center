@@ -118,12 +118,6 @@ export const BOARD_CATEGORY_META_BY_CATEGORY = Object.freeze({
   }),
 });
 
-export const MATERIAL_CATEGORIES_DESC = Object.freeze(
-  Object.fromEntries(
-    Object.entries(BOARD_CATEGORY_META_BY_CATEGORY).map(([category, meta]) => [category, meta.description])
-  )
-);
-
 export const BOARD_PROCESSING_SERVICES = {
   ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.BOARD, {
     includeAllCategories: true,

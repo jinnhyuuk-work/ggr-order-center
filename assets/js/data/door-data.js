@@ -1211,12 +1211,6 @@ export const DOOR_CATEGORY_META_BY_CATEGORY = Object.freeze({
   }),
 });
 
-export const DOOR_MATERIAL_CATEGORIES_DESC = Object.freeze(
-  Object.fromEntries(
-    Object.entries(DOOR_CATEGORY_META_BY_CATEGORY).map(([category, meta]) => [category, meta.description])
-  )
-);
-
 export const DOOR_PRICE_TIERS_BY_CATEGORY = {
   "LX SMR PET": [
     { maxWidth: 300, maxLength: 800, price: 18000 },

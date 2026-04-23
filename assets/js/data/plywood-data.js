@@ -594,14 +594,6 @@ export const PLYWOOD_CATEGORY_META_BY_CATEGORY = Object.freeze({
   }),
 });
 
-export const MATERIAL_CATEGORIES_DESC = Object.freeze(
-  Object.fromEntries(
-    Object.entries(PLYWOOD_CATEGORY_META_BY_CATEGORY).map(([category, meta]) => [category, meta.description])
-  )
-);
-
-export const PLYWOOD_MATERIAL_CATEGORIES_DESC = MATERIAL_CATEGORIES_DESC;
-
 export const PLYWOOD_PRICE_TIERS_BY_CATEGORY = {
   "LX SMR PET": [
     { maxWidth: 300, maxLength: 800, price: 18000 },

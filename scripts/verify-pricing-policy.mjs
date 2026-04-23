@@ -15,6 +15,7 @@ import {
 import { createPlywoodPricingHelpers } from "../assets/js/plywood-pricing.js";
 import {
   TOP_DIMENSION_LIMITS,
+  TOP_CATEGORY_META_BY_CATEGORY,
   TOP_OPTIONS,
   TOP_PRICING_POLICY,
   TOP_TYPES,
@@ -191,7 +192,7 @@ function run() {
   assert.equal(calcTopShapeAdditionalFee("rl"), 30000);
   assert.equal(calcTopShapeAdditionalFee("u"), 0);
   assert.equal(
-    TOP_PRICING_POLICY.categoryDescriptionByCategory["인조대리석"],
+    TOP_CATEGORY_META_BY_CATEGORY.인조대리석.description,
     `${TOP_PRICING_POLICY.standardThicknessMm}T 기준 · 깊이 ${TOP_PRICING_POLICY.standardWidthMaxMm}mm 이하 m당 147,000원`
   );
   const artificialTopType = TOP_TYPES.find((type) => type.category === "인조대리석");
