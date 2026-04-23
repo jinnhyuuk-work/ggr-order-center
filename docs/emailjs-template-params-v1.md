@@ -13,9 +13,6 @@
 - `customer_ggr_id`
 - `customer_phone_last4`
 - `customer_postcode`
-- `customer_name`
-- `customer_phone`
-- `customer_email`
 - `customer_address`
 - `customer_memo`
 - `customer_photo_count`
@@ -24,15 +21,21 @@
 - `order_lines`
 - `order_payload_json`
 
-## 3. 시스템 전용 파라미터
+## 3. 호환 파라미터
+아래 값들은 기존 템플릿 호환을 위해 남겨두지만, 새 템플릿에서는 사용하지 않는다.
+- `customer_name`
+- `customer_phone`
+- `customer_email`
+
+## 4. 시스템 전용 파라미터
 - `preview_image_url`
 - `preview_image_public_id`
 - `preview_image_error`
 
-## 4. 비시스템 페이지 기본값
+## 5. 비시스템 페이지 기본값
 - `top/board/door`에서는 `preview_image_*`를 `"-"`로 전달한다.
 
-## 5. 템플릿 본문 예시
+## 6. 템플릿 본문 예시
 ```text
 제목: {{subject}}
 접수시각: {{time}}
@@ -41,9 +44,6 @@
 GGR 아이디: {{customer_ggr_id}}
 휴대폰 뒤 4자리: {{customer_phone_last4}}
 우편번호: {{customer_postcode}}
-이름(호환): {{customer_name}}
-연락처(호환): {{customer_phone}}
-이메일(호환): {{customer_email}}
 주소: {{customer_address}}
 요청사항: {{customer_memo}}
 
@@ -69,7 +69,7 @@ Public ID: {{preview_image_public_id}}
 {{message}}
 ```
 
-## 6. 운영 권장사항
+## 7. 운영 권장사항
 - 템플릿에는 `{{message}}`와 `{{order_payload_json}}`를 모두 둔다.
 - `{{customer_photo_urls}}`는 줄바꿈 그대로 출력되도록 Plain Text 블록에 둔다.
 - `preview_image_*`는 비시스템 페이지에서 `"-"` 값이 들어오므로 조건부 없이 출력해도 안전하다.

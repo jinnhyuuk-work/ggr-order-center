@@ -1,0 +1,33 @@
+<div style="font-family: system-ui, Arial, sans-serif; font-size: 13px; color: #222; line-height: 1.5;">
+  <div style="font-size: 18px; font-weight: bold;">{{subject}}</div>
+  <div style="margin-top: 4px; color: #666;">접수시각: {{time}}</div>
+
+  <div style="margin-top: 12px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f7f8fa;">
+    <div><strong>GGR 아이디</strong> {{customer_ggr_id}}</div>
+    <div><strong>휴대폰 뒤 4자리</strong> {{customer_phone_last4}}</div>
+    <div><strong>우편번호</strong> {{customer_postcode}}</div>
+    <div><strong>주소</strong> {{customer_address}}</div>
+    <div><strong>요청사항</strong> {{customer_memo}}</div>
+  </div>
+
+  <div style="margin-top: 12px; font-weight: bold;">주문 상세</div>
+  <div style="margin-top: 6px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; white-space: pre-line;">{{message}}</div>
+
+  <div style="margin-top: 12px; font-weight: bold;">고객 사진</div>
+  <div style="margin-top: 6px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; white-space: pre-line;">
+    <div><strong>업로드 개수</strong> {{customer_photo_count}}</div>
+    <div style="margin-top: 6px;"><strong>업로드 URL</strong></div>
+    <div style="white-space: pre-line;">{{customer_photo_urls}}</div>
+    <div style="margin-top: 6px; color: #b42318; font-size: 12px;">업로드 오류: {{customer_photo_upload_error}}</div>
+  </div>
+
+  <div style="margin-top: 12px; font-weight: bold;">시스템 미리보기</div>
+  <div style="margin-top: 6px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; white-space: pre-line;">
+    <div><strong>이미지 URL</strong> {{preview_image_url}}</div>
+    <div><strong>Public ID</strong> {{preview_image_public_id}}</div>
+    <div style="margin-top: 6px; color: #b42318; font-size: 12px;">업로드 오류: {{preview_image_error}}</div>
+  </div>
+
+  <div style="margin-top: 12px; font-weight: bold;">Payload JSON</div>
+  <div style="margin-top: 6px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; white-space: pre-line; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;">{{order_payload_json}}</div>
+</div>
