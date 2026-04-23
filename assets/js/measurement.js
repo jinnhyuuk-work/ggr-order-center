@@ -281,7 +281,7 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
   lines.push(`예상 결제금액: ${formatWon(summary.grandTotal)}${summary.hasConsult ? " (출장 권역 상담 필요)" : ""}`);
 
   return {
-    subject: `[GGR 실측요청] ${customer.name || "고객명"} (${customer.phone || "연락처"})`,
+    subject: `[GGR 실측요청] ${customer.ggrId || "GGR아이디"}`,
     body: lines.join("\n"),
     lines,
   };
@@ -291,7 +291,7 @@ function buildOrderPayload({ customerPhotoUploads = [] } = {}) {
   const customer = getCustomerInfo();
   const summary = evaluateMeasurementSummary();
   return {
-    schemaVersion: "v3",
+    schemaVersion: "v4",
     pageKey: "measurement",
     createdAt: new Date().toISOString(),
     customer,
@@ -332,10 +332,9 @@ function renderOrderCompleteDetails() {
   container.innerHTML = `
     <div class="complete-section">
       <h4>고객 정보</h4>
-      <p>이름: ${escapeHtml(customer.name || "-")}</p>
-      <p>연락처: ${escapeHtml(customer.phone || "-")}</p>
-      <p>이메일: ${escapeHtml(customer.email || "-")}</p>
-      <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")} ${escapeHtml(customer.detailAddress || "")}</p>
+      <p>GGR 아이디: ${escapeHtml(customer.ggrId || "-")}</p>
+      <p>휴대폰 뒤 4자리: ${escapeHtml(customer.phoneLast4 || "-")}</p>
+      <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")}</p>
       <p>요청사항: ${escapeHtml(customer.memo || "-")}</p>
     </div>
     <div class="complete-section">
@@ -424,7 +423,7 @@ function resetFlow() {
   currentPhase = 1;
   orderCompleted = false;
   sendingEmail = false;
-  ["#customerName", "#customerPhone", "#customerEmail", "#customerMemo", "#sample6_postcode", "#sample6_address", "#sample6_detailAddress"].forEach((selector) => {
+  ["#customerGgrId", "#customerPhoneLast4", "#customerMemo", "#sample6_postcode", "#sample6_address"].forEach((selector) => {
     const el = $(selector);
     if (el) el.value = "";
   });
@@ -459,14 +458,14 @@ function bindEvents() {
       updateSendButtonEnabled();
     });
   });
-  ["#sample6_postcode", "#sample6_address", "#sample6_detailAddress"].forEach((selector) => {
+  ["#sample6_postcode", "#sample6_address"].forEach((selector) => {
     $(selector)?.addEventListener("input", () => {
       setMeasurementStepError("");
       renderSummary();
       updateSendButtonEnabled();
     });
   });
-  ["#customerName", "#customerPhone", "#customerEmail"].forEach((selector) => {
+  ["#customerGgrId", "#customerPhoneLast4"].forEach((selector) => {
     $(selector)?.addEventListener("input", updateSendButtonEnabled);
   });
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);

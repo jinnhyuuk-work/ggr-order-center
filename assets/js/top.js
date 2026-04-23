@@ -1432,10 +1432,9 @@ function renderOrderCompleteDetails() {
   container.innerHTML = `
     <div class="complete-section">
       <h4>고객 정보</h4>
-      <p>이름: ${escapeHtml(customer.name || "-")}</p>
-      <p>연락처: ${escapeHtml(customer.phone || "-")}</p>
-      <p>이메일: ${escapeHtml(customer.email || "-")}</p>
-      <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")} ${escapeHtml(customer.detailAddress || "")}</p>
+      <p>GGR 아이디: ${escapeHtml(customer.ggrId || "-")}</p>
+      <p>휴대폰 뒤 4자리: ${escapeHtml(customer.phoneLast4 || "-")}</p>
+      <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")}</p>
       <p>요청사항: ${escapeHtml(customer.memo || "-")}</p>
     </div>
     <div class="complete-section">
@@ -2233,7 +2232,7 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
   lines.push(`예상 결제금액: ${grandTotal.toLocaleString()}원${suffix}`);
   lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
 
-  const subject = `[GGR 상판 견적요청] ${customer.name || "고객명"} (${customer.phone || "연락처"})`;
+  const subject = `[GGR 상판 견적요청] ${customer.ggrId || "GGR아이디"}`;
   return {
     subject,
     body: lines.join("\n"),
@@ -2364,7 +2363,7 @@ function resetFlow() {
   orderCompleted = false;
   state.items = [];
   state.addons = [];
-  ["#customerName", "#customerPhone", "#customerEmail", "#customerMemo", "#sample6_postcode", "#sample6_address", "#sample6_detailAddress"].forEach((sel) => {
+  ["#customerGgrId", "#customerPhoneLast4", "#customerMemo", "#sample6_postcode", "#sample6_address"].forEach((sel) => {
     const el = document.querySelector(sel);
     if (el) el.value = "";
   });
@@ -2430,7 +2429,7 @@ function initTop() {
   });
   $("#kitchenShape")?.addEventListener("change", updateLength2Visibility);
   updateLength2Visibility();
-  ["#customerName", "#customerPhone", "#customerEmail"].forEach((sel) => {
+  ["#customerGgrId", "#customerPhoneLast4"].forEach((sel) => {
     const el = document.querySelector(sel);
     el?.addEventListener("input", updateSendButtonEnabled);
   });
@@ -2442,7 +2441,7 @@ function initTop() {
       renderSummary();
     });
   });
-  ["#sample6_postcode", "#sample6_address", "#sample6_detailAddress"].forEach((sel) => {
+  ["#sample6_postcode", "#sample6_address"].forEach((sel) => {
     const el = document.querySelector(sel);
     el?.addEventListener("input", () => {
       setFulfillmentStepError("");

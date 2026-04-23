@@ -9,6 +9,7 @@ PAGE_FILES=(
   "assets/js/board.js"
   "assets/js/plywood.js"
   "assets/js/door.js"
+  "assets/js/measurement.js"
 )
 
 SYSTEM_FLOW_FILE="assets/js/system-quote-flow.js"
@@ -22,6 +23,9 @@ SYSTEM_ENTRY_REQUIRED_TOKENS=(
 )
 
 COMMON_TEMPLATE_KEYS=(
+  "customer_ggr_id"
+  "customer_phone_last4"
+  "customer_postcode"
   "customer_photo_count"
   "customer_photo_urls"
   "customer_photo_upload_error"

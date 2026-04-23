@@ -76,10 +76,9 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
     container.innerHTML = `
       <div class="complete-section">
         <h4>고객 정보</h4>
-        <p>이름: ${escapeHtml(customer.name || "-")}</p>
-        <p>연락처: ${escapeHtml(customer.phone || "-")}</p>
-        <p>이메일: ${escapeHtml(customer.email || "-")}</p>
-        <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")} ${escapeHtml(customer.detailAddress || "")}</p>
+        <p>GGR 아이디: ${escapeHtml(customer.ggrId || "-")}</p>
+        <p>휴대폰 뒤 4자리: ${escapeHtml(customer.phoneLast4 || "-")}</p>
+        <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")}</p>
         <p>요청사항: ${escapeHtml(customer.memo || "-")}</p>
       </div>
       <div class="complete-section">

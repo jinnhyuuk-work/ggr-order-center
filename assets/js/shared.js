@@ -114,7 +114,7 @@ export const CLOUDINARY_CONFIG = {
   folder: String(runtimeCloudinaryConfig.folder || DEFAULT_CLOUDINARY_CONFIG.folder).trim(),
 };
 
-export const ORDER_PAYLOAD_SCHEMA_VERSION = "v3";
+export const ORDER_PAYLOAD_SCHEMA_VERSION = "v4";
 export const CONSULT_DISPLAY_PRICE_LABEL = "상담안내";
 export const CONSULT_EXCLUDED_SUFFIX = "(상담 필요 항목 미포함)";
 export const FULFILLMENT_REGION_LABELS = Object.freeze({
@@ -208,19 +208,17 @@ export function validateFulfillmentStepSelection({
 
 function normalizeCustomerPayload(customer = {}) {
   return {
-    name: String(customer?.name || "").trim(),
-    phone: String(customer?.phone || "").trim(),
-    email: String(customer?.email || "").trim(),
+    ggrId: String(customer?.ggrId || "").trim(),
+    phoneLast4: String(customer?.phoneLast4 || "").trim(),
     postcode: String(customer?.postcode || "").trim(),
     address: String(customer?.address || "").trim(),
-    detailAddress: String(customer?.detailAddress || "").trim(),
     memo: String(customer?.memo || "").trim(),
   };
 }
 
 export function buildCustomerAddressLine(customer = {}) {
   const normalized = normalizeCustomerPayload(customer);
-  return `${normalized.postcode || "-"} ${normalized.address || ""} ${normalized.detailAddress || ""}`.trim();
+  return `${normalized.postcode || "-"} ${normalized.address || ""}`.trim();
 }
 
 function normalizeCustomerPhotoPayload(customerPhotoUploads = []) {
@@ -252,9 +250,8 @@ export function buildCustomerEmailSectionLines({
 
   const lines = [];
   lines.push("=== 고객 정보 ===");
-  lines.push(`이름: ${normalizedCustomer.name || "-"}`);
-  lines.push(`연락처: ${normalizedCustomer.phone || "-"}`);
-  lines.push(`이메일: ${normalizedCustomer.email || "-"}`);
+  lines.push(`GGR 아이디: ${normalizedCustomer.ggrId || "-"}`);
+  lines.push(`휴대폰 뒤 4자리: ${normalizedCustomer.phoneLast4 || "-"}`);
   lines.push(`주소: ${buildCustomerAddressLine(normalizedCustomer)}`);
   lines.push(`요청사항: ${normalizedCustomer.memo || "-"}`);
   if (uploadedPhotos.length || uploadErrors.length) {
@@ -340,7 +337,7 @@ export function buildSendQuoteTemplateParams({
   extraParams = {},
 } = {}) {
   const normalizedCustomer = normalizeCustomerPayload(customer);
-  const addressLine = String(customerAddress || buildCustomerAddressLine(normalizedCustomer)).trim();
+  const resolvedAddressLine = String(customerAddress || buildCustomerAddressLine(normalizedCustomer)).trim();
   const orderLinesText = Array.isArray(orderLines) ? orderLines.join("\n") : String(orderLines || "");
   const payloadText = (() => {
     const customPayloadText = String(payloadJson || "");
@@ -353,16 +350,22 @@ export function buildSendQuoteTemplateParams({
   })();
   const photoUrlsText = buildCustomerPhotoUploadUrlsText(customerPhotoUploads);
   const photoErrorsText = formatCustomerPhotoUploadErrorsForTemplate(customerPhotoErrors);
+  const ggrId = normalizedCustomer.ggrId || "-";
+  const phoneLast4 = normalizedCustomer.phoneLast4 || "-";
+  const addressLine = resolvedAddressLine || "-";
 
   return {
-    name: normalizedCustomer.name || "-",
+    name: ggrId,
     time: String(orderTimeText || ""),
     subject: String(subject || ""),
     message: String(message || ""),
-    customer_name: normalizedCustomer.name,
-    customer_phone: normalizedCustomer.phone,
-    customer_email: normalizedCustomer.email,
-    customer_address: addressLine || "-",
+    customer_ggr_id: normalizedCustomer.ggrId || "",
+    customer_phone_last4: normalizedCustomer.phoneLast4 || "",
+    customer_postcode: normalizedCustomer.postcode || "",
+    customer_name: ggrId,
+    customer_phone: phoneLast4,
+    customer_email: "-",
+    customer_address: addressLine,
     customer_memo: normalizedCustomer.memo || "-",
     customer_photo_count: String(Array.isArray(customerPhotoUploads) ? customerPhotoUploads.length : 0),
     customer_photo_urls: photoUrlsText || "-",
@@ -1709,13 +1712,11 @@ export function bindModalCloseTriggers({ root = null, selector = "[data-modal-cl
 }
 
 export function getCustomerInfo({
-  nameSelector = "#customerName",
-  phoneSelector = "#customerPhone",
-  emailSelector = "#customerEmail",
+  ggrIdSelector = "#customerGgrId",
+  phoneLast4Selector = "#customerPhoneLast4",
   memoSelector = "#customerMemo",
   postcodeSelector = "#sample6_postcode",
   addressSelector = "#sample6_address",
-  detailAddressSelector = "#sample6_detailAddress",
 } = {}) {
   const addressEl = document.querySelector(addressSelector);
   const address = addressEl?.value.trim() || "";
@@ -1729,13 +1730,11 @@ export function getCustomerInfo({
   };
 
   return {
-    name: document.querySelector(nameSelector)?.value.trim() || "",
-    phone: document.querySelector(phoneSelector)?.value.trim() || "",
-    email: document.querySelector(emailSelector)?.value.trim() || "",
+    ggrId: document.querySelector(ggrIdSelector)?.value.trim() || "",
+    phoneLast4: document.querySelector(phoneLast4Selector)?.value.trim() || "",
     memo: document.querySelector(memoSelector)?.value.trim() || "",
     postcode: document.querySelector(postcodeSelector)?.value.trim() || "",
     address,
-    detailAddress: document.querySelector(detailAddressSelector)?.value.trim() || "",
     addressMeta,
     sido: addressMeta.sido,
     sigungu: addressMeta.sigungu,
@@ -2102,6 +2101,10 @@ function normalizePhoneDigits(value = "") {
   return String(value || "").replace(/\D/g, "");
 }
 
+function hasKoreanCharacters(value = "") {
+  return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(String(value || ""));
+}
+
 export function isValidCustomerEmail(email = "") {
   const text = String(email || "").trim();
   if (!text) return false;
@@ -2109,21 +2112,27 @@ export function isValidCustomerEmail(email = "") {
 }
 
 export function isValidCustomerPhone(phone = "") {
-  const digits = normalizePhoneDigits(phone);
-  return digits.length >= 9 && digits.length <= 11;
+  return isValidCustomerPhoneLast4(phone);
+}
+
+export function isValidCustomerPhoneLast4(phoneLast4 = "") {
+  const digits = normalizePhoneDigits(phoneLast4);
+  return digits.length === 4;
+}
+
+export function isValidCustomerGgrId(ggrId = "") {
+  const text = String(ggrId || "").trim();
+  return Boolean(text) && !hasKoreanCharacters(text);
 }
 
 export function validateCustomerInfo(customer) {
-  if (!customer?.name || !customer?.phone || !customer?.email) {
-    return "이름, 연락처, 이메일을 입력해주세요.";
+  if (!isValidCustomerGgrId(customer?.ggrId)) {
+    return "GGR 아이디를 입력해주세요. 한글은 사용할 수 없습니다.";
   }
-  if (!isValidCustomerPhone(customer.phone)) {
-    return "연락처 형식을 확인해주세요. 숫자 9~11자리로 입력해주세요.";
+  if (!isValidCustomerPhoneLast4(customer?.phoneLast4)) {
+    return "휴대폰 번호 뒤 4자리를 숫자 4자리로 입력해주세요.";
   }
-  if (!isValidCustomerEmail(customer.email)) {
-    return "이메일 형식을 확인해주세요.";
-  }
-  if (!customer?.postcode || !customer?.address || !customer?.detailAddress) {
+  if (!customer?.postcode || !customer?.address) {
     return "주소를 입력해주세요.";
   }
   return "";
@@ -2145,14 +2154,13 @@ export function updateSendButtonEnabled({
   const btn = document.querySelector(buttonSelector);
   if (!btn) return;
   const hasRequired = Boolean(
-    customer.name &&
-      customer.phone &&
-      customer.email &&
+    customer.ggrId &&
+      customer.phoneLast4 &&
       customer.postcode &&
-      customer.address &&
-      customer.detailAddress
+      customer.address
   );
-  const hasValidFormat = isValidCustomerPhone(customer.phone) && isValidCustomerEmail(customer.email);
+  const hasValidFormat =
+    isValidCustomerGgrId(customer.ggrId) && isValidCustomerPhoneLast4(customer.phoneLast4);
   btn.disabled = !(hasRequired && hasValidFormat && hasItems && onFinalStep && hasConsent) || sending;
 }
 

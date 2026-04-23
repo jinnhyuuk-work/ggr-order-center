@@ -237,7 +237,7 @@ export function bindSystemInitEvents({
     window.location.href = "index.html";
   });
   $("#privacyConsent")?.addEventListener("change", updateSendButtonEnabled);
-  ["#customerName", "#customerPhone", "#customerEmail"].forEach((sel) => {
+  ["#customerGgrId", "#customerPhoneLast4"].forEach((sel) => {
     $(sel)?.addEventListener("input", updateSendButtonEnabled);
   });
   document.querySelectorAll("[data-fulfillment-type]").forEach((btn) => {
@@ -248,7 +248,7 @@ export function bindSystemInitEvents({
       renderSummary();
     });
   });
-  ["#sample6_postcode", "#sample6_address", "#sample6_detailAddress"].forEach((sel) => {
+  ["#sample6_postcode", "#sample6_address"].forEach((sel) => {
     $(sel)?.addEventListener("input", () => {
       setFulfillmentStepError("");
       updateFulfillmentStepUI();

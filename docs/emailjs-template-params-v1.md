@@ -3,13 +3,16 @@
 ## 1. 대상
 - Service ID: `service_8iw3ovj`
 - Template ID: `template_iaid1xl`
-- 사용 페이지: `top`, `board`, `door`, `system`
+- 사용 페이지: `top`, `board`, `door`, `measurement`, `system`
 
 ## 2. 공통 파라미터
 - `name`
 - `time`
 - `subject`
 - `message`
+- `customer_ggr_id`
+- `customer_phone_last4`
+- `customer_postcode`
 - `customer_name`
 - `customer_phone`
 - `customer_email`
@@ -35,9 +38,12 @@
 접수시각: {{time}}
 
 [고객 기본]
-이름: {{customer_name}}
-연락처: {{customer_phone}}
-이메일: {{customer_email}}
+GGR 아이디: {{customer_ggr_id}}
+휴대폰 뒤 4자리: {{customer_phone_last4}}
+우편번호: {{customer_postcode}}
+이름(호환): {{customer_name}}
+연락처(호환): {{customer_phone}}
+이메일(호환): {{customer_email}}
 주소: {{customer_address}}
 요청사항: {{customer_memo}}
 

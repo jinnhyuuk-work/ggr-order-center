@@ -552,7 +552,7 @@ export function createSystemOrderHelpers({
     lines.push(`예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}`);
     lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
 
-    const subject = `[GGR 견적요청] ${customer.name || "고객명"} (${customer.phone || "연락처"})`;
+    const subject = `[GGR 견적요청] ${customer.ggrId || "GGR아이디"}`;
     return {
       subject,
       body: lines.join("\n"),

@@ -246,7 +246,6 @@
                 <button type="button" onclick="sample6_execDaumPostcode()">우편번호 찾기</button>
               </div>
               <input type="text" id="sample6_address" placeholder="주소" />
-              <input type="text" id="sample6_detailAddress" placeholder="상세주소" />
             </div>
           </div>
           <div class="input-tip" aria-live="polite">
@@ -286,23 +285,17 @@
         </section>
 
         <section id="step5" class="step-card hidden-step">
-          <h2>고객 정보를 입력해주세요.</h2>
+          <h2>주문자 정보를 입력해주세요.</h2>
           <div class="form-row">
-            <label for="customerName" class="required-field-label">이름</label>
+            <label for="customerGgrId" class="required-field-label">GGR 아이디</label>
             <div class="field-col">
-              <input type="text" id="customerName" placeholder="홍길동" required aria-required="true" />
+              <input type="text" id="customerGgrId" placeholder="ggr1234" required aria-required="true" autocomplete="username" />
             </div>
           </div>
           <div class="form-row">
-            <label for="customerPhone" class="required-field-label">연락처</label>
+            <label for="customerPhoneLast4" class="required-field-label">휴대폰 번호 뒤 4자리</label>
             <div class="field-col">
-              <input type="tel" id="customerPhone" placeholder="010-1234-5678" required aria-required="true" />
-            </div>
-          </div>
-          <div class="form-row">
-            <label for="customerEmail" class="required-field-label">이메일</label>
-            <div class="field-col">
-              <input type="email" id="customerEmail" placeholder="you@example.com" required aria-required="true" />
+              <input type="text" id="customerPhoneLast4" placeholder="1234" required aria-required="true" inputmode="numeric" maxlength="4" />
             </div>
           </div>
           <div class="form-row">
@@ -495,7 +488,7 @@
           addressEl.dataset.sigungu = data.sigungu || "";
           addressEl.dataset.bname = data.bname || "";
           addressEl.dataset.roadname = data.roadname || "";
-          document.getElementById("sample6_detailAddress").focus();
+          addressEl.focus();
         }
       }).open();
     }

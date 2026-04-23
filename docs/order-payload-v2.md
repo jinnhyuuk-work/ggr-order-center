@@ -1,6 +1,6 @@
 # Order Payload v2
 
-> Deprecated: 2026-04-20부터 신규 payload는 `v3`를 사용합니다. 최신 규격은 `docs/order-payload-v3.md`를 참고하세요.
+> Deprecated: 2026-04-23부터 신규 payload는 `v4`를 사용합니다. 최신 규격은 `docs/order-payload-v3.md`를 참고하세요.
 
 ## 1. 목적
 - 주문 전송 데이터의 키/타입/빈값 표현을 고정해 페이지별 구현 차이로 인한 운영 오류를 방지한다.

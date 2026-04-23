@@ -1,11 +1,11 @@
-# Order Payload v3
+# Order Payload v4
 
 ## 1. 목적
 - 주문 전송 데이터의 키/타입/빈값 표현을 고정해 페이지별 구현 차이로 인한 운영 오류를 방지한다.
 - 할인/프로모션 적용 전후 금액을 payload에서 추적 가능하게 한다.
 
 ## 2. 고정 규칙
-1. `schemaVersion`은 `v3`로 고정한다.
+1. `schemaVersion`은 `v4`로 고정한다.
 2. `pageKey`는 항상 포함한다. 값은 `board | door | top | system`.
 3. 배열 필드는 값이 없으면 `[]`로 보낸다.
 4. 객체 필드는 값이 없으면 `{}`로 보낸다.
@@ -18,16 +18,14 @@
 ## 3. 루트 스키마
 ```json
 {
-  "schemaVersion": "v3",
+  "schemaVersion": "v4",
   "pageKey": "board",
   "createdAt": "2026-04-20T12:00:00.000Z",
   "customer": {
-    "name": "",
-    "phone": "",
-    "email": "",
+    "ggrId": "",
+    "phoneLast4": "",
     "postcode": "",
     "address": "",
-    "detailAddress": "",
     "memo": ""
   },
   "customerPhotos": [],
@@ -110,11 +108,10 @@
 }
 ```
 
-## 7. v2 대비 변경점
-1. `schemaVersion`을 `v3`로 상향했다.
-2. `pageKey` 허용값에 `system`을 추가했다.
-3. `pricing`에 할인 추적 필드(`*BaseCost`, `*DiscountCost`, `materialDiscountRate`, `promotionRuleId`)를 추가했다.
-4. `system` 전용 구성비 확장 필드(`component*`, `furniture*`)의 할인 추적 필드를 추가했다.
+## 7. v3 대비 변경점
+1. `schemaVersion`을 `v4`로 상향했다.
+2. 고객 정보 스키마를 `ggrId`, `phoneLast4`, `postcode`, `address`, `memo`로 재정의했다.
+3. `detailAddress`를 제거했다.
 
 ## 8. 버전 정책
 - 필드 추가/의미 변경이 있으면 `schemaVersion`을 올린다. (`v4`, `v5` ...)
