@@ -61,7 +61,8 @@ import {
   normalizeFulfillmentType,
   isFulfillmentAddressReady,
   evaluateFulfillmentPolicy,
-  formatFulfillmentCostText,
+  formatFulfillmentServiceCostText,
+  formatFulfillmentTravelCostText,
   formatFulfillmentLine,
   formatFulfillmentCardPriceText,
 } from "./fulfillment-policy.js";
@@ -1366,7 +1367,11 @@ function renderSummary() {
   const grandEl = $("#grandTotal");
   if (grandEl) grandEl.textContent = `${grandTotal.toLocaleString()}${suffix}`;
   const fulfillmentCostEl = $("#fulfillmentCost");
-  if (fulfillmentCostEl) fulfillmentCostEl.textContent = formatFulfillmentCostText(summary.fulfillment);
+  if (fulfillmentCostEl) fulfillmentCostEl.textContent = formatFulfillmentServiceCostText(summary.fulfillment);
+  const fulfillmentTravelCostEl = $("#fulfillmentTravelCost");
+  if (fulfillmentTravelCostEl) {
+    fulfillmentTravelCostEl.textContent = formatFulfillmentTravelCostText(summary.fulfillment);
+  }
   const naverUnits = Math.ceil(grandTotal / 1000) || 0;
   const naverEl = $("#naverUnits");
   if (naverEl) naverEl.textContent = `${naverUnits}${suffix}`;

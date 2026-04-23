@@ -220,7 +220,8 @@
             addr = data.jibunAddress;
           }
 
-          document.getElementById('sample6_postcode').value = data.zonecode;
+          const postcodeEl = document.getElementById('sample6_postcode');
+          postcodeEl.value = data.zonecode;
           const addressEl = document.getElementById("sample6_address");
           addressEl.value = addr;
           addressEl.dataset.matchedAddress = addr;
@@ -229,6 +230,7 @@
           addressEl.dataset.bname = data.bname || "";
           addressEl.dataset.roadname = data.roadname || "";
           addressEl.focus();
+          postcodeEl.dispatchEvent(new Event("input", { bubbles: true }));
           addressEl.dispatchEvent(new Event("input", { bubbles: true }));
         }
       }).open();

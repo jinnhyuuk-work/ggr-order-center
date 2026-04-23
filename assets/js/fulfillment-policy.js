@@ -22,6 +22,8 @@ export function createFulfillmentResult({
   amount = 0,
   amountText = FULFILLMENT_POLICY_MESSAGES.noSelectionAmountText,
   isConsult = false,
+  serviceConsult = isConsult,
+  travelConsult = false,
   reason = "",
   installationBaseAmount = 0,
   travelFee = 0,
@@ -45,6 +47,8 @@ export function createFulfillmentResult({
     amount: normalizedAmount,
     amountText: String(amountText || ""),
     isConsult: Boolean(isConsult),
+    serviceConsult: Boolean(serviceConsult),
+    travelConsult: Boolean(travelConsult),
     reason: String(reason || ""),
     addressReady: Boolean(addressReady),
     installationBaseAmount: normalizedBaseAmount,
@@ -115,14 +119,16 @@ export function evaluateFulfillmentPolicy({
   }
 
   const baseAmount = Number(supportedResult.amount || 0);
-  const isConsult = Boolean(supportedResult.isConsult);
+  const serviceConsult = Boolean(supportedResult.isConsult);
+  let isConsult = serviceConsult;
   let amount = baseAmount;
   let amountText = supportedResult.amountText;
   let reason = supportedResult.reason;
   let travelFee = 0;
   let travelZone = { id: "", label: "" };
+  let travelConsult = false;
 
-  if (type === "installation" && !isConsult) {
+  if (type === "installation") {
     const travel = resolveInstallationTravelZoneByAddress(customer);
     if (!travel.isMatched) {
       return createFulfillmentResult({
@@ -132,7 +138,11 @@ export function evaluateFulfillmentPolicy({
         amount: 0,
         amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
         isConsult: true,
-        reason: travel.reason || FULFILLMENT_POLICY_MESSAGES.fallbackReason,
+        serviceConsult,
+        travelConsult: true,
+        reason: serviceConsult
+          ? reason || travel.reason || FULFILLMENT_POLICY_MESSAGES.fallbackReason
+          : travel.reason || FULFILLMENT_POLICY_MESSAGES.fallbackReason,
         installationBaseAmount: baseAmount,
       });
     }
@@ -141,8 +151,12 @@ export function evaluateFulfillmentPolicy({
       id: String(travel.zoneId || ""),
       label: String(travel.zoneLabel || ""),
     };
-    amount = baseAmount + travelFee;
-    amountText = `${Number(amount || 0).toLocaleString()}원`;
+    travelConsult = false;
+    amount = (serviceConsult ? 0 : baseAmount) + travelFee;
+    amountText = serviceConsult
+      ? FULFILLMENT_POLICY_MESSAGES.consultAmountText
+      : `${Number(amount || 0).toLocaleString()}원`;
+    isConsult = serviceConsult || travelConsult;
   }
 
   return createFulfillmentResult({
@@ -152,6 +166,8 @@ export function evaluateFulfillmentPolicy({
     amount,
     amountText,
     isConsult,
+    serviceConsult,
+    travelConsult,
     reason,
     installationBaseAmount: type === "installation" ? baseAmount : 0,
     travelFee,
@@ -165,6 +181,44 @@ export function formatFulfillmentCostText(fulfillment) {
   return `${Number(fulfillment.amount || 0).toLocaleString()}원`;
 }
 
+function formatAmount(value = 0) {
+  return `${Math.max(0, Number(value || 0)).toLocaleString()}원`;
+}
+
+function resolveInstallationServiceAmount(fulfillment) {
+  return Number(
+    fulfillment?.installationBaseAmount ||
+      Number(fulfillment?.amount || 0) - Number(fulfillment?.travelFee || 0)
+  );
+}
+
+export function formatFulfillmentServiceCostText(fulfillment) {
+  if (!fulfillment?.type) return "미선택";
+  if (fulfillment.amountText === "미선택") return "상품 담기 후 계산";
+  if (!fulfillment.addressReady) return "주소 입력 후 계산";
+  if (fulfillment.type !== "installation") {
+    if (fulfillment.isConsult) return "상담 안내";
+    return formatAmount(fulfillment.amount);
+  }
+
+  const serviceAmount = resolveInstallationServiceAmount(fulfillment);
+  if (Number.isFinite(serviceAmount) && serviceAmount > 0) return formatAmount(serviceAmount);
+  if (fulfillment.serviceConsult || fulfillment.isConsult) return "상담 안내";
+  return "0원";
+}
+
+export function formatFulfillmentTravelCostText(fulfillment) {
+  if (!fulfillment?.type) return "미선택";
+  if (fulfillment.type !== "installation") return "없음";
+  if (fulfillment.amountText === "미선택") return "상품 담기 후 계산";
+  if (!fulfillment.addressReady) return "주소 입력 후 계산";
+  if (fulfillment.travelConsult) return "상담 안내";
+  if (!fulfillment.travelZone?.id) return "상담 안내";
+
+  const travelFee = Number(fulfillment.travelFee || 0);
+  return travelFee > 0 ? formatAmount(travelFee) : "무료";
+}
+
 export function formatFulfillmentLine(fulfillment) {
   if (!fulfillment?.type) return "서비스 미선택";
   const regionText = fulfillment?.region?.label ? ` / ${fulfillment.region.label}` : "";
@@ -173,15 +227,13 @@ export function formatFulfillmentLine(fulfillment) {
       ? ` / ${fulfillment.travelZone.label}`
       : "";
   const typeText = fulfillment.typeLabel || "서비스";
-  if (fulfillment.isConsult) return `${typeText}${regionText}${zoneText} · 상담 안내`;
-  const amountText = `${Number(fulfillment.amount || 0).toLocaleString()}원`;
   if (fulfillment?.type === "installation") {
-    const travelText =
-      Number(fulfillment.travelFee || 0) > 0
-        ? ` (출장비 ${Number(fulfillment.travelFee || 0).toLocaleString()}원 포함)`
-        : " (출장비 무료)";
-    return `${typeText}${regionText}${zoneText} · ${amountText}${travelText}`;
+    const serviceText = formatFulfillmentServiceCostText(fulfillment);
+    const travelText = formatFulfillmentTravelCostText(fulfillment);
+    return `${typeText}${regionText}${zoneText} · 시공비 ${serviceText} + 출장비 ${travelText}`;
   }
+  if (fulfillment.isConsult) return `${typeText}${regionText}${zoneText} · 상담 안내`;
+  const amountText = formatAmount(fulfillment.amount);
   return `${typeText}${regionText}${zoneText} · ${amountText}`;
 }
 
@@ -189,15 +241,11 @@ export function formatFulfillmentCardPriceText(fulfillment) {
   if (!fulfillment?.type) return "선택 필요";
   if (fulfillment.amountText === "미선택") return "상품 담기 후 계산";
   if (!fulfillment.addressReady) return "주소 입력 후 계산";
-  if (fulfillment.isConsult) return "상담 안내";
   if (fulfillment.type === "installation") {
-    const baseAmount = Number(
-      fulfillment.installationBaseAmount || Number(fulfillment.amount || 0) - Number(fulfillment.travelFee || 0)
-    );
-    const travelFee = Number(fulfillment.travelFee || 0);
-    const baseText = `${Math.max(0, baseAmount).toLocaleString()}원`;
-    const travelText = travelFee > 0 ? `${travelFee.toLocaleString()}원` : "무료";
-    return `${baseText} + 출장비 ${travelText}`;
+    const serviceText = formatFulfillmentServiceCostText(fulfillment);
+    const travelText = formatFulfillmentTravelCostText(fulfillment);
+    return `${serviceText} + 출장비 ${travelText}`;
   }
-  return `${Number(fulfillment.amount || 0).toLocaleString()}원`;
+  if (fulfillment.isConsult) return "상담 안내";
+  return formatAmount(fulfillment.amount);
 }

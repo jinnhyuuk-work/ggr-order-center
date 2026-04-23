@@ -368,6 +368,7 @@
         <div class="summary">
           <p>예상 제품금액: <span id="productTotal">0</span> 원</p>
           <p>배송/시공 서비스: <span id="fulfillmentCost">미선택</span></p>
+          <p>출장비: <span id="fulfillmentTravelCost">미선택</span></p>
           <p>예상 결제금액: <span id="grandTotal">0</span> 원</p>
           <p>예상 네이버 결제수량: <span id="naverUnits">0</span> 개</p>
         </div>
@@ -486,7 +487,8 @@
             addr = data.jibunAddress;
           }
 
-          document.getElementById('sample6_postcode').value = data.zonecode;
+          const postcodeEl = document.getElementById('sample6_postcode');
+          postcodeEl.value = data.zonecode;
           const addressEl = document.getElementById("sample6_address");
           addressEl.value = addr;
           addressEl.dataset.matchedAddress = addr;
@@ -495,6 +497,8 @@
           addressEl.dataset.bname = data.bname || "";
           addressEl.dataset.roadname = data.roadname || "";
           addressEl.focus();
+          postcodeEl.dispatchEvent(new Event("input", { bubbles: true }));
+          addressEl.dispatchEvent(new Event("input", { bubbles: true }));
         }
       }).open();
     }

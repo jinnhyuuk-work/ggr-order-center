@@ -63,7 +63,8 @@ import {
   normalizeFulfillmentType,
   isFulfillmentAddressReady,
   evaluateFulfillmentPolicy,
-  formatFulfillmentCostText,
+  formatFulfillmentServiceCostText,
+  formatFulfillmentTravelCostText,
   formatFulfillmentLine,
   formatFulfillmentCardPriceText,
 } from "./fulfillment-policy.js";
@@ -1867,7 +1868,11 @@ function renderSummary() {
   if (materialsTotalEl) materialsTotalEl.textContent = summary.materialsTotal.toLocaleString();
   $("#grandTotal").textContent = `${summary.grandTotal.toLocaleString()}${suffix}`;
   const fulfillmentCostEl = $("#fulfillmentCost");
-  if (fulfillmentCostEl) fulfillmentCostEl.textContent = formatFulfillmentCostText(summary.fulfillment);
+  if (fulfillmentCostEl) fulfillmentCostEl.textContent = formatFulfillmentServiceCostText(summary.fulfillment);
+  const fulfillmentTravelCostEl = $("#fulfillmentTravelCost");
+  if (fulfillmentTravelCostEl) {
+    fulfillmentTravelCostEl.textContent = formatFulfillmentTravelCostText(summary.fulfillment);
+  }
 
   const naverUnits = Math.ceil(summary.grandTotal / 1000);
   $("#naverUnits").textContent = `${naverUnits}${suffix}`;
