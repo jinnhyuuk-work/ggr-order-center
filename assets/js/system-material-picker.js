@@ -1,3 +1,5 @@
+import { renderCategoryFeatureCapsules } from "./shared.js?v=20260423g-html";
+
 export function createSystemMaterialPickerHelpers(deps = {}) {
   const {
     $,
@@ -7,7 +9,7 @@ export function createSystemMaterialPickerHelpers(deps = {}) {
     renderSelectedCard,
     buildMaterialVisualMarkup,
     escapeHtml,
-    SYSTEM_MATERIAL_CATEGORIES_DESC = {},
+    SYSTEM_CATEGORY_META_BY_CATEGORY = {},
     SYSTEM_SHELF_TIER_PRICING = {},
     SYSTEM_POST_BAR_PRICING = {},
     MODULE_POST_BAR_HEIGHT_LIMITS = {},
@@ -26,9 +28,10 @@ export function createSystemMaterialPickerHelpers(deps = {}) {
     const descEl = $(picker.categoryDescId);
     const titleEl = $(picker.categoryNameId);
     if (!descEl || !titleEl) return;
-    const desc = SYSTEM_MATERIAL_CATEGORIES_DESC[picker.selectedCategory] || "";
+    const categoryMeta = SYSTEM_CATEGORY_META_BY_CATEGORY[picker.selectedCategory] || {};
     titleEl.textContent = picker.selectedCategory || "";
-    descEl.textContent = desc;
+    descEl.textContent = categoryMeta.description || "";
+    renderCategoryFeatureCapsules(descEl, categoryMeta.features);
   };
 
   const formatWon = (amount) => {
