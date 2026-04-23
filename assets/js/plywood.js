@@ -3,12 +3,12 @@ import {
   PLYWOOD_PROCESSING_SERVICES,
   PLYWOOD_OPTIONS,
   PLYWOOD_ADDON_ITEMS,
-  MATERIAL_CATEGORIES_DESC,
+  PLYWOOD_CATEGORY_META_BY_CATEGORY as CATEGORY_META_BY_CATEGORY,
   PLYWOOD_PRICE_TIERS_BY_CATEGORY,
   PLYWOOD_DIMENSION_LIMITS,
   getPlywoodOptionIdsForCategory,
   getPlywoodProcessingServiceIdsForCategory,
-} from "./data/plywood-data.js?v=20260422-html";
+} from "./data/plywood-data.js?v=20260423g-html";
 import { DOOR_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
   initEmailJS,
@@ -55,7 +55,8 @@ import {
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
-} from "./shared.js?v=20260423f-html";
+  renderCategoryFeatureCapsules,
+} from "./shared.js?v=20260423g-html";
 import { createPlywoodPricingHelpers } from "./plywood-pricing.js";
 import {
   normalizeFulfillmentType,
@@ -928,9 +929,10 @@ function renderCategoryDesc() {
   const descEl = document.getElementById("materialCategoryDesc");
   const titleEl = document.getElementById("materialCategoryName");
   if (!descEl || !titleEl) return;
-  const desc = MATERIAL_CATEGORIES_DESC[selectedCategory] || "";
+  const categoryMeta = CATEGORY_META_BY_CATEGORY[selectedCategory] || {};
   titleEl.textContent = selectedCategory || "";
-  descEl.textContent = desc;
+  descEl.textContent = categoryMeta.description || "";
+  renderCategoryFeatureCapsules(descEl, categoryMeta.features);
 }
 
 function renderAddonCards() {

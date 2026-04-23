@@ -42,7 +42,8 @@ import {
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
-} from "./shared.js?v=20260423f-html";
+  renderCategoryFeatureCapsules,
+} from "./shared.js?v=20260423g-html";
 import { createTopPricingHelpers } from "./top-pricing.js";
 import {
   TOP_MATERIALS,
@@ -52,6 +53,7 @@ import {
   TOP_ADDON_ITEMS,
   TOP_DIMENSION_LIMITS,
   TOP_PRICING_POLICY,
+  TOP_CATEGORY_META_BY_CATEGORY,
   getTopOptionIdsForCategory,
   getTopProcessingServiceIdsForCategory,
 } from "./data/top-data.js";
@@ -331,7 +333,6 @@ const TOP_CUSTOM_LENGTH_MAX = TOP_DIMENSION_LIMITS.maxLength;
 const TOP_STANDARD_WIDTH_MAX = TOP_PRICING_POLICY.standardWidthMaxMm;
 const TOP_BACK_HEIGHT_MAX = TOP_PRICING_POLICY.backShelfHeightMaxMm;
 const TOP_BACK_SHELF_SERVICE_ID = "top_back_shelf";
-const TOP_CATEGORY_DESC = TOP_PRICING_POLICY.categoryDescriptionByCategory;
 
 function getPreviewDimensions(width, length, maxPx = 160, minPx = 40) {
   if (!width || !length) return { w: 120, h: 120 };
@@ -980,8 +981,10 @@ function renderTopCategoryDesc() {
   const descEl = $("#topTypeCategoryDesc");
   const titleEl = $("#topTypeCategoryName");
   if (!descEl || !titleEl) return;
+  const categoryMeta = TOP_CATEGORY_META_BY_CATEGORY[selectedTopCategory] || {};
   titleEl.textContent = selectedTopCategory || "";
-  descEl.textContent = TOP_CATEGORY_DESC[selectedTopCategory] || "";
+  descEl.textContent = categoryMeta.description || "";
+  renderCategoryFeatureCapsules(descEl, categoryMeta.features);
 }
 
 function renderTopTypeCards() {

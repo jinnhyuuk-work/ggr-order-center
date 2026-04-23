@@ -1184,14 +1184,38 @@ const DOOR_MATERIALS_BASE = {
 
 export const DOOR_MATERIALS = filterAvailableMap(DOOR_MATERIALS_BASE, DOOR_PRODUCT_AVAILABILITY);
 
-export const DOOR_MATERIAL_CATEGORIES_DESC = {
-  "LX SMR PET": "LX SMR PET 마감재 카테고리입니다.",
-  "LX Texture PET": "LX Texture PET 마감재 카테고리입니다.",
-  "LX PET": "LX PET 마감재 카테고리입니다.",
-  "Hansol PET": "한솔 PET 마감재 카테고리입니다.",
-  "Original PET": "오리지널 PET 마감재 카테고리입니다.",
-  "LPM": "LPM 마감재 카테고리입니다.",
-};
+export const DOOR_CATEGORY_META_BY_CATEGORY = Object.freeze({
+  "LX SMR PET": Object.freeze({
+    description: "LX SMR PET 마감재 카테고리입니다.",
+    features: Object.freeze(["내스크래치", "내지문성", "무광 질감"]),
+  }),
+  "LX Texture PET": Object.freeze({
+    description: "LX Texture PET 마감재 카테고리입니다.",
+    features: Object.freeze(["텍스처 표면", "무광 질감"]),
+  }),
+  "LX PET": Object.freeze({
+    description: "LX PET 마감재 카테고리입니다.",
+    features: Object.freeze(["PET 마감", "무광/유광 선택"]),
+  }),
+  "Hansol PET": Object.freeze({
+    description: "한솔 PET 마감재 카테고리입니다.",
+    features: Object.freeze(["PET 마감", "컬러 선택"]),
+  }),
+  "Original PET": Object.freeze({
+    description: "오리지널 PET 마감재 카테고리입니다.",
+    features: Object.freeze(["PET 마감", "컬러 선택"]),
+  }),
+  LPM: Object.freeze({
+    description: "LPM 마감재 카테고리입니다.",
+    features: Object.freeze(["LPM 마감", "기본형"]),
+  }),
+});
+
+export const DOOR_MATERIAL_CATEGORIES_DESC = Object.freeze(
+  Object.fromEntries(
+    Object.entries(DOOR_CATEGORY_META_BY_CATEGORY).map(([category, meta]) => [category, meta.description])
+  )
+);
 
 export const DOOR_PRICE_TIERS_BY_CATEGORY = {
   "LX SMR PET": [

@@ -721,6 +721,32 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+export function renderCategoryFeatureCapsules(descEl, features = []) {
+  if (!descEl) return;
+  const parentEl = descEl.parentElement;
+  if (!parentEl) return;
+
+  let listEl = parentEl.querySelector(".material-category-features");
+  if (!listEl) {
+    listEl = document.createElement("div");
+    listEl.className = "material-category-features";
+    descEl.insertAdjacentElement("afterend", listEl);
+  }
+
+  const normalizedFeatures = Array.isArray(features)
+    ? features.map((feature) => String(feature || "").trim()).filter(Boolean)
+    : [];
+  listEl.innerHTML = "";
+  listEl.hidden = normalizedFeatures.length === 0;
+
+  normalizedFeatures.forEach((feature) => {
+    const capsule = document.createElement("span");
+    capsule.className = "material-category-feature";
+    capsule.textContent = feature;
+    listEl.appendChild(capsule);
+  });
+}
+
 function normalizeCompactText(value) {
   return String(value || "").replace(/\s+/g, "");
 }

@@ -3,7 +3,7 @@ import {
   DOOR_PROCESSING_SERVICES as DOOR_PROCESSING_SERVICE_DATA,
   DOOR_OPTIONS,
   DOOR_ADDON_ITEMS as BOARD_ADDON_ITEMS,
-  DOOR_MATERIAL_CATEGORIES_DESC as MATERIAL_CATEGORIES_DESC,
+  DOOR_CATEGORY_META_BY_CATEGORY as CATEGORY_META_BY_CATEGORY,
   DOOR_PRICE_TIERS_BY_CATEGORY,
   DOOR_PRICING_POLICY,
   DOOR_TYPE_OPTIONS,
@@ -57,7 +57,8 @@ import {
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
-} from "./shared.js?v=20260423f-html";
+  renderCategoryFeatureCapsules,
+} from "./shared.js?v=20260423g-html";
 import { createDoorPricingHelpers } from "./door-pricing.js";
 import {
   normalizeFulfillmentType,
@@ -1381,9 +1382,10 @@ function renderCategoryDesc() {
   const descEl = document.getElementById("materialCategoryDesc");
   const titleEl = document.getElementById("materialCategoryName");
   if (!descEl || !titleEl) return;
-  const desc = MATERIAL_CATEGORIES_DESC[selectedCategory] || "";
+  const categoryMeta = CATEGORY_META_BY_CATEGORY[selectedCategory] || {};
   titleEl.textContent = selectedCategory || "";
-  descEl.textContent = desc;
+  descEl.textContent = categoryMeta.description || "";
+  renderCategoryFeatureCapsules(descEl, categoryMeta.features);
 }
 
 function renderAddonCards() {

@@ -107,10 +107,22 @@ const BOARD_MATERIALS_BASE = {
 
 export const MATERIALS = filterAvailableMap(BOARD_MATERIALS_BASE, BOARD_PRODUCT_AVAILABILITY);
 
-export const MATERIAL_CATEGORIES_DESC = {
-  LPM: "LPM 마감재 카테고리입니다.",
-  PP: "PP 마감재 카테고리입니다.",
-};
+export const BOARD_CATEGORY_META_BY_CATEGORY = Object.freeze({
+  LPM: Object.freeze({
+    description: "LPM 마감재 카테고리입니다.",
+    features: Object.freeze(["LPM 마감", "기본형"]),
+  }),
+  PP: Object.freeze({
+    description: "PP 마감재 카테고리입니다.",
+    features: Object.freeze(["PP 마감", "합리적 구성"]),
+  }),
+});
+
+export const MATERIAL_CATEGORIES_DESC = Object.freeze(
+  Object.fromEntries(
+    Object.entries(BOARD_CATEGORY_META_BY_CATEGORY).map(([category, meta]) => [category, meta.description])
+  )
+);
 
 export const BOARD_PROCESSING_SERVICES = {
   ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.BOARD, {

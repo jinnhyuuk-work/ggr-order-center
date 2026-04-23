@@ -3,7 +3,7 @@ import {
   BOARD_PROCESSING_SERVICES,
   BOARD_OPTIONS,
   BOARD_ADDON_ITEMS,
-  MATERIAL_CATEGORIES_DESC,
+  BOARD_CATEGORY_META_BY_CATEGORY as CATEGORY_META_BY_CATEGORY,
   BOARD_DIMENSION_LIMITS,
   getBoardOptionIdsForCategory,
   getBoardProcessingServiceIdsForCategory,
@@ -54,7 +54,8 @@ import {
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
-} from "./shared.js?v=20260423f-html";
+  renderCategoryFeatureCapsules,
+} from "./shared.js?v=20260423g-html";
 import { createBoardPricingHelpers } from "./board-pricing.js";
 import {
   normalizeFulfillmentType,
@@ -833,9 +834,10 @@ function renderCategoryDesc() {
   const descEl = document.getElementById("materialCategoryDesc");
   const titleEl = document.getElementById("materialCategoryName");
   if (!descEl || !titleEl) return;
-  const desc = MATERIAL_CATEGORIES_DESC[selectedCategory] || "";
+  const categoryMeta = CATEGORY_META_BY_CATEGORY[selectedCategory] || {};
   titleEl.textContent = selectedCategory || "";
-  descEl.textContent = desc;
+  descEl.textContent = categoryMeta.description || "";
+  renderCategoryFeatureCapsules(descEl, categoryMeta.features);
 }
 
 function renderAddonCards() {

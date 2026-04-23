@@ -631,6 +631,17 @@ export const TOP_MATERIALS = filterAvailableMap(
 
 export const TOP_TYPES = Object.values(TOP_MATERIALS);
 
+export const TOP_CATEGORY_META_BY_CATEGORY = Object.freeze({
+  인조대리석: Object.freeze({
+    description: "12T 기준 · 깊이 760mm 이하 m당 147,000원",
+    features: Object.freeze(["가공 용이", "일체감 있는 마감"]),
+  }),
+  하이막스: Object.freeze({
+    description: "12T 기준 · 깊이 760mm 이하 m당 210,000원",
+    features: Object.freeze(["프리미엄 상판", "일체감 있는 마감"]),
+  }),
+});
+
 export const TOP_PRICING_POLICY = Object.freeze({
   standardThicknessMm: 12,
   standardWidthMaxMm: 760,
@@ -643,10 +654,11 @@ export const TOP_PRICING_POLICY = Object.freeze({
     l: 30000,
     rl: 30000,
   }),
-  categoryDescriptionByCategory: Object.freeze({
-    인조대리석: "12T 기준 · 깊이 760mm 이하 m당 147,000원",
-    하이막스: "12T 기준 · 깊이 760mm 이하 m당 210,000원",
-  }),
+  categoryDescriptionByCategory: Object.freeze(
+    Object.fromEntries(
+      Object.entries(TOP_CATEGORY_META_BY_CATEGORY).map(([category, meta]) => [category, meta.description])
+    )
+  ),
 });
 
 export const TOP_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.TOP, {
