@@ -1,4 +1,4 @@
-import { bindModalCloseTriggers, bindModalOpenTriggers } from "./shared.js";
+import { bindModalCloseTriggers, bindModalOpenTriggers } from "./shared.js?v=20260423f-html";
 
 export function bindSystemInitEvents({
   $,

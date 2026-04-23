@@ -53,7 +53,7 @@ import {
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
-} from "./shared.js";
+} from "./shared.js?v=20260423f-html";
 import { createPlywoodPricingHelpers } from "./plywood-pricing.js";
 import {
   normalizeFulfillmentType,
@@ -70,7 +70,7 @@ import {
 } from "./data/fulfillment-policy-data.js";
 import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
 import { createMeasurementGuideModalController } from "./measurement-guide-core.js";
-import { buildServiceModels } from "./service-models.js";
+import { buildServiceModels } from "./service-models.js?v=20260423f-html";
 
 const PROCESSING_SERVICES = buildServiceModels(PLYWOOD_PROCESSING_SERVICES);
 const OPTION_CATALOG = PLYWOOD_OPTIONS.reduce((acc, option) => {
@@ -371,14 +371,14 @@ function createDefaultPlywoodHingeDetail() {
   const length = getCurrentPlywoodLengthInputValue();
   const count = resolvePlywoodHingeCountByLength(length);
   if (!count) {
-    return { side: "right", doorType: "indoor", hingeIncluded: true, sideThickness: 15, holes: [], note: "" };
+    return { side: "right", doorType: "", hingeIncluded: true, sideThickness: "", holes: [], note: "" };
   }
   const positions = buildPlywoodHingeAutoPositions(length, count);
   return {
     side: "right",
-    doorType: "indoor",
+    doorType: "",
     hingeIncluded: true,
-    sideThickness: 15,
+    sideThickness: "",
     holes: positions.map((verticalDistance) => ({
       edge: "right",
       distance: PLYWOOD_HINGE_DEFAULT_EDGE_DISTANCE,
@@ -570,6 +570,9 @@ function getDefaultProcessingServiceDetail(serviceId) {
   const srv = PROCESSING_SERVICES[serviceId];
   if (!srv) return { note: "" };
   if (serviceId === PLYWOOD_HINGE_SERVICE_ID) return createDefaultPlywoodHingeDetail();
+  if (srv.detailMode === "side-hinge-list") {
+    return cloneProcessingServiceDetails(srv.defaultDetail ? srv.defaultDetail() : { holes: [], note: "" });
+  }
   if (srv.hasDetail()) return { holes: [], note: "" };
   const detail = srv.defaultDetail ? srv.defaultDetail() : { note: "" };
   return cloneProcessingServiceDetails(detail);

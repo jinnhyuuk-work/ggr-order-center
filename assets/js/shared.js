@@ -2503,8 +2503,16 @@ export function createProcessingServiceModalController({
   };
 
   const resolveInitialDraft = (serviceId) => {
+    const srv = processingServices?.[serviceId];
     const savedDetail = getProcessingServiceDetails()?.[serviceId];
+    const savedHoles = Array.isArray(savedDetail?.holes) ? savedDetail.holes.filter(Boolean) : [];
+    const isSideHingeList = srv?.detailMode === "side-hinge-list";
     if (savedDetail && Object.keys(savedDetail).length > 0) {
+      if (isSideHingeList && savedHoles.length === 0) {
+        return cloneProcessingServiceDetails?.(getDefaultProcessingServiceDetail?.(serviceId)) ||
+          getDefaultProcessingServiceDetail?.(serviceId) ||
+          { note: "" };
+      }
       return cloneProcessingServiceDetails?.(savedDetail) || savedDetail;
     }
     return (
@@ -2550,10 +2558,10 @@ export function createProcessingServiceModalController({
                     (option) => {
                       const optionValue = String(option.value ?? "");
                       const isSelected = String(currentSideThickness ?? "") === optionValue;
-                      const isPlaceholder = Boolean(option.placeholder);
+                      const shouldSelect = option.placeholder ? !String(currentSideThickness ?? "") : isSelected;
                       return `<option value="${optionValue}"${
-                        isSelected ? " selected" : ""
-                      }${isPlaceholder ? " disabled hidden" : ""}>${escapeHtml(option.label)}</option>`;
+                        shouldSelect ? " selected" : ""
+                      }>${escapeHtml(option.label)}</option>`;
                     }
                   ).join("")}
                 </select>
@@ -2572,10 +2580,10 @@ export function createProcessingServiceModalController({
                     (option) => {
                       const optionValue = String(option.value ?? "");
                       const isSelected = String(currentDoorType ?? "") === optionValue;
-                      const isPlaceholder = Boolean(option.placeholder);
+                      const shouldSelect = option.placeholder ? !String(currentDoorType ?? "") : isSelected;
                       return `<option value="${optionValue}"${
-                        isSelected ? " selected" : ""
-                      }${isPlaceholder ? " disabled hidden" : ""}>${escapeHtml(option.label)}</option>`;
+                        shouldSelect ? " selected" : ""
+                      }>${escapeHtml(option.label)}</option>`;
                     }
                   ).join("")}
                 </select>
@@ -2736,6 +2744,16 @@ export function createProcessingServiceModalController({
       </div>
     `;
 
+    const doorTypeSelect = body.querySelector("[data-processing-service-door-type]");
+    if (doorTypeSelect) {
+      doorTypeSelect.value = currentDoorType || "";
+    }
+
+    const sideThicknessSelect = body.querySelector("[data-processing-service-side-thickness]");
+    if (sideThicknessSelect) {
+      sideThicknessSelect.value = currentSideThickness === "" ? "" : String(currentSideThickness);
+    }
+
     body.querySelectorAll("[data-field]").forEach((input) => {
       input.addEventListener("input", (e) => {
         const idx = Number(e.target.dataset.index);
@@ -2771,10 +2789,14 @@ export function createProcessingServiceModalController({
       });
     });
 
-    const doorTypeSelect = body.querySelector("[data-processing-service-door-type]");
     if (doorTypeSelect) {
       doorTypeSelect.addEventListener("change", (e) => {
-        draft.doorType = e.currentTarget.value === "outdoor" ? "outdoor" : "indoor";
+        draft.doorType =
+          e.currentTarget.value === "outdoor"
+            ? "outdoor"
+            : e.currentTarget.value === "indoor"
+              ? "indoor"
+              : "";
         renderHoleModal(serviceId);
       });
     }
@@ -2787,10 +2809,10 @@ export function createProcessingServiceModalController({
       });
     });
 
-    const sideThicknessSelect = body.querySelector("[data-processing-service-side-thickness]");
     if (sideThicknessSelect) {
       sideThicknessSelect.addEventListener("change", (e) => {
-        draft.sideThickness = Number(e.currentTarget.value) === 18 ? 18 : 15;
+        const value = Number(e.currentTarget.value);
+        draft.sideThickness = value === 18 ? 18 : value === 15 ? 15 : "";
         renderHoleModal(serviceId);
       });
     }

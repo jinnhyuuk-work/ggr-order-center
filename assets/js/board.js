@@ -52,7 +52,7 @@ import {
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
   buildSendQuoteTemplateParams,
-} from "./shared.js";
+} from "./shared.js?v=20260423f-html";
 import { createBoardPricingHelpers } from "./board-pricing.js";
 import {
   normalizeFulfillmentType,
@@ -69,7 +69,7 @@ import {
 } from "./data/fulfillment-policy-data.js";
 import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
 import { createMeasurementGuideModalController } from "./measurement-guide-core.js";
-import { buildServiceModels } from "./service-models.js";
+import { buildServiceModels } from "./service-models.js?v=20260423f-html";
 
 const PROCESSING_SERVICES = buildServiceModels(BOARD_PROCESSING_SERVICES);
 const OPTION_CATALOG = BOARD_OPTIONS.reduce((acc, option) => {
@@ -483,6 +483,9 @@ function cloneProcessingServiceDetails(details) {
 function getDefaultProcessingServiceDetail(serviceId) {
   const srv = PROCESSING_SERVICES[serviceId];
   if (!srv) return { note: "" };
+  if (srv.detailMode === "side-hinge-list") {
+    return cloneProcessingServiceDetails(srv.defaultDetail ? srv.defaultDetail() : { holes: [], note: "" });
+  }
   if (srv.hasDetail()) return { holes: [], note: "" };
   const detail = srv.defaultDetail ? srv.defaultDetail() : { note: "" };
   return cloneProcessingServiceDetails(detail);
