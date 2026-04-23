@@ -634,11 +634,11 @@ export const TOP_TYPES = Object.values(TOP_MATERIALS);
 export const TOP_CATEGORY_META_BY_CATEGORY = Object.freeze({
   인조대리석: Object.freeze({
     description: "12T 기준 · 깊이 760mm 이하 m당 147,000원",
-    features: Object.freeze(["가공 용이", "일체감 있는 마감"]),
+    features: Object.freeze(["일체감 있는 마감"]),
   }),
   하이막스: Object.freeze({
     description: "12T 기준 · 깊이 760mm 이하 m당 210,000원",
-    features: Object.freeze(["프리미엄 상판", "일체감 있는 마감"]),
+    features: Object.freeze(["일체감 있는 마감", "내스크래치"]),
   }),
 });
 

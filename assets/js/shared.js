@@ -741,7 +741,7 @@ export function renderCategoryFeatureCapsules(descEl, features = []) {
 
   normalizedFeatures.forEach((feature) => {
     const capsule = document.createElement("span");
-    capsule.className = "material-category-feature";
+    capsule.className = "ui-badge ui-badge--feature material-category-feature";
     capsule.textContent = feature;
     listEl.appendChild(capsule);
   });

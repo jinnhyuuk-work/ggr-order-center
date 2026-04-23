@@ -140,15 +140,15 @@ export const SYSTEM_COLUMN_PRODUCT_AVAILABILITY = PRODUCT_AVAILABILITY_POLICY.sy
 export const SYSTEM_CATEGORY_META_BY_CATEGORY = Object.freeze({
   LPM: Object.freeze({
     description: "LPM 마감재 카테고리입니다.",
-    features: Object.freeze(["기본형", "합리적 구성"]),
+    features: Object.freeze([]),
   }),
   PP: Object.freeze({
     description: "PP 마감재 카테고리입니다.",
-    features: Object.freeze(["가벼운 무게", "합리적 구성"]),
+    features: Object.freeze([]),
   }),
   포스트바: Object.freeze({
     description: "포스트바 컬러 카테고리입니다.",
-    features: Object.freeze(["컬러 선택", "포스트바 전용"]),
+    features: Object.freeze([]),
   }),
 });
 

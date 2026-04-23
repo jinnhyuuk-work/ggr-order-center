@@ -1187,7 +1187,7 @@ export const DOOR_MATERIALS = filterAvailableMap(DOOR_MATERIALS_BASE, DOOR_PRODU
 export const DOOR_CATEGORY_META_BY_CATEGORY = Object.freeze({
   "LX SMR PET": Object.freeze({
     description: "LX SMR PET 마감재 카테고리입니다.",
-    features: Object.freeze(["내스크래치", "내지문성", "무광 질감"]),
+    features: Object.freeze(["E0", "내지문성", "내스크래치", "내오염성", "안티펜마커"]),
   }),
   "LX Texture PET": Object.freeze({
     description: "LX Texture PET 마감재 카테고리입니다.",

@@ -513,23 +513,36 @@ section {
   font-size: var(--font-size-md);
 }
 
-.selection-block-badge {
+.ui-badge {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 4px 8px;
   border-radius: 999px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--color-text-sub);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-faint);
+  border: 1px solid;
+  font-weight: var(--fw-bold);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-.selection-block-badge--input {
+.ui-badge--selection {
+  min-height: 22px;
+  padding: 3px 8px;
+  font-size: var(--font-size-xs);
+  justify-content: center;
+  color: var(--color-text-sub);
+  background: var(--color-surface);
+  border-color: var(--color-border-faint);
+}
+
+.ui-badge--selection.ui-badge--input {
   color: var(--color-status-info-text);
   background: var(--color-status-info-bg);
   border-color: var(--color-status-info-border);
+}
+
+.ui-badge--size {
+  min-height: 24px;
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
 }
 
 .selection-block-hint {
@@ -550,8 +563,8 @@ section {
   color: var(--color-text-muted);
 }
 
-.selection-block.is-disabled .selection-block-badge,
-.selection-block.is-disabled .selection-block-badge--input {
+.selection-block.is-disabled .ui-badge--selection,
+.selection-block.is-disabled .ui-badge--selection.ui-badge--input {
   color: var(--color-text-muted);
   background: var(--color-surface);
   border-color: var(--color-border-faint);
@@ -730,20 +743,16 @@ section {
   margin: 0 0 10px;
 }
 
-.material-category-feature {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
+.ui-badge--feature {
+  min-height: 22px;
   border: 1px solid rgba(46, 125, 50, 0.34);
-  border-radius: 999px;
-  padding: 2px 8px;
+  padding: 3px 8px;
   background: rgba(46, 125, 50, 0.08);
   color: #2e7d32;
-  font-size: 11px;
-  font-weight: var(--fw-bold);
-  line-height: 1.2;
-  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  justify-content: center;
 }
+
 
 .material-category-header {
   margin-bottom: 8px;
