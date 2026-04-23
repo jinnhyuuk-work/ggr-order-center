@@ -854,6 +854,16 @@ function updateSelectedTopTypeCard() {
   });
 }
 
+function syncAdditionalSelectionLockState(isLocked) {
+  document.querySelectorAll("#step3Additional .selection-block").forEach((section) => {
+    section.classList.toggle("is-disabled", isLocked);
+    section.setAttribute("aria-disabled", String(isLocked));
+    section.querySelectorAll("input, button, select, textarea").forEach((control) => {
+      control.disabled = isLocked;
+    });
+  });
+}
+
 function updateTopThicknessOptions(typeId) {
   const select = $("#topThickness");
   if (!select) return;
@@ -1441,10 +1451,11 @@ function getBackHeightGuidanceText(width) {
 
 function updateAddButtonState() {
   const btn = $("#calcTopBtn");
-  if (!btn) return;
   const input = readTopInputs();
   const err = validateTopInputs(input);
-  btn.disabled = Boolean(err);
+  const isLocked = Boolean(err);
+  if (btn) btn.disabled = isLocked;
+  syncAdditionalSelectionLockState(isLocked);
 }
 
 function refreshTopEstimate() {

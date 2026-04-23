@@ -538,6 +538,37 @@ section {
   color: var(--color-text-sub);
 }
 
+.selection-block.is-disabled {
+  border-color: var(--color-border-faint);
+  background: var(--color-surface-muted);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.selection-block.is-disabled .selection-block-head h3,
+.selection-block.is-disabled .selection-block-hint {
+  color: var(--color-text-muted);
+}
+
+.selection-block.is-disabled .selection-block-badge,
+.selection-block.is-disabled .selection-block-badge--input {
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border-color: var(--color-border-faint);
+}
+
+.selection-block.is-disabled .card-base {
+  opacity: 0.7;
+  filter: grayscale(1);
+  box-shadow: none;
+}
+
+.selection-block.is-disabled .card-base .section-help-btn {
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border-color: var(--color-border-faint);
+}
+
 .selection-block .grid-cards {
   margin-top: 10px;
 }

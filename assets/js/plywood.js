@@ -989,12 +989,23 @@ function syncAddonSelectionFromItems() {
   });
 }
 
+function syncAdditionalSelectionLockState(isLocked) {
+  document.querySelectorAll("#step3Additional .selection-block").forEach((section) => {
+    section.classList.toggle("is-disabled", isLocked);
+    section.setAttribute("aria-disabled", String(isLocked));
+    section.querySelectorAll("input, button, select, textarea").forEach((control) => {
+      control.disabled = isLocked;
+    });
+  });
+}
+
 function updateAddItemState() {
   const btn = $("#addItemBtn");
-  if (!btn) return;
   const input = readCurrentInputs();
   const err = validateInputs(input);
-  btn.disabled = Boolean(err);
+  const isLocked = Boolean(err);
+  if (btn) btn.disabled = isLocked;
+  syncAdditionalSelectionLockState(isLocked);
 }
 
 function readCurrentInputs() {
