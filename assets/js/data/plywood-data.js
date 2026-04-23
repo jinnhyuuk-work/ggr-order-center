@@ -7,8 +7,14 @@ import {
 } from "./addon-data.js";
 import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constraints.js";
 import { ORDER_PAGE_KEYS } from "./additional-selection-policy.js";
-import { getAdditionalOptionsForPage } from "./additional-options-data.js";
-import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
+import {
+  getAdditionalOptionIdsForPage,
+  getAdditionalOptionsForPage,
+} from "./additional-options-data.js";
+import {
+  getAdditionalProcessingServiceIdsForPage,
+  getAdditionalProcessingServicesForPage,
+} from "./additional-processing-data.js";
 import { filterAvailableMap } from "./product-availability.js";
 import { PRODUCT_AVAILABILITY_POLICY } from "./product-availability-policy.js";
 
@@ -618,10 +624,20 @@ export const MATERIALS = filterAvailableMap(PLYWOOD_MATERIALS_BASE, PLYWOOD_PROD
 export const PLYWOOD_PRICING_POLICY = Object.freeze({});
 
 export const PLYWOOD_PROCESSING_SERVICES = {
-  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.PLYWOOD),
+  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.PLYWOOD, {
+    includeAllCategories: true,
+  }),
 };
 
-export const PLYWOOD_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.PLYWOOD);
+export const PLYWOOD_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.PLYWOOD, {
+  includeAllCategories: true,
+});
+
+export const getPlywoodOptionIdsForCategory = (categoryKey = "") =>
+  getAdditionalOptionIdsForPage(ORDER_PAGE_KEYS.PLYWOOD, { categoryKey });
+
+export const getPlywoodProcessingServiceIdsForCategory = (categoryKey = "") =>
+  getAdditionalProcessingServiceIdsForPage(ORDER_PAGE_KEYS.PLYWOOD, { categoryKey });
 
 export const PLYWOOD_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
 

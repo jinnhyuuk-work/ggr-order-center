@@ -52,6 +52,8 @@ import {
   TOP_ADDON_ITEMS,
   TOP_DIMENSION_LIMITS,
   TOP_PRICING_POLICY,
+  getTopOptionIdsForCategory,
+  getTopProcessingServiceIdsForCategory,
 } from "./data/top-data.js";
 import { TOP_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
@@ -138,6 +140,29 @@ const HAS_PROCESSING_SELECTIONS = Object.keys(PROCESSING_SERVICES).length > 0;
 const HAS_ADDITIONAL_SELECTIONS = HAS_OPTION_SELECTIONS || HAS_PROCESSING_SELECTIONS;
 const SWATCH_FALLBACK = UI_COLOR_FALLBACKS.swatch;
 const SWATCH_MUTED_FALLBACK = UI_COLOR_FALLBACKS.swatchMuted;
+
+function getCurrentTopCategory() {
+  const selectedType = TOP_TYPES.find((type) => type.id === selectedTopType);
+  return String(selectedType?.category || selectedTopCategory || "").trim();
+}
+
+function getActiveOptionIdSet() {
+  return new Set(getTopOptionIdsForCategory(getCurrentTopCategory()));
+}
+
+function getActiveProcessingServiceIdSet() {
+  return new Set(getTopProcessingServiceIdsForCategory(getCurrentTopCategory()));
+}
+
+function getActiveOptions() {
+  const activeIds = getActiveOptionIdSet();
+  return TOP_OPTIONS.filter((option) => activeIds.has(option.id));
+}
+
+function getActiveProcessingServices() {
+  const activeIds = getActiveProcessingServiceIdSet();
+  return Object.values(PROCESSING_SERVICES).filter((service) => activeIds.has(service.id));
+}
 
 function getFulfillmentType() {
   return normalizeFulfillmentType(String($("#fulfillmentType")?.value || ""));
@@ -282,8 +307,10 @@ function syncProcessingSectionVisibility() {
   const container = $("#topProcessingServiceCards");
   if (!container) return;
   const section = container.closest(".selection-block--input");
-  if (section) section.classList.toggle("hidden-step", !HAS_PROCESSING_SELECTIONS);
-  if (!HAS_PROCESSING_SELECTIONS) {
+  const hasActiveProcessingSelections =
+    container.querySelectorAll('input[name="processingService"]').length > 0;
+  if (section) section.classList.toggle("hidden-step", !hasActiveProcessingSelections);
+  if (!hasActiveProcessingSelections) {
     updatePreviewSummary(previewSummaryConfig);
     return;
   }
@@ -754,12 +781,13 @@ function readTopInputs() {
   const length2 = Number($("#topLength2")?.value || 0);
   const length3 = Number($("#topLength3")?.value || 0);
   const thickness = Number($("#topThickness")?.value || 0);
-  const options = Array.from(document.querySelectorAll("#topOptionCards input:checked")).map(
-    (el) => el.value
-  );
-  const services = Array.from(document.querySelectorAll("#topProcessingServiceCards input:checked")).map(
-    (el) => el.value
-  );
+  const options = Array.from(document.querySelectorAll("#topOptionCards input:checked"))
+    .map((el) => el.value)
+    .filter((id) => getActiveOptionIdSet().has(id));
+  const activeProcessingIds = getActiveProcessingServiceIdSet();
+  const services = Array.from(document.querySelectorAll("#topProcessingServiceCards input:checked"))
+    .map((el) => el.value)
+    .filter((id) => activeProcessingIds.has(id));
   const serviceDetails = cloneProcessingServiceDetails(state.processingServiceDetails);
   const useBackHeight = hasBackShelfProcessingService(services);
   const backHeight = useBackHeight
@@ -936,6 +964,8 @@ function renderTopTypeTabs() {
       if (!inCategory) selectedTopType = "";
       renderTopTypeTabs();
       renderTopTypeCards();
+      renderOptions();
+      renderProcessingServiceCards();
       updateSelectedTopTypeCard();
       updateTopThicknessOptions(selectedTopType);
       updateTopSizePlaceholders(selectedTopType);
@@ -985,9 +1015,15 @@ function renderTopTypeCards() {
   container.onclick = (e) => {
     const input = e.target.closest('input[name="topType"]');
     if (!input) return;
+    const prevCategory = getCurrentTopCategory();
     selectedTopType = input.value;
+    const nextCategory = getCurrentTopCategory();
     updateSelectedTopTypeCard();
     renderTopTypeCards();
+    if (prevCategory !== nextCategory) {
+      renderOptions();
+      renderProcessingServiceCards();
+    }
     closeTopTypeModal();
     updateTopThicknessOptions(selectedTopType);
     updateTopSizePlaceholders(selectedTopType);
@@ -999,13 +1035,14 @@ function renderOptions() {
   const container = $("#topOptionCards");
   if (!container) return;
   const section = container.closest(".selection-block");
-  if (section) section.classList.toggle("hidden-step", !HAS_OPTION_SELECTIONS);
   container.innerHTML = "";
-  if (!HAS_OPTION_SELECTIONS) {
+  const activeOptions = getActiveOptions();
+  if (section) section.classList.toggle("hidden-step", activeOptions.length === 0);
+  if (!activeOptions.length) {
     updatePreviewSummary(previewSummaryConfig);
     return;
   }
-  TOP_OPTIONS.forEach((opt) => {
+  activeOptions.forEach((opt) => {
     const label = document.createElement("label");
     label.className = "card-base option-card";
     const { text: priceText, isConsult: isConsultOption } = getPricingDisplayMeta({
@@ -1030,13 +1067,13 @@ function renderOptions() {
     input.closest(".option-card")?.classList.toggle("selected", input.checked);
   });
   updatePreviewSummary(previewSummaryConfig);
-  container.addEventListener("change", (e) => {
+  container.onchange = (e) => {
     const input = e.target.closest("input[type='checkbox']");
     if (!input) return;
     input.closest(".option-card")?.classList.toggle("selected", input.checked);
     updatePreviewSummary(previewSummaryConfig);
     refreshTopEstimate();
-  });
+  };
 }
 
 function renderTopAddonCards() {
@@ -1158,8 +1195,12 @@ function renderProcessingServiceCards() {
   const container = $("#topProcessingServiceCards");
   if (!container) return;
   container.innerHTML = "";
+  const activeIds = getActiveProcessingServiceIdSet();
+  Object.keys(state.processingServiceDetails).forEach((id) => {
+    if (!activeIds.has(id)) delete state.processingServiceDetails[id];
+  });
 
-  Object.values(PROCESSING_SERVICES).forEach((srv) => {
+  getActiveProcessingServices().forEach((srv) => {
     const label = document.createElement("label");
     label.className = "card-base processing-service-card";
     const fallbackPriceText = formatPricingRuleDisplayText(srv) || srv.displayPriceText || "";
@@ -1189,9 +1230,9 @@ function renderProcessingServiceCards() {
 
   Object.keys(PROCESSING_SERVICES).forEach((id) => updateProcessingServiceSummary(id));
   syncProcessingSectionVisibility();
-  if (!HAS_PROCESSING_SELECTIONS) return;
+  if (!activeIds.size) return;
 
-  container.addEventListener("change", (e) => {
+  container.onchange = (e) => {
     if (e.target.name === "processingService") {
       const serviceId = e.target.value;
       const srv = PROCESSING_SERVICES[serviceId];
@@ -1224,9 +1265,9 @@ function renderProcessingServiceCards() {
         updatePreviewSummary(previewSummaryConfig);
       }
     }
-  });
+  };
 
-  container.addEventListener("click", (e) => {
+  container.onclick = (e) => {
     const card = e.target.closest(".processing-service-card");
     if (!card) return;
     const checkbox = card.querySelector('input[name="processingService"]');
@@ -1256,7 +1297,7 @@ function renderProcessingServiceCards() {
       updateAddButtonState();
     }
     openProcessingServiceModal(serviceId, checkbox, wasChecked ? "edit" : "change");
-  });
+  };
 }
 
 function renderTable() {

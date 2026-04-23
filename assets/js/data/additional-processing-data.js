@@ -145,15 +145,25 @@ export const ADDITIONAL_PROCESSING_META_BY_ID = createDataItemMetaMap(ADDITIONAL
   labelKey: "label",
 });
 
-export function getAdditionalProcessingServicesForPage(pageKey) {
+export function getAdditionalProcessingServiceIdsForPage(
+  pageKey,
+  { categoryKey = "", includeAllCategories = false } = {}
+) {
   const pageConfig = getAdditionalSelectionConfigForPage(pageKey);
-  const processingIds = pageConfig?.sections?.processing
+  return pageConfig?.sections?.processing
     ? resolveSelectionIds({
         includeIds: pageConfig.processing?.includeIds,
         excludeIds: pageConfig.processing?.excludeIds,
+        byCategory: pageConfig.processing?.byCategory,
+        categoryKey,
+        includeAllCategories,
         catalogById: PROCESSING_CATALOG_BY_ID,
       })
     : [];
+}
+
+export function getAdditionalProcessingServicesForPage(pageKey, opts = {}) {
+  const processingIds = getAdditionalProcessingServiceIdsForPage(pageKey, opts);
   return Object.fromEntries(
     processingIds
       .map((id) => PROCESSING_CATALOG_BY_ID[id])

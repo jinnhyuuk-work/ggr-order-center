@@ -7,6 +7,8 @@ export const ORDER_PAGE_KEYS = Object.freeze({
   TOP: "top",
 });
 
+export const ADDITIONAL_SELECTION_ALL_CATEGORY_KEY = "all";
+
 function normalizeIdList(ids = []) {
   return Object.freeze(
     Array.isArray(ids)
@@ -17,10 +19,36 @@ function normalizeIdList(ids = []) {
   );
 }
 
-function freezeSelectionBucket({ includeIds = [], excludeIds = [] } = {}) {
+function normalizeCategoryKey(categoryKey = "") {
+  return String(categoryKey || "").trim();
+}
+
+function freezeCategorySelectionMap(byCategory = {}) {
+  return Object.freeze(
+    Object.entries(byCategory && typeof byCategory === "object" ? byCategory : {}).reduce(
+      (acc, [categoryKey, ids]) => {
+        const normalizedKey = normalizeCategoryKey(categoryKey);
+        if (!normalizedKey) return acc;
+        acc[normalizedKey] = normalizeIdList(ids);
+        return acc;
+      },
+      {}
+    )
+  );
+}
+
+function cloneCategorySelectionMap(byCategory = {}) {
+  return Object.entries(byCategory || {}).reduce((acc, [categoryKey, ids]) => {
+    acc[categoryKey] = [...normalizeIdList(ids)];
+    return acc;
+  }, {});
+}
+
+function freezeSelectionBucket({ includeIds = [], excludeIds = [], byCategory = {} } = {}) {
   return Object.freeze({
     includeIds: normalizeIdList(includeIds),
     excludeIds: normalizeIdList(excludeIds),
+    byCategory: freezeCategorySelectionMap(byCategory),
   });
 }
 
@@ -35,8 +63,26 @@ function freezePageConfig({ options = {}, processing = {}, sections = {} } = {})
   });
 }
 
-export function resolveSelectionIds({ includeIds = [], excludeIds = [], catalogById = {} } = {}) {
-  const includeList = normalizeIdList(includeIds);
+export function resolveSelectionIds({
+  includeIds = [],
+  excludeIds = [],
+  byCategory = {},
+  categoryKey = "",
+  includeAllCategories = false,
+  catalogById = {},
+} = {}) {
+  const normalizedCategoryKey = normalizeCategoryKey(categoryKey);
+  const normalizedByCategory = byCategory && typeof byCategory === "object" ? byCategory : {};
+  const categoryIds = includeAllCategories
+    ? Object.values(normalizedByCategory).flatMap((ids) => [...normalizeIdList(ids)])
+    : [
+        ...normalizeIdList(normalizedByCategory[ADDITIONAL_SELECTION_ALL_CATEGORY_KEY]),
+        ...(normalizedCategoryKey &&
+        normalizedCategoryKey !== ADDITIONAL_SELECTION_ALL_CATEGORY_KEY
+          ? normalizeIdList(normalizedByCategory[normalizedCategoryKey])
+          : []),
+      ];
+  const includeList = normalizeIdList([...normalizeIdList(includeIds), ...categoryIds]);
   const excludeSet = new Set(normalizeIdList(excludeIds));
   const resolved = [];
   const seen = new Set();
@@ -52,46 +98,54 @@ export function resolveSelectionIds({ includeIds = [], excludeIds = [], catalogB
 }
 
 // Single source of truth for page-level additional selections.
-// Edit includeIds / excludeIds here to add or remove items per page.
+// Edit includeIds / excludeIds for page defaults, or byCategory for category-specific items.
 export const ADDITIONAL_SELECTION_PAGE_CONFIG = Object.freeze({
   [ORDER_PAGE_KEYS.BOARD]: freezePageConfig({
     options: {
       includeIds: ["board_edge_finish", "board_surface_coating", "board_anti_scratch"],
       excludeIds: [],
+      byCategory: {},
     },
     processing: {
       includeIds: ["proc_hinge_hole", "proc_handle_hole"],
       excludeIds: [],
+      byCategory: {},
     },
   }),
   [ORDER_PAGE_KEYS.PLYWOOD]: freezePageConfig({
     options: {
       includeIds: [],
       excludeIds: [],
+      byCategory: {},
     },
     processing: {
       includeIds: ["plywood_hinge_hole"],
       excludeIds: [],
+      byCategory: {},
     },
   }),
   [ORDER_PAGE_KEYS.DOOR]: freezePageConfig({
     options: {
       includeIds: [],
       excludeIds: [],
+      byCategory: {},
     },
     processing: {
       includeIds: [],
       excludeIds: [],
+      byCategory: {},
     },
   }),
   [ORDER_PAGE_KEYS.TOP]: freezePageConfig({
     options: {
       includeIds: ["top_sink_cut", "top_faucet_hole", "top_cooktop_cut", "top_back_add"],
       excludeIds: [],
+      byCategory: {},
     },
     processing: {
       includeIds: [],
       excludeIds: [],
+      byCategory: {},
     },
   }),
 });
@@ -100,8 +154,8 @@ export function getAdditionalSelectionConfigForPage(pageKey) {
   const cfg = ADDITIONAL_SELECTION_PAGE_CONFIG[pageKey];
   if (!cfg) {
     return {
-      options: { includeIds: [], excludeIds: [] },
-      processing: { includeIds: [], excludeIds: [] },
+      options: { includeIds: [], excludeIds: [], byCategory: {} },
+      processing: { includeIds: [], excludeIds: [], byCategory: {} },
       sections: { options: false, processing: false },
     };
   }
@@ -109,13 +163,25 @@ export function getAdditionalSelectionConfigForPage(pageKey) {
     options: {
       includeIds: [...cfg.options.includeIds],
       excludeIds: [...cfg.options.excludeIds],
+      byCategory: cloneCategorySelectionMap(cfg.options.byCategory),
     },
     processing: {
       includeIds: [...cfg.processing.includeIds],
       excludeIds: [...cfg.processing.excludeIds],
+      byCategory: cloneCategorySelectionMap(cfg.processing.byCategory),
     },
     sections: { ...cfg.sections },
   };
+}
+
+function buildSelectionBucketCatalog(bucket = {}) {
+  const ids = [
+    ...normalizeIdList(bucket.includeIds),
+    ...Object.values(bucket.byCategory || {}).flatMap((categoryIds) => [
+      ...normalizeIdList(categoryIds),
+    ]),
+  ];
+  return Object.fromEntries(ids.map((id) => [id, true]));
 }
 
 // Backward-compatible legacy shape (`options` / `processing`).
@@ -125,12 +191,16 @@ export const ADDITIONAL_SELECTION_PAGE_MAP = Object.freeze(
       options: resolveSelectionIds({
         includeIds: cfg.options.includeIds,
         excludeIds: cfg.options.excludeIds,
-        catalogById: Object.fromEntries(cfg.options.includeIds.map((id) => [id, true])),
+        byCategory: cfg.options.byCategory,
+        includeAllCategories: true,
+        catalogById: buildSelectionBucketCatalog(cfg.options),
       }),
       processing: resolveSelectionIds({
         includeIds: cfg.processing.includeIds,
         excludeIds: cfg.processing.excludeIds,
-        catalogById: Object.fromEntries(cfg.processing.includeIds.map((id) => [id, true])),
+        byCategory: cfg.processing.byCategory,
+        includeAllCategories: true,
+        catalogById: buildSelectionBucketCatalog(cfg.processing),
       }),
     });
     return acc;

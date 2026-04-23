@@ -52,6 +52,7 @@ import {
   DOOR_FULFILLMENT_POLICY,
   SYSTEM_FULFILLMENT_POLICY,
 } from "../assets/js/data/fulfillment-policy-data.js";
+import { resolveSelectionIds } from "../assets/js/data/additional-selection-policy.js";
 
 function calcTopShapeAdditionalFee(shape) {
   return Number(TOP_PRICING_POLICY.shapeAdditionalFeeByShape?.[shape] || 0);
@@ -139,25 +140,48 @@ function run() {
     priceTiersByCategory: PLYWOOD_PRICE_TIERS_BY_CATEGORY,
     dimensionLimits: PLYWOOD_DIMENSION_LIMITS,
   });
+  assert.equal(PLYWOOD_MATERIALS.lpm_01, undefined);
+  const activePlywoodMaterial = Object.values(PLYWOOD_MATERIALS).find(
+    (material) => material.category === "LX PET"
+  );
+  assert.ok(activePlywoodMaterial, "활성 합판 LX PET 소재가 필요합니다.");
   assert.equal(
     plywoodPricing.calcItemDetail({
-      materialId: "lpm_01",
+      materialId: activePlywoodMaterial.id,
       width: 300,
       length: 800,
       thickness: 18,
       quantity: 1,
     }).materialCost,
-    35000
+    17000
   );
   assert.equal(
     plywoodPricing.calcItemDetail({
-      materialId: "lpm_01",
+      materialId: activePlywoodMaterial.id,
       width: 400,
       length: 800,
       thickness: 18,
       quantity: 1,
     }).materialCost,
-    40000
+    22000
+  );
+  assert.deepEqual(
+    resolveSelectionIds({
+      includeIds: ["page_default"],
+      byCategory: {
+        all: ["all_category"],
+        "LX PET": ["lx_pet_only"],
+        "LX SMR PET": ["smr_only"],
+      },
+      categoryKey: "LX PET",
+      catalogById: {
+        page_default: true,
+        all_category: true,
+        lx_pet_only: true,
+        smr_only: true,
+      },
+    }),
+    ["page_default", "all_category", "lx_pet_only"]
   );
 
   assert.equal(TOP_PRICING_POLICY.standardThicknessMm, 12);

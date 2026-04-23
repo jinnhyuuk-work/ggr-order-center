@@ -7,8 +7,14 @@ import {
 } from "./addon-data.js";
 import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constraints.js";
 import { ORDER_PAGE_KEYS } from "./additional-selection-policy.js";
-import { getAdditionalOptionsForPage } from "./additional-options-data.js";
-import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
+import {
+  getAdditionalOptionIdsForPage,
+  getAdditionalOptionsForPage,
+} from "./additional-options-data.js";
+import {
+  getAdditionalProcessingServiceIdsForPage,
+  getAdditionalProcessingServicesForPage,
+} from "./additional-processing-data.js";
 import { filterAvailableMap } from "./product-availability.js";
 import { PRODUCT_AVAILABILITY_POLICY } from "./product-availability-policy.js";
 
@@ -107,10 +113,20 @@ export const MATERIAL_CATEGORIES_DESC = {
 };
 
 export const BOARD_PROCESSING_SERVICES = {
-  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.BOARD),
+  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.BOARD, {
+    includeAllCategories: true,
+  }),
 };
 
-export const BOARD_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.BOARD);
+export const BOARD_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.BOARD, {
+  includeAllCategories: true,
+});
+
+export const getBoardOptionIdsForCategory = (categoryKey = "") =>
+  getAdditionalOptionIdsForPage(ORDER_PAGE_KEYS.BOARD, { categoryKey });
+
+export const getBoardProcessingServiceIdsForCategory = (categoryKey = "") =>
+  getAdditionalProcessingServiceIdsForPage(ORDER_PAGE_KEYS.BOARD, { categoryKey });
 
 export const BOARD_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
 

@@ -7,8 +7,14 @@ import {
 } from "./addon-data.js";
 import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constraints.js";
 import { ORDER_PAGE_KEYS } from "./additional-selection-policy.js";
-import { getAdditionalOptionsForPage } from "./additional-options-data.js";
-import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
+import {
+  getAdditionalOptionIdsForPage,
+  getAdditionalOptionsForPage,
+} from "./additional-options-data.js";
+import {
+  getAdditionalProcessingServiceIdsForPage,
+  getAdditionalProcessingServicesForPage,
+} from "./additional-processing-data.js";
 import { filterAvailableMap } from "./product-availability.js";
 import { PRODUCT_AVAILABILITY_POLICY } from "./product-availability-policy.js";
 
@@ -1233,7 +1239,9 @@ Object.values(DOOR_MATERIALS).forEach((material) => {
 });
 
 export const DOOR_PROCESSING_SERVICES = {
-  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.DOOR),
+  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.DOOR, {
+    includeAllCategories: true,
+  }),
 };
 
 export const DOOR_TYPE_OPTIONS = [
@@ -1246,7 +1254,15 @@ export const DOOR_SIDE_THICKNESS_OPTIONS = [
   { value: 18, label: "18T" },
 ];
 
-export const DOOR_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.DOOR);
+export const DOOR_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.DOOR, {
+  includeAllCategories: true,
+});
+
+export const getDoorOptionIdsForCategory = (categoryKey = "") =>
+  getAdditionalOptionIdsForPage(ORDER_PAGE_KEYS.DOOR, { categoryKey });
+
+export const getDoorProcessingServiceIdsForCategory = (categoryKey = "") =>
+  getAdditionalProcessingServiceIdsForPage(ORDER_PAGE_KEYS.DOOR, { categoryKey });
 
 export const DOOR_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
 

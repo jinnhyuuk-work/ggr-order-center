@@ -9,6 +9,8 @@ import {
   DOOR_TYPE_OPTIONS,
   DOOR_SIDE_THICKNESS_OPTIONS,
   DOOR_DIMENSION_LIMITS,
+  getDoorOptionIdsForCategory,
+  getDoorProcessingServiceIdsForCategory,
 } from "./data/door-data.js";
 import { DOOR_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
@@ -994,8 +996,10 @@ function syncProcessingSectionVisibility() {
   const container = $("#processingServiceCards");
   if (!container) return;
   const section = container.closest(".selection-block--input");
-  if (section) section.classList.toggle("hidden-step", !HAS_PROCESSING_SELECTIONS);
-  if (!HAS_PROCESSING_SELECTIONS) {
+  const hasActiveProcessingSelections =
+    container.querySelectorAll('input[name="processingService"]').length > 0;
+  if (section) section.classList.toggle("hidden-step", !hasActiveProcessingSelections);
+  if (!hasActiveProcessingSelections) {
     updateDoorPreviewSummary();
     return;
   }
@@ -1015,6 +1019,28 @@ let previewResizeTimer = null;
 const categories = Array.from(new Set(Object.values(MATERIALS).map((m) => m.category || "기타")));
 let selectedCategory = categories[0];
 let selectedMaterialId = "";
+
+function getCurrentMaterialCategory() {
+  return String(MATERIALS[selectedMaterialId]?.category || selectedCategory || "").trim();
+}
+
+function getActiveOptionIdSet() {
+  return new Set(getDoorOptionIdsForCategory(getCurrentMaterialCategory()));
+}
+
+function getActiveProcessingServiceIdSet() {
+  return new Set(getDoorProcessingServiceIdsForCategory(getCurrentMaterialCategory()));
+}
+
+function getActiveOptions() {
+  const activeIds = getActiveOptionIdSet();
+  return DOOR_OPTIONS.filter((option) => activeIds.has(option.id));
+}
+
+function getActiveProcessingServices() {
+  const activeIds = getActiveProcessingServiceIdSet();
+  return Object.values(PROCESSING_SERVICES).filter((service) => activeIds.has(service.id));
+}
 
 function cloneProcessingServiceDetails(details) {
   return JSON.parse(JSON.stringify(details || {}));
@@ -1106,8 +1132,12 @@ function renderProcessingServiceCards() {
   const container = $("#processingServiceCards");
   if (!container) return;
   container.innerHTML = "";
+  const activeIds = getActiveProcessingServiceIdSet();
+  Object.keys(state.processingServiceDetails).forEach((id) => {
+    if (!activeIds.has(id)) delete state.processingServiceDetails[id];
+  });
 
-  Object.values(PROCESSING_SERVICES).forEach((srv) => {
+  getActiveProcessingServices().forEach((srv) => {
     const card = document.createElement("div");
     card.className = "card-base processing-service-card";
     const helpBtnHtml = srv.helpGuideKey
@@ -1143,9 +1173,9 @@ function renderProcessingServiceCards() {
 
   Object.keys(PROCESSING_SERVICES).forEach((id) => updateProcessingServiceSummary(id));
   syncProcessingSectionVisibility();
-  if (!HAS_PROCESSING_SELECTIONS) return;
+  if (!activeIds.size) return;
 
-  container.addEventListener("change", (e) => {
+  container.onchange = (e) => {
     if (e.target.name === "processingService") {
       const serviceId = e.target.value;
       const srv = PROCESSING_SERVICES[serviceId];
@@ -1173,9 +1203,9 @@ function renderProcessingServiceCards() {
         updateDoorPreviewSummary();
       }
     }
-  });
+  };
 
-  container.addEventListener("click", (e) => {
+  container.onclick = (e) => {
     const guideBtn = e.target.closest("[data-measurement-guide]");
     if (guideBtn) {
       e.preventDefault();
@@ -1201,20 +1231,21 @@ function renderProcessingServiceCards() {
       updateAddItemState();
     }
     openProcessingServiceModal(serviceId, checkbox, wasChecked ? "edit" : "change");
-  });
+  };
 }
 
 function renderOptionCards() {
   const container = $("#doorOptionCards");
   if (!container) return;
   const section = container.closest(".selection-block");
-  if (section) section.classList.toggle("hidden-step", !HAS_OPTION_SELECTIONS);
   container.innerHTML = "";
-  if (!HAS_OPTION_SELECTIONS) {
+  const activeOptions = getActiveOptions();
+  if (section) section.classList.toggle("hidden-step", activeOptions.length === 0);
+  if (!activeOptions.length) {
     updateDoorPreviewSummary();
     return;
   }
-  DOOR_OPTIONS.forEach((opt) => {
+  activeOptions.forEach((opt) => {
     const label = document.createElement("label");
     label.className = "card-base option-card";
     const { text: priceText, isConsult: isConsultOption } = getPricingDisplayMeta({
@@ -1235,7 +1266,7 @@ function renderOptionCards() {
     container.appendChild(label);
   });
   updateDoorPreviewSummary();
-  container.addEventListener("change", (e) => {
+  container.onchange = (e) => {
     if (e.target.name !== "doorOption") return;
     const card = e.target.closest(".option-card");
     if (e.target.checked) {
@@ -1246,7 +1277,7 @@ function renderOptionCards() {
     updateDoorPreviewSummary();
     autoCalculatePrice();
     updateAddItemState();
-  });
+  };
 }
 
 function renderMaterialTabs() {
@@ -1266,6 +1297,8 @@ function renderMaterialTabs() {
       if (!inCategory) selectedMaterialId = "";
       renderMaterialTabs();
       renderMaterialCards();
+      renderOptionCards();
+      renderProcessingServiceCards();
       if (selectedMaterialId) updateThicknessOptions(selectedMaterialId);
       renderCategoryDesc();
     });
@@ -1321,9 +1354,15 @@ function renderMaterialCards() {
     const input = e.target.closest('input[name="material"]');
     if (!input) return;
     const prevMaterialId = selectedMaterialId;
+    const prevCategory = getCurrentMaterialCategory();
     selectedMaterialId = input.value;
+    const nextCategory = getCurrentMaterialCategory();
     if (prevMaterialId && prevMaterialId !== selectedMaterialId) {
       resetProcessingServiceOptions();
+    }
+    if (prevCategory !== nextCategory) {
+      renderOptionCards();
+      renderProcessingServiceCards();
     }
     updateThicknessOptions(selectedMaterialId);
     updateSelectedMaterialLabel();
@@ -1471,11 +1510,14 @@ function readCurrentInputs() {
   const length = Number($("#lengthInput").value);
   const options = Array.from(
     document.querySelectorAll("#doorOptionCards input:checked")
-  ).map((el) => el.value);
+  )
+    .map((el) => el.value)
+    .filter((id) => getActiveOptionIdSet().has(id));
 
-  const services = Array.from(document.querySelectorAll('input[name="processingService"]:checked')).map(
-    (el) => el.value
-  );
+  const activeProcessingIds = getActiveProcessingServiceIdSet();
+  const services = Array.from(document.querySelectorAll('input[name="processingService"]:checked'))
+    .map((el) => el.value)
+    .filter((id) => activeProcessingIds.has(id));
 
   const serviceDetails = cloneProcessingServiceDetails(state.processingServiceDetails);
   const doorHingeConfig = readDoorHingeConfigFromDOM();

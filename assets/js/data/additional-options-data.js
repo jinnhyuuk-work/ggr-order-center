@@ -192,15 +192,25 @@ export const ADDITIONAL_OPTIONS_META_BY_ID = createDataItemMetaMap(ADDITIONAL_OP
   tags: ["[internal]", "kind:option"],
 });
 
-export function getAdditionalOptionsForPage(pageKey) {
+export function getAdditionalOptionIdsForPage(
+  pageKey,
+  { categoryKey = "", includeAllCategories = false } = {}
+) {
   const pageConfig = getAdditionalSelectionConfigForPage(pageKey);
-  const optionIds = pageConfig?.sections?.options
+  return pageConfig?.sections?.options
     ? resolveSelectionIds({
         includeIds: pageConfig.options?.includeIds,
         excludeIds: pageConfig.options?.excludeIds,
+        byCategory: pageConfig.options?.byCategory,
+        categoryKey,
+        includeAllCategories,
         catalogById: OPTION_CATALOG_BY_ID,
       })
     : [];
+}
+
+export function getAdditionalOptionsForPage(pageKey, opts = {}) {
+  const optionIds = getAdditionalOptionIdsForPage(pageKey, opts);
   return optionIds
     .map((id) => OPTION_CATALOG_BY_ID[id])
     .filter(Boolean)

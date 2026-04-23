@@ -6,13 +6,21 @@ import {
 } from "./addon-data.js";
 import { ORDER_DIMENSION_LIMITS, withDimensionLimits } from "./dimension-constraints.js";
 import { ORDER_PAGE_KEYS } from "./additional-selection-policy.js";
-import { getAdditionalOptionsForPage } from "./additional-options-data.js";
-import { getAdditionalProcessingServicesForPage } from "./additional-processing-data.js";
+import {
+  getAdditionalOptionIdsForPage,
+  getAdditionalOptionsForPage,
+} from "./additional-options-data.js";
+import {
+  getAdditionalProcessingServiceIdsForPage,
+  getAdditionalProcessingServicesForPage,
+} from "./additional-processing-data.js";
 import { filterAvailableMap } from "./product-availability.js";
 import { PRODUCT_AVAILABILITY_POLICY } from "./product-availability-policy.js";
 
 export const TOP_PROCESSING_SERVICES = {
-  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.TOP),
+  ...getAdditionalProcessingServicesForPage(ORDER_PAGE_KEYS.TOP, {
+    includeAllCategories: true,
+  }),
 };
 
 export const TOP_DIMENSION_LIMITS = ORDER_DIMENSION_LIMITS.top;
@@ -641,7 +649,15 @@ export const TOP_PRICING_POLICY = Object.freeze({
   }),
 });
 
-export const TOP_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.TOP);
+export const TOP_OPTIONS = getAdditionalOptionsForPage(ORDER_PAGE_KEYS.TOP, {
+  includeAllCategories: true,
+});
+
+export const getTopOptionIdsForCategory = (categoryKey = "") =>
+  getAdditionalOptionIdsForPage(ORDER_PAGE_KEYS.TOP, { categoryKey });
+
+export const getTopProcessingServiceIdsForCategory = (categoryKey = "") =>
+  getAdditionalProcessingServiceIdsForPage(ORDER_PAGE_KEYS.TOP, { categoryKey });
 
 export const TOP_ADDON_ITEMS = [...COMMON_ADDON_ITEMS];
 
