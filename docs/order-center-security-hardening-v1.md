@@ -9,6 +9,7 @@
 1. 허용 도메인 외 환경에서 주문 전송/이미지 업로드 차단
 2. 런타임 설정(`window.__ORDER_CENTER_CONFIG`)으로 보안/연동 값을 주입할 수 있도록 정리
 3. 시스템 미리보기 업로드 경로도 동일 도메인 정책 적용
+4. 주문 전송은 Cloudflare Worker API로 우회할 수 있도록 경로를 분리
 
 기본 허용 도메인:
 
@@ -36,6 +37,10 @@
       allowedHosts: ["order-center.ggr.kr", "ggr.kr", "localhost", "127.0.0.1"],
       allowedHostSuffixes: [".ggr.kr"]
     },
+    orderApi: {
+      endpoint: "https://ggr-order-api.example.workers.dev",
+      timeoutMs: 15000
+    },
     emailjs: {
       serviceId: "service_xxx",
       templateId: "template_xxx",
@@ -45,12 +50,17 @@
       enabled: true,
       cloudName: "cloud_xxx",
       uploadPreset: "preset_xxx",
-      folder: "ggr-order-center/system-preview"
+      folder: "ggr-order-center/system-preview",
+      customerPhotoFolder: "ggr-order-center/customer-photo"
     }
   };
 </script>
 <script src="assets/js/runtime-config-bootstrap.js"></script>
 ```
+
+`customerPhotoFolder`는 현장사진의 기본 루트다. 실제 업로드 경로는 `pageKey`를 붙여
+`ggr-order-center/customer-photo/board`, `ggr-order-center/customer-photo/door`,
+`ggr-order-center/customer-photo/plywood`처럼 자동으로 나뉜다.
 
 운영 원칙:
 
@@ -63,6 +73,7 @@
 2. 템플릿/서비스를 주문센터 전용으로 분리
 3. 월간 사용량 임계치 알림 설정
 4. 키 유출/오남용 의심 시 `publicKey` 즉시 재발급 및 교체
+5. Worker 전환 시에는 `orderApi.endpoint`를 먼저 적용하고 EmailJS는 롤백 경로로만 유지
 
 ## 4. Cloudinary 운영 제한 체크리스트
 
@@ -76,6 +87,7 @@
 ## 5. 장애/오남용 대응 순서
 
 1. Cloudinary 프리셋 비활성화 또는 이름 교체
-2. EmailJS `publicKey` 재발급
-3. 런타임 설정 교체 배포
-4. 허용 도메인 목록 재검토 후 최소 권한으로 재적용
+2. `orderApi.endpoint` 비활성화 또는 대체
+3. EmailJS `publicKey` 재발급
+4. 런타임 설정 교체 배포
+5. 허용 도메인 목록 재검토 후 최소 권한으로 재적용

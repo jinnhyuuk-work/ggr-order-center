@@ -1,0 +1,10 @@
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+.wrangler
+workers/**/.wrangler
+workers/**/.dev.vars
+workers/**/.dev.vars.*
+workers/**/.env
+workers/**/.env.*

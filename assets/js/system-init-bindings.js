@@ -237,7 +237,7 @@ export function bindSystemInitEvents({
     window.location.href = "index.html";
   });
   $("#privacyConsent")?.addEventListener("change", updateSendButtonEnabled);
-  ["#customerGgrId", "#customerPhoneLast4"].forEach((sel) => {
+  ["#customerName", "#customerPhone", "#customerEmail"].forEach((sel) => {
     $(sel)?.addEventListener("input", updateSendButtonEnabled);
   });
   document.querySelectorAll("[data-fulfillment-type]").forEach((btn) => {

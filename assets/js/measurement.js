@@ -1,5 +1,4 @@
 import {
-  EMAILJS_CONFIG,
   initEmailJS,
   showInfoModal,
   bindModalCloseTriggers,
@@ -12,7 +11,7 @@ import {
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   buildCustomerEmailSectionLines,
-  buildSendQuoteTemplateParams,
+  submitOrderNotification,
   renderEstimateTable,
 } from "./shared.js?v=20260423f-html";
 import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
@@ -281,7 +280,7 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
   lines.push(`예상 결제금액: ${formatWon(summary.grandTotal)}${summary.hasConsult ? " (출장 권역 상담 필요)" : ""}`);
 
   return {
-    subject: `[GGR 실측요청] ${customer.ggrId || "GGR아이디"}`,
+    subject: `[GGR 실측요청] ${customer.name || customer.ggrId || "고객"}`,
     body: lines.join("\n"),
     lines,
   };
@@ -332,8 +331,8 @@ function renderOrderCompleteDetails() {
   container.innerHTML = `
     <div class="complete-section">
       <h4>고객 정보</h4>
-      <p>GGR 아이디: ${escapeHtml(customer.ggrId || "-")}</p>
-      <p>휴대폰 뒤 4자리: ${escapeHtml(customer.phoneLast4 || "-")}</p>
+      <p>이름: ${escapeHtml(customer.name || "-")}</p>
+      <p>연락처: ${escapeHtml(customer.phone || "-")}</p>
       <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")}</p>
       <p>요청사항: ${escapeHtml(customer.memo || "-")}</p>
     </div>
@@ -358,9 +357,6 @@ async function sendQuote() {
     showInfoModal(customerError);
     return;
   }
-  const emailjsInstance = getEmailJSInstance(showInfoModal);
-  if (!emailjsInstance) return;
-
   sendingEmail = true;
   updateSendButtonEnabled();
 
@@ -384,23 +380,19 @@ async function sendQuote() {
     timeZone: "Asia/Seoul",
   }).format(new Date());
   const payload = buildOrderPayload({ customerPhotoUploads });
-  const templateParams = buildSendQuoteTemplateParams({
-    customer,
-    orderTimeText,
-    subject,
-    message: body,
-    orderLines: lines,
-    payload,
-    customerPhotoUploads,
-    customerPhotoErrors,
-  });
-
   try {
-    await emailjsInstance.send(
-      EMAILJS_CONFIG.serviceId,
-      EMAILJS_CONFIG.templateId,
-      templateParams
-    );
+    await submitOrderNotification({
+      customer,
+      orderTimeText,
+      subject,
+      message: body,
+      orderLines: lines,
+      payload,
+      customerPhotoUploads,
+      customerPhotoErrors,
+      emailjsInstance: getEmailJSInstance(showInfoModal),
+      showInfoModal,
+    });
     renderOrderCompleteDetails();
     orderCompleted = true;
     updateStepVisibility();
@@ -423,7 +415,7 @@ function resetFlow() {
   currentPhase = 1;
   orderCompleted = false;
   sendingEmail = false;
-  ["#customerGgrId", "#customerPhoneLast4", "#customerMemo", "#sample6_postcode", "#sample6_address"].forEach((selector) => {
+  ["#customerName", "#customerPhone", "#customerEmail", "#customerMemo", "#sample6_postcode", "#sample6_address"].forEach((selector) => {
     const el = $(selector);
     if (el) el.value = "";
   });
@@ -465,7 +457,7 @@ function bindEvents() {
       updateSendButtonEnabled();
     });
   });
-  ["#customerGgrId", "#customerPhoneLast4"].forEach((selector) => {
+  ["#customerName", "#customerPhone", "#customerEmail"].forEach((selector) => {
     $(selector)?.addEventListener("input", updateSendButtonEnabled);
   });
   $("#nextStepsBtn")?.addEventListener("click", goToNextStep);

@@ -1,5 +1,4 @@
 import {
-  EMAILJS_CONFIG,
   initEmailJS,
   openModal,
   closeModal,
@@ -41,7 +40,7 @@ import {
   resolveThreePhaseNextTransition,
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
-  buildSendQuoteTemplateParams,
+  submitOrderNotification,
   renderCategoryFeatureCapsules,
 } from "./shared.js?v=20260423g-html";
 import { createTopPricingHelpers } from "./top-pricing.js";
@@ -1432,8 +1431,8 @@ function renderOrderCompleteDetails() {
   container.innerHTML = `
     <div class="complete-section">
       <h4>고객 정보</h4>
-      <p>GGR 아이디: ${escapeHtml(customer.ggrId || "-")}</p>
-      <p>휴대폰 뒤 4자리: ${escapeHtml(customer.phoneLast4 || "-")}</p>
+      <p>이름: ${escapeHtml(customer.name || "-")}</p>
+      <p>연락처: ${escapeHtml(customer.phone || "-")}</p>
       <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")}</p>
       <p>요청사항: ${escapeHtml(customer.memo || "-")}</p>
     </div>
@@ -2232,7 +2231,7 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
   lines.push(`예상 결제금액: ${grandTotal.toLocaleString()}원${suffix}`);
   lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
 
-  const subject = `[GGR 상판 견적요청] ${customer.ggrId || "GGR아이디"}`;
+  const subject = `[GGR 상판 견적요청] ${customer.name || customer.ggrId || "고객"}`;
   return {
     subject,
     body: lines.join("\n"),
@@ -2297,9 +2296,6 @@ async function sendQuote() {
     showInfoModal(customerError);
     return;
   }
-  const emailjsInstance = getEmailJSInstance(showInfoModal);
-  if (!emailjsInstance) return;
-
   sendingEmail = true;
   updateSendButtonEnabled();
 
@@ -2325,23 +2321,19 @@ async function sendQuote() {
     timeZone: "Asia/Seoul",
   }).format(new Date());
   const payload = buildOrderPayload({ customerPhotoUploads });
-  const templateParams = buildSendQuoteTemplateParams({
-    customer,
-    orderTimeText,
-    subject,
-    message: body,
-    orderLines: lines,
-    payload,
-    customerPhotoUploads,
-    customerPhotoErrors,
-  });
-
   try {
-    await emailjsInstance.send(
-      EMAILJS_CONFIG.serviceId,
-      EMAILJS_CONFIG.templateId,
-      templateParams
-    );
+    await submitOrderNotification({
+      customer,
+      orderTimeText,
+      subject,
+      message: body,
+      orderLines: lines,
+      payload,
+      customerPhotoUploads,
+      customerPhotoErrors,
+      emailjsInstance: getEmailJSInstance(showInfoModal),
+      showInfoModal,
+    });
     showOrderComplete();
   } catch (err) {
     console.error(err);
@@ -2363,7 +2355,7 @@ function resetFlow() {
   orderCompleted = false;
   state.items = [];
   state.addons = [];
-  ["#customerGgrId", "#customerPhoneLast4", "#customerMemo", "#sample6_postcode", "#sample6_address"].forEach((sel) => {
+  ["#customerName", "#customerPhone", "#customerEmail", "#customerMemo", "#sample6_postcode", "#sample6_address"].forEach((sel) => {
     const el = document.querySelector(sel);
     if (el) el.value = "";
   });
@@ -2429,7 +2421,7 @@ function initTop() {
   });
   $("#kitchenShape")?.addEventListener("change", updateLength2Visibility);
   updateLength2Visibility();
-  ["#customerGgrId", "#customerPhoneLast4"].forEach((sel) => {
+  ["#customerName", "#customerPhone", "#customerEmail"].forEach((sel) => {
     const el = document.querySelector(sel);
     el?.addEventListener("input", updateSendButtonEnabled);
   });

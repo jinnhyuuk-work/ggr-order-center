@@ -107,7 +107,6 @@ import {
 } from "./system-addon-pricing.js";
 import {
   initEmailJS,
-  EMAILJS_CONFIG,
   CLOUDINARY_CONFIG,
   openModal,
   closeModal,
@@ -137,7 +136,7 @@ import {
   resolveThreePhaseNextTransition,
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
-  buildSendQuoteTemplateParams,
+  submitOrderNotification,
 } from "./shared.js?v=20260423f-html";
 import {
   normalizeFulfillmentType,
@@ -5672,8 +5671,7 @@ const systemQuoteFlowHelpers = createSystemQuoteFlowHelpers({
   getCustomerPhotoUploader: () => customerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   buildBuilderEdgeRows,
-  buildSendQuoteTemplateParams,
-  EMAILJS_CONFIG,
+  submitOrderNotification,
   showOrderComplete,
   showInfoModal,
 });

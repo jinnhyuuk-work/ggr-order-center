@@ -1,0 +1,12 @@
+name = "ggr-order-api"
+main = "src/index.js"
+compatibility_date = "2026-04-23"
+workers_dev = true
+
+[secrets]
+required = ["RESEND_API_KEY"]
+
+[vars]
+MAIL_FROM = "GGR Order Center <order@ggr.kr>"
+MAIL_TO = "info@ggr.kr"
+ALLOWED_ORIGINS = "https://order-center.ggr.kr,https://ggr.kr,https://ggroffice.imweb.me,http://localhost:8787,http://127.0.0.1:8787,http://localhost:5500,http://127.0.0.1:5500"

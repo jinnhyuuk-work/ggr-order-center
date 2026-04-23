@@ -18,11 +18,14 @@ SYSTEM_ENTRY_FILE="assets/js/system.js"
 SYSTEM_ENTRY_REQUIRED_TOKENS=(
   "createSystemQuoteFlowHelpers({"
   "initCustomerPhotoUploader"
-  "buildSendQuoteTemplateParams,"
+  "submitOrderNotification,"
   "uploadCustomerPhotoFilesToCloudinary,"
 )
 
 COMMON_TEMPLATE_KEYS=(
+  "customer_name"
+  "customer_phone"
+  "customer_email"
   "customer_ggr_id"
   "customer_phone_last4"
   "customer_postcode"
@@ -37,18 +40,14 @@ COMMON_TEMPLATE_KEYS=(
 )
 
 PAGE_REQUIRED_TOKENS=(
-  "buildSendQuoteTemplateParams("
+  "submitOrderNotification("
   "initCustomerPhotoUploader"
   "uploadCustomerPhotoFilesToCloudinary"
-  "templateParams"
-  "emailjsInstance.send"
 )
 
 SYSTEM_FLOW_REQUIRED_TOKENS=(
-  "buildSendQuoteTemplateParams("
+  "submitOrderNotification("
   "uploadCustomerPhotoFilesToCloudinary"
-  "templateParams"
-  "emailjsInstance.send"
 )
 
 SHARED_REQUIRED_TOKENS=(

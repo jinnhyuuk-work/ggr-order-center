@@ -9,12 +9,18 @@ const DEFAULT_CLOUDINARY_CONFIG = Object.freeze({
   cloudName: "dpw2svbf6",
   uploadPreset: "ggr_order_center",
   folder: "ggr-order-center/system-preview",
+  customerPhotoFolder: "ggr-order-center/customer-photo",
 });
 
 const DEFAULT_FRONTEND_SECURITY_CONFIG = Object.freeze({
   enforceAllowedHosts: true,
   allowedHosts: Object.freeze(["order-center.ggr.kr", "ggr.kr", "localhost", "127.0.0.1"]),
   allowedHostSuffixes: Object.freeze([".ggr.kr"]),
+});
+
+const DEFAULT_ORDER_API_CONFIG = Object.freeze({
+  endpoint: "",
+  timeoutMs: 15000,
 });
 
 function readRuntimeOrderCenterConfig() {
@@ -94,12 +100,21 @@ export function getRuntimeHostBlockedReason() {
 }
 
 const runtimeEmailConfig = readRuntimeOrderCenterSection("emailjs");
+const runtimeOrderApiConfig = readRuntimeOrderCenterSection("orderApi");
 const runtimeCloudinaryConfig = readRuntimeOrderCenterSection("cloudinary");
 
 export const EMAILJS_CONFIG = {
   serviceId: String(runtimeEmailConfig.serviceId || DEFAULT_EMAILJS_CONFIG.serviceId).trim(),
   templateId: String(runtimeEmailConfig.templateId || DEFAULT_EMAILJS_CONFIG.templateId).trim(),
   publicKey: String(runtimeEmailConfig.publicKey || DEFAULT_EMAILJS_CONFIG.publicKey).trim(),
+};
+
+export const ORDER_API_CONFIG = {
+  endpoint: String(runtimeOrderApiConfig.endpoint || DEFAULT_ORDER_API_CONFIG.endpoint).trim(),
+  timeoutMs: Math.max(
+    1000,
+    Math.floor(Number(runtimeOrderApiConfig.timeoutMs || DEFAULT_ORDER_API_CONFIG.timeoutMs) || DEFAULT_ORDER_API_CONFIG.timeoutMs)
+  ),
 };
 
 export const CLOUDINARY_CONFIG = {
@@ -112,6 +127,9 @@ export const CLOUDINARY_CONFIG = {
     runtimeCloudinaryConfig.uploadPreset || DEFAULT_CLOUDINARY_CONFIG.uploadPreset
   ).trim(),
   folder: String(runtimeCloudinaryConfig.folder || DEFAULT_CLOUDINARY_CONFIG.folder).trim(),
+  customerPhotoFolder: String(
+    runtimeCloudinaryConfig.customerPhotoFolder || DEFAULT_CLOUDINARY_CONFIG.customerPhotoFolder
+  ).trim(),
 };
 
 export const ORDER_PAYLOAD_SCHEMA_VERSION = "v4";
@@ -208,11 +226,14 @@ export function validateFulfillmentStepSelection({
 
 function normalizeCustomerPayload(customer = {}) {
   return {
+    name: String(customer?.name || customer?.customerName || customer?.ggrId || "").trim(),
+    phone: String(customer?.phone || customer?.customerPhone || customer?.contact || "").trim(),
     ggrId: String(customer?.ggrId || "").trim(),
     phoneLast4: String(customer?.phoneLast4 || "").trim(),
     postcode: String(customer?.postcode || "").trim(),
     address: String(customer?.address || "").trim(),
     memo: String(customer?.memo || "").trim(),
+    email: String(customer?.email || customer?.customerEmail || "").trim(),
   };
 }
 
@@ -250,10 +271,15 @@ export function buildCustomerEmailSectionLines({
 
   const lines = [];
   lines.push("=== 고객 정보 ===");
+  lines.push(`이름: ${normalizedCustomer.name || "-"}`);
+  lines.push(`연락처: ${normalizedCustomer.phone || "-"}`);
   lines.push(`GGR 아이디: ${normalizedCustomer.ggrId || "-"}`);
   lines.push(`휴대폰 뒤 4자리: ${normalizedCustomer.phoneLast4 || "-"}`);
   lines.push(`주소: ${buildCustomerAddressLine(normalizedCustomer)}`);
   lines.push(`요청사항: ${normalizedCustomer.memo || "-"}`);
+  if (normalizedCustomer.email) {
+    lines.push(`이메일: ${normalizedCustomer.email}`);
+  }
   if (uploadedPhotos.length || uploadErrors.length) {
     lines.push("");
     lines.push("=== 공간/가구 사진 ===");
@@ -350,21 +376,20 @@ export function buildSendQuoteTemplateParams({
   })();
   const photoUrlsText = buildCustomerPhotoUploadUrlsText(customerPhotoUploads);
   const photoErrorsText = formatCustomerPhotoUploadErrorsForTemplate(customerPhotoErrors);
-  const ggrId = normalizedCustomer.ggrId || "-";
-  const phoneLast4 = normalizedCustomer.phoneLast4 || "-";
+  const customerName = normalizedCustomer.name || normalizedCustomer.ggrId || "-";
   const addressLine = resolvedAddressLine || "-";
 
   return {
-    name: ggrId,
+    name: customerName,
     time: String(orderTimeText || ""),
     subject: String(subject || ""),
     message: String(message || ""),
+    customer_name: normalizedCustomer.name || normalizedCustomer.ggrId || "",
+    customer_phone: normalizedCustomer.phone || normalizedCustomer.phoneLast4 || "",
+    customer_email: normalizedCustomer.email || "",
     customer_ggr_id: normalizedCustomer.ggrId || "",
     customer_phone_last4: normalizedCustomer.phoneLast4 || "",
     customer_postcode: normalizedCustomer.postcode || "",
-    customer_name: ggrId,
-    customer_phone: phoneLast4,
-    customer_email: "-",
     customer_address: addressLine,
     customer_memo: normalizedCustomer.memo || "-",
     customer_photo_count: String(Array.isArray(customerPhotoUploads) ? customerPhotoUploads.length : 0),
@@ -1712,8 +1737,11 @@ export function bindModalCloseTriggers({ root = null, selector = "[data-modal-cl
 }
 
 export function getCustomerInfo({
+  nameSelector = "#customerName",
+  phoneSelector = "#customerPhone",
   ggrIdSelector = "#customerGgrId",
   phoneLast4Selector = "#customerPhoneLast4",
+  emailSelector = "#customerEmail",
   memoSelector = "#customerMemo",
   postcodeSelector = "#sample6_postcode",
   addressSelector = "#sample6_address",
@@ -1730,8 +1758,15 @@ export function getCustomerInfo({
   };
 
   return {
+    name: document.querySelector(nameSelector)?.value.trim()
+      || document.querySelector(ggrIdSelector)?.value.trim()
+      || "",
+    phone: document.querySelector(phoneSelector)?.value.trim()
+      || document.querySelector(phoneLast4Selector)?.value.trim()
+      || "",
     ggrId: document.querySelector(ggrIdSelector)?.value.trim() || "",
     phoneLast4: document.querySelector(phoneLast4Selector)?.value.trim() || "",
+    email: document.querySelector(emailSelector)?.value.trim() || "",
     memo: document.querySelector(memoSelector)?.value.trim() || "",
     postcode: document.querySelector(postcodeSelector)?.value.trim() || "",
     address,
@@ -1795,10 +1830,28 @@ function withTimeout(promise, timeoutMs = 0, timeoutMessage = "요청 시간이 
 }
 
 function getCustomerPhotoDefaultFolder() {
-  const baseFolder = String(CLOUDINARY_CONFIG?.folder || "").trim();
-  if (!baseFolder) return "ggr-order-center/customer-photo";
-  const trimmed = baseFolder.replace(/\/+$/g, "");
-  return trimmed.endsWith("/customer-photo") ? trimmed : `${trimmed}/customer-photo`;
+  const customerPhotoFolder = String(CLOUDINARY_CONFIG?.customerPhotoFolder || "").trim();
+  if (customerPhotoFolder) return customerPhotoFolder.replace(/\/+$/g, "");
+  return "ggr-order-center/customer-photo";
+}
+
+function resolveCustomerPhotoUploadFolder(pageKey = "", folder = "") {
+  const overrideFolder = String(folder || "").trim().replace(/\/+$/g, "");
+  if (overrideFolder) return overrideFolder;
+
+  const baseFolder = getCustomerPhotoDefaultFolder();
+  const normalizedPageKey = String(pageKey || "")
+    .trim()
+    .replace(/\/+/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/[^a-zA-Z0-9._/-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/\/-+/g, "/")
+    .replace(/-+\//g, "/")
+    .replace(/\/+/g, "/");
+
+  if (!normalizedPageKey) return baseFolder;
+  return `${baseFolder}/${normalizedPageKey}`;
 }
 
 function renderCustomerPhotoList(listEl, files = []) {
@@ -2045,7 +2098,7 @@ export async function uploadCustomerPhotoFilesToCloudinary({
 
   const cloudName = String(CLOUDINARY_CONFIG.cloudName || "").trim();
   const uploadPreset = String(CLOUDINARY_CONFIG.uploadPreset || "").trim();
-  const uploadFolder = String(folder || "").trim() || getCustomerPhotoDefaultFolder();
+  const uploadFolder = resolveCustomerPhotoUploadFolder(pageKey, folder);
   const tags = ["order-center", "customer-photo"];
   if (String(pageKey || "").trim()) tags.push(`page-${String(pageKey).trim()}`);
   const uploadEndpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`;
@@ -2112,12 +2165,19 @@ export function isValidCustomerEmail(email = "") {
 }
 
 export function isValidCustomerPhone(phone = "") {
-  return isValidCustomerPhoneLast4(phone);
+  const digits = normalizePhoneDigits(phone);
+  if (digits.length < 10 || digits.length > 11) return false;
+  return /^01\d{8,9}$/.test(digits);
 }
 
 export function isValidCustomerPhoneLast4(phoneLast4 = "") {
   const digits = normalizePhoneDigits(phoneLast4);
   return digits.length === 4;
+}
+
+export function isValidCustomerName(name = "") {
+  const text = String(name || "").trim();
+  return Boolean(text) && text.length <= 50;
 }
 
 export function isValidCustomerGgrId(ggrId = "") {
@@ -2126,11 +2186,11 @@ export function isValidCustomerGgrId(ggrId = "") {
 }
 
 export function validateCustomerInfo(customer) {
-  if (!isValidCustomerGgrId(customer?.ggrId)) {
-    return "GGR 아이디를 입력해주세요. 한글은 사용할 수 없습니다.";
+  if (!isValidCustomerName(customer?.name)) {
+    return "고객 이름을 입력해주세요.";
   }
-  if (!isValidCustomerPhoneLast4(customer?.phoneLast4)) {
-    return "휴대폰 번호 뒤 4자리를 숫자 4자리로 입력해주세요.";
+  if (!isValidCustomerPhone(customer?.phone)) {
+    return "연락처를 숫자 10~11자리로 입력해주세요.";
   }
   if (!customer?.postcode || !customer?.address) {
     return "주소를 입력해주세요.";
@@ -2154,14 +2214,85 @@ export function updateSendButtonEnabled({
   const btn = document.querySelector(buttonSelector);
   if (!btn) return;
   const hasRequired = Boolean(
-    customer.ggrId &&
-      customer.phoneLast4 &&
+    customer.name &&
+      customer.phone &&
       customer.postcode &&
       customer.address
   );
   const hasValidFormat =
-    isValidCustomerGgrId(customer.ggrId) && isValidCustomerPhoneLast4(customer.phoneLast4);
+    isValidCustomerName(customer.name) && isValidCustomerPhone(customer.phone);
   btn.disabled = !(hasRequired && hasValidFormat && hasItems && onFinalStep && hasConsent) || sending;
+}
+
+export async function submitOrderNotification({
+  customer = {},
+  orderTimeText = "",
+  subject = "",
+  message = "",
+  orderLines = [],
+  payload = {},
+  payloadJson = "",
+  customerPhotoUploads = [],
+  customerPhotoErrors = [],
+  customerAddress = "",
+  previewImageUrl = "",
+  previewImagePublicId = "",
+  previewImageError = "",
+  extraParams = {},
+  emailjsInstance = null,
+  showInfoModal = null,
+} = {}) {
+  const templateParams = buildSendQuoteTemplateParams({
+    customer,
+    orderTimeText,
+    subject,
+    message,
+    orderLines,
+    payload,
+    payloadJson,
+    customerPhotoUploads,
+    customerPhotoErrors,
+    customerAddress,
+    previewImageUrl,
+    previewImagePublicId,
+    previewImageError,
+    extraParams,
+  });
+
+  if (ORDER_API_CONFIG.endpoint) {
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutMs = Math.max(1000, Number(ORDER_API_CONFIG.timeoutMs || 15000));
+    const timeoutId =
+      controller && Number.isFinite(timeoutMs)
+        ? setTimeout(() => controller.abort(), timeoutMs)
+        : null;
+    try {
+      const response = await fetch(ORDER_API_CONFIG.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ templateParams }),
+        signal: controller?.signal,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(String(result?.error || result?.message || `Worker 요청 실패 (${response.status})`).trim());
+      }
+      return { transport: "worker", templateParams, result };
+    } catch (error) {
+      throw error;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  const emailClient = emailjsInstance || (typeof window !== "undefined" ? window.emailjs : null);
+  if (!emailClient) {
+    throw new Error("EmailJS 스크립트가 로드되지 않았습니다.");
+  }
+  await emailClient.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, templateParams);
+  return { transport: "emailjs", templateParams };
 }
 
 export function getEmailJSInstance(showInfoModal) {

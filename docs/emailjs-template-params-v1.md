@@ -10,6 +10,9 @@
 - `time`
 - `subject`
 - `message`
+- `customer_name`
+- `customer_phone`
+- `customer_email`
 - `customer_ggr_id`
 - `customer_phone_last4`
 - `customer_postcode`
@@ -23,9 +26,8 @@
 
 ## 3. 호환 파라미터
 아래 값들은 기존 템플릿 호환을 위해 남겨두지만, 새 템플릿에서는 사용하지 않는다.
-- `customer_name`
-- `customer_phone`
-- `customer_email`
+- `customer_ggr_id`
+- `customer_phone_last4`
 
 ## 4. 시스템 전용 파라미터
 - `preview_image_url`
@@ -41,6 +43,9 @@
 접수시각: {{time}}
 
 [고객 기본]
+이름: {{customer_name}}
+연락처: {{customer_phone}}
+이메일: {{customer_email}}
 GGR 아이디: {{customer_ggr_id}}
 휴대폰 뒤 4자리: {{customer_phone_last4}}
 우편번호: {{customer_postcode}}

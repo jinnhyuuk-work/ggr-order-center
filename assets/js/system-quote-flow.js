@@ -17,8 +17,7 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
     getCustomerPhotoUploader,
     uploadCustomerPhotoFilesToCloudinary,
     buildBuilderEdgeRows,
-    buildSendQuoteTemplateParams,
-    EMAILJS_CONFIG,
+    submitOrderNotification,
     showOrderComplete,
     showInfoModal,
   } = deps;
@@ -76,8 +75,8 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
     container.innerHTML = `
       <div class="complete-section">
         <h4>고객 정보</h4>
-        <p>GGR 아이디: ${escapeHtml(customer.ggrId || "-")}</p>
-        <p>휴대폰 뒤 4자리: ${escapeHtml(customer.phoneLast4 || "-")}</p>
+        <p>이름: ${escapeHtml(customer.name || "-")}</p>
+        <p>연락처: ${escapeHtml(customer.phone || "-")}</p>
         <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")}</p>
         <p>요청사항: ${escapeHtml(customer.memo || "-")}</p>
       </div>
@@ -109,9 +108,6 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
       showInfoModal(customerError);
       return;
     }
-    const emailjsInstance = getEmailJSInstance(showInfoModal);
-    if (!emailjsInstance) return;
-
     setSendingEmail(true);
     updateSendButtonEnabled();
 
@@ -177,26 +173,22 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
       previewImageError,
       customerPhotoUploads,
     });
-    const templateParams = buildSendQuoteTemplateParams({
-      customer,
-      orderTimeText,
-      subject,
-      message: body,
-      orderLines: lines,
-      payload,
-      customerPhotoUploads,
-      customerPhotoErrors,
-      previewImageUrl,
-      previewImagePublicId,
-      previewImageError,
-    });
-
     try {
-      await emailjsInstance.send(
-        EMAILJS_CONFIG.serviceId,
-        EMAILJS_CONFIG.templateId,
-        templateParams
-      );
+      await submitOrderNotification({
+        customer,
+        orderTimeText,
+        subject,
+        message: body,
+        orderLines: lines,
+        payload,
+        customerPhotoUploads,
+        customerPhotoErrors,
+        previewImageUrl,
+        previewImagePublicId,
+        previewImageError,
+        emailjsInstance: getEmailJSInstance(showInfoModal),
+        showInfoModal,
+      });
       showOrderComplete();
     } catch (err) {
       console.error(err);

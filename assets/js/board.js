@@ -11,7 +11,6 @@ import {
 import { DOOR_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
   initEmailJS,
-  EMAILJS_CONFIG,
   openModal,
   closeModal,
   showInfoModal,
@@ -53,7 +52,7 @@ import {
   resolveThreePhaseNextTransition,
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
-  buildSendQuoteTemplateParams,
+  submitOrderNotification,
   renderCategoryFeatureCapsules,
 } from "./shared.js?v=20260423g-html";
 import { createBoardPricingHelpers } from "./board-pricing.js";
@@ -1295,7 +1294,7 @@ function buildEmailContent({ customerPhotoUploads = [], customerPhotoErrors = []
   lines.push(`예상 결제금액: ${summary.grandTotal.toLocaleString()}원${suffix}`);
   lines.push(`예상 네이버 결제수량: ${naverUnits}개`);
 
-  const subject = `[GGR 견적요청] ${customer.ggrId || "GGR아이디"}`;
+  const subject = `[GGR 견적요청] ${customer.name || customer.ggrId || "고객"}`;
   return {
     subject,
     body: lines.join("\n"),
@@ -1397,8 +1396,9 @@ function resetFlow() {
   state.items = [];
   state.addons = [];
   const customerFields = [
-    "#customerGgrId",
-    "#customerPhoneLast4",
+    "#customerName",
+    "#customerPhone",
+    "#customerEmail",
     "#customerMemo",
     "#sample6_postcode",
     "#sample6_address",
@@ -1488,8 +1488,8 @@ function renderOrderCompleteDetails() {
   container.innerHTML = `
     <div class="complete-section">
       <h4>고객 정보</h4>
-      <p>GGR 아이디: ${escapeHtml(customer.ggrId || "-")}</p>
-      <p>휴대폰 뒤 4자리: ${escapeHtml(customer.phoneLast4 || "-")}</p>
+      <p>이름: ${escapeHtml(customer.name || "-")}</p>
+      <p>연락처: ${escapeHtml(customer.phone || "-")}</p>
       <p>주소: ${escapeHtml(customer.postcode || "-")} ${escapeHtml(customer.address || "")}</p>
       <p>요청사항: ${escapeHtml(customer.memo || "-")}</p>
     </div>
@@ -1519,9 +1519,6 @@ async function sendQuote() {
     showInfoModal(customerError);
     return;
   }
-  const emailjsInstance = getEmailJSInstance(showInfoModal);
-  if (!emailjsInstance) return;
-
   sendingEmail = true;
   updateSendButtonEnabled();
 
@@ -1547,23 +1544,19 @@ async function sendQuote() {
     timeZone: "Asia/Seoul",
   }).format(new Date());
   const payload = buildOrderPayload({ customerPhotoUploads });
-  const templateParams = buildSendQuoteTemplateParams({
-    customer,
-    orderTimeText,
-    subject,
-    message: body,
-    orderLines: lines,
-    payload,
-    customerPhotoUploads,
-    customerPhotoErrors,
-  });
-
   try {
-    await emailjsInstance.send(
-      EMAILJS_CONFIG.serviceId,
-      EMAILJS_CONFIG.templateId,
-      templateParams
-    );
+    await submitOrderNotification({
+      customer,
+      orderTimeText,
+      subject,
+      message: body,
+      orderLines: lines,
+      payload,
+      customerPhotoUploads,
+      customerPhotoErrors,
+      emailjsInstance: getEmailJSInstance(showInfoModal),
+      showInfoModal,
+    });
     showOrderComplete();
   } catch (err) {
     console.error(err);
@@ -1952,7 +1945,7 @@ function init() {
   });
   $("#sendQuoteBtn")?.addEventListener("click", sendQuote);
   document.getElementById("privacyConsent")?.addEventListener("change", updateSendButtonEnabled);
-  ["#customerGgrId", "#customerPhoneLast4"].forEach((sel) => {
+  ["#customerName", "#customerPhone", "#customerEmail"].forEach((sel) => {
     const el = document.querySelector(sel);
     el?.addEventListener("input", updateSendButtonEnabled);
   });
