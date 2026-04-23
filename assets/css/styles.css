@@ -262,6 +262,11 @@ b[lang="en"],
   color: var(--color-text);
 }
 
+.title-description--primary {
+  color: var(--color-primary);
+  font-weight: var(--fw-medium);
+}
+
 .header-divider {
   margin-top: 12px;
   height: 1px;
