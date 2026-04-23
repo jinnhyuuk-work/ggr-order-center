@@ -392,6 +392,24 @@ function createDefaultPlywoodHingeDetail() {
   };
 }
 
+function formatPlywoodEstimateNameHtml(materialName, item = {}) {
+  const baseName = String(materialName || "").trim();
+  if (!baseName || item?.type === "addon") return escapeHtml(baseName);
+  const hasHingeService =
+    Array.isArray(item.services) && item.services.includes(PLYWOOD_HINGE_SERVICE_ID);
+  const hingeDetail = hasHingeService
+    ? item.serviceDetails?.[PLYWOOD_HINGE_SERVICE_ID] || createDefaultPlywoodHingeDetail()
+    : null;
+  const sideLabel =
+    hingeDetail?.side === "right"
+      ? "좌측문"
+      : hingeDetail?.side === "left"
+        ? "우측문"
+        : "";
+  if (!sideLabel) return escapeHtml(baseName);
+  return `<span class="estimate-name-chip" aria-label="${escapeHtml(sideLabel)}">${escapeHtml(sideLabel)}</span> ${escapeHtml(baseName)}`;
+}
+
 const state = {
   items: [], // {id, materialId, thickness, width, length, quantity, services, ...계산 결과}
   addons: [],
@@ -1268,7 +1286,7 @@ function renderTable() {
       const materialName = isAddon
         ? addonInfo?.name || "부자재"
         : MATERIALS[item.materialId].name;
-      return escapeHtml(materialName);
+      return formatPlywoodEstimateNameHtml(materialName, item);
     },
     getTotalText: (item) => (item.consultStatus === "consult" ? "상담 안내" : `${item.total.toLocaleString()}원`),
     getDetailLines: (item) => {
