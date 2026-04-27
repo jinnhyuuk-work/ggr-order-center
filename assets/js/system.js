@@ -106,7 +106,6 @@ import {
   resolveSystemTieredWidthPrice,
 } from "./system-addon-pricing.js";
 import {
-  initEmailJS,
   CLOUDINARY_CONFIG,
   openModal,
   closeModal,
@@ -115,8 +114,6 @@ import {
   validateCustomerInfo,
   updateSendButtonEnabled as updateSendButtonEnabledShared,
   isConsentChecked,
-  getEmailJSInstance,
-  shouldUseOrderApiTransport,
   renderEstimateTable,
   renderSelectedCard,
   buildMaterialVisualMarkup,
@@ -5664,8 +5661,6 @@ const systemQuoteFlowHelpers = createSystemQuoteFlowHelpers({
   formatFulfillmentLine,
   hasConsultLineItem,
   validateCustomerInfo,
-  getEmailJSInstance,
-  shouldUseOrderApiTransport,
   updateSendButtonEnabled,
   setSendingEmail: (nextValue) => {
     sendingEmail = Boolean(nextValue);
@@ -5716,7 +5711,6 @@ function init() {
   renderFulfillmentServiceMediaSlots({ mediaByType: FULFILLMENT_SERVICE_MEDIA });
 
   runSystemInitSequence({
-    initEmailJS,
     initCustomerPhotoUploader,
     showInfoModal,
     updateSendButtonEnabled,

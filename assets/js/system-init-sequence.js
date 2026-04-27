@@ -5,7 +5,6 @@ export function isSystemInitMountReady({ $, materialPickers } = {}) {
 }
 
 export function runSystemInitSequence({
-  initEmailJS,
   initCustomerPhotoUploader,
   showInfoModal,
   updateSendButtonEnabled,
@@ -35,7 +34,6 @@ export function runSystemInitSequence({
   requestStickyOffsetUpdate,
 } = {}) {
   try {
-    if (typeof initEmailJS === "function") initEmailJS();
     const uploader =
       typeof initCustomerPhotoUploader === "function"
         ? initCustomerPhotoUploader({

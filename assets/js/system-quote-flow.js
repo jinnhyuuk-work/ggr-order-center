@@ -9,8 +9,6 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
     formatFulfillmentLine,
     hasConsultLineItem,
     validateCustomerInfo,
-    getEmailJSInstance,
-    shouldUseOrderApiTransport,
     updateSendButtonEnabled,
     setSendingEmail,
     previewUploadHelpers,
@@ -193,7 +191,6 @@ export function createSystemQuoteFlowHelpers(deps = {}) {
         previewImageUrl,
         previewImagePublicId,
         previewImageError,
-        emailjsInstance: shouldUseOrderApiTransport() ? null : getEmailJSInstance(showInfoModal),
         showInfoModal,
       });
       showOrderComplete();

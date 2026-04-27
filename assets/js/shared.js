@@ -1,9 +1,3 @@
-const DEFAULT_EMAILJS_CONFIG = Object.freeze({
-  serviceId: "service_8iw3ovj",
-  templateId: "template_iaid1xl",
-  publicKey: "dUvt2iF9ciN8bvf6r",
-});
-
 const DEFAULT_CLOUDINARY_CONFIG = Object.freeze({
   enabled: true,
   cloudName: "dpw2svbf6",
@@ -99,15 +93,8 @@ export function getRuntimeHostBlockedReason() {
   return "현재 접속 환경에서는 주문 전송/이미지 업로드가 차단됩니다.";
 }
 
-const runtimeEmailConfig = readRuntimeOrderCenterSection("emailjs");
 const runtimeOrderApiConfig = readRuntimeOrderCenterSection("orderApi");
 const runtimeCloudinaryConfig = readRuntimeOrderCenterSection("cloudinary");
-
-export const EMAILJS_CONFIG = {
-  serviceId: String(runtimeEmailConfig.serviceId || DEFAULT_EMAILJS_CONFIG.serviceId).trim(),
-  templateId: String(runtimeEmailConfig.templateId || DEFAULT_EMAILJS_CONFIG.templateId).trim(),
-  publicKey: String(runtimeEmailConfig.publicKey || DEFAULT_EMAILJS_CONFIG.publicKey).trim(),
-};
 
 export const ORDER_API_CONFIG = {
   endpoint: String(runtimeOrderApiConfig.endpoint || DEFAULT_ORDER_API_CONFIG.endpoint).trim(),
@@ -1517,16 +1504,6 @@ export function buildAddonLineItemDetail({
   };
 }
 
-export function initEmailJS() {
-  if (typeof window === "undefined") return;
-  if (shouldUseOrderApiTransport()) return;
-  if (window.emailjs && EMAILJS_CONFIG.publicKey) {
-    window.emailjs.init({
-      publicKey: EMAILJS_CONFIG.publicKey,
-    });
-  }
-}
-
 function resolveElement(target) {
   if (!target || typeof document === "undefined") return null;
   return typeof target === "string" ? document.querySelector(target) : target;
@@ -2244,7 +2221,6 @@ export async function submitOrderNotification({
   previewImagePublicId = "",
   previewImageError = "",
   extraParams = {},
-  emailjsInstance = null,
   showInfoModal = null,
 } = {}) {
   const templateParams = buildSendQuoteTemplateParams({
@@ -2264,61 +2240,33 @@ export async function submitOrderNotification({
     extraParams,
   });
 
-  if (ORDER_API_CONFIG.endpoint) {
-    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timeoutMs = Math.max(1000, Number(ORDER_API_CONFIG.timeoutMs || 15000));
-    const timeoutId =
-      controller && Number.isFinite(timeoutMs)
-        ? setTimeout(() => controller.abort(), timeoutMs)
-        : null;
-    try {
-      const response = await fetch(ORDER_API_CONFIG.endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ templateParams }),
-        signal: controller?.signal,
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(String(result?.error || result?.message || `Worker 요청 실패 (${response.status})`).trim());
-      }
-      return { transport: "worker", templateParams, result };
-    } catch (error) {
-      throw error;
-    } finally {
-      if (timeoutId) clearTimeout(timeoutId);
+  if (!ORDER_API_CONFIG.endpoint) {
+    throw new Error("주문 전송 Worker endpoint가 설정되지 않았습니다.");
+  }
+
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutMs = Math.max(1000, Number(ORDER_API_CONFIG.timeoutMs || 15000));
+  const timeoutId =
+    controller && Number.isFinite(timeoutMs)
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : null;
+  try {
+    const response = await fetch(ORDER_API_CONFIG.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ templateParams }),
+      signal: controller?.signal,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(String(result?.error || result?.message || `Worker 요청 실패 (${response.status})`).trim());
     }
+    return { transport: "worker", templateParams, result };
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
-
-  const emailClient = emailjsInstance || (typeof window !== "undefined" ? window.emailjs : null);
-  if (!emailClient) {
-    throw new Error("EmailJS 스크립트가 로드되지 않았습니다.");
-  }
-  await emailClient.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, templateParams);
-  return { transport: "emailjs", templateParams };
-}
-
-export function getEmailJSInstance(showInfoModal) {
-  const blockedReason = getRuntimeHostBlockedReason();
-  if (blockedReason) {
-    showInfoModal?.(blockedReason);
-    return null;
-  }
-  if (shouldUseOrderApiTransport()) {
-    return null;
-  }
-  if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.templateId || !EMAILJS_CONFIG.publicKey) {
-    showInfoModal?.("EmailJS 설정(서비스ID/템플릿ID/publicKey)을 입력해주세요.");
-    return null;
-  }
-  const emailjsInstance = typeof window !== "undefined" ? window.emailjs : null;
-  if (!emailjsInstance) {
-    showInfoModal?.("EmailJS 스크립트가 로드되지 않았습니다.");
-    return null;
-  }
-  return emailjsInstance;
 }
 
 export function getTieredPrice({ tiers = [], width, length, customLabel = "상담 안내" } = {}) {

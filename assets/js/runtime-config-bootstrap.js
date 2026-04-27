@@ -9,11 +9,6 @@
       endpoint: "https://ggr-order-api.tight-frost-e42a.workers.dev/",
       timeoutMs: 15000,
     },
-    emailjs: {
-      serviceId: "service_8iw3ovj",
-      templateId: "template_iaid1xl",
-      publicKey: "dUvt2iF9ciN8bvf6r",
-    },
     cloudinary: {
       enabled: true,
       cloudName: "dpw2svbf6",
@@ -33,7 +28,6 @@
     ...runtimeConfig,
     security: { ...defaultConfig.security, ...(runtimeConfig.security || {}) },
     orderApi: { ...defaultConfig.orderApi, ...(runtimeConfig.orderApi || {}) },
-    emailjs: { ...defaultConfig.emailjs, ...(runtimeConfig.emailjs || {}) },
     cloudinary: { ...defaultConfig.cloudinary, ...(runtimeConfig.cloudinary || {}) },
   };
 })();

@@ -14,7 +14,6 @@ import {
 } from "./data/door-data.js";
 import { DOOR_MEASUREMENT_GUIDES } from "./data/measurement-guides-data.js";
 import {
-  initEmailJS,
   openModal,
   closeModal,
   showInfoModal,
@@ -24,9 +23,7 @@ import {
   validateCustomerInfo,
   updateSendButtonEnabled as updateSendButtonEnabledShared,
   isConsentChecked,
-  getEmailJSInstance,
   getRuntimeHostBlockedReason,
-  shouldUseOrderApiTransport,
   updateSizeErrors,
   bindSizeInputHandlers,
   renderEstimateTable,
@@ -2173,9 +2170,6 @@ async function sendQuote() {
     showInfoModal(blockedReason);
     return;
   }
-  const useOrderApiTransport = shouldUseOrderApiTransport();
-  const emailjsInstance = useOrderApiTransport ? null : getEmailJSInstance(showInfoModal);
-  if (!useOrderApiTransport && !emailjsInstance) return;
   sendingEmail = true;
   updateSendButtonEnabled();
 
@@ -2211,7 +2205,6 @@ async function sendQuote() {
       payload,
       customerPhotoUploads,
       customerPhotoErrors,
-      emailjsInstance,
       showInfoModal,
     });
     showOrderComplete();
@@ -2633,7 +2626,6 @@ function init() {
 
   resetOrderCompleteUI();
 
-  initEmailJS();
   customerPhotoUploader = initCustomerPhotoUploader({
     showInfoModal,
     onChange: () => updateSendButtonEnabled(),

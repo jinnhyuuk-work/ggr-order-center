@@ -1,14 +1,11 @@
 import {
-  initEmailJS,
   showInfoModal,
   bindModalCloseTriggers,
   getCustomerInfo,
   validateCustomerInfo,
   updateSendButtonEnabled as updateSendButtonEnabledShared,
   isConsentChecked,
-  getEmailJSInstance,
   getRuntimeHostBlockedReason,
-  shouldUseOrderApiTransport,
   initCollapsibleSections,
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
@@ -364,9 +361,6 @@ async function sendQuote() {
     showInfoModal(blockedReason);
     return;
   }
-  const useOrderApiTransport = shouldUseOrderApiTransport();
-  const emailjsInstance = useOrderApiTransport ? null : getEmailJSInstance(showInfoModal);
-  if (!useOrderApiTransport && !emailjsInstance) return;
   sendingEmail = true;
   updateSendButtonEnabled();
 
@@ -400,7 +394,6 @@ async function sendQuote() {
       payload,
       customerPhotoUploads,
       customerPhotoErrors,
-      emailjsInstance,
       showInfoModal,
     });
     renderOrderCompleteDetails();
@@ -482,7 +475,6 @@ function bindEvents() {
 }
 
 function initMeasurement() {
-  initEmailJS();
   customerPhotoUploader = initCustomerPhotoUploader({
     showInfoModal,
     onChange: () => updateSendButtonEnabled(),
