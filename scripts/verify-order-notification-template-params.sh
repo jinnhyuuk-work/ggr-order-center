@@ -57,7 +57,7 @@ SHARED_REQUIRED_TOKENS=(
 
 fail_count=0
 
-echo "== EmailJS template params verify =="
+echo "== Order notification template params verify =="
 
 shared_abs="${ROOT_DIR}/${SHARED_FILE}"
 if [[ ! -f "${shared_abs}" ]]; then

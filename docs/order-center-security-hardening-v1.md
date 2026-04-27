@@ -1,15 +1,15 @@
-# 주문센터 보안 운영 가이드 v1 (A안)
+# 주문센터 보안 운영 가이드 v2
 
-- 문서 버전: `v1.0`
-- 작성일: `2026-03-26`
-- 목적: 프런트 직접 전송 구조(EmailJS/Cloudinary)를 유지하면서, v1 핫픽스 범위에서 남용 리스크를 낮춘다.
+- 문서 버전: `v2.0`
+- 작성일: `2026-04-27`
+- 목적: Cloudflare Worker, Resend, Cloudinary 기반의 현재 주문센터 운영 구조를 기준으로 보안 설정과 점검 항목을 정리한다.
 
-## 1. 이번 A안에서 적용한 코드 가드
+## 1. 현재 운영 구조
 
-1. 허용 도메인 외 환경에서 주문 전송/이미지 업로드 차단
-2. 런타임 설정(`window.__ORDER_CENTER_CONFIG`)으로 보안/연동 값을 주입할 수 있도록 정리
-3. 시스템 미리보기 업로드 경로도 동일 도메인 정책 적용
-4. 주문 전송은 Cloudflare Worker API로 우회할 수 있도록 경로를 분리
+1. 브라우저는 허용 도메인에서만 주문 전송과 이미지 업로드를 허용한다.
+2. 주문 알림은 Cloudflare Worker가 받아 Resend 메일로 중계한다.
+3. 고객 사진과 시스템 미리보기 이미지는 Cloudinary에 업로드한다.
+4. 연동값은 `window.__ORDER_CENTER_CONFIG__` 런타임 설정으로 주입한다.
 
 기본 허용 도메인:
 
@@ -31,20 +31,15 @@
 
 ```html
 <script>
-  window.__ORDER_CENTER_CONFIG = {
+  window.__ORDER_CENTER_CONFIG__ = {
     security: {
       enforceAllowedHosts: true,
       allowedHosts: ["order-center.ggr.kr", "ggr.kr", "localhost", "127.0.0.1"],
       allowedHostSuffixes: [".ggr.kr"]
     },
     orderApi: {
-      endpoint: "https://ggr-order-api.example.workers.dev",
+      endpoint: "https://ggr-order-api.example.workers.dev/",
       timeoutMs: 15000
-    },
-    emailjs: {
-      serviceId: "service_xxx",
-      templateId: "template_xxx",
-      publicKey: "public_xxx"
     },
     cloudinary: {
       enabled: true,
@@ -65,15 +60,16 @@
 운영 원칙:
 
 1. 운영 배포에서는 `enforceAllowedHosts: true` 유지
-2. 값 로테이션 시 런타임 설정만 교체하고, 코드의 하드코딩 값은 예비값으로만 취급
+2. 주문 전송은 `orderApi.endpoint`가 비어 있지 않아야 동작한다.
+3. 값 로테이션 시 런타임 설정과 Worker Secret을 함께 교체한다.
 
-## 3. EmailJS 운영 제한 체크리스트
+## 3. Cloudflare Worker / Resend 운영 체크리스트
 
-1. 허용 도메인(Allowed Domains)에 `order-center.ggr.kr` 및 필요한 `*.ggr.kr`만 등록
-2. 템플릿/서비스를 주문센터 전용으로 분리
-3. 월간 사용량 임계치 알림 설정
-4. 키 유출/오남용 의심 시 `publicKey` 즉시 재발급 및 교체
-5. Worker 전환 시에는 `orderApi.endpoint`를 먼저 적용하고 EmailJS는 롤백 경로로만 유지
+1. Worker `ALLOWED_ORIGINS`에 `order-center.ggr.kr` 및 필요한 `ggr.kr` 계열만 등록
+2. Worker Secret `RESEND_API_KEY`가 등록되어 있는지 확인
+3. `MAIL_FROM`, `MAIL_TO` 값이 운영 주소와 일치하는지 확인
+4. Resend 발신 도메인(`order@ggr.kr`)이 `Verified` 상태인지 확인
+5. Worker 응답 로그와 Resend 발송 로그를 함께 확인할 수 있게 운영 콘솔 접근 권한을 유지
 
 ## 4. Cloudinary 운영 제한 체크리스트
 
@@ -87,7 +83,7 @@
 ## 5. 장애/오남용 대응 순서
 
 1. Cloudinary 프리셋 비활성화 또는 이름 교체
-2. `orderApi.endpoint` 비활성화 또는 대체
-3. EmailJS `publicKey` 재발급
-4. 런타임 설정 교체 배포
-5. 허용 도메인 목록 재검토 후 최소 권한으로 재적용
+2. Worker `ALLOWED_ORIGINS`를 최소 권한으로 재조정
+3. `RESEND_API_KEY` 재발급 및 Worker Secret 교체
+4. `orderApi.endpoint`를 점검 페이지나 대체 Worker로 전환
+5. 런타임 설정 교체 배포 후 허용 도메인 목록을 재검토

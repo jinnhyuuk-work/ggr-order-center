@@ -3,11 +3,16 @@
 접수시각: {{time}}
 
 [고객 정보]
-GGR 아이디: {{customer_ggr_id}}
-휴대폰 뒤 4자리: {{customer_phone_last4}}
+이름: {{customer_name}}
+연락처: {{customer_phone}}
+이메일: {{customer_email}}
 우편번호: {{customer_postcode}}
 주소: {{customer_address}}
 요청사항: {{customer_memo}}
+
+[호환 필드]
+GGR 아이디: {{customer_ggr_id}}
+휴대폰 뒤 4자리: {{customer_phone_last4}}
 
 [고객 사진]
 업로드 개수: {{customer_photo_count}}

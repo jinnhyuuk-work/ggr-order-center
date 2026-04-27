@@ -104,10 +104,6 @@ export const ORDER_API_CONFIG = {
   ),
 };
 
-export function shouldUseOrderApiTransport() {
-  return Boolean(ORDER_API_CONFIG.endpoint);
-}
-
 export const CLOUDINARY_CONFIG = {
   enabled:
     typeof runtimeCloudinaryConfig.enabled === "boolean"
