@@ -7,8 +7,10 @@ export function createSystemPresetAddonHelpers({
       ? Math.max(0, Math.floor(Number(rodCount)))
       : 0;
     if (normalizedRodCount <= 0) return emptyText;
-    const addonIds = Array.from({ length: normalizedRodCount }, () => ADDON_CLOTHES_ROD_ID);
-    return getShelfAddonSummary(addonIds) || emptyText;
+    if (ADDON_CLOTHES_ROD_ID && normalizedRodCount === 1) {
+      return "행거 1개";
+    }
+    return `행거 ${normalizedRodCount}개`;
   };
 
   const buildFurnitureAddonSummary = (addonIds = [], emptyText = "-") => {
