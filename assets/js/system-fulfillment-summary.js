@@ -12,6 +12,7 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
     hasConsultLineItem,
     $,
     formatFulfillmentCardPriceText,
+    formatFulfillmentCardDescription,
   } = deps;
 
   const getSystemColumnsItems = () => getStateItems().filter((item) => item.type === "columns");
@@ -156,19 +157,25 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
             amount,
             amountText: `${amount.toLocaleString()}원`,
             isConsult: false,
-            reason: "",
+            reason: "포스트바와 선반 수량 기준으로 배송비가 계산됩니다.",
           };
         }
 
         const fixedAmount = SYSTEM_FULFILLMENT_POLICY.installation.fixedByPostBarCount[postBar.totalCount];
         if (Number.isFinite(Number(fixedAmount)) && fixedAmount > 0) {
+          const reason =
+            postBar.totalCount === 2
+              ? "포스트바 2개 구성 기준 시공비가 적용됩니다."
+              : postBar.totalCount === 3
+                ? "포스트바 3개 구성 기준 시공비가 적용됩니다."
+                : "포스트바 4개 구성 기준 시공비가 적용됩니다.";
           return {
             amount: Number(fixedAmount),
             amountText:
               SYSTEM_FULFILLMENT_POLICY.installation.fixedAmountTextByPostBarCount[postBar.totalCount] ||
               `${Number(fixedAmount).toLocaleString()}원`,
             isConsult: false,
-            reason: "",
+            reason,
           };
         }
         if (postBar.totalCount >= 5) {
@@ -190,7 +197,7 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
             amount,
             amountText: `${amount.toLocaleString()}원`,
             isConsult: false,
-            reason: "",
+            reason: "섹션 길이 합산 기준으로 시공비가 계산됩니다.",
           };
         }
 
@@ -231,10 +238,18 @@ export function createSystemFulfillmentSummaryHelpers(deps = {}) {
     cardEntries.forEach(({ id, fulfillment }) => {
       const priceEl = $(id);
       if (!priceEl) return;
+      const descEl = priceEl.nextElementSibling;
       const isPlaceholder = fulfillment.amountText === "미선택" || !fulfillment.addressReady;
       priceEl.textContent = formatFulfillmentCardPriceText(fulfillment);
       priceEl.classList.toggle("is-consult", Boolean(fulfillment.isConsult));
       priceEl.classList.toggle("is-placeholder", Boolean(!fulfillment.isConsult && isPlaceholder));
+      if (descEl?.classList?.contains("description")) {
+        const fallbackText =
+          id === "#fulfillmentCardPriceDelivery"
+            ? "품목/수량/지역 기준 배송비 계산"
+            : "품목/수량/지역 기준 시공비 계산";
+        descEl.textContent = formatFulfillmentCardDescription(fulfillment, fallbackText);
+      }
     });
   };
 

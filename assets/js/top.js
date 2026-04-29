@@ -33,6 +33,7 @@ import {
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   UI_COLOR_FALLBACKS,
+  formatFulfillmentCardDescription,
   validateFulfillmentStepSelection,
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
@@ -213,7 +214,7 @@ function evaluateFulfillment(nextType = getFulfillmentType()) {
         amount: TOP_FULFILLMENT_POLICY.installationAmount,
         amountText: TOP_FULFILLMENT_POLICY.installationAmountText,
         isConsult: false,
-        reason: "",
+        reason: "상판은 기본 시공비 50,000원이 적용됩니다.",
       };
     },
   });
@@ -245,10 +246,18 @@ function updateFulfillmentCardPriceUI() {
   cardEntries.forEach(({ id, fulfillment }) => {
     const priceEl = $(id);
     if (!priceEl) return;
+    const descEl = priceEl.nextElementSibling;
     const isPlaceholder = fulfillment.amountText === "미선택" || !fulfillment.addressReady;
     priceEl.textContent = formatFulfillmentCardPriceText(fulfillment);
     priceEl.classList.toggle("is-consult", Boolean(fulfillment.isConsult));
     priceEl.classList.toggle("is-placeholder", Boolean(!fulfillment.isConsult && isPlaceholder));
+    if (descEl?.classList?.contains("description")) {
+      const fallbackText =
+        id === "#fulfillmentCardPriceDelivery"
+          ? "품목/수량/지역 기준 배송비 계산"
+          : "품목/수량/지역 기준 시공비 계산";
+      descEl.textContent = formatFulfillmentCardDescription(fulfillment, fallbackText);
+    }
   });
 }
 

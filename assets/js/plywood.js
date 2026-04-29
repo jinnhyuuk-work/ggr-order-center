@@ -46,6 +46,7 @@ import {
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   UI_COLOR_FALLBACKS,
+  formatFulfillmentCardDescription,
   validateFulfillmentStepSelection,
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
@@ -68,6 +69,7 @@ import {
 import {
   FULFILLMENT_SERVICE_MEDIA,
   FULFILLMENT_POLICY_MESSAGES,
+  DOOR_FULFILLMENT_POLICY,
   PLYWOOD_FULFILLMENT_POLICY,
 } from "./data/fulfillment-policy-data.js";
 import { resolveInstallationTravelZoneByAddress } from "./installation-travel-zone.js";
@@ -305,6 +307,8 @@ const PLYWOOD_HINGE_DEFAULT_EDGE_DISTANCE = 22;
 const PLYWOOD_HINGE_AUTO_TOP_OFFSET = 100;
 const PLYWOOD_HINGE_AUTO_BOTTOM_OFFSET = 100;
 const PLYWOOD_HINGE_AUTO_INTERIOR_RISE = 100;
+const PLYWOOD_DOOR_LIKE_MAX_WIDTH = 400;
+const PLYWOOD_DOOR_LIKE_MAX_LENGTH = 800;
 
 function getPlywoodDimensionLimits(mat) {
   return {
@@ -317,6 +321,47 @@ function getPlywoodDimensionLimits(mat) {
 
 function getCurrentPlywoodLengthInputValue() {
   return Number($("#lengthInput")?.value || 0);
+}
+
+function getPlywoodProductItems() {
+  return state.items.filter((item) => item.type !== "addon");
+}
+
+function getPlywoodProductQuantity() {
+  return getPlywoodProductItems().reduce(
+    (sum, item) => sum + Math.max(1, Math.floor(Number(item.quantity) || 1)),
+    0
+  );
+}
+
+function isDoorLikePlywoodInstallationOrder() {
+  const productItems = getPlywoodProductItems();
+  if (productItems.length === 0) return false;
+
+  return productItems.every((item) => {
+    const width = Number(item?.width || 0);
+    const length = Number(item?.length || 0);
+    const hasHingeService =
+      Array.isArray(item?.services) && item.services.includes(PLYWOOD_HINGE_SERVICE_ID);
+    const hingeDetail = item?.serviceDetails?.[PLYWOOD_HINGE_SERVICE_ID];
+    const hingeApplied = hingeDetail ? hingeDetail.hingeIncluded !== false : hasHingeService;
+    return (
+      width > 0 &&
+      length > 0 &&
+      width <= PLYWOOD_DOOR_LIKE_MAX_WIDTH &&
+      length <= PLYWOOD_DOOR_LIKE_MAX_LENGTH &&
+      hasHingeService &&
+      hingeApplied
+    );
+  });
+}
+
+function calcDoorLikePlywoodInstallationAmount(quantity) {
+  const installationPolicy = DOOR_FULFILLMENT_POLICY.installation;
+  return quantity <= installationPolicy.baseQuantity
+    ? installationPolicy.baseAmount
+    : installationPolicy.baseAmount +
+        (quantity - installationPolicy.baseQuantity) * installationPolicy.additionalUnitAmount;
 }
 
 function resolvePlywoodHingeCountByLength(length) {
@@ -449,13 +494,14 @@ function setFulfillmentStepError(message = "") {
 
 function evaluateFulfillment(nextType = getFulfillmentType()) {
   const customer = getCustomerInfo();
-  const hasProducts = state.items.some((item) => item.type !== "addon");
+  const hasProducts = getPlywoodProductItems().length > 0;
   return evaluateFulfillmentPolicy({
     nextType,
     customer,
     hasProducts,
     evaluateSupportedPolicy: ({ type }) => {
       const deliveryPolicy = PLYWOOD_FULFILLMENT_POLICY.delivery;
+      const quantity = getPlywoodProductQuantity();
       if (type === "delivery") {
         return {
           amount: 0,
@@ -464,11 +510,22 @@ function evaluateFulfillment(nextType = getFulfillmentType()) {
           reason: deliveryPolicy.consultReason,
         };
       }
+
+      if (isDoorLikePlywoodInstallationOrder()) {
+        const amount = calcDoorLikePlywoodInstallationAmount(quantity);
+        return {
+          amount,
+          amountText: `${amount.toLocaleString()}원`,
+          isConsult: false,
+          reason: "소형 도어형 합판은 도어 시공비 기준이 적용됩니다.",
+        };
+      }
+
       return {
         amount: 0,
         amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
         isConsult: true,
-        reason: "합판 시공은 상담 안내입니다.",
+        reason: "합판 시공비는 상담 후 안내됩니다.",
       };
     },
   });
@@ -497,10 +554,18 @@ function updateFulfillmentCardPriceUI() {
   cardEntries.forEach(({ id, fulfillment }) => {
     const priceEl = $(id);
     if (!priceEl) return;
+    const descEl = priceEl.nextElementSibling;
     const isPlaceholder = fulfillment.amountText === "미선택" || !fulfillment.addressReady;
     priceEl.textContent = formatFulfillmentCardPriceText(fulfillment);
     priceEl.classList.toggle("is-consult", Boolean(fulfillment.isConsult));
     priceEl.classList.toggle("is-placeholder", Boolean(!fulfillment.isConsult && isPlaceholder));
+    if (descEl?.classList?.contains("description")) {
+      const fallbackText =
+        id === "#fulfillmentCardPriceDelivery"
+          ? "품목/수량/지역 기준 배송비 계산"
+          : "품목/수량/지역 기준 시공비 계산";
+      descEl.textContent = formatFulfillmentCardDescription(fulfillment, fallbackText);
+    }
   });
 }
 

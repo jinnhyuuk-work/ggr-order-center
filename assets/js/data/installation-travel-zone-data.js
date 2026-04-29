@@ -19,7 +19,7 @@ function freezeZone({ id = "", label = "", travelFee = 0, rules = [] } = {}) {
 }
 
 export const INSTALLATION_TRAVEL_ZONE_POLICY = Object.freeze({
-  consultReason: "시공 출장 권역을 확인할 수 없어 상담 안내입니다.",
+  consultReason: "시공 출장비는 상담 후 안내됩니다.",
 });
 
 export const INSTALLATION_TRAVEL_ZONE_RULES = Object.freeze([

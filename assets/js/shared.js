@@ -171,6 +171,12 @@ export function formatPrice(value) {
   return Number(value || 0).toLocaleString();
 }
 
+export function formatFulfillmentCardDescription(fulfillment, fallbackText = "") {
+  const reason = String(fulfillment?.reason || "").trim();
+  if (reason) return reason;
+  return String(fallbackText || "").trim();
+}
+
 export function resolveFulfillmentRegionByAddress(address = "") {
   const text = String(address || "").trim();
   if (!text) {

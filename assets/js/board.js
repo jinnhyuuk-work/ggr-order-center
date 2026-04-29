@@ -45,6 +45,7 @@ import {
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   UI_COLOR_FALLBACKS,
+  formatFulfillmentCardDescription,
   validateFulfillmentStepSelection,
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
@@ -364,7 +365,7 @@ function evaluateFulfillment(nextType = getFulfillmentType()) {
         amount: 0,
         amountText: FULFILLMENT_POLICY_MESSAGES.consultAmountText,
         isConsult: true,
-        reason: "합판 시공은 상담 안내입니다.",
+        reason: "합판 시공비는 상담 후 안내됩니다.",
       };
     },
   });
@@ -393,10 +394,18 @@ function updateFulfillmentCardPriceUI() {
   cardEntries.forEach(({ id, fulfillment }) => {
     const priceEl = $(id);
     if (!priceEl) return;
+    const descEl = priceEl.nextElementSibling;
     const isPlaceholder = fulfillment.amountText === "미선택" || !fulfillment.addressReady;
     priceEl.textContent = formatFulfillmentCardPriceText(fulfillment);
     priceEl.classList.toggle("is-consult", Boolean(fulfillment.isConsult));
     priceEl.classList.toggle("is-placeholder", Boolean(!fulfillment.isConsult && isPlaceholder));
+    if (descEl?.classList?.contains("description")) {
+      const fallbackText =
+        id === "#fulfillmentCardPriceDelivery"
+          ? "품목/수량/지역 기준 배송비 계산"
+          : "품목/수량/지역 기준 시공비 계산";
+      descEl.textContent = formatFulfillmentCardDescription(fulfillment, fallbackText);
+    }
   });
 }
 

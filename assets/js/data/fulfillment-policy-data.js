@@ -5,7 +5,7 @@ export const FULFILLMENT_POLICY_MESSAGES = Object.freeze({
   addressRequiredAmountText: "주소 입력 필요",
   consultAmountText: "상담 안내",
   needsAddressReason: "주소를 입력하면 서비스비를 확인할 수 있습니다.",
-  unsupportedRegionReason: "수도권 외 지역은 상담 안내입니다.",
+  unsupportedRegionReason: "수도권 외 지역은 배송비/시공비가 상담 후 안내됩니다.",
   fallbackReason: "서비스 정책을 확인해주세요.",
 });
 
@@ -23,7 +23,7 @@ export const FULFILLMENT_SERVICE_MEDIA = Object.freeze({
 export const TOP_FULFILLMENT_POLICY = Object.freeze({
   delivery: Object.freeze({
     mode: "consult",
-    consultReason: "상판 배송 서비스는 상담 안내입니다.",
+    consultReason: "상판 배송비는 상담 후 안내됩니다.",
   }),
   installationAmount: 50000,
   installationAmountText: "50,000원",
@@ -32,28 +32,28 @@ export const TOP_FULFILLMENT_POLICY = Object.freeze({
 export const BOARD_FULFILLMENT_POLICY = Object.freeze({
   delivery: Object.freeze({
     mode: "consult",
-    consultReason: "합판 서비스는 상담 안내입니다.",
+    consultReason: "합판 배송비는 상담 후 안내됩니다.",
   }),
 });
 
 export const PLYWOOD_FULFILLMENT_POLICY = Object.freeze({
   delivery: Object.freeze({
     mode: "consult",
-    consultReason: "합판 서비스는 상담 안내입니다.",
+    consultReason: "합판 배송비는 상담 후 안내됩니다.",
   }),
 });
 
 export const DOOR_FULFILLMENT_POLICY = Object.freeze({
   delivery: Object.freeze({
     mode: "consult",
-    consultReason: "도어 배송 서비스는 상담 안내입니다.",
+    consultReason: "도어 배송비는 상담 후 안내됩니다.",
     maxWidthMm: 600,
     maxLengthMm: 800,
     groupedFee: Object.freeze({
       groupSize: 3,
       groupPrice: 7000,
     }),
-    oversizeConsultReason: "600×800mm 초과 규격은 배송 상담 안내입니다.",
+    oversizeConsultReason: "600×800mm 초과 규격은 배송비가 상담 후 안내됩니다.",
   }),
   installation: Object.freeze({
     baseQuantity: 5,
@@ -65,11 +65,11 @@ export const DOOR_FULFILLMENT_POLICY = Object.freeze({
 export const SYSTEM_FULFILLMENT_POLICY = Object.freeze({
   delivery: Object.freeze({
     mode: "consult",
-    consultReason: "시스템 배송 서비스는 상담 안내입니다.",
+    consultReason: "시스템 배송비는 상담 후 안내됩니다.",
     consultReasons: Object.freeze({
-      cornerOrFurniture: "코너/가구 포함 구성은 배송 상담 안내입니다.",
-      overPostBarHeight: "포스트바 2400mm 초과 규격은 배송 상담 안내입니다.",
-      overShelfWidth: "선반 800mm 초과 규격은 배송 상담 안내입니다.",
+      cornerOrFurniture: "코너/가구 포함 구성은 배송비가 상담 후 안내됩니다.",
+      overPostBarHeight: "포스트바 2400mm 초과 규격은 배송비가 상담 후 안내됩니다.",
+      overShelfWidth: "선반 800mm 초과 규격은 배송비가 상담 후 안내됩니다.",
     }),
     postBarGroupedFee: Object.freeze({
       groupSize: 5,
@@ -95,7 +95,7 @@ export const SYSTEM_FULFILLMENT_POLICY = Object.freeze({
       groupSizeMm: 100,
       groupPrice: 3500,
     }),
-    missingSectionLengthConsultReason: "섹션 길이 정보가 없어 시공 상담 안내입니다.",
+    missingSectionLengthConsultReason: "섹션 길이 정보가 없어 시공비는 상담 후 안내됩니다.",
     fallbackConsultReason: "포스트바 수량 조건을 확인해주세요.",
   }),
 });

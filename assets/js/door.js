@@ -48,6 +48,7 @@ import {
   initCustomerPhotoUploader,
   uploadCustomerPhotoFilesToCloudinary,
   UI_COLOR_FALLBACKS,
+  formatFulfillmentCardDescription,
   validateFulfillmentStepSelection,
   buildCustomerEmailSectionLines,
   buildOrderPayloadBase,
@@ -473,7 +474,7 @@ function evaluateFulfillment(nextType = getFulfillmentType()) {
           amount,
           amountText: `${amount.toLocaleString()}원`,
           isConsult: false,
-          reason: "",
+          reason: "도어 배송은 규격과 수량을 기준으로 계산됩니다.",
         };
       }
 
@@ -483,11 +484,15 @@ function evaluateFulfillment(nextType = getFulfillmentType()) {
           ? installationPolicy.baseAmount
           : installationPolicy.baseAmount +
             (quantity - installationPolicy.baseQuantity) * installationPolicy.additionalUnitAmount;
+      const reason =
+        quantity <= installationPolicy.baseQuantity
+          ? "도어 5개까지 기본 시공비가 적용됩니다."
+          : "기본 5개 초과분은 1개당 10,000원이 추가됩니다.";
       return {
         amount,
         amountText: `${amount.toLocaleString()}원`,
         isConsult: false,
-        reason: "",
+        reason,
       };
     },
   });
@@ -516,10 +521,18 @@ function updateFulfillmentCardPriceUI() {
   cardEntries.forEach(({ id, fulfillment }) => {
     const priceEl = $(id);
     if (!priceEl) return;
+    const descEl = priceEl.nextElementSibling;
     const isPlaceholder = fulfillment.amountText === "미선택" || !fulfillment.addressReady;
     priceEl.textContent = formatFulfillmentCardPriceText(fulfillment);
     priceEl.classList.toggle("is-consult", Boolean(fulfillment.isConsult));
     priceEl.classList.toggle("is-placeholder", Boolean(!fulfillment.isConsult && isPlaceholder));
+    if (descEl?.classList?.contains("description")) {
+      const fallbackText =
+        id === "#fulfillmentCardPriceDelivery"
+          ? "품목/수량/지역 기준 배송비 계산"
+          : "품목/수량/지역 기준 시공비 계산";
+      descEl.textContent = formatFulfillmentCardDescription(fulfillment, fallbackText);
+    }
   });
 }
 

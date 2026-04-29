@@ -135,6 +135,7 @@ import {
   resolveThreePhasePrevPhase,
   applyThreePhaseStepVisibility,
   submitOrderNotification,
+  formatFulfillmentCardDescription,
 } from "./shared.js?v=20260423g-html";
 import {
   normalizeFulfillmentType,
@@ -412,6 +413,7 @@ const fulfillmentSummaryHelpers = createSystemFulfillmentSummaryHelpers({
   hasConsultLineItem,
   $,
   formatFulfillmentCardPriceText,
+  formatFulfillmentCardDescription,
 });
 const optionFrontPreviewHelpers = createSystemOptionFrontPreviewHelpers({
   $,
