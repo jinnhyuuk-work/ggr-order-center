@@ -222,6 +222,8 @@ function updateStepVisibility() {
   $("#stepFinal")?.classList.toggle("hidden-step", orderCompleted);
   setControlVisible($("#prevStepsBtn"), currentPhase !== 1 && !orderCompleted);
   setControlVisible($("#backToCenterBtn"), currentPhase === 1 && !orderCompleted);
+  const nextStepsBtn = $("#nextStepsBtn");
+  if (nextStepsBtn) nextStepsBtn.textContent = "주문자 정보 입력하기";
   setControlVisible($("#nextStepsBtn"), currentPhase === 1 && !orderCompleted);
   setControlVisible($("#sendQuoteBtn"), currentPhase === 2 && !orderCompleted);
   updateSendButtonEnabled();

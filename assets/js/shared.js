@@ -521,6 +521,9 @@ export function applyThreePhaseStepVisibility({
   setStepControlVisibility(prevButton, normalizedPhase !== 1);
   setStepControlVisibility(sendButton, showPhase3);
   setStepControlVisibility(backToCenterButton, showPhase1);
+  if (nextButton) {
+    nextButton.textContent = showPhase1 ? "배송/시공 서비스 선택" : "주문자 정보 입력하기";
+  }
   setStepControlVisibility(nextButton, !showPhase3);
 
   if (typeof onActiveRender === "function") {
