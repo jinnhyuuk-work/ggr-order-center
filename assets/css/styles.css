@@ -46,8 +46,8 @@
   --title-sub-font-size: clamp(28px, 2.5vw, 34px);
   --font-size-lg: clamp(18px, 1.6vw, 22px);
   --font-size-md: clamp(16px, 1.3vw, 18px);
-  --font-size-sm: clamp(12px, 1vw, 15px);
-  --font-size-xs: clamp(12px, 0.9vw, 13px);
+  --font-size-sm: clamp(13px, 1vw, 15px);
+  --font-size-xs: clamp(13px, 0.9vw, 14px);
   --font-size-caption: 12px;
   --font-size-micro: 11px;
   --font-size-ui: 14px;
