@@ -3217,6 +3217,12 @@ th, td {
   margin-bottom: 0;
 }
 
+.modal--module-option .form-row label,
+.modal--module-option .form-row .form-row-label {
+  width: 120px;
+  min-width: 120px;
+}
+
 .modal--module-option .modal-body > #presetModuleOptionPresetTabPanel,
 .modal--module-option .modal-body > #presetModuleOptionCustomTabPanel {
   grid-column: 1;
