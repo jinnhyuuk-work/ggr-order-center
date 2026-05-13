@@ -7,6 +7,7 @@ const SIDO_ALIAS_MAP = Object.freeze({
   "서울특별시": Object.freeze(["서울특별시", "서울시", "서울"]),
   경기도: Object.freeze(["경기도", "경기"]),
   "인천광역시": Object.freeze(["인천광역시", "인천시", "인천"]),
+  "강원특별자치도": Object.freeze(["강원특별자치도", "강원도", "강원"]),
 });
 
 const SIDO_ALIAS_ENTRIES = Object.freeze(

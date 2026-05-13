@@ -126,6 +126,7 @@ export const FULFILLMENT_REGION_LABELS = Object.freeze({
   seoul: "서울특별시",
   gyeonggi: "경기도",
   incheon: "인천광역시",
+  gangwon: "강원특별자치도",
   other: "수도권 외",
 });
 export const UI_COLOR_FALLBACKS = Object.freeze({
@@ -190,6 +191,9 @@ export function resolveFulfillmentRegionByAddress(address = "") {
   }
   if (/(^|\s)(인천광역시|인천시|인천)(\s|$)/.test(text)) {
     return { key: "incheon", label: FULFILLMENT_REGION_LABELS.incheon, isSupported: true };
+  }
+  if (/(^|\s)(강원특별자치도|강원도|강원)(\s|$)/.test(text)) {
+    return { key: "gangwon", label: FULFILLMENT_REGION_LABELS.gangwon, isSupported: true };
   }
   return { key: "other", label: FULFILLMENT_REGION_LABELS.other, isSupported: false };
 }
